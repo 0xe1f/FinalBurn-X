@@ -247,7 +247,8 @@ static int Frame(bool bRedraw)						// bRedraw = 0
 // Paint the BlitFX surface onto the primary surface
 static int Paint(int bValidate)
 {
-	SDL_Rect sdlrDest = { 0, 0, nGameWidth * nSize, nGameHeight * nSize };
+	SDL_Rect sdlrDest = { 0, 0, (Uint16)(nGameWidth * nSize),
+        (Uint16)(nGameHeight * nSize) };
 
 	if (bValidate & 2) {
 		MemToSurf();									// Copy the memory buffer to the directdraw buffer for later blitting
