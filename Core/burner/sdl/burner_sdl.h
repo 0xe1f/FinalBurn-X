@@ -29,10 +29,6 @@ bool AppProcessKeyboardInput();
 
 
 
-//config.cpp
-int ConfigAppLoad();	
-int ConfigAppSave();
-
 // drv.cpp
 extern int bDrvOkay; // 1 if the Driver has been initted okay, and it's okay to use the BurnDrv functions
 extern char szAppRomPaths[DIRS_MAX][MAX_PATH];

@@ -15,7 +15,6 @@
 		FE08935E19475F9800F79190 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE08935C19475F9800F79190 /* MainMenu.xib */; };
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
-		FE08A08F19496FEE00F79190 /* SDL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A08E19496FEE00F79190 /* SDL.framework */; };
 		FE505C5A194BC532003A2BC7 /* burn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2C194BC531003A2BC7 /* burn.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505C5B194BC532003A2BC7 /* burn_gun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2E194BC531003A2BC7 /* burn_gun.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505C5C194BC532003A2BC7 /* burn_led.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A30194BC531003A2BC7 /* burn_led.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
@@ -514,7 +513,6 @@
 		FE7800D9194C29A50024716B /* inp_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800D1194C29A50024716B /* inp_sdl.cpp */; settings = {COMPILER_FLAGS = "-Wno-format"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
 		FE7800EA194C2BA90024716B /* bzip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E1194C2BA90024716B /* bzip.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
-		FE7800EB194C2BA90024716B /* config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E2194C2BA90024716B /* config.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800EC194C2BA90024716B /* drv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E3194C2BA90024716B /* drv.cpp */; };
 		FE7800ED194C2BA90024716B /* inpdipsw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E4194C2BA90024716B /* inpdipsw.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-function"; }; };
 		FE7800EE194C2BA90024716B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E5194C2BA90024716B /* main.cpp */; };
@@ -553,6 +551,8 @@
 		FEC25356194CA3760039D85F /* hq2xs_16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25355194CA3760039D85F /* hq2xs_16.cpp */; };
 		FEC25358194CA3BF0039D85F /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25357194CA3BF0039D85F /* epx.cpp */; };
 		FEC2535A194CA41B0039D85F /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25359194CA41B0039D85F /* misc.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-variable"; }; };
+		FED10DC3194CB35000754BE0 /* SDL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FED10DC2194CB35000754BE0 /* SDL.framework */; };
+		FEEECB3D194EDE3200A316A4 /* AKEmulator.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -570,9 +570,7 @@
 		FE08935A19475F9800F79190 /* AKAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AKAppDelegate.m; sourceTree = "<group>"; };
 		FE08935D19475F9800F79190 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		FE08935F19475F9800F79190 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
-		FE08936619475F9800F79190 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		FE08A07E1949651D00F79190 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
-		FE08A08E19496FEE00F79190 /* SDL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL.framework; path = ../../Library/Frameworks/SDL.framework; sourceTree = "<group>"; };
 		FE505A2B194BC531003A2BC7 /* bitswap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitswap.h; sourceTree = "<group>"; };
 		FE505A2C194BC531003A2BC7 /* burn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = burn.cpp; sourceTree = "<group>"; };
 		FE505A2D194BC531003A2BC7 /* burn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burn.h; sourceTree = "<group>"; };
@@ -1239,7 +1237,6 @@
 		FE7800DD194C2ABB0024716B /* interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interface.h; sourceTree = "<group>"; };
 		FE7800E0194C2BA90024716B /* burner_sdl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_sdl.h; sourceTree = "<group>"; };
 		FE7800E1194C2BA90024716B /* bzip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bzip.cpp; sourceTree = "<group>"; };
-		FE7800E2194C2BA90024716B /* config.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = config.cpp; sourceTree = "<group>"; };
 		FE7800E3194C2BA90024716B /* drv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = drv.cpp; sourceTree = "<group>"; };
 		FE7800E4194C2BA90024716B /* inpdipsw.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inpdipsw.cpp; sourceTree = "<group>"; };
 		FE7800E5194C2BA90024716B /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
@@ -1298,6 +1295,9 @@
 		FEC25355194CA3760039D85F /* hq2xs_16.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = hq2xs_16.cpp; sourceTree = "<group>"; };
 		FEC25357194CA3BF0039D85F /* epx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = epx.cpp; sourceTree = "<group>"; };
 		FEC25359194CA41B0039D85F /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
+		FED10DC2194CB35000754BE0 /* SDL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL.framework; path = ../../../../Library/Frameworks/SDL.framework; sourceTree = "<group>"; };
+		FEEECB3B194EDE3200A316A4 /* AKEmulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKEmulator.h; sourceTree = "<group>"; };
+		FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AKEmulator.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1305,7 +1305,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE08A08F19496FEE00F79190 /* SDL.framework in Frameworks */,
+				FED10DC3194CB35000754BE0 /* SDL.framework in Frameworks */,
 				FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */,
 				FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */,
 			);
@@ -1335,10 +1335,9 @@
 		FE08934619475F9800F79190 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				FE08A08E19496FEE00F79190 /* SDL.framework */,
+				FED10DC2194CB35000754BE0 /* SDL.framework */,
 				FE08A07E1949651D00F79190 /* OpenGL.framework */,
 				FE08934719475F9800F79190 /* Cocoa.framework */,
-				FE08936619475F9800F79190 /* XCTest.framework */,
 				FE08934919475F9800F79190 /* Other Frameworks */,
 			);
 			name = Frameworks;
@@ -2110,6 +2109,7 @@
 		FE505E0E194BCCBD003A2BC7 /* burner */ = {
 			isa = PBXGroup;
 			children = (
+				FED10DC4194CD91700754BE0 /* cocoa */,
 				FE7800DF194C2BA90024716B /* sdl */,
 				FE505E0F194BCCBE003A2BC7 /* burner.h */,
 				FEC252F2194C3CFD0039D85F /* cong.cpp */,
@@ -2469,7 +2469,6 @@
 				FE7800E0194C2BA90024716B /* burner_sdl.h */,
 				FE780137194C383E0024716B /* burner_sdl.cpp */,
 				FE7800E1194C2BA90024716B /* bzip.cpp */,
-				FE7800E2194C2BA90024716B /* config.cpp */,
 				FE7800E3194C2BA90024716B /* drv.cpp */,
 				FE7800E4194C2BA90024716B /* inpdipsw.cpp */,
 				FE7800E5194C2BA90024716B /* main.cpp */,
@@ -2556,6 +2555,15 @@
 				FEC2534B194CA1CF0039D85F /* xbr.h */,
 			);
 			path = scalers;
+			sourceTree = "<group>";
+		};
+		FED10DC4194CD91700754BE0 /* cocoa */ = {
+			isa = PBXGroup;
+			children = (
+				FEEECB3B194EDE3200A316A4 /* AKEmulator.h */,
+				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
+			);
+			path = cocoa;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2857,7 +2865,6 @@
 				FE505D09194BC532003A2BC7 /* d_dkong.cpp in Sources */,
 				FE505DE9194BC533003A2BC7 /* burn_ym2413.cpp in Sources */,
 				FE505F84194BCDD1003A2BC7 /* m6800_intf.cpp in Sources */,
-				FE7800EB194C2BA90024716B /* config.cpp in Sources */,
 				FE505CAE194BC532003A2BC7 /* d_simpl156.cpp in Sources */,
 				FE505CB5194BC532003A2BC7 /* gal_run.cpp in Sources */,
 				FE505DDD194BC533003A2BC7 /* toa_bcu2.cpp in Sources */,
@@ -2979,6 +2986,7 @@
 				FE505D56194BC532003A2BC7 /* d_f1gp.cpp in Sources */,
 				FE505D42194BC532003A2BC7 /* psikyo_palette.cpp in Sources */,
 				FE505D75194BC533003A2BC7 /* d_silvmil.cpp in Sources */,
+				FEEECB3D194EDE3200A316A4 /* AKEmulator.mm in Sources */,
 				FE505C97194BC532003A2BC7 /* d_sailormn.cpp in Sources */,
 				FE505DE6194BC533003A2BC7 /* burn_y8950.cpp in Sources */,
 				FE505C5D194BC532003A2BC7 /* burn_memory.cpp in Sources */,
@@ -3293,6 +3301,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(USER_LIBRARY_DIR)/Frameworks",
+					"$(LOCAL_LIBRARY_DIR)/Frameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
@@ -3302,10 +3311,7 @@
 					/Library/Frameworks/SDL.framework/headers,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Frameworks/SDL.framework/Versions/A",
-				);
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};
@@ -3319,6 +3325,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(USER_LIBRARY_DIR)/Frameworks",
+					"$(LOCAL_LIBRARY_DIR)/Frameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
@@ -3328,10 +3335,7 @@
 					/Library/Frameworks/SDL.framework/headers,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Frameworks/SDL.framework/Versions/A",
-				);
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};
