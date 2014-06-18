@@ -52,7 +52,7 @@ typedef char	_TCHAR;
 #define _strnicmp strncmp
 
 // FBA function, change this!
-#define dprintf printf
+#define dprintf(...) fprintf (stderr, __VA_ARGS__)
 
 
 #endif

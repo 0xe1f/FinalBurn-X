@@ -11,10 +11,6 @@ probably many other things.
 ------------------*/
 #include "burner.h"
 
-int nAppVirtualFps = 6000;			// App fps * 100
-bool bRunPause=0;
-bool bAlwaysProcessKeyboardInput=0;
-
 /* const */ TCHAR* ANSIToTCHAR(const char* pszInString, TCHAR* pszOutString, int nOutSize)
 {
 #if defined (UNICODE)
@@ -61,10 +57,4 @@ bool bAlwaysProcessKeyboardInput=0;
 
 	return (char*)pszInString;
 #endif
-}
-
-
-bool AppProcessKeyboardInput()
-{
-	return true;
 }

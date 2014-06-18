@@ -8,8 +8,15 @@
 
 #import <Cocoa/Cocoa.h>
 
-@interface AKAppDelegate : NSObject <NSApplicationDelegate>
+#import "AKEmulatorController.h"
 
-@property (assign) IBOutlet NSWindow *window;
+@interface AKAppDelegate : NSObject <NSApplicationDelegate>
+{
+    AKEmulatorController *_emulator;
+}
+
+@property (nonatomic, strong) AKEmulatorController *emulator;
+
++ (AKAppDelegate *)instance;
 
 @end

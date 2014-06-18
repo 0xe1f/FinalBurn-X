@@ -12,12 +12,33 @@
 
 @implementation AKAppDelegate
 
+@synthesize emulator = _emulator;
+
+static AKAppDelegate *instance = nil;
+
+- (instancetype)init
+{
+    if (self = [super init]) {
+        instance = self;
+    }
+    
+    return self;
+}
+
+- (void)dealloc
+{
+    [self setEmulator:nil];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
-    // Insert code here to initialize your application
-    AKEmulator *em = [[AKEmulator alloc] init];
-    [em runROM:@"sfa3u"
-         error:NULL];
+    [self setEmulator:[[AKEmulatorController alloc] init]];
+    [[self emulator] showWindow:self];
+}
+
++ (AKAppDelegate *)instance
+{
+    return instance;
 }
 
 @end
