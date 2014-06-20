@@ -1,5 +1,5 @@
 //
-//  AKEmulatorController.h
+//  FXEmulatorController.h
 //  FinalBurnX
 //
 //  Created by Akop Karapetyan on 6/17/14.
@@ -11,17 +11,21 @@
 #import "AKScreenView.h"
 
 @class AKEmulator;
+@class FXInput;
 
-@interface AKEmulatorController : NSWindowController
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet AKScreenView *screen;
     
     @private
     AKEmulator *_emulator;
+    FXInput *_input;
     NSThread *_thread;
 }
 
 @property (nonatomic, strong) AKEmulator *emulator;
+@property (nonatomic, strong) FXInput *input;
+
 @property (nonatomic, strong) NSThread *thread;
 
 @end

@@ -46,9 +46,6 @@
     
 	BurnLibInit();
     
-	SDL_WM_SetCaption( "FBA, SDL port.", "FBA, SDL port.");
-	SDL_ShowCursor(SDL_DISABLE);
-    
     const char *romName = [name UTF8String];
     
     int romIndex = -1;

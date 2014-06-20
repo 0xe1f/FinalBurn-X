@@ -4,9 +4,10 @@
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5056"/>
     </dependencies>
     <objects>
-        <customObject id="-2" userLabel="File's Owner" customClass="AKEmulatorController">
+        <customObject id="-2" userLabel="File's Owner" customClass="FXEmulatorController">
             <connections>
                 <outlet property="screen" destination="FwQ-py-ONg" id="nhn-zz-X4W"/>
+                <outlet property="window" destination="tM2-tC-AiI" id="mVc-HX-Hya"/>
             </connections>
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
@@ -26,6 +27,9 @@
                     </openGLView>
                 </subviews>
             </view>
+            <connections>
+                <outlet property="delegate" destination="-2" id="otS-dg-Yrw"/>
+            </connections>
         </window>
     </objects>
 </document>

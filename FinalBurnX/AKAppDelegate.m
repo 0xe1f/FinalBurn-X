@@ -14,12 +14,12 @@
 
 @synthesize emulator = _emulator;
 
-static AKAppDelegate *instance = nil;
+static AKAppDelegate *sharedInstance = nil;
 
 - (instancetype)init
 {
     if (self = [super init]) {
-        instance = self;
+        sharedInstance = self;
     }
     
     return self;
@@ -30,15 +30,19 @@ static AKAppDelegate *instance = nil;
     [self setEmulator:nil];
 }
 
+- (void)applicationWillFinishLaunching:(NSNotification *)notification
+{
+    [self setEmulator:[[FXEmulatorController alloc] init]];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
-    [self setEmulator:[[AKEmulatorController alloc] init]];
     [[self emulator] showWindow:self];
 }
 
-+ (AKAppDelegate *)instance
++ (AKAppDelegate *)sharedInstance
 {
-    return instance;
+    return sharedInstance;
 }
 
 @end

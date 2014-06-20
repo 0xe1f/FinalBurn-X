@@ -17,12 +17,11 @@
 		FE08935419475F9800F79190 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935319475F9800F79190 /* main.m */; };
 		FE08935819475F9800F79190 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE08935619475F9800F79190 /* Credits.rtf */; };
 		FE08935B19475F9800F79190 /* AKAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935A19475F9800F79190 /* AKAppDelegate.m */; };
-		FE08935E19475F9800F79190 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE08935C19475F9800F79190 /* MainMenu.xib */; };
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
 		FE0DC79719509F51004A03A3 /* AKScreenView.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* AKScreenView.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
-		FE0DC79C1950AC33004A03A3 /* AKEmulatorController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79A1950AC33004A03A3 /* AKEmulatorController.m */; };
-		FE0DC7A01950ACAA004A03A3 /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE0DC79F1950ACAA004A03A3 /* Emulator.xib */; };
+		FE0DC79C1950AC33004A03A3 /* FXEmulatorController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79A1950AC33004A03A3 /* FXEmulatorController.m */; };
+		FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC7A21951ED06004A03A3 /* FXInput.mm */; };
 		FE505C5A194BC532003A2BC7 /* burn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2C194BC531003A2BC7 /* burn.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505C5B194BC532003A2BC7 /* burn_gun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2E194BC531003A2BC7 /* burn_gun.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505C5C194BC532003A2BC7 /* burn_led.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A30194BC531003A2BC7 /* burn_led.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
@@ -518,7 +517,6 @@
 		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
-		FE7800D9194C29A50024716B /* inp_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800D1194C29A50024716B /* inp_sdl.cpp */; settings = {COMPILER_FLAGS = "-Wno-format"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
 		FE7800EA194C2BA90024716B /* bzip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E1194C2BA90024716B /* bzip.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
 		FE7800EC194C2BA90024716B /* drv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E3194C2BA90024716B /* drv.cpp */; };
@@ -540,6 +538,10 @@
 		FE78012D194C36510024716B /* lowpass2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011F194C36510024716B /* lowpass2.cpp */; };
 		FE780130194C36510024716B /* aud_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE780125194C36510024716B /* aud_sdl.cpp */; };
 		FE780136194C36BD0024716B /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
+		FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE9FA3EB195340C100F791EB /* Emulator.xib */; };
+		FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */; };
+		FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F9195346F000F791EB /* AKKeyEventData.m */; };
+		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F2194C3CFD0039D85F /* cong.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FEC2533C194C410B0039D85F /* vid_sdlfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25316194C410B0039D85F /* vid_sdlfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-function -Wno-invalid-source-encoding"; }; };
@@ -576,14 +578,14 @@
 		FE08935719475F9800F79190 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = en; path = en.lproj/Credits.rtf; sourceTree = "<group>"; };
 		FE08935919475F9800F79190 /* AKAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AKAppDelegate.h; sourceTree = "<group>"; };
 		FE08935A19475F9800F79190 /* AKAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AKAppDelegate.m; sourceTree = "<group>"; };
-		FE08935D19475F9800F79190 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		FE08935F19475F9800F79190 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		FE08A07E1949651D00F79190 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		FE0DC79519509F50004A03A3 /* AKScreenView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AKScreenView.mm; sourceTree = "<group>"; };
 		FE0DC79619509F51004A03A3 /* AKScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKScreenView.h; sourceTree = "<group>"; };
-		FE0DC7991950AC33004A03A3 /* AKEmulatorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKEmulatorController.h; sourceTree = "<group>"; };
-		FE0DC79A1950AC33004A03A3 /* AKEmulatorController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKEmulatorController.m; sourceTree = "<group>"; };
-		FE0DC79F1950ACAA004A03A3 /* Emulator.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = Emulator.xib; path = ../FinalBurnX/Base.lproj/Emulator.xib; sourceTree = "<group>"; };
+		FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulatorController.h; sourceTree = "<group>"; };
+		FE0DC79A1950AC33004A03A3 /* FXEmulatorController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXEmulatorController.m; sourceTree = "<group>"; };
+		FE0DC7A11951ED06004A03A3 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
+		FE0DC7A21951ED06004A03A3 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
 		FE505A2B194BC531003A2BC7 /* bitswap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitswap.h; sourceTree = "<group>"; };
 		FE505A2C194BC531003A2BC7 /* burn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = burn.cpp; sourceTree = "<group>"; };
 		FE505A2D194BC531003A2BC7 /* burn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burn.h; sourceTree = "<group>"; };
@@ -1244,8 +1246,6 @@
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
 		FE7800CD194C29A50024716B /* inp_keys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inp_keys.h; sourceTree = "<group>"; };
-		FE7800D1194C29A50024716B /* inp_sdl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_sdl.cpp; sourceTree = "<group>"; };
-		FE7800D2194C29A50024716B /* inp_sdl_keys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inp_sdl_keys.h; sourceTree = "<group>"; };
 		FE7800DC194C2ABB0024716B /* interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = interface.cpp; sourceTree = "<group>"; };
 		FE7800DD194C2ABB0024716B /* interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interface.h; sourceTree = "<group>"; };
 		FE7800E0194C2BA90024716B /* burner_sdl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_sdl.h; sourceTree = "<group>"; };
@@ -1281,6 +1281,12 @@
 		FE780125194C36510024716B /* aud_sdl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aud_sdl.cpp; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
+		FE9FA3EC195340C100F791EB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Emulator.xib; sourceTree = "<group>"; };
+		FE9FA3F6195346F000F791EB /* AKKeyboardManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyboardManager.h; sourceTree = "<group>"; };
+		FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyboardManager.m; sourceTree = "<group>"; };
+		FE9FA3F8195346F000F791EB /* AKKeyEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyEventData.h; sourceTree = "<group>"; };
+		FE9FA3F9195346F000F791EB /* AKKeyEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyEventData.m; sourceTree = "<group>"; };
+		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
 		FEC252F2194C3CFD0039D85F /* cong.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cong.cpp; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
 		FEC25316194C410B0039D85F /* vid_sdlfx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_sdlfx.cpp; sourceTree = "<group>"; };
@@ -1363,6 +1369,7 @@
 		FE08934D19475F9800F79190 /* FinalBurnX */ = {
 			isa = PBXGroup;
 			children = (
+				FE9FA3F5195346F000F791EB /* HIDput */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
 				FE0DC79419509EEB004A03A3 /* Views */,
 				FE08935919475F9800F79190 /* AKAppDelegate.h */,
@@ -1397,8 +1404,8 @@
 		FE0DC7981950ABF2004A03A3 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
-				FE0DC7991950AC33004A03A3 /* AKEmulatorController.h */,
-				FE0DC79A1950AC33004A03A3 /* AKEmulatorController.m */,
+				FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */,
+				FE0DC79A1950AC33004A03A3 /* FXEmulatorController.m */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -1406,10 +1413,11 @@
 		FE0DC79E1950AC61004A03A3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				FE0DC79F1950ACAA004A03A3 /* Emulator.xib */,
-				FE08935C19475F9800F79190 /* MainMenu.xib */,
+				FEC1003C1952A79700B2F8C3 /* MainMenu.xib */,
+				FE9FA3EB195340C100F791EB /* Emulator.xib */,
 			);
-			path = Resources;
+			name = Resources;
+			path = FinalBurnX/Base.lproj;
 			sourceTree = "<group>";
 		};
 		FE505956194BC41E003A2BC7 /* Core */ = {
@@ -2482,20 +2490,10 @@
 		FE7800CB194C29A50024716B /* input */ = {
 			isa = PBXGroup;
 			children = (
-				FE7800D0194C29A50024716B /* sdl */,
 				FE7800CC194C29A50024716B /* inp_interface.cpp */,
 				FE7800CD194C29A50024716B /* inp_keys.h */,
 			);
 			path = input;
-			sourceTree = "<group>";
-		};
-		FE7800D0194C29A50024716B /* sdl */ = {
-			isa = PBXGroup;
-			children = (
-				FE7800D1194C29A50024716B /* inp_sdl.cpp */,
-				FE7800D2194C29A50024716B /* inp_sdl_keys.h */,
-			);
-			path = sdl;
 			sourceTree = "<group>";
 		};
 		FE7800DF194C2BA90024716B /* sdl */ = {
@@ -2546,6 +2544,17 @@
 			path = sdl;
 			sourceTree = "<group>";
 		};
+		FE9FA3F5195346F000F791EB /* HIDput */ = {
+			isa = PBXGroup;
+			children = (
+				FE9FA3F6195346F000F791EB /* AKKeyboardManager.h */,
+				FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */,
+				FE9FA3F8195346F000F791EB /* AKKeyEventData.h */,
+				FE9FA3F9195346F000F791EB /* AKKeyEventData.m */,
+			);
+			path = HIDput;
+			sourceTree = "<group>";
+		};
 		FEC252F8194C410B0039D85F /* video */ = {
 			isa = PBXGroup;
 			children = (
@@ -2591,6 +2600,8 @@
 			children = (
 				FEEECB3B194EDE3200A316A4 /* AKEmulator.h */,
 				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
+				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
+				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
 				FE02305F19516AA500661A17 /* inpdipsw.cpp */,
 				FE02305B195168AD00661A17 /* misc.cpp */,
 				FE02305D19516A0700661A17 /* neocdlist.cpp */,
@@ -2653,12 +2664,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE0DC7A01950ACAA004A03A3 /* Emulator.xib in Resources */,
 				FE08935219475F9800F79190 /* InfoPlist.strings in Resources */,
 				FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */,
+				FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */,
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
 				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
-				FE08935E19475F9800F79190 /* MainMenu.xib in Resources */,
+				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2669,6 +2680,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */,
 				FE505C71194BC532003A2BC7 /* cps_draw.cpp in Sources */,
 				FE505CF8194BC532003A2BC7 /* d_1942.cpp in Sources */,
 				FE505D0C194BC532003A2BC7 /* d_exedexes.cpp in Sources */,
@@ -2679,6 +2691,7 @@
 				FE505D2E194BC532003A2BC7 /* d_scregg.cpp in Sources */,
 				FE505D36194BC532003A2BC7 /* d_tecmo.cpp in Sources */,
 				FE506066194BD4E6003A2BC7 /* pngpread.c in Sources */,
+				FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */,
 				FE505D46194BC532003A2BC7 /* d_1945kiii.cpp in Sources */,
 				FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */,
 				FE505C70194BC532003A2BC7 /* cps_config.cpp in Sources */,
@@ -2712,7 +2725,7 @@
 				FE505D3D194BC532003A2BC7 /* d_wc90b.cpp in Sources */,
 				FE505D02194BC532003A2BC7 /* d_blktiger.cpp in Sources */,
 				FE505DFC194BC533003A2BC7 /* k054539.cpp in Sources */,
-				FE0DC79C1950AC33004A03A3 /* AKEmulatorController.m in Sources */,
+				FE0DC79C1950AC33004A03A3 /* FXEmulatorController.m in Sources */,
 				FE505F67194BCDD1003A2BC7 /* arm.cpp in Sources */,
 				FE505DF1194BC533003A2BC7 /* dac.cpp in Sources */,
 				FE506064194BD4E6003A2BC7 /* pngget.c in Sources */,
@@ -2898,6 +2911,7 @@
 				FE505D48194BC532003A2BC7 /* d_airbustr.cpp in Sources */,
 				FE505D54194BC532003A2BC7 /* d_egghunt.cpp in Sources */,
 				FE505F8B194BCDD1003A2BC7 /* m6809_intf.cpp in Sources */,
+				FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */,
 				FE506075194BD4E6003A2BC7 /* crc32.c in Sources */,
 				FE505D09194BC532003A2BC7 /* d_dkong.cpp in Sources */,
 				FE505DE9194BC533003A2BC7 /* burn_ym2413.cpp in Sources */,
@@ -3018,7 +3032,6 @@
 				FE505D24194BC532003A2BC7 /* d_pac2650.cpp in Sources */,
 				FE505DDA194BC533003A2BC7 /* d_vfive.cpp in Sources */,
 				FE505D49194BC532003A2BC7 /* d_aquarium.cpp in Sources */,
-				FE7800D9194C29A50024716B /* inp_sdl.cpp in Sources */,
 				FE505C7B194BC532003A2BC7 /* ctv.cpp in Sources */,
 				FE505D3E194BC532003A2BC7 /* d_wwfsstar.cpp in Sources */,
 				FE505D56194BC532003A2BC7 /* d_f1gp.cpp in Sources */,
@@ -3230,13 +3243,20 @@
 			name = Credits.rtf;
 			sourceTree = "<group>";
 		};
-		FE08935C19475F9800F79190 /* MainMenu.xib */ = {
+		FE9FA3EB195340C100F791EB /* Emulator.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				FE08935D19475F9800F79190 /* Base */,
+				FE9FA3EC195340C100F791EB /* Base */,
+			);
+			name = Emulator.xib;
+			sourceTree = "<group>";
+		};
+		FEC1003C1952A79700B2F8C3 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FEC1003D1952A79700B2F8C3 /* Base */,
 			);
 			name = MainMenu.xib;
-			path = ../FinalBurnX;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */

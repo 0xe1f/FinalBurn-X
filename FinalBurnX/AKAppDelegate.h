@@ -8,15 +8,15 @@
 
 #import <Cocoa/Cocoa.h>
 
-#import "AKEmulatorController.h"
+#import "FXEmulatorController.h"
 
 @interface AKAppDelegate : NSObject <NSApplicationDelegate>
 {
-    AKEmulatorController *_emulator;
+    FXEmulatorController *_emulator;
 }
 
-@property (nonatomic, strong) AKEmulatorController *emulator;
+@property (nonatomic, strong) FXEmulatorController *emulator;
 
-+ (AKAppDelegate *)instance;
++ (AKAppDelegate *)sharedInstance;
 
 @end
