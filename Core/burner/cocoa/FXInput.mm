@@ -1,11 +1,25 @@
-//
-//  FXInput.m
-//  FinalBurnX
-//
-//  Created by Akop Karapetyan on 6/18/14.
-//  Copyright (c) 2014 Akop Karapetyan. All rights reserved.
-//
-
+/*****************************************************************************
+ **
+ ** FinalBurn X: Port of FinalBurn to OS X
+ ** http://www.finalburnx.com
+ ** Copyright (C) 2014 Akop Karapetyan
+ **
+ ** This program is free software; you can redistribute it and/or modify
+ ** it under the terms of the GNU General Public License as published by
+ ** the Free Software Foundation; either version 2 of the License, or
+ ** (at your option) any later version.
+ **
+ ** This program is distributed in the hope that it will be useful,
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ ** GNU General Public License for more details.
+ **
+ ** You should have received a copy of the GNU General Public License
+ ** along with this program; if not, write to the Free Software
+ ** Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ **
+ ******************************************************************************
+ */
 #import "FXInput.h"
 
 #import "AKAppDelegate.h"
@@ -58,43 +72,31 @@
     
     switch(code)
 	{
-    case 0x02: // start
-        return self->keyStates[0x12];
-    case 0x06: // coin
-        return self->keyStates[0x17];
+    case FBK_1: // start
+        return self->keyStates[AKKeyCode1];
+    case FBK_5: // coin
+        return self->keyStates[AKKeyCode5];
+    case FBK_A:
+        return self->keyStates[AKKeyCodeA];
+    case FBK_S:
+        return self->keyStates[AKKeyCodeS];
+    case FBK_D:
+        return self->keyStates[AKKeyCodeD];
+    case FBK_Z:
+        return self->keyStates[AKKeyCodeZ];
+    case FBK_X:
+        return self->keyStates[AKKeyCodeX];
+    case FBK_C:
+        return self->keyStates[AKKeyCodeC];
+    case FBK_UPARROW:
+        return self->keyStates[AKKeyCodeUpArrow];
+    case FBK_DOWNARROW:
+        return self->keyStates[AKKeyCodeDownArrow];
+    case FBK_LEFTARROW:
+        return self->keyStates[AKKeyCodeLeftArrow];
+    case FBK_RIGHTARROW:
+        return self->keyStates[AKKeyCodeRightArrow];
     }
-    
-    /*
-     if (nCode < 0x100) {
-     if (ReadKeyboard() != 0) {							// Check keyboard has been read - return not pressed on error
-     return 0;
-     }
-     return SDL_KEY_DOWN(nCode);							// Return key state
-     }
-     
-     if (nCode < 0x4000) {
-     return 0;
-     }
-     
-     if (nCode < 0x8000) {
-     // Codes 4000-8000 = Joysticks
-     int nJoyNumber = (nCode - 0x4000) >> 8;
-     
-     // Find the joystick state in our array
-     return JoystickState(nJoyNumber, nCode & 0xFF);
-     }
-     
-     if (nCode < 0xC000) {
-     // Codes 8000-C000 = Mouse
-     if ((nCode - 0x8000) >> 8) {						// Only the system mouse is supported by SDL
-     return 0;
-     }
-     if (ReadMouse() != 0) {								// Error polling the mouse
-     return 0;
-     }
-     return CheckMouseState(nCode & 0xFF);
-     }
-     */
     
     return NO;
 }
