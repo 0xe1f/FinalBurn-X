@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** FinalBurn X: Port of FinalBurn to OS X
- ** http://www.finalburnx.com
+ ** https://github.com/pokebyte/FinalBurnX
  ** Copyright (C) 2014 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,8 @@
 
 #import "AKEmulator.h"
 #import "FXInput.h"
+#import "FXVideo.h"
+#import "FXAudio.h"
 
 @interface FXEmulatorController ()
 
@@ -37,13 +39,17 @@
 @synthesize emulator = _emulator;
 @synthesize thread = _thread;
 @synthesize input = _input;
+@synthesize video = _video;
+@synthesize audio = _audio;
 
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
-        [self setEmulator:[[AKEmulator alloc] init]];
         [self setInput:[[FXInput alloc] init]];
+        [self setVideo:[[FXVideo alloc] init]];
+        [self setAudio:[[FXAudio alloc] init]];
 
+        [self setEmulator:[[AKEmulator alloc] init]];
         [self setThread:[[NSThread alloc] initWithTarget:self
                                                 selector:@selector(emulatorThreadMethod:)
                                                   object:nil]];
@@ -54,9 +60,12 @@
 
 - (void)dealloc
 {
+    [self setInput:nil];
+    [self setVideo:nil];
+    [self setAudio:nil];
+    
     [self setThread:nil];
     [self setEmulator:nil];
-    [self setInput:nil];
 }
 
 - (void)awakeFromNib
@@ -87,6 +96,10 @@
 {
     [[self emulator] runROM:@"sfa3u"
                       error:NULL];
+    
+    [self setVideo:nil];
+    [self setAudio:nil];
+    [self setInput:nil];
 }
 
 #pragma mark - etc...

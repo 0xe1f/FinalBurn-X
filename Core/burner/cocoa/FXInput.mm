@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** FinalBurn X: Port of FinalBurn to OS X
- ** http://www.finalburnx.com
+ ** https://github.com/pokebyte/FinalBurnX
  ** Copyright (C) 2014 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
@@ -36,33 +36,18 @@
 
 @implementation FXInput
 
-- (void)setFocus:(BOOL)focus
+#pragma mark - Init, dealloc
+
+- (void)dealloc
 {
-    hasFocus = focus;
+    // Release all virtual keys
+    [self releaseAllKeys];
     
-    if (!focus) {
-#ifdef DEBUG
-        NSLog(@"FXInput: -Focus");
-#endif
-        // Emulator has lost focus - release all virtual keys
-        [self releaseAllKeys];
-        
-        // Stop listening for key events
-        [[AKKeyboardManager sharedInstance] removeObserver:self];
-    } else {
-#ifdef DEBUG
-        NSLog(@"FXInput: +Focus");
-#endif
-        // Start listening for key events
-        [[AKKeyboardManager sharedInstance] addObserver:self];
-    }
+    // Stop listening for key events
+    [[AKKeyboardManager sharedInstance] removeObserver:self];
 }
 
 #pragma mark - Core callbacks
-
-- (void)startCapture
-{
-}
 
 - (BOOL)isInputActiveForCode:(int)code
 {
@@ -122,6 +107,28 @@
 
 #pragma mark - Etc
 
+- (void)setFocus:(BOOL)focus
+{
+    hasFocus = focus;
+    
+    if (!focus) {
+#ifdef DEBUG
+        NSLog(@"FXInput: -Focus");
+#endif
+        // Emulator has lost focus - release all virtual keys
+        [self releaseAllKeys];
+        
+        // Stop listening for key events
+        [[AKKeyboardManager sharedInstance] removeObserver:self];
+    } else {
+#ifdef DEBUG
+        NSLog(@"FXInput: +Focus");
+#endif
+        // Start listening for key events
+        [[AKKeyboardManager sharedInstance] addObserver:self];
+    }
+}
+
 - (void)releaseAllKeys
 {
     memset(self->keyStates, 0, sizeof(self->keyStates));
@@ -129,53 +136,50 @@
 
 @end
 
-#pragma mark - FinalBurn C++ callbacks
+#pragma mark - FinalBurn callbacks
 
-int cocoaInputInit()
+static int cocoaInputInit()
 {
 	return 0;
 }
 
-int cocoaInputExit()
+static int cocoaInputExit()
 {
 	return 0;
 }
 
-int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
+static int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
 {
 	return 0;
 }
 
-int cocoaInputStart()
+static int cocoaInputStart()
 {
-    FXInput *input = [[[AKAppDelegate sharedInstance] emulator] input];
-    [input startCapture];
-    
 	return 0;
 }
 
-int cocoaInputState(int nCode)
+static int cocoaInputState(int nCode)
 {
     FXInput *input = [[[AKAppDelegate sharedInstance] emulator] input];
 	return [input isInputActiveForCode:nCode] == YES;
 }
 
-int cocoaInputJoystickAxis(int i, int nAxis)
+static int cocoaInputJoystickAxis(int i, int nAxis)
 {
     return 0;
 }
 
-int cocoaInputMouseAxis(int i, int nAxis)
+static int cocoaInputMouseAxis(int i, int nAxis)
 {
 	return 0;
 }
 
-int cocoaInputFind(bool createBaseline)
+static int cocoaInputFind(bool createBaseline)
 {
 	return -1;
 }
 
-int cocoaInputGetControlName(int nCode, TCHAR* pszDeviceName, TCHAR* pszControlName)
+static int cocoaInputGetControlName(int nCode, TCHAR* pszDeviceName, TCHAR* pszControlName)
 {
 	if (pszDeviceName) {
 		pszDeviceName[0] = _T('\0');

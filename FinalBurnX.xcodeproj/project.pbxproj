@@ -541,6 +541,8 @@
 		FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE9FA3EB195340C100F791EB /* Emulator.xib */; };
 		FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */; };
 		FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F9195346F000F791EB /* AKKeyEventData.m */; };
+		FE9FA3FE19548C1E00F791EB /* FXVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3FD19548C1E00F791EB /* FXVideo.mm */; };
+		FE9FA4011954B97B00F791EB /* FXAudio.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4001954B97B00F791EB /* FXAudio.mm */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F2194C3CFD0039D85F /* cong.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
@@ -1286,6 +1288,10 @@
 		FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyboardManager.m; sourceTree = "<group>"; };
 		FE9FA3F8195346F000F791EB /* AKKeyEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyEventData.h; sourceTree = "<group>"; };
 		FE9FA3F9195346F000F791EB /* AKKeyEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyEventData.m; sourceTree = "<group>"; };
+		FE9FA3FC19548C1E00F791EB /* FXVideo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVideo.h; sourceTree = "<group>"; };
+		FE9FA3FD19548C1E00F791EB /* FXVideo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXVideo.mm; sourceTree = "<group>"; };
+		FE9FA3FF1954B97B00F791EB /* FXAudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAudio.h; sourceTree = "<group>"; };
+		FE9FA4001954B97B00F791EB /* FXAudio.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXAudio.mm; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
 		FEC252F2194C3CFD0039D85F /* cong.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cong.cpp; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
@@ -2600,8 +2606,12 @@
 			children = (
 				FEEECB3B194EDE3200A316A4 /* AKEmulator.h */,
 				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
+				FE9FA3FF1954B97B00F791EB /* FXAudio.h */,
+				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
 				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
 				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
+				FE9FA3FC19548C1E00F791EB /* FXVideo.h */,
+				FE9FA3FD19548C1E00F791EB /* FXVideo.mm */,
 				FE02305F19516AA500661A17 /* inpdipsw.cpp */,
 				FE02305B195168AD00661A17 /* misc.cpp */,
 				FE02305D19516A0700661A17 /* neocdlist.cpp */,
@@ -2845,6 +2855,7 @@
 				FE505C9B194BC532003A2BC7 /* cps3snd.cpp in Sources */,
 				FE506082194BD4E6003A2BC7 /* zutil.c in Sources */,
 				FE505CB4194BC532003A2BC7 /* gal_gfx.cpp in Sources */,
+				FE9FA3FE19548C1E00F791EB /* FXVideo.mm in Sources */,
 				FE505E0C194BC533003A2BC7 /* tiles_generic.cpp in Sources */,
 				FE505CCC194BC532003A2BC7 /* d_kontest.cpp in Sources */,
 				FE505DBC194BC533003A2BC7 /* tc0180vcu.cpp in Sources */,
@@ -2890,6 +2901,7 @@
 				FEC2535A194CA41B0039D85F /* misc.cpp in Sources */,
 				FE505DFD194BC533003A2BC7 /* msm5205.cpp in Sources */,
 				FE505D71194BC533003A2BC7 /* d_seta.cpp in Sources */,
+				FE9FA4011954B97B00F791EB /* FXAudio.mm in Sources */,
 				FE505D40194BC532003A2BC7 /* d_psikyo4.cpp in Sources */,
 				FE505F96194BCDD1003A2BC7 /* v25.cpp in Sources */,
 				FE505D28194BC532003A2BC7 /* d_prehisle.cpp in Sources */,

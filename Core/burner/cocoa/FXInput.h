@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** FinalBurn X: Port of FinalBurn to OS X
- ** http://www.finalburnx.com
+ ** https://github.com/pokebyte/FinalBurnX
  ** Copyright (C) 2014 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify

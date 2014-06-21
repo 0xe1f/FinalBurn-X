@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** HIDput: Input library for Cocoa
- ** https://github.com/melllvar/HIDput
+ ** https://github.com/pokebyte/HIDput
  ** Copyright (c) 2014 Akop Karapetyan
  **
  ** Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** FinalBurn X: Port of FinalBurn to OS X
- ** http://www.finalburnx.com
+ ** https://github.com/pokebyte/FinalBurnX
  ** Copyright (C) 2014 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
@@ -26,19 +26,26 @@
 
 @class AKEmulator;
 @class FXInput;
+@class FXVideo;
+@class FXAudio;
 
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet AKScreenView *screen;
     
     @private
-    AKEmulator *_emulator;
     FXInput *_input;
+    FXVideo *_video;
+    FXAudio *_audio;
+    
+    AKEmulator *_emulator;
     NSThread *_thread;
 }
 
 @property (nonatomic, strong) AKEmulator *emulator;
 @property (nonatomic, strong) FXInput *input;
+@property (nonatomic, strong) FXVideo *video;
+@property (nonatomic, strong) FXAudio *audio;
 
 @property (nonatomic, strong) NSThread *thread;
 

@@ -20,43 +20,17 @@
  **
  ******************************************************************************
  */
-#import "AKAppDelegate.h"
+#import <Foundation/Foundation.h>
 
-#import "AKEmulator.h"
-
-@implementation AKAppDelegate
-
-@synthesize emulator = _emulator;
-
-static AKAppDelegate *sharedInstance = nil;
-
-- (instancetype)init
+@interface FXAudio : NSObject
 {
-    if (self = [super init]) {
-        sharedInstance = self;
-    }
-    
-    return self;
-}
-
-- (void)dealloc
-{
-    [self setEmulator:nil];
-}
-
-- (void)applicationWillFinishLaunching:(NSNotification *)notification
-{
-    [self setEmulator:[[FXEmulatorController alloc] init]];
-}
-
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
-{
-    [[self emulator] showWindow:self];
-}
-
-+ (AKAppDelegate *)sharedInstance
-{
-    return sharedInstance;
+    @private
+    int (*audioCallback)(int);
+    int soundFps;
+    int soundLoopLength;
+    short *soundBuffer;
+    int playPosition;
+    int fillSegment;
 }
 
 @end
