@@ -25,19 +25,20 @@
 @protocol FXVideoRenderDelegate
 
 @required
+- (void)initTextureOfWidth:(int)width
+                    height:(int)height
+             bytesPerPixel:(int)bytesPerPixel;
 - (void)renderFrame:(unsigned char *)bitmap
               width:(int)width
-             height:(int)height
-              pitch:(int)pitch;
+             height:(int)height;
 
 @end
 
 @interface FXVideo : NSObject
 {
     @private
-    unsigned char *buffers[2];
+    unsigned char *screenBuffer;
     
-    int bufferPitch;
     int bufferWidth;
     int bufferHeight;
     int bufferBytesPerPixel;

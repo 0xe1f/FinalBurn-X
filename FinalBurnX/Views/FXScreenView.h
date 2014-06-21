@@ -27,6 +27,11 @@
 @interface FXScreenView : NSOpenGLView<FXVideoRenderDelegate>
 {
     GLuint screenTextureId;
+    unsigned char *texture;
+    int imageWidth;
+    int textureWidth;
+    int textureHeight;
+    int textureBytesPerPixel;
 }
 
 @end

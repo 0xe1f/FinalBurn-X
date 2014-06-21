@@ -36,6 +36,7 @@
 - (void)dealloc
 {
     glDeleteTextures(1, &screenTextureId);
+    free(self->texture);
     
     [super dealloc];
 }
@@ -49,6 +50,8 @@
 - (void)prepareOpenGL
 {
     [super prepareOpenGL];
+    
+    NSLog(@"FXScreenView/prepareOpenGL");
     
     // Synchronize buffer swaps with vertical refresh rate
     GLint swapInt = 1;
@@ -91,32 +94,55 @@
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
+- (void)initTextureOfWidth:(int)width
+                    height:(int)height
+             bytesPerPixel:(int)bytesPerPixel
+{
+    NSLog(@"FXScreenView/initTextureOfWidth");
+    
+    NSOpenGLContext *nsContext = [self openGLContext];
+    [nsContext makeCurrentContext];
+    
+    free(self->texture);
+    
+    self->imageWidth = width;
+    self->textureWidth = [FXScreenView powerOfTwoClosestTo:width];
+    self->textureHeight = height;
+    self->textureBytesPerPixel = bytesPerPixel;
+    
+    int texSize = self->textureWidth * self->textureHeight * bytesPerPixel;
+    self->texture = (unsigned char *)malloc(texSize);
+    
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, screenTextureId);
+    glTexImage2D(GL_TEXTURE_2D, 0, bytesPerPixel,
+                 self->textureWidth, height,
+                 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, self->texture);
+    
+    glDisable(GL_TEXTURE_2D);
+}
+
 - (void)renderFrame:(unsigned char *)bitmap
               width:(int)width
              height:(int)height
-              pitch:(int)pitch
 {
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
     glClear(GL_COLOR_BUFFER_BIT);
     
-    GLfloat coordX = (GLfloat)width / pitch;
-    GLfloat coordY = 1;
+    GLfloat coordX = (GLfloat)width / self->textureWidth;
+    GLfloat coordY = (GLfloat)height / self->textureHeight;
     
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, screenTextureId);
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     
-    glTexImage2D(GL_TEXTURE_2D, 0, 2,
-                 pitch, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV,
-                 bitmap);
-    
-//    for (y = 0; y < height; y += linesPerBlock) {
-//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, linesPerBlock,
-//                        GL_RGBA, GL_UNSIGNED_BYTE,
-//                        bitmap + y * pitch);
-//    }
+    for (int y = 0; y < height; y += 1) {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, 1,
+                        GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV,
+                        bitmap + y * width * self->textureBytesPerPixel);
+    }
     
     NSSize size = [self bounds].size;
     CGFloat offset = 0;
@@ -134,6 +160,13 @@
     glDisable(GL_TEXTURE_2D);
     
     [nsContext flushBuffer];
+}
+
++ (int)powerOfTwoClosestTo:(int)number
+{
+    int rv = 1;
+    while (rv < number) rv *= 2;
+    return rv;
 }
 
 @end

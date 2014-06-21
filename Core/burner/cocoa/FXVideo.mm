@@ -25,16 +25,10 @@
 #import "AKAppDelegate.h"
 
 #include "burner.h"
-#include "vid_softfx.h"
-#include "vid_support.h"
 
 @interface FXVideo ()
 
 - (void)cleanup;
-- (BOOL)initBuffersOfWidth:(int)width
-                    height:(int)height
-                 pixelSize:(int)bytesPerPixel;
-+ (int)powerOfTwoClosestTo:(int)number;
 
 @end
 
@@ -48,7 +42,7 @@
 {
     if (self = [super init]) {
         for (int i = 0; i < 2; i++) {
-            self->buffers[i] = NULL;
+            self->screenBuffer = NULL;
         }
     }
 
@@ -67,11 +61,11 @@
 - (BOOL)initCore
 {
     NSLog(@"initVideoCore");
-
+    
     int gameWidth;
     int gameHeight;
     int rotationMode = 0;
-
+    
     BurnDrvGetVisibleSize(&gameWidth, &gameHeight);
     
     if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
@@ -89,36 +83,47 @@
 		}
     }
     
-	if (rotationMode & 1) {
-		nVidImageWidth = gameHeight;
-		nVidImageHeight = gameWidth;
-	} else {
-		nVidImageWidth = gameWidth;
-		nVidImageHeight = gameHeight;
-	}
-    
     nVidImageDepth = 15; //32;
 	nVidImageBPP = 2; //4;
 	nBurnBpp = nVidImageBPP;
     bVidScanlines = 0;
     
-	SetBurnHighCol(nVidImageDepth);
-	if (VidSAllocVidImage()) {
-        [self cleanup];
-        return NO;
+	if (rotationMode & 1) {
+		nVidImageWidth = gameHeight;
+		nVidImageHeight = gameWidth;
+        nVidImagePitch = nVidImageHeight * nVidImageBPP;
+	} else {
+		nVidImageWidth = gameWidth;
+		nVidImageHeight = gameHeight;
+        nVidImagePitch = nVidImageWidth * nVidImageBPP;
 	}
     
-    if (![self initBuffersOfWidth:gameWidth
-                           height:gameHeight
-                        pixelSize:nVidImageBPP]) {
-        [self cleanup];
+	SetBurnHighCol(nVidImageDepth);
+    
+    self->bufferBytesPerPixel = nVidImageBPP;
+    self->bufferWidth = gameWidth;
+    self->bufferHeight = gameHeight;
+    
+    free(self->screenBuffer);
+    self->screenBuffer = NULL;
+    
+    int bufSize = self->bufferWidth * self->bufferHeight * nVidImageBPP;
+    self->screenBuffer = (unsigned char *)malloc(bufSize);
+    
+    if (self->screenBuffer == NULL) {
         return NO;
     }
     
-	if (VidSoftFXInit(0, rotationMode) != 0) {
-        [self cleanup];
-        return NO;
-    }
+	nBurnPitch = nVidImagePitch;
+    
+    memset(self->screenBuffer, 0, bufSize);
+    
+    free(pVidImage);
+    pVidImage = self->screenBuffer;
+    
+    [self->_delegate initTextureOfWidth:self->bufferWidth
+                                 height:self->bufferHeight
+                          bytesPerPixel:self->bufferBytesPerPixel];
     
     return YES;
 }
@@ -144,66 +149,24 @@
         BurnDrvFrame();
 	}
     
-    VidFilterApplyEffect((unsigned char *)self->buffers[0], self->bufferPitch);
-    
 	return YES;
 }
 
 - (BOOL)renderToSurface:(BOOL)validate
 {
-    if (self->_delegate) {
-        [self->_delegate renderFrame:self->buffers[0]
-                               width:self->bufferWidth
-                              height:self->bufferHeight
-                               pitch:self->bufferPitch];
-    }
+    [self->_delegate renderFrame:self->screenBuffer
+                           width:self->bufferWidth
+                          height:self->bufferHeight];
     
     return YES;
 }
 
 #pragma mark - Etc
 
-- (BOOL)initBuffersOfWidth:(int)width
-                    height:(int)height
-                 pixelSize:(int)bytesPerPixel
-{
-    self->bufferBytesPerPixel = bytesPerPixel;
-    self->bufferPitch = [FXVideo powerOfTwoClosestTo:width];
-    self->bufferWidth = width;
-    self->bufferHeight = height;
-    
-    for (int i = 0; i < 2; i++) {
-        if (self->buffers[i] != NULL) {
-            free(self->buffers[i]);
-            self->buffers[i] = NULL;
-        }
-        
-        int bufSize = self->bufferPitch * height * bytesPerPixel;
-        if ((self->buffers[i] = (unsigned char *)malloc(bufSize)) == NULL) {
-            break;
-        }
-    }
-    
-    return self->buffers[0] != NULL && self->buffers[1] != NULL;
-}
-
-+ (int)powerOfTwoClosestTo:(int)number
-{
-    int rv = 1;
-    while (rv < number) rv *= 2;
-    return rv;
-}
-
 - (void)cleanup
 {
-    for (int i = 0; i < 2; i++) {
-        if (self->buffers[i] != NULL) {
-            free(self->buffers[i]);
-            self->buffers[i] = NULL;
-        }
-    }
-
-	VidSFreeVidImage();
+    free(self->screenBuffer);
+    self->screenBuffer = NULL;
 }
 
 @end
