@@ -70,6 +70,8 @@
 
 - (void)awakeFromNib
 {
+    [[self video] setDelegate:screen];
+    
     [[self thread] start];
 }
 

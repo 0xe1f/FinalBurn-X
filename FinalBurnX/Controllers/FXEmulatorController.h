@@ -22,7 +22,7 @@
  */
 #import <Cocoa/Cocoa.h>
 
-#import "AKScreenView.h"
+#import "FXScreenView.h"
 
 @class AKEmulator;
 @class FXInput;
@@ -31,7 +31,7 @@
 
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
-    IBOutlet AKScreenView *screen;
+    IBOutlet FXScreenView *screen;
     
     @private
     FXInput *_input;

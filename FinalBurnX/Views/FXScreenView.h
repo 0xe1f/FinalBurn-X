@@ -22,8 +22,11 @@
  */
 #import <Cocoa/Cocoa.h>
 
-@interface AKScreenView : NSOpenGLView
+#import "FXVideo.h"
+
+@interface FXScreenView : NSOpenGLView<FXVideoRenderDelegate>
 {
+    GLuint screenTextureId;
 }
 
 @end

@@ -15,14 +15,14 @@
         <window title="Emoolyator" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" animationBehavior="default" id="tM2-tC-AiI">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="283" y="305" width="539" height="331"/>
+            <rect key="contentRect" x="283" y="305" width="384" height="224"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
             <view key="contentView" id="aTa-zk-f6f">
-                <rect key="frame" x="0.0" y="0.0" width="539" height="331"/>
+                <rect key="frame" x="0.0" y="0.0" width="384" height="224"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <openGLView useAuxiliaryDepthBufferStencil="NO" allowOffline="YES" id="FwQ-py-ONg" customClass="AKScreenView">
-                        <rect key="frame" x="0.0" y="0.0" width="539" height="331"/>
+                    <openGLView colorSize="5bit_RGB_8bit_Alpha" depthSize="32bit" rendererType="accelerated" useAuxiliaryDepthBufferStencil="NO" useDoubleBufferingEnabled="YES" allowOffline="YES" useRecovery="YES" id="FwQ-py-ONg" customClass="FXScreenView">
+                        <rect key="frame" x="0.0" y="0.0" width="384" height="224"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                     </openGLView>
                 </subviews>

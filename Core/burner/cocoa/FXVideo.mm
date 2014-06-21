@@ -40,6 +40,8 @@
 
 @implementation FXVideo
 
+@synthesize delegate = _delegate;
+
 #pragma mark - Init and dealloc
 
 - (instancetype)init
@@ -56,6 +58,8 @@
 - (void)dealloc
 {
     [self cleanup];
+    
+    [self setDelegate:nil];
 }
 
 #pragma mark - Core callbacks
@@ -69,6 +73,7 @@
     int rotationMode = 0;
 
     BurnDrvGetVisibleSize(&gameWidth, &gameHeight);
+    
     if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
         if (nVidRotationAdjust & 1) {
             int n = gameWidth;
@@ -92,9 +97,10 @@
 		nVidImageHeight = gameHeight;
 	}
     
-    nVidImageDepth = 32;
-	nVidImageBPP = 4;
+    nVidImageDepth = 15; //32;
+	nVidImageBPP = 2; //4;
 	nBurnBpp = nVidImageBPP;
+    bVidScanlines = 0;
     
 	SetBurnHighCol(nVidImageDepth);
 	if (VidSAllocVidImage()) {
@@ -108,7 +114,7 @@
         [self cleanup];
         return NO;
     }
-
+    
 	if (VidSoftFXInit(0, rotationMode) != 0) {
         [self cleanup];
         return NO;
@@ -145,20 +151,13 @@
 
 - (BOOL)renderToSurface:(BOOL)validate
 {
-    NSLog(@"RenderToSurface");
-    /*
-    SDL_Rect sdlrDest = { 0, 0, (Uint16)(nGameWidth * nSize),
-        (Uint16)(nGameHeight * nSize) };
-    
-	if (validate) {
-		MemToSurf();
-	}
-    
-    if (SDL_BlitSurface(sdlsBlitFX[nUseSys], NULL, sdlsFramebuf, &sdlrDest)) {
-        return 1;
+    if (self->_delegate) {
+        [self->_delegate renderFrame:self->buffers[0]
+                               width:self->bufferWidth
+                              height:self->bufferHeight
+                               pitch:self->bufferPitch];
     }
-    SDL_UpdateRect(sdlsFramebuf, 0, 0, 0, 0);
-    */
+    
     return YES;
 }
 
@@ -180,7 +179,7 @@
         }
         
         int bufSize = self->bufferPitch * height * bytesPerPixel;
-        if ((self->buffers[i] = malloc(bufSize)) == NULL) {
+        if ((self->buffers[i] = (unsigned char *)malloc(bufSize)) == NULL) {
             break;
         }
     }

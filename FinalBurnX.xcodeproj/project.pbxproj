@@ -19,7 +19,7 @@
 		FE08935B19475F9800F79190 /* AKAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935A19475F9800F79190 /* AKAppDelegate.m */; };
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
-		FE0DC79719509F51004A03A3 /* AKScreenView.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* AKScreenView.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* FXScreenView.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		FE0DC79C1950AC33004A03A3 /* FXEmulatorController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79A1950AC33004A03A3 /* FXEmulatorController.m */; };
 		FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC7A21951ED06004A03A3 /* FXInput.mm */; };
 		FE505C5A194BC532003A2BC7 /* burn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2C194BC531003A2BC7 /* burn.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
@@ -582,8 +582,8 @@
 		FE08935A19475F9800F79190 /* AKAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AKAppDelegate.m; sourceTree = "<group>"; };
 		FE08935F19475F9800F79190 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		FE08A07E1949651D00F79190 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
-		FE0DC79519509F50004A03A3 /* AKScreenView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AKScreenView.mm; sourceTree = "<group>"; };
-		FE0DC79619509F51004A03A3 /* AKScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKScreenView.h; sourceTree = "<group>"; };
+		FE0DC79519509F50004A03A3 /* FXScreenView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXScreenView.mm; sourceTree = "<group>"; };
+		FE0DC79619509F51004A03A3 /* FXScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScreenView.h; sourceTree = "<group>"; };
 		FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulatorController.h; sourceTree = "<group>"; };
 		FE0DC79A1950AC33004A03A3 /* FXEmulatorController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXEmulatorController.m; sourceTree = "<group>"; };
 		FE0DC7A11951ED06004A03A3 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
@@ -1401,8 +1401,8 @@
 		FE0DC79419509EEB004A03A3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				FE0DC79519509F50004A03A3 /* AKScreenView.mm */,
-				FE0DC79619509F51004A03A3 /* AKScreenView.h */,
+				FE0DC79519509F50004A03A3 /* FXScreenView.mm */,
+				FE0DC79619509F51004A03A3 /* FXScreenView.h */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -2768,7 +2768,7 @@
 				FE505C77194BC532003A2BC7 /* cps_scr.cpp in Sources */,
 				FE505DC5194BC533003A2BC7 /* d_batsugun.cpp in Sources */,
 				FE505C89194BC532003A2BC7 /* cave_palette.cpp in Sources */,
-				FE0DC79719509F51004A03A3 /* AKScreenView.mm in Sources */,
+				FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */,
 				FE505CF0194BC532003A2BC7 /* d_pce.cpp in Sources */,
 				FE506073194BD4E6003A2BC7 /* adler32.c in Sources */,
 				FE08935B19475F9800F79190 /* AKAppDelegate.m in Sources */,

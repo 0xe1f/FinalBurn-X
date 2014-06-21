@@ -22,15 +22,29 @@
  */
 #import <Foundation/Foundation.h>
 
+@protocol FXVideoRenderDelegate
+
+@required
+- (void)renderFrame:(unsigned char *)bitmap
+              width:(int)width
+             height:(int)height
+              pitch:(int)pitch;
+
+@end
+
 @interface FXVideo : NSObject
 {
     @private
-    void *buffers[2];
+    unsigned char *buffers[2];
     
     int bufferPitch;
     int bufferWidth;
     int bufferHeight;
     int bufferBytesPerPixel;
+    
+    __weak id<FXVideoRenderDelegate> _delegate;
 }
+
+@property (nonatomic, weak) id<FXVideoRenderDelegate> delegate;
 
 @end
