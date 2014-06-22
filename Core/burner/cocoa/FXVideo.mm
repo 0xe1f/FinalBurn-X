@@ -60,7 +60,7 @@
 
 - (BOOL)initCore
 {
-    NSLog(@"initVideoCore");
+    NSLog(@"video/init");
     
     int gameWidth;
     int gameHeight;
@@ -83,8 +83,8 @@
 		}
     }
     
-    nVidImageDepth = 15; //32;
-	nVidImageBPP = 2; //4;
+    nVidImageDepth = 24;
+	nVidImageBPP = 3;
 	nBurnBpp = nVidImageBPP;
     bVidScanlines = 0;
     
@@ -130,7 +130,7 @@
 
 - (void)exitCore
 {
-    NSLog(@"exitVideoCore");
+    NSLog(@"video/exit");
     
     [self cleanup];
 }

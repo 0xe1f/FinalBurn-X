@@ -48,7 +48,7 @@
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-
+        
         [self setEmulator:[[AKEmulator alloc] init]];
         [self setThread:[[NSThread alloc] initWithTarget:self
                                                 selector:@selector(emulatorThreadMethod:)
@@ -96,7 +96,7 @@
 
 - (void)emulatorThreadMethod:(id)obj
 {
-    [[self emulator] runROM:@"sfa3u"
+    [[self emulator] runROM:@"sfiii"
                       error:NULL];
     
     [self setVideo:nil];

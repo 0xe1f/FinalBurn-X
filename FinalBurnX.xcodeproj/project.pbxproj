@@ -546,8 +546,6 @@
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F2194C3CFD0039D85F /* cong.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
-		FEC2533C194C410B0039D85F /* vid_sdlfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25316194C410B0039D85F /* vid_sdlfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-function -Wno-invalid-source-encoding"; }; };
-		FEC2533D194C410B0039D85F /* vid_sdlopengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25317194C410B0039D85F /* vid_sdlopengl.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-variable -Wno-unused-function -Wno-invalid-source-encoding"; }; };
 		FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25318194C410B0039D85F /* vid_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-variable"; }; };
 		FEC2533F194C410B0039D85F /* vid_softfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25319194C410B0039D85F /* vid_softfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FEC25340194C410B0039D85F /* vid_support.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC2531B194C410B0039D85F /* vid_support.cpp */; };
@@ -1295,8 +1293,6 @@
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
 		FEC252F2194C3CFD0039D85F /* cong.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cong.cpp; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
-		FEC25316194C410B0039D85F /* vid_sdlfx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_sdlfx.cpp; sourceTree = "<group>"; };
-		FEC25317194C410B0039D85F /* vid_sdlopengl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_sdlopengl.cpp; sourceTree = "<group>"; };
 		FEC25318194C410B0039D85F /* vid_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_interface.cpp; sourceTree = "<group>"; };
 		FEC25319194C410B0039D85F /* vid_softfx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_softfx.cpp; sourceTree = "<group>"; };
 		FEC2531A194C410B0039D85F /* vid_softfx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vid_softfx.h; sourceTree = "<group>"; };
@@ -2565,7 +2561,6 @@
 			isa = PBXGroup;
 			children = (
 				FEC25349194CA1CF0039D85F /* scalers */,
-				FEC25315194C410B0039D85F /* sdl */,
 				FEC25318194C410B0039D85F /* vid_interface.cpp */,
 				FEC25319194C410B0039D85F /* vid_softfx.cpp */,
 				FEC2531A194C410B0039D85F /* vid_softfx.h */,
@@ -2573,15 +2568,6 @@
 				FEC2531C194C410B0039D85F /* vid_support.h */,
 			);
 			path = video;
-			sourceTree = "<group>";
-		};
-		FEC25315194C410B0039D85F /* sdl */ = {
-			isa = PBXGroup;
-			children = (
-				FEC25316194C410B0039D85F /* vid_sdlfx.cpp */,
-				FEC25317194C410B0039D85F /* vid_sdlopengl.cpp */,
-			);
-			path = sdl;
 			sourceTree = "<group>";
 		};
 		FEC25349194CA1CF0039D85F /* scalers */ = {
@@ -2962,7 +2948,6 @@
 				FE505C86194BC532003A2BC7 /* qs_z.cpp in Sources */,
 				FE505D68194BC533003A2BC7 /* d_nmg5.cpp in Sources */,
 				FE505DB3194BC533003A2BC7 /* pc080sn.cpp in Sources */,
-				FEC2533C194C410B0039D85F /* vid_sdlfx.cpp in Sources */,
 				FE505DC0194BC533003A2BC7 /* tc0480scp.cpp in Sources */,
 				FE506062194BD4E6003A2BC7 /* png.c in Sources */,
 				FE505D3C194BC532003A2BC7 /* d_wc90.cpp in Sources */,
@@ -2988,7 +2973,6 @@
 				FE505F94194BCDD1003A2BC7 /* nec.cpp in Sources */,
 				FE505D04194BC532003A2BC7 /* d_blueprnt.cpp in Sources */,
 				FE780103194C32600024716B /* m68kcpu.c in Sources */,
-				FEC2533D194C410B0039D85F /* vid_sdlopengl.cpp in Sources */,
 				FE505CE1194BC532003A2BC7 /* k053247.cpp in Sources */,
 				FE505D18194BC532003A2BC7 /* d_ladybug.cpp in Sources */,
 				FE505DE2194BC533003A2BC7 /* toaplan1.cpp in Sources */,

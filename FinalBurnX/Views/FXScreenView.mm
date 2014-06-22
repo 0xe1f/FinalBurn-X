@@ -27,6 +27,8 @@
 
 @interface FXScreenView ()
 
++ (int)powerOfTwoClosestTo:(int)number;
+
 @end
 
 @implementation FXScreenView
@@ -60,17 +62,7 @@
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    glEnable(GL_TEXTURE_2D);
     glGenTextures(1, &screenTextureId);
-    
-    glBindTexture(GL_TEXTURE_2D, screenTextureId);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    glDisable(GL_TEXTURE_2D);
 }
 
 //- (void)drawRect:(NSRect)dirtyRect
@@ -98,7 +90,7 @@
                     height:(int)height
              bytesPerPixel:(int)bytesPerPixel
 {
-    NSLog(@"FXScreenView/initTextureOfWidth");
+    NSLog(@"FXScreenView/initTexture");
     
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
@@ -114,10 +106,17 @@
     self->texture = (unsigned char *)malloc(texSize);
     
     glEnable(GL_TEXTURE_2D);
+    
     glBindTexture(GL_TEXTURE_2D, screenTextureId);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
     glTexImage2D(GL_TEXTURE_2D, 0, bytesPerPixel,
                  self->textureWidth, height,
-                 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, self->texture);
+                 0, GL_BGR, GL_UNSIGNED_BYTE, self->texture);
     
     glDisable(GL_TEXTURE_2D);
 }
@@ -140,7 +139,7 @@
     
     for (int y = 0; y < height; y += 1) {
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, 1,
-                        GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV,
+                        GL_BGR, GL_UNSIGNED_BYTE,
                         bitmap + y * width * self->textureBytesPerPixel);
     }
     

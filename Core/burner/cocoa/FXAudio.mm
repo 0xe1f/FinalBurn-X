@@ -53,7 +53,7 @@
 
 - (BOOL)initCore
 {
-    NSLog(@"audio/initCore");
+    NSLog(@"audio/init");
     
     if (nAudSampleRate <= 0) {
         return NO;
@@ -102,7 +102,7 @@
 
 - (void)exitCore
 {
-    NSLog(@"audio/exitCore");
+    NSLog(@"audio/exit");
     
     [self cleanup];
 }
@@ -147,9 +147,9 @@
     return YES;
 }
 
-- (BOOL)clearAudio
+- (BOOL)clear
 {
-    NSLog(@"audio/clearAudio");
+    NSLog(@"audio/clear");
     
     if (nAudNextSound) {
         memset(nAudNextSound, 0, nAudSegLen << 2);
@@ -216,7 +216,7 @@
 static int cocoaAudioBlankSound()
 {
     FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
-    return [audio clearAudio] ? 0 : 1;
+    return [audio clear] ? 0 : 1;
 }
 
 static int cocoaAudioCheck()
