@@ -20,36 +20,23 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
-#import "FXScreenView.h"
+#include <sys/time.h>
 
-@class AKEmulator;
-@class FXInput;
-@class FXVideo;
-@class FXAudio;
-@class FXRunLoop;
-
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
+@interface FXRunLoop : NSObject
 {
-    IBOutlet FXScreenView *screen;
-    
     @private
-    FXInput *_input;
-    FXVideo *_video;
-    FXAudio *_audio;
-    FXRunLoop *_runLoop;
-    
-    AKEmulator *_emulator;
-    NSThread *_thread;
+    struct timeval start;
+    UInt32 lastTick;
+    int fraction;
+    BOOL stop;
+    BOOL running;
+    BOOL previouslyDrawn;
+    BOOL previouslyPaused;
 }
 
-@property (nonatomic, strong) AKEmulator *emulator;
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXVideo *video;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXRunLoop *runLoop;
-
-@property (nonatomic, strong) NSThread *thread;
+- (BOOL)run;
+- (BOOL)stop;
 
 @end

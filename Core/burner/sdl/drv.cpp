@@ -89,8 +89,6 @@ int DrvInit(int nDrvNum, bool bRestore)
 	bSaveRAM = false;
 	nBurnLayer = 0xFF;				// show all layers
 
-	// Reset the speed throttling code, so we don't 'jump' after the load
-	RunReset();
 	return 0;
 }
 

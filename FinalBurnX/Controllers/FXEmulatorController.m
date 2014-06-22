@@ -26,6 +26,7 @@
 #import "FXInput.h"
 #import "FXVideo.h"
 #import "FXAudio.h"
+#import "FXRunLoop.h"
 
 @interface FXEmulatorController ()
 
@@ -41,6 +42,7 @@
 @synthesize input = _input;
 @synthesize video = _video;
 @synthesize audio = _audio;
+@synthesize runLoop = _runLoop;
 
 - (id)init
 {
@@ -48,6 +50,7 @@
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
+        [self setRunLoop:[[FXRunLoop alloc] init]];
         
         [self setEmulator:[[AKEmulator alloc] init]];
         [self setThread:[[NSThread alloc] initWithTarget:self
@@ -63,6 +66,7 @@
     [self setInput:nil];
     [self setVideo:nil];
     [self setAudio:nil];
+    [self setRunLoop:nil];
     
     [self setThread:nil];
     [self setEmulator:nil];
@@ -92,6 +96,11 @@
     // Suppress the beeps
 }
 
+- (void)windowWillClose:(NSNotification *)notification
+{
+    [_runLoop stop];
+}
+
 #pragma mark - ...
 
 - (void)emulatorThreadMethod:(id)obj
@@ -102,6 +111,7 @@
     [self setVideo:nil];
     [self setAudio:nil];
     [self setInput:nil];
+    [self setRunLoop:nil];
 }
 
 #pragma mark - etc...

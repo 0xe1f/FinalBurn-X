@@ -8,6 +8,10 @@
 
 #import "AKEmulator.h"
 
+#import "AKAppDelegate.h"
+#import "FXEmulatorController.h"
+#import "FXRunLoop.h"
+
 #include "burner.h"
 
 @interface AKEmulator()
@@ -75,7 +79,8 @@
  	bCheatsAllowed = false;
 	DrvInit(romIndex, 0);
     
-	RunMessageLoop();
+    [[[[AKAppDelegate sharedInstance] emulator] runLoop] run];
+    
 	InputExit();
     
 	DrvExit();
