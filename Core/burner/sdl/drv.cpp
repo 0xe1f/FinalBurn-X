@@ -56,12 +56,6 @@ int DrvInit(int nDrvNum, bool bRestore)
 	DrvExit();						// Make sure exitted
 	AudSoundInit();						// Init Sound (not critical if it fails)
 
-	nBurnSoundRate = 0;					// Assume no sound
-	pBurnSoundOut = NULL;
-//	if (bAudOkay) {
-//		nBurnSoundRate = nAudSampleRate;
-//		nBurnSoundLen = nAudSegLen;
-//	}
 	nBurnDrvSelect[0] = nDrvNum;		// Set the driver number
 
 	// Define nMaxPlayers early; GameInpInit() needs it (normally defined in DoLibInit()).

@@ -80,12 +80,15 @@
         [self cleanup];
         return NO;
     }
-    
     memset(self->soundBuffer, 0, self->soundLoopLength);
     
-    nAudNextSound = self->soundBuffer;
-    playPosition = 0;
-    fillSegment = nAudSegCount - 1;
+	nAudNextSound = (short *)malloc(nAudSegLen << 2);
+	if (nAudNextSound == NULL) {
+        return NO;
+	}
+    
+    self->playPosition = 0;
+    self->fillSegment = nAudSegCount - 1;
     
     /*
      if(SDL_OpenAudio(&audiospec_req, &audiospec)) {
@@ -96,6 +99,9 @@
      
      SDLSetCallback(NULL);
      */
+    
+    nBurnSoundRate = 44100;
+    nBurnSoundLen = nAudSegLen;
     
     return YES;
 }
@@ -176,8 +182,7 @@
     }
     
     if (self->fillSegment == playSegment) {
-        // FIXME
-        SDL_Delay(1);
+        [NSThread sleepForTimeInterval:.001];
         return YES;
     }
     
@@ -186,13 +191,11 @@
     WRAP_INC(followingSegment);
     
     while (self->fillSegment != playSegment) {
-        int bDraw;
+        int draw = (followingSegment == playSegment);
+        self->audioCallback(draw);
         
-        bDraw = (followingSegment == playSegment);
-        
-        self->audioCallback(bDraw);
-        
-        memcpy((char *)self->soundBuffer + self->fillSegment * (nAudSegLen << 2), nAudNextSound, nAudSegLen << 2);
+        memcpy((char *)self->soundBuffer + self->fillSegment * (nAudSegLen << 2),
+               nAudNextSound, nAudSegLen << 2);
         
         self->fillSegment = followingSegment;
         WRAP_INC(followingSegment);

@@ -182,7 +182,6 @@ static int SDLSoundInit()
 		return 1;
 	}
 
-	nAudNextSound = SDLAudBuffer;
 	nSDLPlayPos = 0;
 	nSDLFillSeg = nAudSegCount - 1;
 
@@ -193,7 +192,10 @@ static int SDLSoundInit()
 	}		
 
 	SDLSetCallback(NULL);
-
+    
+    nBurnSoundRate = 44100;
+    nBurnSoundLen = nAudSegLen;
+    
 	return 0;
 }
 
