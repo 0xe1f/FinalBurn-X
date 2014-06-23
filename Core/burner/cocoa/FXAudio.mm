@@ -34,6 +34,8 @@
 
 @implementation FXAudio
 
+@synthesize audioEngine = _audioEngine;
+
 #pragma mark - Init and dealloc
 
 - (instancetype)init
@@ -67,14 +69,6 @@
     int bufferSize = 64;
     for (; bufferSize < (nAudSegLen >> 1); bufferSize *= 2);
     
-    /*
-     audiospec_req.freq = 44010;
-     audiospec_req.format = AUDIO_S16;
-     audiospec_req.channels = 2;
-     audiospec_req.samples = nSDLBufferSize;
-     audiospec_req.callback = audiospec_callback;
-     */
-    
     self->soundBuffer = (short *)malloc(self->soundLoopLength);
     if (self->soundBuffer == NULL) {
         [self cleanup];
@@ -90,18 +84,15 @@
     self->playPosition = 0;
     self->fillSegment = nAudSegCount - 1;
     
-    /*
-     if(SDL_OpenAudio(&audiospec_req, &audiospec)) {
-     fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
-     dprintf(_T("Couldn't open audio: %s\n"), SDL_GetError());
-     return 1;
-     }
-     
-     SDLSetCallback(NULL);
-     */
+    [self setAudioEngine:[[FXAudioEngine alloc] initWithSampleRate:44100
+                                                          channels:2
+                                                        bufferSize:bufferSize
+                                                    bitsPerChannel:16]];
     
     nBurnSoundRate = 44100;
     nBurnSoundLen = nAudSegLen;
+    
+    [[self audioEngine] setDelegate:self];
     
     return YES;
 }
@@ -111,6 +102,7 @@
     NSLog(@"audio/exit");
     
     [self cleanup];
+    [self setAudioEngine:nil];
 }
 
 - (void)setCallback:(int(*)(int))callback
@@ -119,6 +111,7 @@
     
     self->audioCallback = callback;
     
+    // FIXME
     /*
      if (pCallback == NULL) {
      GetNextSound = SDLSoundGetNextSoundFiller;
@@ -133,9 +126,7 @@
 {
     NSLog(@"audio/play");
     
-    /*
-     SDL_PauseAudio(0);
-     */
+    [[self audioEngine] resume];
     bAudPlaying = 1;
     
     return YES;
@@ -145,9 +136,7 @@
 {
     NSLog(@"audio/stop");
     
-    /*
-     SDL_PauseAudio(1);
-     */
+    [[self audioEngine] pause];
     bAudPlaying = 0;
     
     return YES;
@@ -162,6 +151,28 @@
     }
     
     return YES;
+}
+
+#pragma mark - FXAudioDelegate
+
+- (void)mixSoundFromBuffer:(SInt16 *)stream
+                     bytes:(UInt32)len
+{
+    NSLog(@"len: %d", len);
+    int end = self->playPosition + len;
+	if (end > self->soundLoopLength) {
+//		memcpy(stream, self->soundBuffer + self->playPosition, self->soundLoopLength - self->playPosition);
+		end -= self->soundLoopLength;
+//		memcpy(stream + self->soundLoopLength - self->playPosition, self->soundBuffer, end);
+		self->playPosition = end;
+	} else {
+//		memcpy(stream, self->soundBuffer + self->playPosition, len);
+		self->playPosition = end;
+        
+		if (self->playPosition == self->soundLoopLength) {
+			self->playPosition = 0;
+		}
+	}
 }
 
 #define WRAP_INC(x) { x++; if (x >= nAudSegCount) x = 0; }

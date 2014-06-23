@@ -29,6 +29,7 @@
 @class FXVideo;
 @class FXAudio;
 @class FXRunLoop;
+@class FXAudioEngine;
 
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
@@ -38,6 +39,7 @@
     FXInput *_input;
     FXVideo *_video;
     FXAudio *_audio;
+    FXAudioEngine *_audioEngine;
     FXRunLoop *_runLoop;
     
     AKEmulator *_emulator;

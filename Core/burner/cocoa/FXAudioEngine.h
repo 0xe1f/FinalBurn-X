@@ -23,6 +23,14 @@
 #import <Foundation/Foundation.h>
 #include <AudioUnit/AudioUnit.h>
 
+@protocol FXAudioDelegate
+
+@required
+- (void)mixSoundFromBuffer:(SInt16 *)mixBuffer
+                     bytes:(UInt32)bytes;
+
+@end
+
 @interface FXAudioEngine : NSObject
 {
     BOOL isPaused;
@@ -42,15 +50,16 @@
 	UInt32 __bufferSize;
     
     AudioUnit outputAudioUnit;
+    
+    __weak id<FXAudioDelegate> _delegate;
 }
+
+@property (nonatomic, weak) id<FXAudioDelegate> delegate;
 
 - (id)initWithSampleRate:(NSUInteger)sampleRate
                 channels:(NSUInteger)channels
               bufferSize:(NSUInteger)aBufferSize
           bitsPerChannel:(UInt32)bitsPerChannel;
-
-- (void)mixSoundFromBuffer:(SInt16 *)mixBuffer
-                     bytes:(UInt32)bytes;
 
 - (void)pause;
 - (void)resume;

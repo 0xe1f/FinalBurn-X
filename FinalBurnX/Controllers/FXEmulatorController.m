@@ -26,6 +26,7 @@
 #import "FXInput.h"
 #import "FXVideo.h"
 #import "FXAudio.h"
+#import "FXAudioEngine.h"
 #import "FXRunLoop.h"
 
 @interface FXEmulatorController ()
@@ -63,11 +64,6 @@
 
 - (void)dealloc
 {
-    [self setInput:nil];
-    [self setVideo:nil];
-    [self setAudio:nil];
-    [self setRunLoop:nil];
-    
     [self setThread:nil];
     [self setEmulator:nil];
 }

@@ -36,10 +36,13 @@ static OSStatus audioCallback(void *inRefCon,
 @interface FXAudioEngine ()
 
 - (void)renderSoundToStream:(AudioBufferList *)ioData;
+- (void)mixSound;
 
 @end
 
 @implementation FXAudioEngine
+
+@synthesize delegate = _delegate;
 
 - (void)dealloc
 {
@@ -149,6 +152,7 @@ static OSStatus audioCallback(void *inRefCon,
                             if (result == noErr) {
                                 bufferSize = 1;
                                 while (bufferSize < 4 * __bufferSize) bufferSize *= 2;
+                                
                                 bufferMask = bufferSize - 1;
                                 buffer = (UInt8*)calloc(1, bufferSize);
                                 bytesPerSample = bitsPerChannel / 8;
@@ -222,45 +226,45 @@ static OSStatus audioCallback(void *inRefCon,
     }
 }
 
-- (void)mixSoundFromBuffer:(SInt16 *)mixBuffer
-                     bytes:(UInt32)bytes
+- (void)mixSound
 {
     UInt32 avail;
-    
     if (!isReady) {
         return;
     }
     
-    bytes *= bytesPerSample;
-    
-    if (skipCount > 0) {
-        if (bytes <= skipCount) {
-            skipCount -= bytes;
-            return;
-        }
-        
-        bytes -= skipCount;
-        skipCount = 0;
-    }
+//    bytes *= bytesPerSample;
+//    
+//    if (skipCount > 0) {
+//        if (bytes <= skipCount) {
+//            skipCount -= bytes;
+//            return;
+//        }
+//        
+//        bytes -= skipCount;
+//        skipCount = 0;
+//    }
     
     @synchronized(self) {
-        avail = (writePtr - readPtr) & bufferMask;
-        if (bytes < avail && 0) {
-            skipCount = bufferSize / 2;
-        } else {
-            if (writePtr + bytes > bufferSize) {
-                UInt32 count1 = bufferSize - writePtr;
-                UInt32 count2 = bytes - count1;
-                
-                memcpy(buffer + writePtr, mixBuffer, count1);
-                memcpy(buffer, mixBuffer, count2);
-                
-                writePtr = count2;
-            } else {
-                memcpy(buffer + writePtr, mixBuffer, bytes);
-                writePtr += bytes;
-            }
-        }
+        [[self delegate] mixSoundFromBuffer:__buffer
+                                      bytes:__bufferSize - __bufferOffset];
+//        avail = (writePtr - readPtr) & bufferMask;
+//        if (bytes < avail && 0) {
+//            skipCount = bufferSize / 2;
+//        } else {
+//            if (writePtr + bytes > bufferSize) {
+//                UInt32 count1 = bufferSize - writePtr;
+//                UInt32 count2 = bytes - count1;
+//                
+//                memcpy(buffer + writePtr, mixBuffer, count1);
+//                memcpy(buffer, mixBuffer, count2);
+//                
+//                writePtr = count2;
+//            } else {
+//                memcpy(buffer + writePtr, mixBuffer, bytes);
+//                writePtr += bytes;
+//            }
+//        }
     }
 }
 
@@ -289,6 +293,7 @@ static OSStatus audioCallback(void *inRefCon,
                               AudioBufferList *ioData)
 {
     FXAudioEngine *sound = (__bridge FXAudioEngine *)inRefCon;
+    [sound mixSound];
     [sound renderSoundToStream:ioData];
     
     return 0;
