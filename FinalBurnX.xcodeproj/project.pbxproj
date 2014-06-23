@@ -13,6 +13,7 @@
 		FE02305E19516A0700661A17 /* neocdlist.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE02305D19516A0700661A17 /* neocdlist.cpp */; };
 		FE02306019516AA500661A17 /* inpdipsw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE02305F19516AA500661A17 /* inpdipsw.cpp */; };
 		FE0230631956BB9B00661A17 /* FXRunLoop.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0230621956BB9B00661A17 /* FXRunLoop.mm */; };
+		FE0230691957F7F500661A17 /* FXAudioEngine.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0230681957F7F500661A17 /* FXAudioEngine.m */; };
 		FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
 		FE08935219475F9800F79190 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FE08935019475F9800F79190 /* InfoPlist.strings */; };
 		FE08935419475F9800F79190 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935319475F9800F79190 /* main.m */; };
@@ -568,6 +569,8 @@
 		FE02305F19516AA500661A17 /* inpdipsw.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inpdipsw.cpp; sourceTree = "<group>"; };
 		FE0230611956BB9B00661A17 /* FXRunLoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXRunLoop.h; sourceTree = "<group>"; };
 		FE0230621956BB9B00661A17 /* FXRunLoop.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXRunLoop.mm; sourceTree = "<group>"; };
+		FE0230671957F7F500661A17 /* FXAudioEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAudioEngine.h; sourceTree = "<group>"; };
+		FE0230681957F7F500661A17 /* FXAudioEngine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAudioEngine.m; sourceTree = "<group>"; };
 		FE08934419475F9800F79190 /* FinalBurnX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinalBurnX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE08934719475F9800F79190 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		FE08934A19475F9800F79190 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -2594,6 +2597,8 @@
 				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
 				FE9FA3FF1954B97B00F791EB /* FXAudio.h */,
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
+				FE0230671957F7F500661A17 /* FXAudioEngine.h */,
+				FE0230681957F7F500661A17 /* FXAudioEngine.m */,
 				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
 				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
 				FE0230611956BB9B00661A17 /* FXRunLoop.h */,
@@ -3053,6 +3058,7 @@
 				FE505DEA194BC533003A2BC7 /* burn_ym2608.cpp in Sources */,
 				FE505D20194BC532003A2BC7 /* d_momoko.cpp in Sources */,
 				FE505DD9194BC533003A2BC7 /* d_truxton2.cpp in Sources */,
+				FE0230691957F7F500661A17 /* FXAudioEngine.m in Sources */,
 				FE505D0B194BC532003A2BC7 /* d_epos.cpp in Sources */,
 				FE50606F194BD4E6003A2BC7 /* pngwtran.c in Sources */,
 				FE505D10194BC532003A2BC7 /* d_ginganin.cpp in Sources */,
