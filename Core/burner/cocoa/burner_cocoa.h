@@ -1,5 +1,3 @@
-#include "SDL.h"
-
 #ifndef _WIN32
 typedef struct tagRECT {
 	int left;

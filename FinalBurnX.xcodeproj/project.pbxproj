@@ -537,7 +537,6 @@
 		FE78012B194C36510024716B /* aud_dsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011C194C36510024716B /* aud_dsp.cpp */; };
 		FE78012C194C36510024716B /* aud_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011E194C36510024716B /* aud_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE78012D194C36510024716B /* lowpass2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011F194C36510024716B /* lowpass2.cpp */; };
-		FE780130194C36510024716B /* aud_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE780125194C36510024716B /* aud_sdl.cpp */; };
 		FE780136194C36BD0024716B /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
 		FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE9FA3EB195340C100F791EB /* Emulator.xib */; };
 		FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */; };
@@ -556,7 +555,6 @@
 		FEC25356194CA3760039D85F /* hq2xs_16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25355194CA3760039D85F /* hq2xs_16.cpp */; };
 		FEC25358194CA3BF0039D85F /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25357194CA3BF0039D85F /* epx.cpp */; };
 		FEC2535A194CA41B0039D85F /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25359194CA41B0039D85F /* misc.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-variable"; }; };
-		FED10DC3194CB35000754BE0 /* SDL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FED10DC2194CB35000754BE0 /* SDL.framework */; };
 		FEEECB3D194EDE3200A316A4 /* AKEmulator.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */; };
 /* End PBXBuildFile section */
 
@@ -571,6 +569,7 @@
 		FE0230621956BB9B00661A17 /* FXRunLoop.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXRunLoop.mm; sourceTree = "<group>"; };
 		FE0230671957F7F500661A17 /* FXAudioEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAudioEngine.h; sourceTree = "<group>"; };
 		FE0230681957F7F500661A17 /* FXAudioEngine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAudioEngine.m; sourceTree = "<group>"; };
+		FE02306A19595F6800661A17 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
 		FE08934419475F9800F79190 /* FinalBurnX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinalBurnX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE08934719475F9800F79190 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		FE08934A19475F9800F79190 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -1253,7 +1252,6 @@
 		FE7800CD194C29A50024716B /* inp_keys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inp_keys.h; sourceTree = "<group>"; };
 		FE7800DC194C2ABB0024716B /* interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = interface.cpp; sourceTree = "<group>"; };
 		FE7800DD194C2ABB0024716B /* interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interface.h; sourceTree = "<group>"; };
-		FE7800E0194C2BA90024716B /* burner_sdl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_sdl.h; sourceTree = "<group>"; };
 		FE7800E1194C2BA90024716B /* bzip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bzip.cpp; sourceTree = "<group>"; };
 		FE7800E3194C2BA90024716B /* drv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = drv.cpp; sourceTree = "<group>"; };
 		FE7800F2194C31E90024716B /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unzip.c; sourceTree = "<group>"; };
@@ -1282,7 +1280,6 @@
 		FE78011E194C36510024716B /* aud_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aud_interface.cpp; sourceTree = "<group>"; };
 		FE78011F194C36510024716B /* lowpass2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = lowpass2.cpp; sourceTree = "<group>"; };
 		FE780120194C36510024716B /* lowpass2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowpass2.h; sourceTree = "<group>"; };
-		FE780125194C36510024716B /* aud_sdl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aud_sdl.cpp; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
 		FE9FA3EC195340C100F791EB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Emulator.xib; sourceTree = "<group>"; };
@@ -1323,7 +1320,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FED10DC3194CB35000754BE0 /* SDL.framework in Frameworks */,
 				FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */,
 				FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */,
 			);
@@ -2505,7 +2501,6 @@
 		FE7800DF194C2BA90024716B /* sdl */ = {
 			isa = PBXGroup;
 			children = (
-				FE7800E0194C2BA90024716B /* burner_sdl.h */,
 				FE7800E1194C2BA90024716B /* bzip.cpp */,
 				FE7800E3194C2BA90024716B /* drv.cpp */,
 				FE0230571951680C00661A17 /* stringset.cpp */,
@@ -2531,7 +2526,6 @@
 		FE78011B194C36510024716B /* audio */ = {
 			isa = PBXGroup;
 			children = (
-				FE780124194C36510024716B /* sdl */,
 				FE78011C194C36510024716B /* aud_dsp.cpp */,
 				FE78011D194C36510024716B /* aud_dsp.h */,
 				FE78011E194C36510024716B /* aud_interface.cpp */,
@@ -2539,14 +2533,6 @@
 				FE780120194C36510024716B /* lowpass2.h */,
 			);
 			path = audio;
-			sourceTree = "<group>";
-		};
-		FE780124194C36510024716B /* sdl */ = {
-			isa = PBXGroup;
-			children = (
-				FE780125194C36510024716B /* aud_sdl.cpp */,
-			);
-			path = sdl;
 			sourceTree = "<group>";
 		};
 		FE9FA3F5195346F000F791EB /* HIDput */ = {
@@ -2595,6 +2581,7 @@
 			children = (
 				FEEECB3B194EDE3200A316A4 /* AKEmulator.h */,
 				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
+				FE02306A19595F6800661A17 /* burner_cocoa.h */,
 				FE9FA3FF1954B97B00F791EB /* FXAudio.h */,
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
 				FE0230671957F7F500661A17 /* FXAudioEngine.h */,
@@ -3068,7 +3055,6 @@
 				FE505CF3194BC532003A2BC7 /* pgm_crypt.cpp in Sources */,
 				FE505CFC194BC532003A2BC7 /* d_arabian.cpp in Sources */,
 				FE505D0D194BC532003A2BC7 /* d_funkybee.cpp in Sources */,
-				FE780130194C36510024716B /* aud_sdl.cpp in Sources */,
 				FE08935419475F9800F79190 /* main.m in Sources */,
 				FE505D8D194BC533003A2BC7 /* d_sys18.cpp in Sources */,
 				FE505F8A194BCDD1003A2BC7 /* m6809.cpp in Sources */,
@@ -3304,7 +3290,6 @@
 					"-DLSB_FIRST",
 					"-DINCLUDE_LIB_PNGH",
 					"-DBUILD_COCOA",
-					"-DBUILD_SDL",
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
@@ -3345,7 +3330,6 @@
 					"-DLSB_FIRST",
 					"-DINCLUDE_LIB_PNGH",
 					"-DBUILD_COCOA",
-					"-DBUILD_SDL",
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
@@ -3369,10 +3353,17 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/Library/Frameworks/SDL.framework/headers,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CFLAGS = (
+					"-DLSB_FIRST",
+					"-DINCLUDE_LIB_PNGH",
+					"-DBUILD_COCOA",
+					"-DUSE_SPEEDHACKS",
+					"-DINLINE=\"static inline\"",
+					"-DSH2_INLINE=\"static inline\"",
+				);
 				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};
@@ -3393,10 +3384,17 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/Library/Frameworks/SDL.framework/headers,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CFLAGS = (
+					"-DLSB_FIRST",
+					"-DINCLUDE_LIB_PNGH",
+					"-DBUILD_COCOA",
+					"-DUSE_SPEEDHACKS",
+					"-DINLINE=\"static inline\"",
+					"-DSH2_INLINE=\"static inline\"",
+				);
 				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};

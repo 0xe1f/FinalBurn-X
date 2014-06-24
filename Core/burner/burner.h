@@ -38,10 +38,10 @@ typedef struct tagIMAGE {
 
 #if defined (BUILD_WIN32)
  #include "burner_win32.h"
-#elif defined (BUILD_SDL)
- #include "burner_sdl.h"
 #elif defined (BUILD_COCOA)
  #include "burner_cocoa.h"
+#elif defined (BUILD_SDL)
+ #include "burner_sdl.h"
 #elif defined (_XBOX) && !defined(__LIBRETRO__)
  #include "burner_xbox.h"
 #elif defined(__LIBRETRO__)

@@ -46,8 +46,6 @@
 - (BOOL)runROM:(NSString *)name
          error:(NSError **)error
 {
-	SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|SDL_INIT_AUDIO);
-    
 	BurnLibInit();
     
     const char *romName = [name UTF8String];
@@ -85,7 +83,6 @@
     
 	DrvExit();
 	BurnLibExit();
-	SDL_Quit();
     
 	return YES;
 }
