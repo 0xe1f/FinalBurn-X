@@ -26,6 +26,8 @@
 
 #include "burner.h"
 
+static int cocoaGetNextSoundFiller(int draw);
+
 @interface FXAudio ()
 
 - (void)cleanup;
@@ -57,13 +59,11 @@
 {
     NSLog(@"audio/init");
     
-    if (nAudSampleRate <= 0) {
-        return NO;
-    }
+    int sampleRate = 44100;
     
     self->audioCallback = NULL;
 	self->soundFps = nAppVirtualFps;
-    nAudSegLen = (44010 * 100 + (self->soundFps / 2)) / self->soundFps;
+    nAudSegLen = (sampleRate * 100 + (self->soundFps / 2)) / self->soundFps;
     self->soundLoopLength = (nAudSegLen * nAudSegCount) * 4;
     
     int bufferSize = 64;
@@ -84,12 +84,12 @@
     self->playPosition = 0;
     self->fillSegment = nAudSegCount - 1;
     
-    [self setAudioEngine:[[FXAudioEngine alloc] initWithSampleRate:44100
+    [self setAudioEngine:[[FXAudioEngine alloc] initWithSampleRate:sampleRate
                                                           channels:2
-                                                        bufferSize:bufferSize
+                                                           samples:bufferSize
                                                     bitsPerChannel:16]];
     
-    nBurnSoundRate = 44100;
+    nBurnSoundRate = sampleRate;
     nBurnSoundLen = nAudSegLen;
     
     [[self audioEngine] setDelegate:self];
@@ -109,17 +109,11 @@
 {
     NSLog(@"audio/setCallback");
     
-    self->audioCallback = callback;
-    
-    // FIXME
-    /*
-     if (pCallback == NULL) {
-     GetNextSound = SDLSoundGetNextSoundFiller;
-     } else {
-     GetNextSound = pCallback;
-     dprintf(_T("SDL callback set\n"));
-     }
-     */
+    if (callback == NULL) {
+        self->audioCallback = cocoaGetNextSoundFiller;
+    } else {
+        self->audioCallback = callback;
+    }
 }
 
 - (BOOL)play
@@ -158,15 +152,14 @@
 - (void)mixSoundFromBuffer:(SInt16 *)stream
                      bytes:(UInt32)len
 {
-    NSLog(@"len: %d", len);
     int end = self->playPosition + len;
 	if (end > self->soundLoopLength) {
-//		memcpy(stream, self->soundBuffer + self->playPosition, self->soundLoopLength - self->playPosition);
+		memcpy(stream, (UInt8 *)self->soundBuffer + self->playPosition, self->soundLoopLength - self->playPosition);
 		end -= self->soundLoopLength;
-//		memcpy(stream + self->soundLoopLength - self->playPosition, self->soundBuffer, end);
+		memcpy((UInt8 *)stream + self->soundLoopLength - self->playPosition, (UInt8 *)self->soundBuffer, end);
 		self->playPosition = end;
 	} else {
-//		memcpy(stream, self->soundBuffer + self->playPosition, len);
+		memcpy(stream, (UInt8 *)self->soundBuffer + self->playPosition, len);
 		self->playPosition = end;
         
 		if (self->playPosition == self->soundLoopLength) {
@@ -226,6 +219,17 @@
 @end
 
 #pragma mark - FinalBurn callbacks
+
+static int cocoaGetNextSoundFiller(int draw)
+{
+	if (nAudNextSound == NULL) {
+		return 1;
+	}
+    
+    // Write silence into buffer
+	memset(nAudNextSound, 0, nAudSegLen << 2);
+	return 0;
+}
 
 static int cocoaAudioBlankSound()
 {

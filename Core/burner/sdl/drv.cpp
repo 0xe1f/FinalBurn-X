@@ -95,6 +95,7 @@ int DrvExit()
 {
 	if (bDrvOkay) {
 		VidExit();
+        AudSoundExit();
 
 		if (nBurnDrvSelect[0] < nBurnDrvCount) {
 			if (bSaveRAM) {

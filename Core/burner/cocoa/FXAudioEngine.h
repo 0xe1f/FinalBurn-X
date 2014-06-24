@@ -33,17 +33,9 @@
 
 @interface FXAudioEngine : NSObject
 {
+    @private
     BOOL isPaused;
     BOOL isReady;
-    
-    UInt32 readPtr;
-    UInt32 writePtr;
-    UInt32 bufferMask;
-    UInt32 bufferSize;
-    UInt32 oldLen;
-    UInt32 bytesPerSample;
-    UInt32 skipCount;
-    UInt8* buffer;
     
 	void *__buffer;
 	UInt32 __bufferOffset;
@@ -58,7 +50,7 @@
 
 - (id)initWithSampleRate:(NSUInteger)sampleRate
                 channels:(NSUInteger)channels
-              bufferSize:(NSUInteger)aBufferSize
+                 samples:(NSUInteger)samples
           bitsPerChannel:(UInt32)bitsPerChannel;
 
 - (void)pause;
