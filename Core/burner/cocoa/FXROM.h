@@ -22,19 +22,12 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
-
-@interface FXAudio : NSObject<FXAudioDelegate>
+@interface FXROM : NSObject
 {
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+@property (nonatomic, strong) NSString *filename;
+@property (nonatomic, assign) NSUInteger CRC;
+@property (nonatomic, assign) NSUInteger length;
 
 @end

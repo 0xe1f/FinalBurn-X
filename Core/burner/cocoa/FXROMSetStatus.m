@@ -20,21 +20,60 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXROMSetStatus.h"
 
-#import "FXAudioEngine.h"
+#import "FXROMInfo.h"
 
-@interface FXAudio : NSObject<FXAudioDelegate>
+@implementation FXROMSetStatus
+
+- (instancetype)init
 {
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
+    if (self = [super init]) {
+        self->romStatuses = [[NSMutableArray alloc] init];
+    }
+    
+    return self;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+- (instancetype)initWithArchiveNamed:(NSString *)archiveName
+{
+    if (self = [self init]) {
+        [self setArchiveName:archiveName];
+    }
+    
+    return self;
+}
+
+- (void)addROMStatus:(FXROMStatus *)romStatus
+{
+    [self->romStatuses addObject:romStatus];
+}
+
+- (BOOL)isArchiveFound
+{
+    return [self path] != nil;
+}
+
+- (NSArray *)ROMStatuses;
+{
+    return [NSArray arrayWithArray:self->romStatuses];
+}
+
+- (BOOL)isComplete
+{
+    if ([self->romStatuses count] < 1) {
+        return NO;
+    }
+    
+    __block BOOL complete = YES;
+    [self->romStatuses enumerateObjectsUsingBlock:^(FXROMStatus *status, NSUInteger idx, BOOL *stop) {
+        if ([status status] != FXROMStatusOK) {
+            complete = NO;
+            *stop = YES;
+        }
+    }];
+    
+    return complete;
+}
 
 @end

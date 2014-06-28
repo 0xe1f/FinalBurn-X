@@ -36,8 +36,6 @@ static int cocoaGetNextSoundFiller(int draw);
 
 @implementation FXAudio
 
-@synthesize audioEngine = _audioEngine;
-
 #pragma mark - Init and dealloc
 
 - (instancetype)init
@@ -69,14 +67,13 @@ static int cocoaGetNextSoundFiller(int draw);
     int bufferSize = 64;
     for (; bufferSize < (nAudSegLen >> 1); bufferSize *= 2);
     
-    self->soundBuffer = (short *)malloc(self->soundLoopLength);
+    self->soundBuffer = (short *)calloc(self->soundLoopLength, 1);
     if (self->soundBuffer == NULL) {
         [self cleanup];
         return NO;
     }
-    memset(self->soundBuffer, 0, self->soundLoopLength);
     
-	nAudNextSound = (short *)malloc(nAudSegLen << 2);
+	nAudNextSound = (short *)calloc(nAudSegLen << 2, 1);
 	if (nAudNextSound == NULL) {
         return NO;
 	}
@@ -214,6 +211,8 @@ static int cocoaGetNextSoundFiller(int draw);
 {
     free(self->soundBuffer);
     self->soundBuffer = NULL;
+    free(nAudNextSound);
+    nAudNextSound = NULL;
 }
 
 @end

@@ -41,8 +41,6 @@ static OSStatus audioCallback(void *inRefCon,
 
 @implementation FXAudioEngine
 
-@synthesize delegate = _delegate;
-
 - (void)dealloc
 {
     if (isReady) {
@@ -62,8 +60,8 @@ static OSStatus audioCallback(void *inRefCon,
         isReady = NO;
     }
     
-    free(__buffer);
-    __buffer = NULL;
+    free(self->buffer);
+    self->buffer = NULL;
     
 #ifdef DEBUG
     NSLog(@"audioEngine/destroyed");
@@ -81,7 +79,7 @@ static OSStatus audioCallback(void *inRefCon,
         isPaused = NO;
         isReady = NO;
         
-        __buffer = NULL;
+        self->buffer = NULL;
         
         OSStatus result = noErr;
         Component comp;
@@ -132,11 +130,11 @@ static OSStatus audioCallback(void *inRefCon,
                                                       sizeof(callback));
                         
                         if (result == noErr) {
-                            __bufferSize = bitsPerChannel / 8;
-                            __bufferSize *= channels;
-                            __bufferSize *= samples;
-                            __bufferOffset = __bufferSize;
-                            __buffer = calloc(__bufferSize, 1);
+                            self->bufferSize = bitsPerChannel / 8;
+                            self->bufferSize *= channels;
+                            self->bufferSize *= samples;
+                            self->bufferOffset = self->bufferSize;
+                            self->buffer = calloc(self->bufferSize, 1);
                             
                             // Finally, start processing of the audio unit
                             result = AudioOutputUnitStart (outputAudioUnit);
@@ -178,26 +176,26 @@ static OSStatus audioCallback(void *inRefCon,
         ptr = abuf->mData;
         
         while (remaining > 0) {
-            if (__bufferOffset >= __bufferSize) {
-                memset(__buffer, 0, __bufferSize);
+            if (self->bufferOffset >= self->bufferSize) {
+                memset(self->buffer, 0, self->bufferSize);
                 
                 @synchronized(self) {
-                    [[self delegate] mixSoundFromBuffer:__buffer
-                                                  bytes:__bufferSize];
+                    [[self delegate] mixSoundFromBuffer:self->buffer
+                                                  bytes:self->bufferSize];
                 }
                 
-                __bufferOffset = 0;
+                self->bufferOffset = 0;
             }
             
-            len = __bufferSize - __bufferOffset;
+            len = self->bufferSize - self->bufferOffset;
             if (len > remaining) {
                 len = remaining;
             }
             
-            memcpy(ptr, __buffer + __bufferOffset, len);
+            memcpy(ptr, self->buffer + self->bufferOffset, len);
             ptr = (char *)ptr + len;
             remaining -= len;
-            __bufferOffset += len;
+            self->bufferOffset += len;
         }
     }
 }

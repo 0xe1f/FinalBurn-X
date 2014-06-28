@@ -22,19 +22,27 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
+struct BurnRomInfo;
 
-@interface FXAudio : NSObject<FXAudioDelegate>
+@interface FXROMInfo : NSObject
 {
     @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
+    NSMutableArray *knownAliases;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+- (instancetype)initWithBurnROMInfo:(const struct BurnRomInfo *)info;
+
+- (void)addKnownAlias:(NSString *)alias;
+- (NSArray *)knownAliases;
+
+@property (nonatomic, assign) NSUInteger length;
+@property (nonatomic, assign) NSUInteger crc;
+@property (nonatomic, assign) NSUInteger type;
 
 @end
+
+enum {
+    FXROMTypeCPU      = 0x90,
+    FXROMTypeGraphics = 0x01,
+    FXROMTypeSound    = 0x02,
+};

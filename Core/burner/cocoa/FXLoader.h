@@ -22,19 +22,16 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
+@interface FXLoader : NSObject
 
-@interface FXAudio : NSObject<FXAudioDelegate>
-{
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
-}
+- (NSArray *)archiveNamesForDriver:(int)romIndex
+                             error:(NSError **)error;
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+- (NSArray *)scanROMSetIndex:(int)romIndex
+                       error:(NSError **)error;
 
 @end
+
+enum {
+    FXRomSetUnrecognized = -100,
+};

@@ -101,7 +101,7 @@
 
 - (void)emulatorThreadMethod:(id)obj
 {
-    [[self emulator] runROM:@"sfiii"
+    [[self emulator] runROM:@"sfa3u"
                       error:NULL];
     
     [self setVideo:nil];

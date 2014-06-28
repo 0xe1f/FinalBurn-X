@@ -42,8 +42,6 @@
     int bufferWidth;
     int bufferHeight;
     int bufferBytesPerPixel;
-    
-    __weak id<FXVideoRenderDelegate> _delegate;
 }
 
 @property (nonatomic, weak) id<FXVideoRenderDelegate> delegate;

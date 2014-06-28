@@ -20,21 +20,32 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXROMInfo.h"
 
-#import "FXAudioEngine.h"
+#include "burner.h"
 
-@interface FXAudio : NSObject<FXAudioDelegate>
+@implementation FXROMInfo
+
+- (instancetype)initWithBurnROMInfo:(const struct BurnRomInfo *)info
 {
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
+    if (self = [super init]) {
+        self->knownAliases = [[NSMutableArray alloc] init];
+        [self setLength:info->nLen];
+        [self setCrc:info->nCrc];
+        [self setType:info->nType];
+    }
+    
+    return self;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+- (void)addKnownAlias:(NSString *)alias
+{
+    [self->knownAliases addObject:alias];
+}
+
+- (NSArray *)knownAliases
+{
+    return [NSArray arrayWithArray:self->knownAliases];
+}
 
 @end

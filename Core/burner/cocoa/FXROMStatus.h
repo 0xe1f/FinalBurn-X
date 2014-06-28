@@ -22,19 +22,26 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
+#import "FXROMInfo.h"
 
-@interface FXAudio : NSObject<FXAudioDelegate>
-{
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
-}
+@interface FXROMStatus : NSObject
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+@property (nonatomic, strong) NSString *filenameNeeded;
+@property (nonatomic, strong) NSString *filenameFound;
+@property (nonatomic, assign) NSUInteger lengthNeeded;
+@property (nonatomic, assign) NSUInteger lengthFound;
+@property (nonatomic, assign) NSUInteger CRCNeeded;
+@property (nonatomic, assign) NSUInteger CRCFound;
+@property (nonatomic, assign) NSUInteger type;
+
+- (NSInteger)status;
+- (NSString *)message;
 
 @end
+
+enum {
+    FXROMStatusOK,
+    FXROMStatusBadCRC,
+    FXROMStatusBadLength,
+    FXROMStatusMissing,
+};

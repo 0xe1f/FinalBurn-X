@@ -37,13 +37,11 @@
     BOOL isPaused;
     BOOL isReady;
     
-	void *__buffer;
-	UInt32 __bufferOffset;
-	UInt32 __bufferSize;
+	void *buffer;
+	UInt32 bufferOffset;
+	UInt32 bufferSize;
     
     AudioUnit outputAudioUnit;
-    
-    __weak id<FXAudioDelegate> _delegate;
 }
 
 @property (nonatomic, weak) id<FXAudioDelegate> delegate;

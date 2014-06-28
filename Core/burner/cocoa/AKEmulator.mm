@@ -11,6 +11,9 @@
 #import "AKAppDelegate.h"
 #import "FXEmulatorController.h"
 #import "FXRunLoop.h"
+#import "FXLoader.h"
+#import "FXROMSetStatus.h"
+#import "FXROMStatus.h"
 
 #include "burner.h"
 
@@ -76,6 +79,27 @@
 	bBurnUseASMCPUEmulation = 0;
  	bCheatsAllowed = false;
 	DrvInit(romIndex, 0);
+    
+    FXLoader *loader = [[FXLoader alloc] init];
+    
+    NSArray *romSetStatuses = [loader scanROMSetIndex:romIndex
+                                                error:(NSError **)error];
+    
+    [romSetStatuses enumerateObjectsUsingBlock:^(id setStatus, NSUInteger idx, BOOL *stop) {
+        if ([setStatus isArchiveFound]) {
+            if ([setStatus isComplete]) {
+                NSLog(@"++ rom set: %@ found in %@ and is complete", [setStatus archiveName], [setStatus path]);
+            } else {
+                NSLog(@"++ rom set: %@ found in %@, but is incomplete", [setStatus archiveName], [setStatus path]);
+            }
+        } else {
+            NSLog(@"-- rom set: %@ not found", [setStatus archiveName]);
+        }
+        
+        [[setStatus ROMStatuses] enumerateObjectsUsingBlock:^(id status, NSUInteger idx, BOOL *stop) {
+            NSLog(@"%@", [status message]);
+        }];
+    }];
     
     [[[[AKAppDelegate sharedInstance] emulator] runLoop] run];
     

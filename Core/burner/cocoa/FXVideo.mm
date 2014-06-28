@@ -34,8 +34,6 @@
 
 @implementation FXVideo
 
-@synthesize delegate = _delegate;
-
 #pragma mark - Init and dealloc
 
 - (instancetype)init

@@ -22,19 +22,28 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
+#import "FXROM.h"
 
-@interface FXAudio : NSObject<FXAudioDelegate>
+#include "unzip.h"
+
+@interface FXZip : NSObject
 {
     @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
+    unzFile zipFile;
+    NSArray *entryCache;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+@property (nonatomic, strong) NSString *path;
+
+- (instancetype)initWithPath:(NSString *)path
+                       error:(NSError **)error;
+- (NSArray *)entries;
+- (FXROM *)findROMWithCRC:(NSUInteger)crc;
+- (FXROM *)findROMNamed:(NSString *)filename;
+- (FXROM *)findROMNamedAnyOf:(NSArray *)filenames;
 
 @end
+
+enum {
+    FXErrorLoadingZip = -100,
+};

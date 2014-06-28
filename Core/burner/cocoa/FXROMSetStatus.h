@@ -22,19 +22,22 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXAudioEngine.h"
+#import "FXROMStatus.h"
 
-@interface FXAudio : NSObject<FXAudioDelegate>
+@interface FXROMSetStatus : NSObject
 {
     @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
+    NSMutableArray *romStatuses;
 }
 
-@property (nonatomic, strong) FXAudioEngine *audioEngine;
+@property (nonatomic, strong) NSString *archiveName;
+@property (nonatomic, strong) NSString *path;
+
+- (instancetype)initWithArchiveNamed:(NSString *)archiveName;
+
+- (BOOL)isArchiveFound;
+- (BOOL)isComplete;
+- (void)addROMStatus:(FXROMStatus *)romStatus;
+- (NSArray *)ROMStatuses;
 
 @end
