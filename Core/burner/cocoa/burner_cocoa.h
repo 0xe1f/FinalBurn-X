@@ -58,15 +58,4 @@ void InpDIPSWResetDIPs();
 //TODO:
 #define szAppBurnVer 1
 
-class StringSet {
-public:
-	TCHAR* szText;
-	int nLen;
-	// printf function to add text to the Bzip string
-	int __cdecl Add(TCHAR* szFormat, ...);
-	int Reset();
-	StringSet();
-	~StringSet();
-};
-
 #endif

@@ -42,7 +42,8 @@ struct BurnRomInfo;
 @end
 
 enum {
-    FXROMTypeCPU      = 0x90,
-    FXROMTypeGraphics = 0x01,
-    FXROMTypeSound    = 0x02,
+    FXROMTypeGraphics  = 0x01,
+    FXROMTypeSound     = 0x02,
+    FXROMTypeEssential = 0x10,
+    FXROMTypeBIOS      = 0x80,
 };

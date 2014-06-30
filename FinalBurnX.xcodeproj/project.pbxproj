@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FE0230581951680C00661A17 /* stringset.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE0230571951680C00661A17 /* stringset.cpp */; };
 		FE02305A1951685200661A17 /* tchar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE0230591951685200661A17 /* tchar.cpp */; };
 		FE02305C195168AD00661A17 /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE02305B195168AD00661A17 /* misc.cpp */; };
 		FE02305E19516A0700661A17 /* neocdlist.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE02305D19516A0700661A17 /* neocdlist.cpp */; };
@@ -520,7 +519,6 @@
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
-		FE7800EA194C2BA90024716B /* bzip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E1194C2BA90024716B /* bzip.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
 		FE7800EC194C2BA90024716B /* drv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800E3194C2BA90024716B /* drv.cpp */; };
 		FE7800F4194C31E90024716B /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F2194C31E90024716B /* unzip.c */; };
 		FE780103194C32600024716B /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F9194C32600024716B /* m68kcpu.c */; settings = {COMPILER_FLAGS = "-Wno-unused-variable -Wno-unused-function"; }; };
@@ -566,7 +564,6 @@
 
 /* Begin PBXFileReference section */
 		FE0230541951679000661A17 /* tchar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tchar.h; sourceTree = "<group>"; };
-		FE0230571951680C00661A17 /* stringset.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stringset.cpp; sourceTree = "<group>"; };
 		FE0230591951685200661A17 /* tchar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tchar.cpp; sourceTree = "<group>"; };
 		FE02305B195168AD00661A17 /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
 		FE02305D19516A0700661A17 /* neocdlist.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = neocdlist.cpp; sourceTree = "<group>"; };
@@ -1258,7 +1255,6 @@
 		FE7800CD194C29A50024716B /* inp_keys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inp_keys.h; sourceTree = "<group>"; };
 		FE7800DC194C2ABB0024716B /* interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = interface.cpp; sourceTree = "<group>"; };
 		FE7800DD194C2ABB0024716B /* interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interface.h; sourceTree = "<group>"; };
-		FE7800E1194C2BA90024716B /* bzip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bzip.cpp; sourceTree = "<group>"; };
 		FE7800E3194C2BA90024716B /* drv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = drv.cpp; sourceTree = "<group>"; };
 		FE7800F2194C31E90024716B /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unzip.c; sourceTree = "<group>"; };
 		FE7800F3194C31E90024716B /* unzip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unzip.h; sourceTree = "<group>"; };
@@ -2536,9 +2532,7 @@
 		FE7800DF194C2BA90024716B /* sdl */ = {
 			isa = PBXGroup;
 			children = (
-				FE7800E1194C2BA90024716B /* bzip.cpp */,
 				FE7800E3194C2BA90024716B /* drv.cpp */,
-				FE0230571951680C00661A17 /* stringset.cpp */,
 			);
 			path = sdl;
 			sourceTree = "<group>";
@@ -2714,7 +2708,6 @@
 				FE505D0C194BC532003A2BC7 /* d_exedexes.cpp in Sources */,
 				FE505CD7194BC532003A2BC7 /* d_tmnt.cpp in Sources */,
 				FE505CC7194BC532003A2BC7 /* d_gbusters.cpp in Sources */,
-				FE0230581951680C00661A17 /* stringset.cpp in Sources */,
 				FE505CD1194BC532003A2BC7 /* d_rollerg.cpp in Sources */,
 				FE505D2E194BC532003A2BC7 /* d_scregg.cpp in Sources */,
 				FE505D36194BC532003A2BC7 /* d_tecmo.cpp in Sources */,
@@ -2811,7 +2804,6 @@
 				FE505D23194BC532003A2BC7 /* d_mystston.cpp in Sources */,
 				FE505D53194BC532003A2BC7 /* d_drtomy.cpp in Sources */,
 				FE505D4A194BC532003A2BC7 /* d_blmbycar.cpp in Sources */,
-				FE7800EA194C2BA90024716B /* bzip.cpp in Sources */,
 				FE505C68194BC532003A2BC7 /* seibusnd.cpp in Sources */,
 				FE505C85194BC532003A2BC7 /* qs_c.cpp in Sources */,
 				FE506076194BD4E6003A2BC7 /* deflate.c in Sources */,

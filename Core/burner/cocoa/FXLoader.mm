@@ -32,7 +32,31 @@
 #include "burnint.h"
 #include "driverlist.h"
 
+static NSString * const FXROMCacheFoundPathKey = @"foundPath";
+static NSString * const FXROMCacheFoundCRCKey  = @"foundCRC";
+static NSString * const FXROMCacheROMLengthKey = @"romLength";
+
+static FXLoader *sharedInstance = NULL;
+
 @implementation FXLoader
+
+- (instancetype)init
+{
+    if (self = [super init]) {
+        romCache = [[NSMutableDictionary alloc] init];
+    }
+    
+    return self;
+}
+
++ (id)sharedLoader
+{
+    if (sharedInstance == NULL) {
+        sharedInstance = [[FXLoader alloc] init];
+    }
+    
+    return sharedInstance;
+}
 
 + (NSError *)newErrorWithDescription:(NSString *)desc
                                 code:(NSInteger)errorCode
@@ -43,6 +67,21 @@
     return [NSError errorWithDomain:domain
                                code:errorCode
                            userInfo:userInfo];
+}
+
+- (int)driverIdForName:(NSString *)driverName
+{
+    const char *cDriverName = [driverName cStringUsingEncoding:NSUTF8StringEncoding];
+    
+    int driverId = -1;
+    for (int i = 0; i < nBurnDrvCount; i++) {
+        if (strcmp(pDriver[i]->szShortName, cDriverName) == 0) {
+            driverId = i;
+            break;
+        }
+    }
+    
+    return driverId;
 }
 
 - (NSArray *)componentsForDriver:(int)romIndex
@@ -164,22 +203,20 @@
     NSArray *archiveNames = [self archiveNamesForDriver:romIndex
                                                   error:&archiveError];
     
-    // FIXME
-//    if (archiveError != NULL) {
-//        *error = *archiveError;
-//        return NO;
-//    }
+    if (archiveError != NULL) {
+        *error = archiveError;
+        return nil;
+    }
     
     // Get list of components (ROM files) for driver
     NSError *compError = NULL;
     NSArray *driverComponents = [self componentsForDriver:romIndex
                                                     error:&compError];
     
-    // FIXME
-//    if (compError != NULL) {
-//        *error = *compError;
-//        return NO;
-//    }
+    if (compError != NULL) {
+        *error = compError;
+        return nil;
+    }
     
     __block NSError *localErr = NULL;
     
@@ -197,7 +234,7 @@
             
             if (exists) {
                 [setStatus setPath:fullPath];
-
+                
                 // Open the file, read its table of contents
                 FXZip *zip = [[FXZip alloc] initWithPath:fullPath
                                                    error:&localErr];
@@ -218,11 +255,26 @@
                                 // File not found by known aliases
                             } else {
                                 // Found by alias
+                                
+                                // Update cache
+                                [romCache setObject:@{FXROMCacheFoundPathKey: fullPath,
+                                                      FXROMCacheFoundCRCKey: @([matchByAlias CRC]),
+                                                      FXROMCacheROMLengthKey: @([romInfo length]), }
+                                             forKey:@([romInfo crc])];
+                                
+                                // Update status
                                 [status setFilenameFound:[matchByAlias filename]];
                                 [status setLengthFound:[matchByAlias length]];
                                 [status setCRCFound:[matchByAlias CRC]];
                             }
                         } else {
+                            // Update cache
+                            [romCache setObject:@{FXROMCacheFoundPathKey: fullPath,
+                                                  FXROMCacheFoundCRCKey: @([matchByCRC CRC]),
+                                                  FXROMCacheROMLengthKey: @([romInfo length]), }
+                                         forKey:@([romInfo crc])];
+                            
+                            // Update status
                             [status setFilenameFound:[matchByCRC filename]];
                             [status setLengthFound:[matchByCRC length]];
                             [status setCRCFound:[matchByCRC CRC]];
@@ -240,4 +292,72 @@
     return setStatuses;
 }
 
+- (UInt32)loadROMOfDriver:(int)driverId
+                    index:(int)romIndex
+               intoBuffer:(void *)buffer
+             bufferLength:(int *)length
+{
+    if (driverId >= nBurnDrvCount) {
+        return 1;
+    }
+    
+    struct BurnRomInfo info;
+    if (pDriver[driverId]->GetRomInfo(&info, romIndex)) {
+        return 1;
+    }
+    
+    NSDictionary *cacheContents = [romCache objectForKey:@(info.nCrc)];
+    if (cacheContents == nil) {
+        return 1;
+    }
+    
+    NSString *path = [cacheContents objectForKey:FXROMCacheFoundPathKey];
+    NSUInteger uncompressedLength = [[cacheContents objectForKey:FXROMCacheROMLengthKey] unsignedIntegerValue];
+    NSUInteger foundCRC = [[cacheContents objectForKey:FXROMCacheFoundCRCKey] unsignedIntegerValue];
+    
+    NSError *error = NULL;
+    // FIXME: keep files open during the loading phase
+    FXZip *zipFile = [[FXZip alloc] initWithPath:path
+                                           error:&error];
+    
+    if (error != NULL) {
+        return 1;
+    }
+    
+    UInt32 bytesRead = [zipFile readFileWithCRC:foundCRC
+                                     intoBuffer:buffer
+                                   bufferLength:uncompressedLength
+                                          error:&error];
+    
+    if (error != NULL) {
+        if (bytesRead > -1) {
+            if (length != NULL) {
+                *length = bytesRead;
+            }
+            
+            return 2;
+        }
+        
+        return 1;
+    }
+    
+    if (length != NULL) {
+        *length = bytesRead;
+    }
+    
+    NSLog(@"%d/%d found in %@, read %d bytes", driverId, romIndex, path, bytesRead);
+    
+    return 0;
+}
+
 @end
+
+#pragma mark - FinalBurn callbacks
+
+int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i)
+{
+    return [sharedInstance loadROMOfDriver:nBurnDrvActive
+                                     index:i
+                                intoBuffer:Dest
+                              bufferLength:pnWrote];
+}

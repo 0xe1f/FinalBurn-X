@@ -29,6 +29,9 @@
 @interface FXZip ()
 
 - (void)invalidateEntryCache;
+- (BOOL)locateFileWithCRC:(NSUInteger)crc
+                    error:(NSError **)error;
+
 + (NSError *)newErrorWithDescription:(NSString *)desc
                                 code:(NSInteger)errorCode;
 
@@ -100,25 +103,119 @@
     return matching;
 }
 
+- (BOOL)locateFileWithCRC:(NSUInteger)crc
+                    error:(NSError **)error
+{
+    int rv = unzGoToFirstFile(self->zipFile);
+    if (rv != UNZ_OK) {
+        if (error != NULL) {
+            *error = [FXZip newErrorWithDescription:@"Error rewinding to first file in archive"
+                                               code:FXErrorNavigatingZip];
+        }
+        
+        return NO;
+    }
+    
+    NSUInteger count = [self entryCount];
+    for (int i = 0; i < count; i++) {
+        unz_file_info fileInfo;
+        if (unzGetCurrentFileInfo(self->zipFile, &fileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK) {
+            continue;
+        }
+        
+        if (crc == fileInfo.crc) {
+            return YES;
+        }
+        
+        rv = unzGoToNextFile(self->zipFile);
+        if (rv != UNZ_OK) {
+            if (error != NULL) {
+                *error = [FXZip newErrorWithDescription:@"Error navigating files in the archive"
+                                                   code:FXErrorNavigatingZip];
+            }
+            
+            return NO;
+        }
+    }
+    
+    return NO;
+}
+
+- (UInt32)readFileWithCRC:(NSUInteger)crc
+               intoBuffer:(void *)buffer
+             bufferLength:(NSUInteger)length
+                    error:(NSError **)error
+{
+    UInt32 bytesRead = -1;
+    NSError *localError = NULL;
+    
+    if (![self locateFileWithCRC:crc
+                           error:&localError]) {
+        if (error != NULL && localError != NULL) {
+            *error = localError;
+        }
+        
+        return bytesRead;
+    }
+    
+    int rv = unzOpenCurrentFile(self->zipFile);
+    if (rv != UNZ_OK) {
+        if (error != NULL) {
+            *error = [FXZip newErrorWithDescription:@"Error opening compressed file"
+                                               code:FXErrorOpeningCompressedFile];
+        }
+        
+        return bytesRead;
+    }
+    
+    rv = unzReadCurrentFile(self->zipFile, buffer, (UInt32)length);
+    if (rv < 0) {
+        if (error != NULL) {
+            *error = [FXZip newErrorWithDescription:@"Error reading compressed file"
+                                               code:FXErrorReadingCompressedFile];
+        }
+        
+        return bytesRead;
+    }
+    
+    bytesRead = rv;
+    
+    rv = unzCloseCurrentFile(self->zipFile);
+    if (rv == UNZ_CRCERROR) {
+        if (error != NULL) {
+            *error = [FXZip newErrorWithDescription:@"CRC error"
+                                               code:FXErrorReadingCompressedFile];
+        }
+    }
+    
+    return bytesRead;
+}
+
+- (NSUInteger)entryCount
+{
+    NSUInteger count = 0;
+    
+    if (self->zipFile != NULL) {
+        unz_global_info globalInfo;
+        unzGetGlobalInfo(self->zipFile, &globalInfo);
+        count = globalInfo.number_entry;
+    }
+    
+    return count;
+}
+
 - (NSArray *)entries
 {
-    if (entryCache == nil) {
+    if (self->entryCache == nil) {
         NSMutableArray *entries = [[NSMutableArray alloc] init];
         if (self->zipFile != NULL) {
-            // Get the global info block
-            unz_global_info globalInfo;
-            memset(&globalInfo, 0, sizeof(globalInfo));
-            unzGetGlobalInfo(self->zipFile, &globalInfo);
-            
             // Loop through files
-            unsigned long n = globalInfo.number_entry;
+            NSUInteger n = [self entryCount];
             for (int i = 0, rv = unzGoToFirstFile(self->zipFile);
                  i < n && rv == UNZ_OK;
                  i++, rv = unzGoToNextFile(self->zipFile)) {
                 // Get individual file record
                 unz_file_info fileInfo;
-                memset(&fileInfo, 0, sizeof(fileInfo));
-                
                 if (unzGetCurrentFileInfo(self->zipFile, &fileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK) {
                     continue;
                 }
@@ -147,10 +244,10 @@
             }
         }
         
-        entryCache = entries;
+        self->entryCache = entries;
     }
     
-    return entryCache;
+    return [NSArray arrayWithArray:self->entryCache];
 }
 
 - (void)dealloc

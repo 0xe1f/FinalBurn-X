@@ -23,15 +23,23 @@
 #import <Foundation/Foundation.h>
 
 @interface FXLoader : NSObject
+{
+    @private
+    NSMutableDictionary *romCache;
+}
 
+- (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
-
 - (NSArray *)scanROMSetIndex:(int)romIndex
                        error:(NSError **)error;
+
++ (id)sharedLoader;
 
 @end
 
 enum {
     FXRomSetUnrecognized = -100,
 };
+
+int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i);

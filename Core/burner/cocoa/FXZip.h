@@ -38,12 +38,20 @@
 - (instancetype)initWithPath:(NSString *)path
                        error:(NSError **)error;
 - (NSArray *)entries;
+- (NSUInteger)entryCount;
 - (FXROM *)findROMWithCRC:(NSUInteger)crc;
 - (FXROM *)findROMNamed:(NSString *)filename;
 - (FXROM *)findROMNamedAnyOf:(NSArray *)filenames;
+- (UInt32)readFileWithCRC:(NSUInteger)crc
+               intoBuffer:(void *)buffer
+             bufferLength:(NSUInteger)length
+                    error:(NSError **)error;
 
 @end
 
 enum {
-    FXErrorLoadingZip = -100,
+    FXErrorLoadingZip            = -100,
+    FXErrorNavigatingZip         = -101,
+    FXErrorOpeningCompressedFile = -102,
+    FXErrorReadingCompressedFile = -103,
 };

@@ -7,17 +7,15 @@ char szAppRomPaths[DIRS_MAX][MAX_PATH] = {{"/usr/local/share/roms/"},{"roms/"}, 
 
 static bool bSaveRAM = false;
 
+extern int cocoaLoadROMCallback(unsigned char* Dest, int* pnWrote, int i);
+
 static int DoLibInit()					// Do Init of Burn library driver
 {
 	int nRet;
 
-	BzipOpen(false);
-
-	//ProgressCreate();
+    BurnExtLoadRom = cocoaLoadROMCallback;
 
 	nRet = BurnDrvInit();
-
-	BzipClose();
 
 	if (nRet) {
 		return 1;
@@ -32,8 +30,6 @@ static int DrvLoadRom(unsigned char* Dest, int* pnWrote, int i)
 {
 	int nRet;
 
-	BzipOpen(false);
-
 	if ((nRet = BurnExtLoadRom(Dest, pnWrote, i)) != 0) {
 		char szText[256] = "";
 		char* pszFilename;
@@ -42,11 +38,7 @@ static int DrvLoadRom(unsigned char* Dest, int* pnWrote, int i)
 		sprintf(szText, "Error loading %s, requested by %s.\nThe emulation will likely suffer problems.", pszFilename, BurnDrvGetTextA(0));
 	}
 
-	BzipClose();
-
 	BurnExtLoadRom = DrvLoadRom;
-
-	//ScrnTitle();
 
 	return nRet;
 }
@@ -126,7 +118,7 @@ int DrvExit()
 
 int ProgressUpdateBurner(double dProgress, const TCHAR* pszText, bool bAbs)
 {
-	printf(".");
+	printf(". %s\n", pszText);
 	return 0;
 }
 

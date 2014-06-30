@@ -51,39 +51,28 @@
 {
 	BurnLibInit();
     
-    const char *romName = [name UTF8String];
-    
-    int romIndex = -1;
-    for (int i = 0; i < nBurnDrvCount; i++) {
-        nBurnDrvActive = i;
-        nBurnDrvSelect[0] = i;
-        
-        if (strcmp(BurnDrvGetTextA(DRV_NAME), romName) == 0) {
-            romIndex = i;
-            break;
-        }
-    }
-    
-    if (romIndex < 0) {
+    int driverId = [[FXLoader sharedLoader] driverIdForName:name];
+    if (driverId < 0) {
         if (error != NULL) {
             *error = [self newErrorWithDescription:@"ROM set not recognized"
                                               code:ERROR_ROM_SET_UNRECOGNIZED];
         }
         return NO;
     }
-
-    NSLog(@"%@ located at index %d", name, romIndex);
+    
+    NSArray *romSetStatuses = [[FXLoader sharedLoader] scanROMSetIndex:driverId
+                                                                 error:error];
+    
+    nBurnDrvActive = driverId;
+    nBurnDrvSelect[0] = driverId;
+    
+    NSLog(@"%@ located at index %d", name, driverId);
     
 	InputInit();
     
 	bBurnUseASMCPUEmulation = 0;
  	bCheatsAllowed = false;
-	DrvInit(romIndex, 0);
-    
-    FXLoader *loader = [[FXLoader alloc] init];
-    
-    NSArray *romSetStatuses = [loader scanROMSetIndex:romIndex
-                                                error:(NSError **)error];
+	DrvInit(driverId, 0);
     
     [romSetStatuses enumerateObjectsUsingBlock:^(id setStatus, NSUInteger idx, BOOL *stop) {
         if ([setStatus isArchiveFound]) {
@@ -93,7 +82,7 @@
                 NSLog(@"++ rom set: %@ found in %@, but is incomplete", [setStatus archiveName], [setStatus path]);
             }
         } else {
-            NSLog(@"-- rom set: %@ not found", [setStatus archiveName]);
+            NSLog(@"-- rom set: %@ (%ld) not found", [setStatus archiveName], idx);
         }
         
         [[setStatus ROMStatuses] enumerateObjectsUsingBlock:^(id status, NSUInteger idx, BOOL *stop) {
