@@ -23,27 +23,29 @@
 #import "FXLoader.h"
 
 #import "FXZip.h"
-#import "FXROMInfo.h"
-#import "FXROMSetStatus.h"
-#import "FXROMStatus.h"
 
 #include "unzip.h"
 #include "burner.h"
 #include "burnint.h"
 #include "driverlist.h"
 
-static NSString * const FXROMCacheFoundPathKey = @"foundPath";
-static NSString * const FXROMCacheFoundCRCKey  = @"foundCRC";
-static NSString * const FXROMCacheROMLengthKey = @"romLength";
-
 static FXLoader *sharedInstance = NULL;
+
+@interface FXLoader()
+
+- (NSArray *)componentsForDriver:(int)driverId
+                           error:(NSError **)error;
+- (NSArray *)knownAliasesForDriverId:(int)driverId
+                            romIndex:(int)romIndex;
+
+@end
 
 @implementation FXLoader
 
 - (instancetype)init
 {
     if (self = [super init]) {
-        romCache = [[NSMutableDictionary alloc] init];
+        self->driverAuditCache = [[NSMutableDictionary alloc] init];
     }
     
     return self;
@@ -84,10 +86,29 @@ static FXLoader *sharedInstance = NULL;
     return driverId;
 }
 
-- (NSArray *)componentsForDriver:(int)romIndex
+- (NSArray *)knownAliasesForDriverId:(int)driverId
+                            romIndex:(int)romIndex
+{
+    NSMutableArray *aliases = [[NSMutableArray alloc] init];
+    for (int aliasIndex = 0; aliasIndex < 0x10000; aliasIndex++) {
+        char *cAlias = NULL;
+        if (pDriver[driverId]->GetRomName(&cAlias, romIndex, aliasIndex)) {
+            break;
+        }
+        
+        NSString *alias = [NSString stringWithCString:cAlias
+                                             encoding:NSUTF8StringEncoding];
+        
+        [aliases addObject:alias];
+    }
+    
+    return aliases;
+}
+
+- (NSArray *)componentsForDriver:(int)driverId
                            error:(NSError **)error
 {
-    if (romIndex >= nBurnDrvCount) {
+    if (driverId >= nBurnDrvCount) {
         if (error != NULL) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -100,34 +121,23 @@ static FXLoader *sharedInstance = NULL;
     
     struct BurnRomInfo ri;
     for (int i = 0; ; i++) {
-        if (pDriver[romIndex]->GetRomInfo(&ri, i)) {
+        if (pDriver[driverId]->GetRomInfo(&ri, i)) {
             break;
         }
         
-        FXROMInfo *info = [[FXROMInfo alloc] initWithBurnROMInfo:&ri];
+        NSValue *value = [NSValue valueWithBytes:&ri
+                                        objCType:@encode(struct BurnRomInfo)];
         
-        for (int aliasIndex = 0; aliasIndex < 0x10000; aliasIndex++) {
-            char *cAlias = NULL;
-            if (pDriver[romIndex]->GetRomName(&cAlias, i, aliasIndex)) {
-                break;
-            }
-            
-            NSString *alias = [NSString stringWithCString:cAlias
-                                                 encoding:NSUTF8StringEncoding];
-            
-            [info addKnownAlias:alias];
-        }
-        
-        [array addObject:info];
+        [array addObject:value];
     }
     
     return array;
 }
 
-- (NSArray *)archiveNamesForDriver:(int)romIndex
+- (NSArray *)archiveNamesForDriver:(int)driverId
                              error:(NSError **)error
 {
-    if (romIndex >= nBurnDrvCount) {
+    if (driverId >= nBurnDrvCount) {
         if (error != NULL) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -139,24 +149,24 @@ static FXLoader *sharedInstance = NULL;
     NSMutableArray *array = [NSMutableArray array];
     for (int i = 0; i < BZIP_MAX; i++) {
         char *name = NULL;
-        if (pDriver[romIndex]->GetZipName) {
-            if (pDriver[romIndex]->GetZipName(&name, i)) {
+        if (pDriver[driverId]->GetZipName) {
+            if (pDriver[driverId]->GetZipName(&name, i)) {
                 break;
             }
         } else {
             if (i == 0) {
-                name = pDriver[romIndex]->szShortName;
+                name = pDriver[driverId]->szShortName;
             } else {
-                UINT32 j = pDriver[romIndex]->szBoardROM ? 1 : 0;
+                UINT32 j = pDriver[driverId]->szBoardROM ? 1 : 0;
                 
                 // Try BIOS/board ROMs first
                 if (i == 1 && j == 1) {
-                    name = pDriver[romIndex]->szBoardROM;
+                    name = pDriver[driverId]->szBoardROM;
                 }
                 
                 if (name == NULL) {
                     // Find the immediate parent
-                    int drv = romIndex;
+                    int drv = driverId;
                     while (j < i) {
                         char *pszParent = pDriver[drv]->szParent;
                         name = NULL;
@@ -191,36 +201,58 @@ static FXLoader *sharedInstance = NULL;
     return array;
 }
 
-- (NSArray *)scanROMSetIndex:(int)romIndex
-                       error:(NSError **)error
+- (FXDriverAudit *)auditDriver:(int)driverId
+                         error:(NSError **)error
 {
+    if (driverId >= nBurnDrvCount) {
+        if (error != NULL) {
+            *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
+                                                  code:FXRomSetUnrecognized];
+        }
+        
+        return nil;
+    }
+    
+    // Check the cache
+    FXDriverAudit *driverAudit = [self->driverAuditCache objectForKey:@(driverId)];
+    if (driverAudit != nil) {
+        return driverAudit;
+    }
+    
     // FIXME
     NSArray *romPaths = @[ @"/usr/local/share/roms/",
                            @"roms/", ];
     
     // Get list of archive names for driver
     NSError *archiveError = NULL;
-    NSArray *archiveNames = [self archiveNamesForDriver:romIndex
+    NSArray *archiveNames = [self archiveNamesForDriver:driverId
                                                   error:&archiveError];
     
     if (archiveError != NULL) {
-        *error = archiveError;
+        if (error != NULL) {
+            *error = archiveError;
+        }
+        
         return nil;
     }
-    
+
     // Get list of components (ROM files) for driver
-    NSError *compError = NULL;
-    NSArray *driverComponents = [self componentsForDriver:romIndex
-                                                    error:&compError];
+    NSError *componentError = NULL;
+    NSArray *driverComponents = [self componentsForDriver:driverId
+                                                    error:&componentError];
     
-    if (compError != NULL) {
-        *error = compError;
+    if (componentError != NULL) {
+        if (error != NULL) {
+            *error = componentError;
+        }
+        
         return nil;
     }
     
-    __block NSError *localErr = NULL;
-    
-    NSMutableArray *setStatuses = [[NSMutableArray alloc] init];
+    // Create a new audit object
+    driverAudit = [[FXDriverAudit alloc] init];
+    [driverAudit setDriverId:driverId];
+    [driverAudit setArchiveName:[archiveNames firstObject]];
     
     // See if any of archives are loadable
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {
@@ -230,66 +262,61 @@ static FXLoader *sharedInstance = NULL;
             BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:fullPath
                                                                isDirectory:NULL];
             
-            FXROMSetStatus *setStatus = [[FXROMSetStatus alloc] initWithArchiveNamed:archiveName];
-            
             if (exists) {
-                [setStatus setPath:fullPath];
-                
                 // Open the file, read its table of contents
+                NSError *zipError = NULL;
                 FXZip *zip = [[FXZip alloc] initWithPath:fullPath
-                                                   error:&localErr];
+                                                   error:&zipError];
                 
-                if (localErr == NULL) {
-                    [driverComponents enumerateObjectsUsingBlock:^(FXROMInfo *romInfo, NSUInteger idx, BOOL *stop) {
-                        FXROMStatus *status = [[FXROMStatus alloc] init];
-                        [status setFilenameNeeded:[[romInfo knownAliases] firstObject]];
-                        [status setLengthNeeded:[romInfo length]];
-                        [status setCRCNeeded:[romInfo crc]];
-                        [status setType:[romInfo type]];
+                if (zipError == NULL) {
+                    [driverComponents enumerateObjectsUsingBlock:^(NSValue *value, NSUInteger idx, BOOL *stop) {
+                        // Extract the BurnRomInfo struct
+                        struct BurnRomInfo ri;
+                        [value getValue:&ri];
                         
-                        FXROM *matchByCRC = [zip findROMWithCRC:[romInfo crc]];
-                        if (matchByCRC == nil) {
-                            // File not found by CRC. Check by known aliases
-                            FXROM *matchByAlias = [zip findROMNamedAnyOf:[romInfo knownAliases]];
-                            if (matchByAlias == nil) {
-                                // File not found by known aliases
-                            } else {
-                                // Found by alias
-                                
-                                // Update cache
-                                [romCache setObject:@{FXROMCacheFoundPathKey: fullPath,
-                                                      FXROMCacheFoundCRCKey: @([matchByAlias CRC]),
-                                                      FXROMCacheROMLengthKey: @([romInfo length]), }
-                                             forKey:@([romInfo crc])];
-                                
-                                // Update status
-                                [status setFilenameFound:[matchByAlias filename]];
-                                [status setLengthFound:[matchByAlias length]];
-                                [status setCRCFound:[matchByAlias CRC]];
-                            }
-                        } else {
-                            // Update cache
-                            [romCache setObject:@{FXROMCacheFoundPathKey: fullPath,
-                                                  FXROMCacheFoundCRCKey: @([matchByCRC CRC]),
-                                                  FXROMCacheROMLengthKey: @([romInfo length]), }
-                                         forKey:@([romInfo crc])];
-                            
+                        NSArray *knownAliases = [self knownAliasesForDriverId:driverId
+                                                                     romIndex:(int)idx];
+                        
+                        FXROMAudit *romAudit = [[FXROMAudit alloc] init];
+                        [romAudit setFilenameNeeded:[knownAliases firstObject]];
+                        [romAudit setLengthNeeded:ri.nLen];
+                        [romAudit setCRCNeeded:ri.nCrc];
+                        [romAudit setType:ri.nType];
+                        
+                        FXROM *matchByCRC = [zip findROMWithCRC:ri.nCrc];
+                        if (matchByCRC != nil) {
+                            // Found by CRC
                             // Update status
-                            [status setFilenameFound:[matchByCRC filename]];
-                            [status setLengthFound:[matchByCRC length]];
-                            [status setCRCFound:[matchByCRC CRC]];
+                            [romAudit setContainerPath:fullPath];
+                            [romAudit setFilenameFound:[matchByCRC filename]];
+                            [romAudit setLengthFound:[matchByCRC length]];
+                            [romAudit setCRCFound:[matchByCRC CRC]];
+                        } else {
+                            // File not found by CRC. Check by known aliases
+                            FXROM *matchByAlias = [zip findROMNamedAnyOf:knownAliases];
+                            if (matchByAlias != nil) {
+                                // Found by alias
+                                // Update status
+                                [romAudit setContainerPath:fullPath];
+                                [romAudit setFilenameFound:[matchByAlias filename]];
+                                [romAudit setLengthFound:[matchByAlias length]];
+                                [romAudit setCRCFound:[matchByAlias CRC]];
+                            } else {
+                                // File not found by any of known aliases
+                            }
                         }
                         
-                        [setStatus addROMStatus:status];
+                        [driverAudit addROMAudit:romAudit];
                     }];
                 }
             }
-            
-            [setStatuses addObject:setStatus];
         }];
     }];
     
-    return setStatuses;
+    [self->driverAuditCache setObject:driverAudit
+                               forKey:@(driverId)];
+    
+    return driverAudit;
 }
 
 - (UInt32)loadROMOfDriver:(int)driverId
@@ -306,14 +333,19 @@ static FXLoader *sharedInstance = NULL;
         return 1;
     }
     
-    NSDictionary *cacheContents = [romCache objectForKey:@(info.nCrc)];
-    if (cacheContents == nil) {
+    FXDriverAudit *driverAudit = [self->driverAuditCache objectForKey:@(driverId)];
+    if (driverAudit == NULL) {
         return 1;
     }
     
-    NSString *path = [cacheContents objectForKey:FXROMCacheFoundPathKey];
-    NSUInteger uncompressedLength = [[cacheContents objectForKey:FXROMCacheROMLengthKey] unsignedIntegerValue];
-    NSUInteger foundCRC = [[cacheContents objectForKey:FXROMCacheFoundCRCKey] unsignedIntegerValue];
+    FXROMAudit *romAudit = [driverAudit ROMAuditByNeededCRC:info.nCrc];
+    if (romAudit == nil || [romAudit status] == FXROMAuditMissing) {
+        return 1;
+    }
+    
+    NSString *path = [romAudit containerPath];
+    NSUInteger uncompressedLength = [romAudit lengthFound];
+    NSUInteger foundCRC = [romAudit CRCFound];
     
     NSError *error = NULL;
     // FIXME: keep files open during the loading phase
@@ -348,6 +380,11 @@ static FXLoader *sharedInstance = NULL;
     NSLog(@"%d/%d found in %@, read %d bytes", driverId, romIndex, path, bytesRead);
     
     return 0;
+}
+
+- (void)clearCache
+{
+    [self->driverAuditCache removeAllObjects];
 }
 
 @end

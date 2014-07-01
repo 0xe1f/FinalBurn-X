@@ -22,17 +22,19 @@
  */
 #import <Foundation/Foundation.h>
 
+#import "FXDriverAudit.h"
+
 @interface FXLoader : NSObject
 {
     @private
-    NSMutableDictionary *romCache;
+    NSMutableDictionary *driverAuditCache;
 }
 
 - (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
-- (NSArray *)scanROMSetIndex:(int)romIndex
-                       error:(NSError **)error;
+- (FXDriverAudit *)auditDriver:(int)driverId
+                         error:(NSError **)error;
 
 + (id)sharedLoader;
 

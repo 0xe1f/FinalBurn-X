@@ -12,8 +12,7 @@
 #import "FXEmulatorController.h"
 #import "FXRunLoop.h"
 #import "FXLoader.h"
-#import "FXROMSetStatus.h"
-#import "FXROMStatus.h"
+#import "FXDriverAudit.h"
 
 #include "burner.h"
 
@@ -21,6 +20,9 @@
 
 - (NSError *)newErrorWithDescription:(NSString *)desc
                                 code:(NSInteger)errorCode;
+- (BOOL)initializeDriver:(int)driverId
+                   error:(NSError **)error;
+- (BOOL)cleanupDriver;
 
 @end
 
@@ -29,7 +31,6 @@
 - (instancetype)init
 {
     if (self = [super init]) {
-        
     }
     
     return self;
@@ -46,6 +47,78 @@
                            userInfo:userInfo];
 }
 
+- (BOOL)initializeDriver:(int)driverId
+                   error:(NSError **)error
+{
+    [self cleanupDriver];
+
+#ifdef DEBUG
+    NSLog(@"Initializing driver...");
+#endif
+
+	AudSoundInit();
+    
+    nBurnDrvActive = driverId;
+	nBurnDrvSelect[0] = driverId;
+    
+	nMaxPlayers = BurnDrvGetMaxPlayers();
+	GameInpInit();
+    
+	ConfigGameLoad(true);
+	InputMake(true);
+    
+	GameInpDefault();
+    
+    BurnExtLoadRom = cocoaLoadROMCallback;
+    
+	if (BurnDrvInit()) {
+        if (error != NULL) {
+            *error = [self newErrorWithDescription:@"Error initializing core driver"
+                                              code:FXErrorInitializingCoreDriver];
+        }
+        
+		BurnDrvExit();
+        return NO;
+	}
+    
+	bDrvOkay = 1;
+	nBurnLayer = 0xFF;
+    
+    return YES;
+}
+
+- (BOOL)cleanupDriver
+{
+	if (bDrvOkay) {
+		VidExit();
+        AudSoundExit();
+        
+		if (nBurnDrvSelect[0] < nBurnDrvCount) {
+			ConfigGameSave(bSaveInputs);
+            
+			GameInpExit();				// Exit game input
+			BurnDrvExit();				// Exit the driver
+		}
+	}
+    
+	BurnExtLoadRom = NULL;
+    
+	bDrvOkay = 0;					// Stop using the BurnDrv functions
+    
+	if (bAudOkay) {
+        // Write silence into the sound buffer
+		memset(nAudNextSound, 0, nAudSegLen << 2);
+	}
+    
+	nBurnDrvSelect[0] = ~0U;			// no driver selected
+    
+#ifdef DEBUG
+    NSLog(@"Driver cleaned up");
+#endif
+    
+	return YES;
+}
+
 - (BOOL)runROM:(NSString *)name
          error:(NSError **)error
 {
@@ -55,16 +128,13 @@
     if (driverId < 0) {
         if (error != NULL) {
             *error = [self newErrorWithDescription:@"ROM set not recognized"
-                                              code:ERROR_ROM_SET_UNRECOGNIZED];
+                                              code:FXErrorROMSetUnrecognized];
         }
         return NO;
     }
     
-    NSArray *romSetStatuses = [[FXLoader sharedLoader] scanROMSetIndex:driverId
-                                                                 error:error];
-    
-    nBurnDrvActive = driverId;
-    nBurnDrvSelect[0] = driverId;
+    FXDriverAudit *driverAudit = [[FXLoader sharedLoader] auditDriver:driverId
+                                                                error:error];
     
     NSLog(@"%@ located at index %d", name, driverId);
     
@@ -72,29 +142,27 @@
     
 	bBurnUseASMCPUEmulation = 0;
  	bCheatsAllowed = false;
-	DrvInit(driverId, 0);
     
-    [romSetStatuses enumerateObjectsUsingBlock:^(id setStatus, NSUInteger idx, BOOL *stop) {
-        if ([setStatus isArchiveFound]) {
-            if ([setStatus isComplete]) {
-                NSLog(@"++ rom set: %@ found in %@ and is complete", [setStatus archiveName], [setStatus path]);
-            } else {
-                NSLog(@"++ rom set: %@ found in %@, but is incomplete", [setStatus archiveName], [setStatus path]);
-            }
-        } else {
-            NSLog(@"-- rom set: %@ (%ld) not found", [setStatus archiveName], idx);
-        }
-        
-        [[setStatus ROMStatuses] enumerateObjectsUsingBlock:^(id status, NSUInteger idx, BOOL *stop) {
-            NSLog(@"%@", [status message]);
-        }];
+    if (![self initializeDriver:driverId
+                          error:error]) {
+        return NO;
+    }
+    
+    if ([driverAudit isPerfect]) {
+        NSLog(@"++ rom set: %@ found and is perfect", [driverAudit archiveName]);
+    } else {
+        NSLog(@"++ rom set: %@ found, but is incomplete", [driverAudit archiveName]);
+    }
+    
+    [[driverAudit ROMAudits] enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
+        NSLog(@"%@", [romAudit message]);
     }];
     
     [[[[AKAppDelegate sharedInstance] emulator] runLoop] run];
     
 	InputExit();
     
-	DrvExit();
+    [self cleanupDriver];
 	BurnLibExit();
     
 	return YES;

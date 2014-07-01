@@ -22,28 +22,21 @@
  */
 #import <Foundation/Foundation.h>
 
-struct BurnRomInfo;
+#import "FXROMAudit.h"
 
-@interface FXROMInfo : NSObject
+@interface FXDriverAudit : NSObject
 {
     @private
-    NSMutableArray *knownAliases;
+    NSMutableDictionary *romAuditsByNeededCRC;
 }
 
-- (instancetype)initWithBurnROMInfo:(const struct BurnRomInfo *)info;
+@property (nonatomic, strong) NSString *archiveName;
+@property (nonatomic, assign) int driverId;
 
-- (void)addKnownAlias:(NSString *)alias;
-- (NSArray *)knownAliases;
+- (void)addROMAudit:(FXROMAudit *)romAudit;
 
-@property (nonatomic, assign) NSUInteger length;
-@property (nonatomic, assign) NSUInteger crc;
-@property (nonatomic, assign) NSUInteger type;
+- (NSArray *)ROMAudits;
+- (FXROMAudit *)ROMAuditByNeededCRC:(NSUInteger)crc;
+- (BOOL)isPerfect;
 
 @end
-
-enum {
-    FXROMTypeGraphics  = 0x01,
-    FXROMTypeSound     = 0x02,
-    FXROMTypeEssential = 0x10,
-    FXROMTypeBIOS      = 0x80,
-};

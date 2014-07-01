@@ -1,9 +1,10 @@
 #include "burner.h"
 
 int bDrvSaveAll=0;
-int nAppVirtualFps = 6000;			// App fps * 100
+int nAppVirtualFps = 6000; // App fps * 100
 bool bDoIpsPatch;
 bool bRunPause=0;
+int bDrvOkay = 0;
 bool bAlwaysProcessKeyboardInput = 0;
 TCHAR szAppHiscorePath[MAX_PATH];
 TCHAR szAppSamplesPath[MAX_PATH];

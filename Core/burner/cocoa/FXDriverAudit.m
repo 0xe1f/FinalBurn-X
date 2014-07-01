@@ -20,60 +20,45 @@
  **
  ******************************************************************************
  */
-#import "FXROMSetStatus.h"
+#import "FXDriverAudit.h"
 
-#import "FXROMInfo.h"
-
-@implementation FXROMSetStatus
+@implementation FXDriverAudit
 
 - (instancetype)init
 {
     if (self = [super init]) {
-        self->romStatuses = [[NSMutableArray alloc] init];
+        self->romAuditsByNeededCRC = [[NSMutableDictionary alloc] init];
     }
     
     return self;
 }
 
-- (instancetype)initWithArchiveNamed:(NSString *)archiveName
+- (void)addROMAudit:(FXROMAudit *)romAudit
 {
-    if (self = [self init]) {
-        [self setArchiveName:archiveName];
-    }
-    
-    return self;
+    [self->romAuditsByNeededCRC setObject:romAudit
+                                   forKey:@([romAudit CRCNeeded])];
 }
 
-- (void)addROMStatus:(FXROMStatus *)romStatus
+- (FXROMAudit *)ROMAuditByNeededCRC:(NSUInteger)crc
 {
-    [self->romStatuses addObject:romStatus];
+    return [self->romAuditsByNeededCRC objectForKey:@(crc)];
 }
 
-- (BOOL)isArchiveFound
+- (NSArray *)ROMAudits
 {
-    return [self path] != nil;
+    return [self->romAuditsByNeededCRC allValues];
 }
 
-- (NSArray *)ROMStatuses;
+- (BOOL)isPerfect
 {
-    return [NSArray arrayWithArray:self->romStatuses];
-}
-
-- (BOOL)isComplete
-{
-    if ([self->romStatuses count] < 1) {
-        return NO;
-    }
-    
-    __block BOOL complete = YES;
-    [self->romStatuses enumerateObjectsUsingBlock:^(FXROMStatus *status, NSUInteger idx, BOOL *stop) {
-        if ([status status] != FXROMStatusOK) {
-            complete = NO;
+    __block BOOL isPerfect = YES;
+    [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
+        if ([romAudit status] != FXROMAuditOK) {
+            isPerfect = NO;
             *stop = YES;
         }
     }];
     
-    return complete;
+    return isPerfect;
 }
-
 @end

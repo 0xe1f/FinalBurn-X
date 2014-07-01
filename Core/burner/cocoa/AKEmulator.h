@@ -13,6 +13,9 @@
 - (BOOL)runROM:(NSString *)name
          error:(NSError **)error;
 
-#define ERROR_ROM_SET_UNRECOGNIZED -100
-
 @end
+
+enum {
+    FXErrorInitializingCoreDriver = -100,
+    FXErrorROMSetUnrecognized     = -101,
+};

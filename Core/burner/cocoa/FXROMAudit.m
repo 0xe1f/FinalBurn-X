@@ -20,21 +20,21 @@
  **
  ******************************************************************************
  */
-#import "FXROMStatus.h"
+#import "FXROMAudit.h"
 
-@implementation FXROMStatus
+@implementation FXROMAudit
 
 - (NSInteger)status
 {
     if ([self filenameFound] == nil) {
-        return FXROMStatusMissing;
+        return FXROMAuditMissing;
     } else {
         if ([self CRCNeeded] == [self CRCFound]) {
-            return FXROMStatusOK;
+            return FXROMAuditOK;
         } else if ([self lengthFound] != [self lengthNeeded]) {
-            return FXROMStatusBadLength;
+            return FXROMAuditBadLength;
         } else {
-            return FXROMStatusBadCRC;
+            return FXROMAuditBadCRC;
         }
     }
 }
@@ -43,19 +43,19 @@
 {
     NSString *message = nil;
     switch ([self status]) {
-        case FXROMStatusMissing:
+        case FXROMAuditMissing:
             message = [NSString stringWithFormat:NSLocalizedString(@"%@ not found", @""),
                        [self filenameNeeded]];
             break;
-        case FXROMStatusBadCRC:
+        case FXROMAuditBadCRC:
             message = [NSString stringWithFormat:NSLocalizedString(@"%@ has an invalid checksum (wanted: %d; found: %d)", @""),
                        [self filenameFound], [self CRCNeeded], [self CRCFound]];
             break;
-        case FXROMStatusBadLength:
+        case FXROMAuditBadLength:
             message = [NSString stringWithFormat:NSLocalizedString(@"%@ has an invalid length (wanted: %d; found: %d)", @""),
                        [self filenameFound], [self lengthNeeded], [self lengthFound]];
             break;
-        case FXROMStatusOK:
+        case FXROMAuditOK:
             message = [NSString stringWithFormat:NSLocalizedString(@"%@ is OK", @""),
                        [self filenameFound]];
             break;

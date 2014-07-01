@@ -45,12 +45,8 @@ bool AppProcessKeyboardInput();
 
 // drv.cpp
 extern int bDrvOkay; // 1 if the Driver has been initted okay, and it's okay to use the BurnDrv functions
-extern char szAppRomPaths[DIRS_MAX][MAX_PATH];
 int DrvInit(int nDrvNum, bool bRestore);
-int DrvInitCallback(); // Used when Burn library needs to load a game. DrvInit(nBurnSelect, false)
 int DrvExit();
-int ProgressUpdateBurner(double dProgress, const TCHAR* pszText, bool bAbs);
-int AppError(TCHAR* szText, int bWarning);
 
 //inpdipsw.cpp
 void InpDIPSWResetDIPs();

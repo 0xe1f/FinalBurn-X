@@ -22,12 +22,12 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXROMInfo.h"
+@interface FXROMAudit : NSObject
 
-@interface FXROMStatus : NSObject
+@property (nonatomic, copy) NSString *containerPath;
 
-@property (nonatomic, strong) NSString *filenameNeeded;
-@property (nonatomic, strong) NSString *filenameFound;
+@property (nonatomic, copy) NSString *filenameNeeded;
+@property (nonatomic, copy) NSString *filenameFound;
 @property (nonatomic, assign) NSUInteger lengthNeeded;
 @property (nonatomic, assign) NSUInteger lengthFound;
 @property (nonatomic, assign) NSUInteger CRCNeeded;
@@ -40,8 +40,8 @@
 @end
 
 enum {
-    FXROMStatusOK,
-    FXROMStatusBadCRC,
-    FXROMStatusBadLength,
-    FXROMStatusMissing,
+    FXROMAuditOK,
+    FXROMAuditBadCRC,
+    FXROMAuditBadLength,
+    FXROMAuditMissing,
 };
