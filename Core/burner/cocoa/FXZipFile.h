@@ -22,7 +22,7 @@
  */
 #import <Foundation/Foundation.h>
 
-@interface FXROM : NSObject
+@interface FXZipFile : NSObject
 {
 }
 

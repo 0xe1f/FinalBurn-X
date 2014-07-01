@@ -24,7 +24,7 @@
 
 @interface FXZipArchive ()
 
-- (void)invalidateEntryCache;
+- (void)invalidateFileCache;
 - (BOOL)locateFileWithCRC:(NSUInteger)crc
                     error:(NSError **)error;
 
@@ -52,15 +52,15 @@
     return self;
 }
 
-- (void)invalidateEntryCache
+- (void)invalidateFileCache
 {
-    self->entryCache = nil;
+    self->fileCache = nil;
 }
 
-- (FXROM *)findROMWithCRC:(NSUInteger)crc
+- (FXZipFile *)findFileWithCRC:(NSUInteger)crc
 {
-    __block FXROM *matching = nil;
-    [[self entries] enumerateObjectsUsingBlock:^(FXROM *file, NSUInteger idx, BOOL *stop) {
+    __block FXZipFile *matching = nil;
+    [[self files] enumerateObjectsUsingBlock:^(FXZipFile *file, NSUInteger idx, BOOL *stop) {
         if ([file CRC] == crc) {
             matching = file;
             *stop = YES;
@@ -70,10 +70,10 @@
     return matching;
 }
 
-- (FXROM *)findROMNamed:(NSString *)filename
+- (FXZipFile *)findFileNamed:(NSString *)filename
 {
-    __block FXROM *matching = nil;
-    [[self entries] enumerateObjectsUsingBlock:^(FXROM *file, NSUInteger idx, BOOL *stop) {
+    __block FXZipFile *matching = nil;
+    [[self files] enumerateObjectsUsingBlock:^(FXZipFile *file, NSUInteger idx, BOOL *stop) {
         if ([[file filename] isEqualToString:filename]) {
             matching = file;
             *stop = YES;
@@ -83,11 +83,11 @@
     return matching;
 }
 
-- (FXROM *)findROMNamedAnyOf:(NSArray *)filenames
+- (FXZipFile *)findFileNamedAnyOf:(NSArray *)filenames
 {
-    __block FXROM *matching = nil;
+    __block FXZipFile *matching = nil;
     [filenames enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL *stop) {
-        FXROM *file = [self findROMNamed:filename];
+        FXZipFile *file = [self findFileNamed:filename];
         if (file != nil) {
             matching = file;
             *stop = YES;
@@ -111,7 +111,7 @@
         return NO;
     }
     
-    NSUInteger count = [self entryCount];
+    NSUInteger count = [self fileCount];
     for (int i = 0; i < count; i++) {
         unz_file_info fileInfo;
         if (unzGetCurrentFileInfo(self->zipFile, &fileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK) {
@@ -190,7 +190,7 @@
     return bytesRead;
 }
 
-- (NSUInteger)entryCount
+- (NSUInteger)fileCount
 {
     NSUInteger count = 0;
     
@@ -203,13 +203,13 @@
     return count;
 }
 
-- (NSArray *)entries
+- (NSArray *)files
 {
-    if (self->entryCache == nil) {
+    if (self->fileCache == nil) {
         NSMutableArray *entries = [[NSMutableArray alloc] init];
         if (self->zipFile != NULL) {
             // Loop through files
-            NSUInteger n = [self entryCount];
+            NSUInteger n = [self fileCount];
             for (int i = 0, rv = unzGoToFirstFile(self->zipFile);
                  i < n && rv == UNZ_OK;
                  i++, rv = unzGoToNextFile(self->zipFile)) {
@@ -231,22 +231,22 @@
                     continue;
                 }
                 
-                FXROM *rom = [[FXROM alloc] init];
-                [rom setFilename:[NSString stringWithCString:cFilename
+                FXZipFile *file = [[FXZipFile alloc] init];
+                [file setFilename:[NSString stringWithCString:cFilename
                                                      encoding:NSUTF8StringEncoding]];
-                [rom setCRC:fileInfo.crc];
-                [rom setLength:fileInfo.uncompressed_size];
+                [file setCRC:fileInfo.crc];
+                [file setLength:fileInfo.uncompressed_size];
                 
                 free(cFilename);
                 
-                [entries addObject:rom];
+                [entries addObject:file];
             }
         }
         
-        self->entryCache = entries;
+        self->fileCache = entries;
     }
     
-    return [NSArray arrayWithArray:self->entryCache];
+    return [NSArray arrayWithArray:self->fileCache];
 }
 
 - (void)dealloc

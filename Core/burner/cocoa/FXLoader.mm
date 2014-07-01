@@ -283,7 +283,7 @@ static FXLoader *sharedInstance = NULL;
                         [romAudit setCRCNeeded:ri.nCrc];
                         [romAudit setType:ri.nType];
                         
-                        FXROM *matchByCRC = [zip findROMWithCRC:ri.nCrc];
+                        FXZipFile *matchByCRC = [zip findFileWithCRC:ri.nCrc];
                         if (matchByCRC != nil) {
                             // Found by CRC
                             // Update status
@@ -293,7 +293,7 @@ static FXLoader *sharedInstance = NULL;
                             [romAudit setCRCFound:[matchByCRC CRC]];
                         } else {
                             // File not found by CRC. Check by known aliases
-                            FXROM *matchByAlias = [zip findROMNamedAnyOf:knownAliases];
+                            FXZipFile *matchByAlias = [zip findFileNamedAnyOf:knownAliases];
                             if (matchByAlias != nil) {
                                 // Found by alias
                                 // Update status

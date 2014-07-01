@@ -20,8 +20,8 @@
  **
  ******************************************************************************
  */
-#import "FXROM.h"
+#import "FXZipFile.h"
 
-@implementation FXROM
+@implementation FXZipFile
 
 @end

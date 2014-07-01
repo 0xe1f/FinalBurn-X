@@ -22,7 +22,7 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXROM.h"
+#import "FXZipFile.h"
 
 #include "unzip.h"
 
@@ -30,18 +30,18 @@
 {
     @private
     unzFile zipFile;
-    NSArray *entryCache;
+    NSArray *fileCache;
 }
 
 @property (nonatomic, strong) NSString *path;
 
 - (instancetype)initWithPath:(NSString *)path
                        error:(NSError **)error;
-- (NSArray *)entries;
-- (NSUInteger)entryCount;
-- (FXROM *)findROMWithCRC:(NSUInteger)crc;
-- (FXROM *)findROMNamed:(NSString *)filename;
-- (FXROM *)findROMNamedAnyOf:(NSArray *)filenames;
+- (NSArray *)files;
+- (NSUInteger)fileCount;
+- (FXZipFile *)findFileWithCRC:(NSUInteger)crc;
+- (FXZipFile *)findFileNamed:(NSString *)filename;
+- (FXZipFile *)findFileNamedAnyOf:(NSArray *)filenames;
 - (UInt32)readFileWithCRC:(NSUInteger)crc
                intoBuffer:(void *)buffer
              bufferLength:(NSUInteger)length
