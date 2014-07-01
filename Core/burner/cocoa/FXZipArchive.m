@@ -20,24 +20,17 @@
  **
  ******************************************************************************
  */
-#import "FXZip.h"
+#import "FXZipArchive.h"
 
-#include "unzip.h"
-
-#pragma mark - FXZip
-
-@interface FXZip ()
+@interface FXZipArchive ()
 
 - (void)invalidateEntryCache;
 - (BOOL)locateFileWithCRC:(NSUInteger)crc
                     error:(NSError **)error;
 
-+ (NSError *)newErrorWithDescription:(NSString *)desc
-                                code:(NSInteger)errorCode;
-
 @end
 
-@implementation FXZip
+@implementation FXZipArchive
 
 - (instancetype)initWithPath:(NSString *)path
                        error:(NSError **)error
@@ -49,8 +42,9 @@
             [self setPath:path];
         } else {
             if (error != NULL) {
-                *error = [FXZip newErrorWithDescription:@"Error loading compressed file"
-                                                   code:FXErrorLoadingZip];
+                *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                           code:FXErrorLoadingArchive
+                                       userInfo:@{ NSLocalizedDescriptionKey : @"Error loading archive" }];
             }
         }
     }
@@ -109,8 +103,9 @@
     int rv = unzGoToFirstFile(self->zipFile);
     if (rv != UNZ_OK) {
         if (error != NULL) {
-            *error = [FXZip newErrorWithDescription:@"Error rewinding to first file in archive"
-                                               code:FXErrorNavigatingZip];
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                         code:FXErrorNavigatingArchive
+                                     userInfo:@{ NSLocalizedDescriptionKey : @"Error rewinding to first file in archive" }];
         }
         
         return NO;
@@ -130,8 +125,9 @@
         rv = unzGoToNextFile(self->zipFile);
         if (rv != UNZ_OK) {
             if (error != NULL) {
-                *error = [FXZip newErrorWithDescription:@"Error navigating files in the archive"
-                                                   code:FXErrorNavigatingZip];
+                *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                             code:FXErrorNavigatingArchive
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Error navigating files in the archive" }];
             }
             
             return NO;
@@ -161,8 +157,9 @@
     int rv = unzOpenCurrentFile(self->zipFile);
     if (rv != UNZ_OK) {
         if (error != NULL) {
-            *error = [FXZip newErrorWithDescription:@"Error opening compressed file"
-                                               code:FXErrorOpeningCompressedFile];
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                         code:FXErrorOpeningCompressedFile
+                                     userInfo:@{ NSLocalizedDescriptionKey : @"Error opening compressed file" }];
         }
         
         return bytesRead;
@@ -171,8 +168,9 @@
     rv = unzReadCurrentFile(self->zipFile, buffer, (UInt32)length);
     if (rv < 0) {
         if (error != NULL) {
-            *error = [FXZip newErrorWithDescription:@"Error reading compressed file"
-                                               code:FXErrorReadingCompressedFile];
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                         code:FXErrorReadingCompressedFile
+                                     userInfo:@{ NSLocalizedDescriptionKey : @"Error reading compressed file" }];
         }
         
         return bytesRead;
@@ -183,8 +181,9 @@
     rv = unzCloseCurrentFile(self->zipFile);
     if (rv == UNZ_CRCERROR) {
         if (error != NULL) {
-            *error = [FXZip newErrorWithDescription:@"CRC error"
-                                               code:FXErrorReadingCompressedFile];
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
+                                         code:FXErrorReadingCompressedFile
+                                     userInfo:@{ NSLocalizedDescriptionKey : @"CRC error" }];
         }
     }
     
@@ -256,19 +255,6 @@
         unzClose(self->zipFile);
         self->zipFile = NULL;
     }
-}
-
-#pragma mark - Errors
-
-+ (NSError *)newErrorWithDescription:(NSString *)desc
-                                code:(NSInteger)errorCode
-{
-    NSString *domain = @"org.akop.fbx.Emulation";
-    NSDictionary *userInfo = @{ NSLocalizedDescriptionKey : desc };
-    
-    return [NSError errorWithDomain:domain
-                               code:errorCode
-                           userInfo:userInfo];
 }
 
 @end

@@ -22,7 +22,7 @@
  */
 #import "FXLoader.h"
 
-#import "FXZip.h"
+#import "FXZipArchive.h"
 
 #include "unzip.h"
 #include "burner.h"
@@ -265,8 +265,8 @@ static FXLoader *sharedInstance = NULL;
             if (exists) {
                 // Open the file, read its table of contents
                 NSError *zipError = NULL;
-                FXZip *zip = [[FXZip alloc] initWithPath:fullPath
-                                                   error:&zipError];
+                FXZipArchive *zip = [[FXZipArchive alloc] initWithPath:fullPath
+                                                                 error:&zipError];
                 
                 if (zipError == NULL) {
                     [driverComponents enumerateObjectsUsingBlock:^(NSValue *value, NSUInteger idx, BOOL *stop) {
@@ -349,8 +349,8 @@ static FXLoader *sharedInstance = NULL;
     
     NSError *error = NULL;
     // FIXME: keep files open during the loading phase
-    FXZip *zipFile = [[FXZip alloc] initWithPath:path
-                                           error:&error];
+    FXZipArchive *zipFile = [[FXZipArchive alloc] initWithPath:path
+                                                         error:&error];
     
     if (error != NULL) {
         return 1;

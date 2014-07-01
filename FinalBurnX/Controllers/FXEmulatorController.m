@@ -41,7 +41,7 @@
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:@"sfa3"]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:@"sfa3u"]];
     }
     
     return self;

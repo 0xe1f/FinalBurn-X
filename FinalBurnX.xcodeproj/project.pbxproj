@@ -543,7 +543,7 @@
 		FE9FA3FE19548C1E00F791EB /* FXVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3FD19548C1E00F791EB /* FXVideo.mm */; };
 		FE9FA4011954B97B00F791EB /* FXAudio.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4001954B97B00F791EB /* FXAudio.mm */; };
 		FE9FA4041959E81E00F791EB /* FXLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4031959E81E00F791EB /* FXLoader.mm */; };
-		FE9FA407195BF00500F791EB /* FXZip.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZip.m */; };
+		FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZipArchive.m */; };
 		FE9FA40D195D349B00F791EB /* FXROM.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA40C195D349B00F791EB /* FXROM.m */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F2194C3CFD0039D85F /* cong.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format"; }; };
@@ -1295,8 +1295,8 @@
 		FE9FA4001954B97B00F791EB /* FXAudio.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXAudio.mm; sourceTree = "<group>"; };
 		FE9FA4021959E81E00F791EB /* FXLoader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXLoader.h; sourceTree = "<group>"; };
 		FE9FA4031959E81E00F791EB /* FXLoader.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXLoader.mm; sourceTree = "<group>"; };
-		FE9FA405195BF00500F791EB /* FXZip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZip.h; sourceTree = "<group>"; };
-		FE9FA406195BF00500F791EB /* FXZip.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZip.m; sourceTree = "<group>"; };
+		FE9FA405195BF00500F791EB /* FXZipArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipArchive.h; sourceTree = "<group>"; };
+		FE9FA406195BF00500F791EB /* FXZipArchive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipArchive.m; sourceTree = "<group>"; };
 		FE9FA40B195D349B00F791EB /* FXROM.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXROM.h; sourceTree = "<group>"; };
 		FE9FA40C195D349B00F791EB /* FXROM.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXROM.m; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
@@ -1426,21 +1426,6 @@
 			);
 			name = Resources;
 			path = FinalBurnX/Base.lproj;
-			sourceTree = "<group>";
-		};
-		FE23E4EE195EBD2800429FCA /* ROM */ = {
-			isa = PBXGroup;
-			children = (
-				FE23E4EF1961D06B00429FCA /* FXDriverAudit.h */,
-				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
-				FE9FA4021959E81E00F791EB /* FXLoader.h */,
-				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
-				FE9FA40B195D349B00F791EB /* FXROM.h */,
-				FE9FA40C195D349B00F791EB /* FXROM.m */,
-				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
-				FE23E4F31961D45D00429FCA /* FXROMAudit.m */,
-			);
-			name = ROM;
 			sourceTree = "<group>";
 		};
 		FE505956194BC41E003A2BC7 /* Core */ = {
@@ -2589,20 +2574,27 @@
 		FED10DC4194CD91700754BE0 /* cocoa */ = {
 			isa = PBXGroup;
 			children = (
-				FE23E4EE195EBD2800429FCA /* ROM */,
 				FE02306A19595F6800661A17 /* burner_cocoa.h */,
 				FE9FA3FF1954B97B00F791EB /* FXAudio.h */,
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
 				FE0230671957F7F500661A17 /* FXAudioEngine.h */,
 				FE0230681957F7F500661A17 /* FXAudioEngine.m */,
+				FE23E4EF1961D06B00429FCA /* FXDriverAudit.h */,
+				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
 				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
 				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
+				FE9FA4021959E81E00F791EB /* FXLoader.h */,
+				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
+				FE9FA40B195D349B00F791EB /* FXROM.h */,
+				FE9FA40C195D349B00F791EB /* FXROM.m */,
+				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
+				FE23E4F31961D45D00429FCA /* FXROMAudit.m */,
 				FE0230611956BB9B00661A17 /* FXRunLoop.h */,
 				FE0230621956BB9B00661A17 /* FXRunLoop.mm */,
 				FE9FA3FC19548C1E00F791EB /* FXVideo.h */,
 				FE9FA3FD19548C1E00F791EB /* FXVideo.mm */,
-				FE9FA405195BF00500F791EB /* FXZip.h */,
-				FE9FA406195BF00500F791EB /* FXZip.m */,
+				FE9FA405195BF00500F791EB /* FXZipArchive.h */,
+				FE9FA406195BF00500F791EB /* FXZipArchive.m */,
 				FE02305F19516AA500661A17 /* inpdipsw.cpp */,
 				FE02305B195168AD00661A17 /* misc.cpp */,
 				FE02305D19516A0700661A17 /* neocdlist.cpp */,
@@ -2710,7 +2702,7 @@
 				FE505DC4194BC533003A2BC7 /* d_batrider.cpp in Sources */,
 				FE505C8D194BC532003A2BC7 /* d_donpachi.cpp in Sources */,
 				FE505CAB194BC532003A2BC7 /* d_pktgaldx.cpp in Sources */,
-				FE9FA407195BF00500F791EB /* FXZip.m in Sources */,
+				FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */,
 				FE505D50194BC532003A2BC7 /* d_deniam.cpp in Sources */,
 				FE505DFF194BC533003A2BC7 /* namco_snd.cpp in Sources */,
 				FE505C67194BC532003A2BC7 /* pandora.cpp in Sources */,

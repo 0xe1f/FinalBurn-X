@@ -26,7 +26,7 @@
 
 #include "unzip.h"
 
-@interface FXZip : NSObject
+@interface FXZipArchive : NSObject
 {
     @private
     unzFile zipFile;
@@ -50,8 +50,8 @@
 @end
 
 enum {
-    FXErrorLoadingZip            = -100,
-    FXErrorNavigatingZip         = -101,
+    FXErrorLoadingArchive        = -100,
+    FXErrorNavigatingArchive     = -101,
     FXErrorOpeningCompressedFile = -102,
     FXErrorReadingCompressedFile = -103,
 };
