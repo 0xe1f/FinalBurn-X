@@ -22,28 +22,18 @@
  */
 #import "FXEmulatorController.h"
 
-#import "AKEmulator.h"
 #import "FXInput.h"
 #import "FXVideo.h"
 #import "FXAudio.h"
-#import "FXAudioEngine.h"
 #import "FXRunLoop.h"
 
 @interface FXEmulatorController ()
 
-- (void)emulatorThreadMethod:(id)obj;
 - (void)windowKeyDidChange:(BOOL)isKey;
 
 @end
 
 @implementation FXEmulatorController
-
-@synthesize emulator = _emulator;
-@synthesize thread = _thread;
-@synthesize input = _input;
-@synthesize video = _video;
-@synthesize audio = _audio;
-@synthesize runLoop = _runLoop;
 
 - (id)init
 {
@@ -51,28 +41,17 @@
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] init]];
-        
-        [self setEmulator:[[AKEmulator alloc] init]];
-        [self setThread:[[NSThread alloc] initWithTarget:self
-                                                selector:@selector(emulatorThreadMethod:)
-                                                  object:nil]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:@"sfa3"]];
     }
     
     return self;
-}
-
-- (void)dealloc
-{
-    [self setThread:nil];
-    [self setEmulator:nil];
 }
 
 - (void)awakeFromNib
 {
     [[self video] setDelegate:screen];
     
-    [[self thread] start];
+    [[self runLoop] start];
 }
 
 #pragma mark - NSWindowDelegate
@@ -94,20 +73,7 @@
 
 - (void)windowWillClose:(NSNotification *)notification
 {
-    [_runLoop stop];
-}
-
-#pragma mark - ...
-
-- (void)emulatorThreadMethod:(id)obj
-{
-    [[self emulator] runROM:@"sfa3u"
-                      error:NULL];
-    
-    [self setVideo:nil];
-    [self setAudio:nil];
-    [self setInput:nil];
-    [self setRunLoop:nil];
+    [[self runLoop] cancel];
 }
 
 #pragma mark - etc...

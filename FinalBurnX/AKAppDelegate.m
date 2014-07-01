@@ -22,8 +22,6 @@
  */
 #import "AKAppDelegate.h"
 
-#import "AKEmulator.h"
-
 @implementation AKAppDelegate
 
 @synthesize emulator = _emulator;

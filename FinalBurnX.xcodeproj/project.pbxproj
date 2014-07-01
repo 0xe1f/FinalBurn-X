@@ -557,7 +557,6 @@
 		FEC25356194CA3760039D85F /* hq2xs_16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25355194CA3760039D85F /* hq2xs_16.cpp */; };
 		FEC25358194CA3BF0039D85F /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25357194CA3BF0039D85F /* epx.cpp */; };
 		FEC2535A194CA41B0039D85F /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25359194CA41B0039D85F /* misc.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-variable"; }; };
-		FEEECB3D194EDE3200A316A4 /* AKEmulator.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1320,8 +1319,6 @@
 		FEC25357194CA3BF0039D85F /* epx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = epx.cpp; sourceTree = "<group>"; };
 		FEC25359194CA41B0039D85F /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
 		FED10DC2194CB35000754BE0 /* SDL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL.framework; path = ../../../../Library/Frameworks/SDL.framework; sourceTree = "<group>"; };
-		FEEECB3B194EDE3200A316A4 /* AKEmulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKEmulator.h; sourceTree = "<group>"; };
-		FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AKEmulator.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2593,8 +2590,6 @@
 			isa = PBXGroup;
 			children = (
 				FE23E4EE195EBD2800429FCA /* ROM */,
-				FEEECB3B194EDE3200A316A4 /* AKEmulator.h */,
-				FEEECB3C194EDE3200A316A4 /* AKEmulator.mm */,
 				FE02306A19595F6800661A17 /* burner_cocoa.h */,
 				FE9FA3FF1954B97B00F791EB /* FXAudio.h */,
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
@@ -3044,7 +3039,6 @@
 				FE505D56194BC532003A2BC7 /* d_f1gp.cpp in Sources */,
 				FE505D42194BC532003A2BC7 /* psikyo_palette.cpp in Sources */,
 				FE505D75194BC533003A2BC7 /* d_silvmil.cpp in Sources */,
-				FEEECB3D194EDE3200A316A4 /* AKEmulator.mm in Sources */,
 				FE505C97194BC532003A2BC7 /* d_sailormn.cpp in Sources */,
 				FE505DE6194BC533003A2BC7 /* burn_y8950.cpp in Sources */,
 				FE505C5D194BC532003A2BC7 /* burn_memory.cpp in Sources */,

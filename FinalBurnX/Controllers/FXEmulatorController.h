@@ -24,34 +24,19 @@
 
 #import "FXScreenView.h"
 
-@class AKEmulator;
 @class FXInput;
 @class FXVideo;
 @class FXAudio;
 @class FXRunLoop;
-@class FXAudioEngine;
 
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet FXScreenView *screen;
-    
-    @private
-    FXInput *_input;
-    FXVideo *_video;
-    FXAudio *_audio;
-    FXAudioEngine *_audioEngine;
-    FXRunLoop *_runLoop;
-    
-    AKEmulator *_emulator;
-    NSThread *_thread;
 }
 
-@property (nonatomic, strong) AKEmulator *emulator;
 @property (nonatomic, strong) FXInput *input;
 @property (nonatomic, strong) FXVideo *video;
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
-
-@property (nonatomic, strong) NSThread *thread;
 
 @end

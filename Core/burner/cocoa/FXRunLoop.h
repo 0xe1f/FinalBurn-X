@@ -24,19 +24,23 @@
 
 #include <sys/time.h>
 
-@interface FXRunLoop : NSObject
+@interface FXRunLoop : NSThread
 {
     @private
     struct timeval start;
     UInt32 lastTick;
     int fraction;
-    BOOL stop;
-    BOOL running;
     BOOL previouslyDrawn;
     BOOL previouslyPaused;
 }
 
-- (BOOL)run;
-- (BOOL)stop;
+- (instancetype)initWithDriverName:(NSString *)driverName;
+
+@property (nonatomic, copy) NSString *driverName;
 
 @end
+
+enum {
+    FXErrorDriverInitialization = -100,
+    FXErrorDriverUnrecognized   = -101,
+};
