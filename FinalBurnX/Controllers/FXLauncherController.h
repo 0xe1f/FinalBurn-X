@@ -20,41 +20,15 @@
  **
  ******************************************************************************
  */
-#import "AKAppDelegate.h"
+#import <Foundation/Foundation.h>
 
-@implementation AKAppDelegate
-
-@synthesize emulator = _emulator;
-
-static AKAppDelegate *sharedInstance = nil;
-
-- (instancetype)init
+@interface FXLauncherController : NSWindowController<NSWindowDelegate>
 {
-    if (self = [super init]) {
-        sharedInstance = self;
-    }
-    
-    return self;
+    IBOutlet NSArrayController *driversArrayController;
 }
 
-- (void)dealloc
-{
-    [self setEmulator:nil];
-}
+- (IBAction)launchGame:(id)sender;
 
-- (void)applicationWillFinishLaunching:(NSNotification *)notification
-{
-    [self setEmulator:[[FXEmulatorController alloc] init]];
-}
-
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
-{
-    [[self emulator] showWindow:self];
-}
-
-+ (AKAppDelegate *)sharedInstance
-{
-    return sharedInstance;
-}
+@property (nonatomic, copy) NSMutableArray *drivers;
 
 @end

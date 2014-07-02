@@ -30,7 +30,8 @@
     NSMutableDictionary *romAuditsByNeededCRC;
 }
 
-@property (nonatomic, strong) NSString *archiveName;
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, copy) NSString *archiveName;
 @property (nonatomic, assign) int driverId;
 
 - (void)addROMAudit:(FXROMAudit *)romAudit;

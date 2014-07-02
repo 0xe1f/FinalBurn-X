@@ -2,7 +2,6 @@
 #include "burner.h"
 
 static int nDIPOffset;
-static bool bOK;
 
 static void InpDIPSWGetOffset()
 {
@@ -32,15 +31,4 @@ void InpDIPSWResetDIPs()
 		}
 		i++;
 	}
-}
-
-int InpDIPSWCreate()
-{
-	if (bDrvOkay == 0) {									// No game is loaded
-		return 1;
-	}
-
-	bOK = false;
-
-	return 0;
 }

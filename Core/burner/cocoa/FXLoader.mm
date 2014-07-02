@@ -105,6 +105,32 @@ static FXLoader *sharedInstance = NULL;
     return aliases;
 }
 
+- (NSArray *)driverIds
+{
+    NSMutableArray *driverIds = [[NSMutableArray alloc] init];
+    for (int driverId = 0; driverId < nBurnDrvCount; driverId++) {
+        if (pDriver[driverId]->szParent != NULL) {
+            continue;
+        }
+        
+        UInt32 hardware = pDriver[driverId]->Hardware & HARDWARE_PUBLIC_MASK;
+        if ((hardware != HARDWARE_CAPCOM_CPS1) &&
+            (hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
+            (hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
+            (hardware != HARDWARE_CAPCOM_CPS2) &&
+            (hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
+            (hardware != HARDWARE_CAPCOM_CPS3) &&
+            (hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
+            (hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE))) {
+            continue;
+        }
+        
+        [driverIds addObject:@(driverId)];
+    }
+    
+    return driverIds;
+}
+
 - (NSArray *)componentsForDriver:(int)driverId
                            error:(NSError **)error
 {
@@ -249,10 +275,14 @@ static FXLoader *sharedInstance = NULL;
         return nil;
     }
     
+    NSString *name = [NSString stringWithCString:pDriver[driverId]->szFullNameA
+                                        encoding:NSUTF8StringEncoding];
+    
     // Create a new audit object
     driverAudit = [[FXDriverAudit alloc] init];
     [driverAudit setDriverId:driverId];
     [driverAudit setArchiveName:[archiveNames firstObject]];
+    [driverAudit setName:name];
     
     // See if any of archives are loadable
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {

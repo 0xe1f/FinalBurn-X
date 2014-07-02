@@ -22,7 +22,7 @@
  */
 #import "FXRunLoop.h"
 
-#import "AKAppDelegate.h"
+#import "FXAppDelegate.h"
 #import "FXLoader.h"
 
 #include "burner.h"
@@ -73,8 +73,6 @@ static int cocoaGetNextSound(int draw);
 
 - (BOOL)initializeDriver:(NSError **)error
 {
-	BurnLibInit();
-    
     int driverId = [[FXLoader sharedLoader] driverIdForName:[self driverName]];
     if (driverId < 0) {
         if (error != NULL) {
@@ -170,8 +168,6 @@ static int cocoaGetNextSound(int draw);
 	}
     
 	nBurnDrvSelect[0] = ~0U;			// no driver selected
-    
-	BurnLibExit();
     
 #ifdef DEBUG
     NSLog(@"Driver cleaned up");
@@ -339,7 +335,7 @@ static int cocoaGetNextSound(int draw)
 		return 1;
 	}
     
-    FXRunLoop *runLoop = [[[AKAppDelegate sharedInstance] emulator] runLoop];
+    FXRunLoop *runLoop = [[[FXAppDelegate sharedInstance] emulator] runLoop];
     
 	if (bRunPause) {
         [runLoop runFrame:draw pause:YES];

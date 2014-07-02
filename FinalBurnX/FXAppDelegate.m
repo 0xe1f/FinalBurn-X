@@ -20,29 +20,50 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXAppDelegate.h"
 
-#import "FXDriverAudit.h"
+@implementation FXAppDelegate
 
-@interface FXLoader : NSObject
+static FXAppDelegate *sharedInstance = nil;
+
+- (instancetype)init
 {
-    @private
-    NSMutableDictionary *driverAuditCache;
+    if (self = [super init]) {
+        sharedInstance = self;
+    }
+    
+    return self;
 }
 
-- (int)driverIdForName:(NSString *)driverName;
-- (NSArray *)archiveNamesForDriver:(int)romIndex
-                             error:(NSError **)error;
-- (NSArray *)driverIds;
-- (FXDriverAudit *)auditDriver:(int)driverId
-                         error:(NSError **)error;
+- (void)dealloc
+{
+}
 
-+ (id)sharedLoader;
+- (void)applicationWillFinishLaunching:(NSNotification *)notification
+{
+    [FXEmulatorController initializeCore];
+    
+    self->launcher = [[FXLauncherController alloc] init];
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
+{
+    [self->launcher showWindow:self];
+}
+
+- (void)applicationWillTerminate:(NSNotification *)notification
+{
+    [FXEmulatorController cleanupCore];
+}
+
+- (FXEmulatorController *)emulator
+{
+    return self->emulator;
+}
+
++ (FXAppDelegate *)sharedInstance
+{
+    return sharedInstance;
+}
 
 @end
-
-enum {
-    FXRomSetUnrecognized = -100,
-};
-
-int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i);

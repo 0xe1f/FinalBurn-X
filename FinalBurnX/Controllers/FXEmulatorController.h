@@ -39,4 +39,7 @@
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
 
++ (void)initializeCore;
++ (void)cleanupCore;
+
 @end

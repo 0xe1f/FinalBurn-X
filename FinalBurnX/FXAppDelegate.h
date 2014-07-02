@@ -23,14 +23,17 @@
 #import <Cocoa/Cocoa.h>
 
 #import "FXEmulatorController.h"
+#import "FXLauncherController.h"
 
-@interface AKAppDelegate : NSObject <NSApplicationDelegate>
+@interface FXAppDelegate : NSObject <NSApplicationDelegate>
 {
-    FXEmulatorController *_emulator;
+    @private
+    FXEmulatorController *emulator;
+    FXLauncherController *launcher;
 }
 
-@property (nonatomic, strong) FXEmulatorController *emulator;
++ (FXAppDelegate *)sharedInstance;
 
-+ (AKAppDelegate *)sharedInstance;
+- (FXEmulatorController *)emulator;
 
 @end

@@ -22,7 +22,7 @@
  */
 #import "FXVideo.h"
 
-#import "AKAppDelegate.h"
+#import "FXAppDelegate.h"
 
 #include "burner.h"
 
@@ -39,9 +39,7 @@
 - (instancetype)init
 {
     if (self = [super init]) {
-        for (int i = 0; i < 2; i++) {
-            self->screenBuffer = NULL;
-        }
+        self->screenBuffer = NULL;
     }
 
     return self;
@@ -102,22 +100,22 @@
     self->bufferWidth = gameWidth;
     self->bufferHeight = gameHeight;
     
-    free(self->screenBuffer);
-    self->screenBuffer = NULL;
+    pVidImage = NULL;
     
     int bufSize = self->bufferWidth * self->bufferHeight * nVidImageBPP;
-    self->screenBuffer = (unsigned char *)malloc(bufSize);
+    @synchronized(self) {
+        free(self->screenBuffer);
+        self->screenBuffer = (unsigned char *)malloc(bufSize);
+    }
     
     if (self->screenBuffer == NULL) {
         return NO;
     }
     
 	nBurnPitch = nVidImagePitch;
+    pVidImage = self->screenBuffer;
     
     memset(self->screenBuffer, 0, bufSize);
-    
-    free(pVidImage);
-    pVidImage = self->screenBuffer;
     
     [self->_delegate initTextureOfWidth:self->bufferWidth
                                  height:self->bufferHeight
@@ -163,8 +161,10 @@
 
 - (void)cleanup
 {
-    free(self->screenBuffer);
-    self->screenBuffer = NULL;
+    @synchronized(self) {
+        free(self->screenBuffer);
+        self->screenBuffer = NULL;
+    }
 }
 
 @end
@@ -173,13 +173,13 @@
 
 static int cocoaVideoInit()
 {
-    FXVideo *video = [[[AKAppDelegate sharedInstance] emulator] video];
+    FXVideo *video = [[[FXAppDelegate sharedInstance] emulator] video];
     return [video initCore] ? 0 : 1;
 }
 
 static int cocoaVideoExit()
 {
-    FXVideo *video = [[[AKAppDelegate sharedInstance] emulator] video];
+    FXVideo *video = [[[FXAppDelegate sharedInstance] emulator] video];
     [video exitCore];
     
     return 0;
@@ -187,13 +187,13 @@ static int cocoaVideoExit()
 
 static int cocoaVideoFrame(bool redraw)
 {
-    FXVideo *video = [[[AKAppDelegate sharedInstance] emulator] video];
+    FXVideo *video = [[[FXAppDelegate sharedInstance] emulator] video];
     return [video renderFrame:redraw] ? 0 : 1;
 }
 
 static int cocoaVideoPaint(int validate)
 {
-    FXVideo *video = [[[AKAppDelegate sharedInstance] emulator] video];
+    FXVideo *video = [[[FXAppDelegate sharedInstance] emulator] video];
     return [video renderToSurface:(validate & 2)] ? 0 : 1;
 }
 

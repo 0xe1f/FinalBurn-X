@@ -20,28 +20,19 @@
  **
  ******************************************************************************
  */
+#import "FXLauncherController.h"
+
 #import "FXEmulatorController.h"
+#import "FXAppDelegate.h"
 
-#import "FXInput.h"
-#import "FXVideo.h"
-#import "FXAudio.h"
-#import "FXRunLoop.h"
+#import "FXLoader.h"
 
-@interface FXEmulatorController ()
-
-- (void)windowKeyDidChange:(BOOL)isKey;
-
-@end
-
-@implementation FXEmulatorController
+@implementation FXLauncherController
 
 - (id)init
 {
-    if ((self = [super initWithWindowNibName:@"Emulator"])) {
-        [self setInput:[[FXInput alloc] init]];
-        [self setVideo:[[FXVideo alloc] init]];
-        [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:@"sfa3u"]];
+    if ((self = [super initWithWindowNibName:@"Launcher"])) {
+        [self setDrivers:[[NSMutableArray alloc] init]];
     }
     
     return self;
@@ -49,38 +40,27 @@
 
 - (void)awakeFromNib
 {
-    [[self video] setDelegate:screen];
+    FXLoader *loader = [[FXLoader alloc] init];
+    NSArray *driverIds = [loader driverIds];
     
-    [[self runLoop] start];
+    [driverIds enumerateObjectsUsingBlock:^(NSNumber *driverId, NSUInteger idx, BOOL *stop) {
+        NSLog(@"parsing %@/%@...", driverId, [driverIds lastObject]);
+        
+        NSError *error = NULL;
+        FXDriverAudit *driverAudit = [loader auditDriver:[driverId intValue]
+                                                   error:&error];
+        
+        // FIXME - if err != NULL;
+        [self->driversArrayController addObject:driverAudit];
+    }];
+    
+    [self->driversArrayController rearrangeObjects];
 }
 
-#pragma mark - NSWindowDelegate
-
-- (void)windowDidBecomeKey:(NSNotification *)notification
+- (void)launchGame:(id)sender
 {
-    [self windowKeyDidChange:YES];
-}
-
-- (void)windowDidResignKey:(NSNotification *)notification
-{
-    [self windowKeyDidChange:NO];
-}
-
-- (void)keyDown:(NSEvent *)theEvent
-{
-    // Suppress the beeps
-}
-
-- (void)windowWillClose:(NSNotification *)notification
-{
-    [[self runLoop] cancel];
-}
-
-#pragma mark - etc...
-
-- (void)windowKeyDidChange:(BOOL)isKey
-{
-    [[self input] setFocus:isKey];
+    FXDriverAudit *driverAudit = [[self->driversArrayController selectedObjects] firstObject];
+    NSLog(@"launch %@", [driverAudit archiveName]);
 }
 
 @end

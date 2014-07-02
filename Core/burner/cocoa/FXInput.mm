@@ -22,7 +22,7 @@
  */
 #import "FXInput.h"
 
-#import "AKAppDelegate.h"
+#import "FXAppDelegate.h"
 
 #import "burner.h"
 
@@ -67,12 +67,16 @@
         return self->keyStates[AKKeyCodeS];
     case FBK_D:
         return self->keyStates[AKKeyCodeD];
+    case FBK_F:
+        return self->keyStates[AKKeyCodeF];
     case FBK_Z:
         return self->keyStates[AKKeyCodeZ];
     case FBK_X:
         return self->keyStates[AKKeyCodeX];
     case FBK_C:
         return self->keyStates[AKKeyCodeC];
+    case FBK_V:
+        return self->keyStates[AKKeyCodeV];
     case FBK_UPARROW:
         return self->keyStates[AKKeyCodeUpArrow];
     case FBK_DOWNARROW:
@@ -81,6 +85,16 @@
         return self->keyStates[AKKeyCodeLeftArrow];
     case FBK_RIGHTARROW:
         return self->keyStates[AKKeyCodeRightArrow];
+    case FBK_F1:
+        return self->keyStates[AKKeyCodeF1];
+    case FBK_F2:
+        return self->keyStates[AKKeyCodeF2];
+    case FBK_F3:
+        return self->keyStates[AKKeyCodeF3];
+    case FBK_F4:
+        return self->keyStates[AKKeyCodeF4];
+    case FBK_F5:
+        return self->keyStates[AKKeyCodeF5];
     }
     
     return NO;
@@ -160,7 +174,7 @@ static int cocoaInputStart()
 
 static int cocoaInputState(int nCode)
 {
-    FXInput *input = [[[AKAppDelegate sharedInstance] emulator] input];
+    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
 	return [input isInputActiveForCode:nCode] == YES;
 }
 

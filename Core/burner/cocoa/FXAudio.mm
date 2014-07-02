@@ -22,7 +22,7 @@
  */
 #import "FXAudio.h"
 
-#import "AKAppDelegate.h"
+#import "FXAppDelegate.h"
 
 #include "burner.h"
 
@@ -232,25 +232,25 @@ static int cocoaGetNextSoundFiller(int draw)
 
 static int cocoaAudioBlankSound()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     return [audio clear] ? 0 : 1;
 }
 
 static int cocoaAudioCheck()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     return [audio checkAudio] ? 0 : 1;
 }
 
 static int cocoaAudioInit()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     return [audio initCore] ? 0 : 1;
 }
 
 static int cocoaAudioSetCallback(int (*callback)(int))
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     [audio setCallback:callback];
     
 	return 0;
@@ -258,19 +258,19 @@ static int cocoaAudioSetCallback(int (*callback)(int))
 
 static int cocoaAudioPlay()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     return [audio play] ? 0 : 1;
 }
 
 static int cocoaAudioStop()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     return [audio stop] ? 0 : 1;
 }
 
 static int cocoaAudioExit()
 {
-    FXAudio *audio = [[[AKAppDelegate sharedInstance] emulator] audio];
+    FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
     [audio exitCore];
     
     return 0;
