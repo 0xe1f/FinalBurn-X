@@ -24,11 +24,11 @@
 
 @interface FXLauncherController : NSWindowController<NSWindowDelegate>
 {
-    IBOutlet NSArrayController *driversArrayController;
+    IBOutlet NSTreeController *driversTreeController;
 }
 
 - (IBAction)launchGame:(id)sender;
 
-@property (nonatomic, copy) NSMutableArray *drivers;
+@property (nonatomic, strong) NSMutableArray *drivers;
 
 @end

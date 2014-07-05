@@ -1382,7 +1382,6 @@
 		FE08934D19475F9800F79190 /* FinalBurnX */ = {
 			isa = PBXGroup;
 			children = (
-				FE23E4FB196317E100429FCA /* Classes */,
 				FE9FA3F5195346F000F791EB /* HIDput */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
 				FE0DC79419509EEB004A03A3 /* Views */,
@@ -1435,13 +1434,6 @@
 			);
 			name = Resources;
 			path = FinalBurnX/Base.lproj;
-			sourceTree = "<group>";
-		};
-		FE23E4FB196317E100429FCA /* Classes */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Classes;
 			sourceTree = "<group>";
 		};
 		FE505956194BC41E003A2BC7 /* Core */ = {

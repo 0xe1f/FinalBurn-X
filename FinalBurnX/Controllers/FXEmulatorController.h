@@ -39,6 +39,8 @@
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
 
+- (instancetype)initWithDriverName:(NSString *)driverName;
+
 + (void)initializeCore;
 + (void)cleanupCore;
 

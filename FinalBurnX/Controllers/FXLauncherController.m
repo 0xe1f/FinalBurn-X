@@ -32,7 +32,7 @@
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
-        [self setDrivers:[[NSMutableArray alloc] init]];
+        [self setDrivers:[NSMutableArray array]];
     }
     
     return self;
@@ -51,16 +51,23 @@
                                                    error:&error];
         
         // FIXME - if err != NULL;
-        [self->driversArrayController addObject:driverAudit];
+        NSTreeNode *node = [[NSTreeNode alloc] initWithRepresentedObject:driverAudit];
+        [[self drivers] addObject:node];
     }];
     
-    [self->driversArrayController rearrangeObjects];
+    [self->driversTreeController rearrangeObjects];
 }
 
 - (void)launchGame:(id)sender
 {
-    FXDriverAudit *driverAudit = [[self->driversArrayController selectedObjects] firstObject];
-    NSLog(@"launch %@", [driverAudit archiveName]);
+    NSTreeNode *selectedNode = [[self->driversTreeController selectedObjects] firstObject];
+    FXDriverAudit *driverAudit = [selectedNode representedObject];
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    
+    NSString *driverName = [driverAudit archiveName];
+    NSLog(@"launch %@", driverName);
+    
+    [app launch:driverName];
 }
 
 @end

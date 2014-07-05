@@ -37,13 +37,13 @@
 
 @implementation FXEmulatorController
 
-- (id)init
+- (instancetype)initWithDriverName:(NSString *)driverName
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:@"sfa3u"]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:driverName]];
     }
     
     return self;

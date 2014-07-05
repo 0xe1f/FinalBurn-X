@@ -32,6 +32,8 @@
     FXLauncherController *launcher;
 }
 
+- (void)launch:(NSString *)driverName;
+
 + (FXAppDelegate *)sharedInstance;
 
 - (FXEmulatorController *)emulator;
