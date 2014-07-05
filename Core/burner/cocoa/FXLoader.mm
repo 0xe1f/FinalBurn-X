@@ -105,14 +105,15 @@ static FXLoader *sharedInstance = NULL;
     return aliases;
 }
 
-- (NSArray *)driverIds
+- (NSDictionary *)drivers
 {
-    NSMutableArray *driverIds = [[NSMutableArray alloc] init];
+    NSMutableDictionary *parentMap = [NSMutableDictionary dictionary];
+    
+    // Parentless items
+    NSMutableArray *parentlessIds = [NSMutableArray array];
+    NSMutableArray *parentlessNames = [NSMutableArray array];
+    
     for (int driverId = 0; driverId < nBurnDrvCount; driverId++) {
-        if (pDriver[driverId]->szParent != NULL) {
-            continue;
-        }
-        
         UInt32 hardware = pDriver[driverId]->Hardware & HARDWARE_PUBLIC_MASK;
         if ((hardware != HARDWARE_CAPCOM_CPS1) &&
             (hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
@@ -122,13 +123,48 @@ static FXLoader *sharedInstance = NULL;
             (hardware != HARDWARE_CAPCOM_CPS3) &&
             (hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
             (hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE))) {
+            // Don't care
             continue;
         }
         
-        [driverIds addObject:@(driverId)];
+        if (pDriver[driverId]->szParent != NULL) {
+            // Place drivers with parents into a dictionary where the key is
+            // the parent driver's name and value is an array of child ID's
+            NSString *parentName = [NSString stringWithCString:pDriver[driverId]->szParent
+                                                      encoding:NSUTF8StringEncoding];
+            
+            NSMutableArray *children = [parentMap objectForKey:parentName];
+            if (children == nil) {
+                children = [NSMutableArray array];
+                [parentMap setObject:children forKey:parentName];
+            }
+            
+            [children addObject:@(driverId)];
+        } else {
+            NSString *name = [NSString stringWithCString:pDriver[driverId]->szShortName
+                                                encoding:NSUTF8StringEncoding];
+            
+            [parentlessIds addObject:@(driverId)];
+            [parentlessNames addObject:name];
+        }
     }
     
-    return driverIds;
+    // Now turn this information into a dictionary where keys are
+    // parentless driver ids and values are NSArrays containing zero or more
+    // driver ids
+    NSMutableDictionary *drivers = [NSMutableDictionary dictionary];
+    [parentlessIds enumerateObjectsUsingBlock:^(NSNumber *driverId, NSUInteger idx, BOOL *stop) {
+        NSString *parentName = [parentlessNames objectAtIndex:idx];
+        NSArray *children = [parentMap objectForKey:parentName];
+        
+        if (children == nil) {
+            children = [NSMutableArray array];
+        }
+        
+        [drivers setObject:children forKey:driverId];
+    }];
+    
+    return drivers;
 }
 
 - (NSArray *)componentsForDriver:(int)driverId

@@ -33,7 +33,7 @@
 - (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
-- (NSArray *)driverIds;
+- (NSDictionary *)drivers;
 - (FXDriverAudit *)auditDriver:(int)driverId
                          error:(NSError **)error;
 

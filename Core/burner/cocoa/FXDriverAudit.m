@@ -51,6 +51,11 @@
 
 - (BOOL)isPerfect
 {
+    if ([self->romAuditsByNeededCRC count] < 1) {
+        // Nothing recorded
+        return NO;
+    }
+    
     __block BOOL isPerfect = YES;
     [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
         if ([romAudit status] != FXROMAuditOK) {

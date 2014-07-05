@@ -41,18 +41,30 @@
 - (void)awakeFromNib
 {
     FXLoader *loader = [[FXLoader alloc] init];
-    NSArray *driverIds = [loader driverIds];
+    NSDictionary *availableDrivers = [loader drivers];
     
-    [driverIds enumerateObjectsUsingBlock:^(NSNumber *driverId, NSUInteger idx, BOOL *stop) {
-        NSLog(@"parsing %@/%@...", driverId, [driverIds lastObject]);
+    [availableDrivers enumerateKeysAndObjectsUsingBlock:^(NSNumber *parentDriverId, NSArray *children, BOOL *stop) {
+        NSError *parentError = NULL;
+        FXDriverAudit *parentDriverAudit = [loader auditDriver:[parentDriverId intValue]
+                                                   error:&parentError];
         
-        NSError *error = NULL;
-        FXDriverAudit *driverAudit = [loader auditDriver:[driverId intValue]
-                                                   error:&error];
+        // FIXME: else if parentError != NULL..
         
-        // FIXME - if err != NULL;
-        NSTreeNode *node = [[NSTreeNode alloc] initWithRepresentedObject:driverAudit];
-        [[self drivers] addObject:node];
+        NSTreeNode *parentNode = [NSTreeNode treeNodeWithRepresentedObject:parentDriverAudit];
+        
+        [children enumerateObjectsUsingBlock:^(NSNumber *childDriverId, NSUInteger idx, BOOL *stop) {
+            // Go through the children as well
+            NSError *childError = NULL;
+            FXDriverAudit *childDriverAudit = [loader auditDriver:[childDriverId intValue]
+                                                            error:&childError];
+            
+            // FIXME: else if parentError != NULL..
+            
+            NSTreeNode *childNode = [NSTreeNode treeNodeWithRepresentedObject:childDriverAudit];
+            [[parentNode mutableChildNodes] addObject:childNode];
+        }];
+        
+        [[self drivers] addObject:parentNode];
     }];
     
     [self->driversTreeController rearrangeObjects];
