@@ -39,7 +39,9 @@
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
 
-- (instancetype)initWithDriverName:(NSString *)driverName;
+@property (nonatomic, assign) int driverId;
+
+- (instancetype)initWithDriverId:(int)driverId;
 
 + (void)initializeCore;
 + (void)cleanupCore;

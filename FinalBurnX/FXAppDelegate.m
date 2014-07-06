@@ -70,12 +70,12 @@ static FXAppDelegate *sharedInstance = nil;
     return self->emulator;
 }
 
-- (void)launch:(NSString *)driverName
+- (void)launch:(int)driverId
 {
     @synchronized(self) {
         [self->emulator close];
         
-        self->emulator = [[FXEmulatorController alloc] initWithDriverName:driverName];
+        self->emulator = [[FXEmulatorController alloc] initWithDriverId:driverId];
         [self->emulator showWindow:self];
     }
 }

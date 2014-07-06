@@ -26,6 +26,7 @@
 #import "FXVideo.h"
 #import "FXAudio.h"
 #import "FXRunLoop.h"
+#import "FXLoader.h"
 
 #include "burner.h"
 
@@ -37,13 +38,15 @@
 
 @implementation FXEmulatorController
 
-- (instancetype)initWithDriverName:(NSString *)driverName
+- (instancetype)initWithDriverId:(int)driverId
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverName:driverName]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriverId:driverId]];
+        
+        [self setDriverId:driverId];
     }
     
     return self;
@@ -51,8 +54,10 @@
 
 - (void)awakeFromNib
 {
-    [[self video] setDelegate:screen];
+    NSString *title = [[FXLoader sharedLoader] titleForDriverId:[self driverId]];
+    [[self window] setTitle:title];
     
+    [[self video] setDelegate:screen];
     [[self runLoop] start];
 }
 

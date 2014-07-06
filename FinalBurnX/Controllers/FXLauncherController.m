@@ -59,7 +59,7 @@
     FXDriverAudit *driverAudit = [selectedNode representedObject];
     if ([driverAudit isPlayable]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        [app launch:[driverAudit archiveName]];
+        [app launch:[driverAudit driverId]];
     }
 }
 

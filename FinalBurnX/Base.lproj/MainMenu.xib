@@ -14,11 +14,11 @@
         <customObject id="Voe-Tx-rLC" customClass="FXAppDelegate"/>
         <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
             <items>
-                <menuItem title="FinalBurnX" id="1Xt-HY-uBw">
+                <menuItem title="FinalBurn X" id="1Xt-HY-uBw">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="FinalBurnX" systemMenu="apple" id="uQy-DD-JDr">
+                    <menu key="submenu" title="FinalBurn X" systemMenu="apple" id="uQy-DD-JDr">
                         <items>
-                            <menuItem title="About FinalBurnX" id="5kV-Vb-QxS">
+                            <menuItem title="About FinalBurn X" id="5kV-Vb-QxS">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="orderFrontStandardAboutPanel:" target="-1" id="Exp-CZ-Vem"/>
@@ -62,14 +62,9 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="File" id="bib-Uj-vzu">
                         <items>
-                            <menuItem title="New" keyEquivalent="n" id="Was-JA-tGl">
+                            <menuItem title="Close" keyEquivalent="w" id="Was-JA-tGl">
                                 <connections>
-                                    <action selector="newDocument:" target="-1" id="4Si-XN-c54"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Open…" keyEquivalent="o" id="IAo-SY-fd9">
-                                <connections>
-                                    <action selector="openDocument:" target="-1" id="bVn-NM-KNZ"/>
+                                    <action selector="performClose:" target="-1" id="hQr-80-VXW"/>
                                 </connections>
                             </menuItem>
                         </items>

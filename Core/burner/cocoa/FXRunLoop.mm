@@ -46,10 +46,10 @@ static int cocoaGetNextSound(int draw);
 
 #pragma mark - init
 
-- (instancetype)initWithDriverName:(NSString *)driverName
+- (instancetype)initWithDriverId:(int)driverId
 {
     if (self = [super init]) {
-        [self setDriverName:driverName];
+        [self setDriverId:driverId];
     }
     
     return self;
@@ -73,21 +73,7 @@ static int cocoaGetNextSound(int draw);
 
 - (BOOL)initializeDriver:(NSError **)error
 {
-    int driverId = [[FXLoader sharedLoader] driverIdForName:[self driverName]];
-    if (driverId < 0) {
-        if (error != NULL) {
-            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
-                                         code:FXErrorDriverUnrecognized
-                                     userInfo:@{ NSLocalizedDescriptionKey : @"Driver not recognized" }];
-        }
-        
-        return NO;
-    }
-    
-#ifdef DEBUG
-    NSLog(@"%@ located as driver ID %d", [self driverName], driverId);
-#endif
-    
+    int driverId = [self driverId];
     FXDriverAudit *driverAudit = [[FXLoader sharedLoader] auditDriver:driverId
                                                                 error:error];
     

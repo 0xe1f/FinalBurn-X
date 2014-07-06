@@ -30,6 +30,7 @@
     NSMutableDictionary *driverAuditCache;
 }
 
+- (NSString *)titleForDriverId:(int)driverId;
 - (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;

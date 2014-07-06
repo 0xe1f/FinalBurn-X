@@ -263,6 +263,12 @@ static FXLoader *sharedInstance = NULL;
     return array;
 }
 
+- (NSString *)titleForDriverId:(int)driverId
+{
+    return [NSString stringWithCString:pDriver[driverId]->szFullNameA
+                              encoding:NSUTF8StringEncoding];
+}
+
 - (FXDriverAudit *)auditDriver:(int)driverId
                          error:(NSError **)error
 {
@@ -311,14 +317,11 @@ static FXLoader *sharedInstance = NULL;
         return nil;
     }
     
-    NSString *name = [NSString stringWithCString:pDriver[driverId]->szFullNameA
-                                        encoding:NSUTF8StringEncoding];
-    
     // Create a new audit object
     driverAudit = [[FXDriverAudit alloc] init];
     [driverAudit setDriverId:driverId];
     [driverAudit setArchiveName:[archiveNames firstObject]];
-    [driverAudit setName:name];
+    [driverAudit setName:[self titleForDriverId:driverId]];
     
     // See if any of archives are loadable
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {

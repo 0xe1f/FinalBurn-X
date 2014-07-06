@@ -34,9 +34,9 @@
     BOOL previouslyPaused;
 }
 
-- (instancetype)initWithDriverName:(NSString *)driverName;
+- (instancetype)initWithDriverId:(int)driverId;
 
-@property (nonatomic, copy) NSString *driverName;
+@property (nonatomic, assign) int driverId;
 
 @end
 
