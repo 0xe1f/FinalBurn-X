@@ -39,6 +39,8 @@ static FXAppDelegate *sharedInstance = nil;
 {
 }
 
+#pragma mark - NSAppDelegate
+
 - (void)applicationWillFinishLaunching:(NSNotification *)notification
 {
     [FXEmulatorController initializeCore];
@@ -55,6 +57,13 @@ static FXAppDelegate *sharedInstance = nil;
 {
     [FXEmulatorController cleanupCore];
 }
+
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApplication
+{
+    return YES;
+}
+
+#pragma mark - Etc
 
 - (FXEmulatorController *)emulator
 {
