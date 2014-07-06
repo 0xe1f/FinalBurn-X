@@ -520,6 +520,8 @@
 		FE50607F194BD4E6003A2BC7 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
 		FE506080194BD4E6003A2BC7 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
 		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
+		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
+		FE5FD7DD1968F68500BD1386 /* FXStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXStatusAsNSImage.m */; };
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
@@ -1255,6 +1257,9 @@
 		FE50605F194BD4E6003A2BC7 /* zutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zutil.h; sourceTree = "<group>"; };
 		FE5076FE194C1869003A2BC7 /* cd_interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cd_interface.h; sourceTree = "<group>"; };
 		FE507706194C18B5003A2BC7 /* neocdlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = neocdlist.h; sourceTree = "<group>"; };
+		FE5FD7D8196896C300BD1386 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		FE5FD7DB1968F68500BD1386 /* FXStatusAsNSImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXStatusAsNSImage.h; sourceTree = "<group>"; };
+		FE5FD7DC1968F68500BD1386 /* FXStatusAsNSImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXStatusAsNSImage.m; sourceTree = "<group>"; };
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
@@ -1345,6 +1350,7 @@
 				FE505956194BC41E003A2BC7 /* Core */,
 				FE08934D19475F9800F79190 /* FinalBurnX */,
 				FE0DC79E1950AC61004A03A3 /* Resources */,
+				FE5FD7D71968962E00BD1386 /* Documentation */,
 				FE08934619475F9800F79190 /* Frameworks */,
 				FE08934519475F9800F79190 /* Products */,
 			);
@@ -1384,6 +1390,7 @@
 			children = (
 				FE9FA3F5195346F000F791EB /* HIDput */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
+				FE5FD7DA1968F61400BD1386 /* ValueTransformers */,
 				FE0DC79419509EEB004A03A3 /* Views */,
 				FE08935919475F9800F79190 /* FXAppDelegate.h */,
 				FE08935A19475F9800F79190 /* FXAppDelegate.m */,
@@ -2502,6 +2509,23 @@
 			path = cd;
 			sourceTree = "<group>";
 		};
+		FE5FD7D71968962E00BD1386 /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				FE5FD7D8196896C300BD1386 /* README.md */,
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
+		FE5FD7DA1968F61400BD1386 /* ValueTransformers */ = {
+			isa = PBXGroup;
+			children = (
+				FE5FD7DB1968F68500BD1386 /* FXStatusAsNSImage.h */,
+				FE5FD7DC1968F68500BD1386 /* FXStatusAsNSImage.m */,
+			);
+			path = ValueTransformers;
+			sourceTree = "<group>";
+		};
 		FE7800CB194C29A50024716B /* input */ = {
 			isa = PBXGroup;
 			children = (
@@ -2671,6 +2695,7 @@
 				FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */,
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
 				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
+				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2844,6 +2869,7 @@
 				FEC2534C194CA1CF0039D85F /* xbr.cpp in Sources */,
 				FE505D69194BC533003A2BC7 /* d_nmk16.cpp in Sources */,
 				FE505DEE194BC533003A2BC7 /* burn_ym3812.cpp in Sources */,
+				FE5FD7DD1968F68500BD1386 /* FXStatusAsNSImage.m in Sources */,
 				FE505CD3194BC532003A2BC7 /* d_simpsons.cpp in Sources */,
 				FE505C8A194BC532003A2BC7 /* cave_sprite.cpp in Sources */,
 				FE505D9C194BC533003A2BC7 /* snes_main.cpp in Sources */,

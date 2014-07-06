@@ -92,7 +92,7 @@ static int cocoaGetNextSound(int draw);
                                                                 error:error];
     
 #ifdef DEBUG
-    if ([driverAudit isPerfect]) {
+    if ([driverAudit availability] == FXDriverComplete) {
         NSLog(@"%@: archive perfect", [driverAudit archiveName]);
     } else {
         NSLog(@"%@: archive is incomplete", [driverAudit archiveName]);

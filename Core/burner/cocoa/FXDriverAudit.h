@@ -33,11 +33,21 @@
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, copy) NSString *archiveName;
 @property (nonatomic, assign) int driverId;
+@property (nonatomic, assign) NSInteger availability;
+@property (nonatomic, assign) BOOL isPlayable;
 
 - (void)addROMAudit:(FXROMAudit *)romAudit;
 
 - (NSArray *)ROMAudits;
 - (FXROMAudit *)ROMAuditByNeededCRC:(NSUInteger)crc;
-- (BOOL)isPerfect;
+
+- (void)updateAvailability;
 
 @end
+
+enum {
+    FXDriverMissing,
+    FXDriverUnplayable,
+    FXDriverPartial,
+    FXDriverComplete,
+};

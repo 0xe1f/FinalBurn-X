@@ -45,3 +45,10 @@ enum {
     FXROMAuditBadLength,
     FXROMAuditMissing,
 };
+
+enum {
+    FXROMTypeNone      = 0x00,
+    FXROMTypeGraphics  = 0x01,
+    FXROMTypeSound     = 0x02,
+    FXROMTypeEssential = 0x04,
+};

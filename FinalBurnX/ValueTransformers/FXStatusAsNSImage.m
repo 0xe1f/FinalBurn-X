@@ -20,9 +20,35 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import "FXStatusAsNSImage.h"
 
-int main(int argc, const char * argv[])
+#import "FXDriverAudit.h"
+
+@implementation FXStatusAsNSImage
+
++ (Class)transformedValueClass
 {
-    return NSApplicationMain(argc, argv);
+    return [NSImage class];
 }
+
++ (BOOL)allowsReverseTransformation
+{
+    return NO;
+}
+
+- (id)transformedValue:(id)value
+{
+    switch ([value integerValue]) {
+        case FXDriverComplete:
+            return [NSImage imageNamed:@"NSStatusAvailable"];
+        case FXDriverPartial:
+            return [NSImage imageNamed:@"NSStatusPartiallyAvailable"];
+        case FXDriverMissing:
+            return [NSImage imageNamed:@"NSStatusNone"];
+        default:
+        case FXDriverUnplayable:
+            return [NSImage imageNamed:@"NSStatusUnavailable"];
+    }
+}
+
+@end

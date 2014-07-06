@@ -49,21 +49,35 @@
     return [self->romAuditsByNeededCRC allValues];
 }
 
-- (BOOL)isPerfect
+- (void)updateAvailability
 {
-    if ([self->romAuditsByNeededCRC count] < 1) {
-        // Nothing recorded
-        return NO;
+    __block NSInteger availability = FXDriverComplete;
+    
+    if ([self->romAuditsByNeededCRC count] <= 0) {
+        availability = FXDriverMissing;
+    } else {
+        [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
+            if ([romAudit status] == FXROMAuditOK) {
+                // We're fine
+            } else if ([romAudit status] == FXROMAuditMissing) {
+                // Missing ROM
+                availability = FXDriverUnplayable;
+                *stop = YES;
+            } else {
+                // Bad CRC or length
+                if ([romAudit type] & FXROMTypeEssential) {
+                    // Can't live without it
+                    availability = FXDriverUnplayable;
+                    *stop = YES;
+                } else {
+                    availability = FXDriverPartial;
+                }
+            }
+        }];
     }
     
-    __block BOOL isPerfect = YES;
-    [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
-        if ([romAudit status] != FXROMAuditOK) {
-            isPerfect = NO;
-            *stop = YES;
-        }
-    }];
-    
-    return isPerfect;
+    [self setIsPlayable:(availability == FXDriverComplete || availability == FXDriverPartial)];
+    [self setAvailability:availability];
 }
+
 @end

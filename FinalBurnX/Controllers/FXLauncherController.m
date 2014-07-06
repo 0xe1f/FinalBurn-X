@@ -27,6 +27,12 @@
 
 #import "FXLoader.h"
 
+@interface FXLauncherController ()
+
+- (void)reloadDrivers;
+
+@end
+
 @implementation FXLauncherController
 
 - (id)init
@@ -40,13 +46,40 @@
 
 - (void)awakeFromNib
 {
+    [self reloadDrivers];
+    
+    [self->driversTreeController rearrangeObjects];
+}
+
+#pragma mark - Actions
+
+- (void)launchGame:(id)sender
+{
+    NSTreeNode *selectedNode = [[self->driversTreeController selectedObjects] firstObject];
+    FXDriverAudit *driverAudit = [selectedNode representedObject];
+    if ([driverAudit isPlayable]) {
+        FXAppDelegate *app = [FXAppDelegate sharedInstance];
+        [app launch:[driverAudit archiveName]];
+    }
+}
+
+#pragma mark - Private methods
+
+- (void)reloadDrivers
+{
+#ifdef DEBUG
+    NSDate *started = [NSDate date];
+    NSLog(@"Loading drivers...");
+#endif
+    [[self drivers] removeAllObjects];
+    
     FXLoader *loader = [[FXLoader alloc] init];
     NSDictionary *availableDrivers = [loader drivers];
     
     [availableDrivers enumerateKeysAndObjectsUsingBlock:^(NSNumber *parentDriverId, NSArray *children, BOOL *stop) {
         NSError *parentError = NULL;
         FXDriverAudit *parentDriverAudit = [loader auditDriver:[parentDriverId intValue]
-                                                   error:&parentError];
+                                                         error:&parentError];
         
         // FIXME: else if parentError != NULL..
         
@@ -66,20 +99,9 @@
         
         [[self drivers] addObject:parentNode];
     }];
-    
-    [self->driversTreeController rearrangeObjects];
-}
-
-- (void)launchGame:(id)sender
-{
-    NSTreeNode *selectedNode = [[self->driversTreeController selectedObjects] firstObject];
-    FXDriverAudit *driverAudit = [selectedNode representedObject];
-    FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    
-    NSString *driverName = [driverAudit archiveName];
-    NSLog(@"launch %@", driverName);
-    
-    [app launch:driverName];
+#ifdef DEBUG
+    NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
 }
 
 @end

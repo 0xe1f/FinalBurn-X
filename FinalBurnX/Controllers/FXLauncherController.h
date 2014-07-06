@@ -25,6 +25,7 @@
 @interface FXLauncherController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet NSTreeController *driversTreeController;
+    IBOutlet NSOutlineView *driversOutlineView;
 }
 
 - (IBAction)launchGame:(id)sender;

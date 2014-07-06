@@ -297,7 +297,7 @@ static FXLoader *sharedInstance = NULL;
         
         return nil;
     }
-
+    
     // Get list of components (ROM files) for driver
     NSError *componentError = NULL;
     NSArray *driverComponents = [self componentsForDriver:driverId
@@ -347,7 +347,19 @@ static FXLoader *sharedInstance = NULL;
                         [romAudit setFilenameNeeded:[knownAliases firstObject]];
                         [romAudit setLengthNeeded:ri.nLen];
                         [romAudit setCRCNeeded:ri.nCrc];
-                        [romAudit setType:ri.nType];
+                        
+                        NSInteger type = FXROMTypeNone;
+                        if (ri.nType & 0x90) {
+                            type |= FXROMTypeEssential;
+                        }
+                        if (ri.nType & 0x01) {
+                            type |= FXROMTypeGraphics;
+                        }
+                        if (ri.nType & 0x02) {
+                            type |= FXROMTypeSound;
+                        }
+                        
+                        [romAudit setType:type];
                         
                         FXZipFile *matchByCRC = [zip findFileWithCRC:ri.nCrc];
                         if (matchByCRC != nil) {
@@ -379,6 +391,7 @@ static FXLoader *sharedInstance = NULL;
         }];
     }];
     
+    [driverAudit updateAvailability];
     [self->driverAuditCache setObject:driverAudit
                                forKey:@(driverId)];
     
