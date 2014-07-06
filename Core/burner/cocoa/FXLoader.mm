@@ -23,6 +23,7 @@
 #import "FXLoader.h"
 
 #import "FXZipArchive.h"
+#import "FXAppDelegate.h"
 
 #include "unzip.h"
 #include "burner.h"
@@ -287,9 +288,7 @@ static FXLoader *sharedInstance = NULL;
         return driverAudit;
     }
     
-    // FIXME
-    NSArray *romPaths = @[ @"/usr/local/share/roms/",
-                           @"roms/", ];
+    NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
     
     // Get list of archive names for driver
     NSError *archiveError = NULL;

@@ -30,6 +30,8 @@
     @private
     FXEmulatorController *emulator;
     FXLauncherController *launcher;
+    NSString *appSupportPath;
+    NSString *romPath;
 }
 
 - (void)launch:(int)driverId;
@@ -37,5 +39,7 @@
 + (FXAppDelegate *)sharedInstance;
 
 - (FXEmulatorController *)emulator;
+
+- (NSString *)ROMPath;
 
 @end
