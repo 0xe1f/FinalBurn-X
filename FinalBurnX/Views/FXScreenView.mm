@@ -45,6 +45,7 @@
 
 - (void)awakeFromNib
 {
+    self->renderLock = [[NSLock alloc] init];
 }
 
 #pragma mark - Cocoa Callbacks
@@ -55,6 +56,8 @@
     
     NSLog(@"FXScreenView/prepareOpenGL");
     
+    [self->renderLock lock];
+    
     // Synchronize buffer swaps with vertical refresh rate
     GLint swapInt = 1;
     [[self openGLContext] setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
@@ -63,15 +66,50 @@
     glClear(GL_COLOR_BUFFER_BIT);
     
     glGenTextures(1, &screenTextureId);
+    
+    [self->renderLock unlock];
 }
 
-//- (void)drawRect:(NSRect)dirtyRect
-//{
-//    [self renderScreen];
-//}
-//
+- (void)drawRect:(NSRect)dirtyRect
+{
+    [self->renderLock lock];
+    
+    NSOpenGLContext *nsContext = [self openGLContext];
+    [nsContext makeCurrentContext];
+    
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    GLfloat coordX = (GLfloat)self->imageWidth / self->textureWidth;
+    GLfloat coordY = 1.0f;
+    
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, screenTextureId);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    
+    NSSize size = [self bounds].size;
+    CGFloat offset = 0;
+    
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f(-offset, 0.0, 0.0);
+    glTexCoord2f(coordX, 0.0);
+    glVertex3f(size.width + offset, 0.0, 0.0);
+    glTexCoord2f(coordX, coordY);
+    glVertex3f(size.width + offset, size.height, 0.0);
+    glTexCoord2f(0.0, coordY);
+    glVertex3f(-offset, size.height, 0.0);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    
+    [nsContext flushBuffer];
+    
+    [self->renderLock unlock];
+}
+
 - (void)reshape
 {
+    [self->renderLock lock];
+    
     [[self openGLContext] makeCurrentContext];
     [[self openGLContext] update];
     
@@ -84,13 +122,19 @@
     glMatrixMode(GL_MODELVIEW);
     
     glClear(GL_COLOR_BUFFER_BIT);
+    
+    [self->renderLock unlock];
 }
+
+#pragma mark - FXVideoRenderDelegate
 
 - (void)initTextureOfWidth:(int)width
                     height:(int)height
              bytesPerPixel:(int)bytesPerPixel
 {
     NSLog(@"FXScreenView/initTexture");
+    
+    [self->renderLock lock];
     
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
@@ -119,12 +163,16 @@
                  0, GL_BGR, GL_UNSIGNED_BYTE, self->texture);
     
     glDisable(GL_TEXTURE_2D);
+    
+    [self->renderLock unlock];
 }
 
 - (void)renderFrame:(unsigned char *)bitmap
               width:(int)width
              height:(int)height
 {
+    [self->renderLock lock];
+    
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
@@ -159,7 +207,11 @@
     glDisable(GL_TEXTURE_2D);
     
     [nsContext flushBuffer];
+    
+    [self->renderLock unlock];
 }
+
+#pragma mark - Private methods
 
 + (int)powerOfTwoClosestTo:(int)number
 {

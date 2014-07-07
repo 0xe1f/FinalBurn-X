@@ -295,7 +295,7 @@ static FXLoader *sharedInstance = NULL;
     NSArray *archiveNames = [self archiveNamesForDriver:driverId
                                                   error:&archiveError];
     
-    if (archiveError != NULL) {
+    if (archiveError != nil) {
         if (error != NULL) {
             *error = archiveError;
         }
@@ -308,7 +308,7 @@ static FXLoader *sharedInstance = NULL;
     NSArray *driverComponents = [self componentsForDriver:driverId
                                                     error:&componentError];
     
-    if (componentError != NULL) {
+    if (componentError != nil) {
         if (error != NULL) {
             *error = componentError;
         }
