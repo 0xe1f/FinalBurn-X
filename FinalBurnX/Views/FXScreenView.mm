@@ -145,6 +145,7 @@
     self->textureWidth = [FXScreenView powerOfTwoClosestTo:width];
     self->textureHeight = height;
     self->textureBytesPerPixel = bytesPerPixel;
+    self->screenSize = NSMakeSize((CGFloat)width, (CGFloat)height);
     
     int texSize = self->textureWidth * self->textureHeight * bytesPerPixel;
     self->texture = (unsigned char *)malloc(texSize);
@@ -165,6 +166,11 @@
     glDisable(GL_TEXTURE_2D);
     
     [self->renderLock unlock];
+    
+    NSWindowController *wc = [[self window] windowController];
+    if ([wc conformsToProtocol:@protocol(FXScreenViewDelegate)]) {
+        [(id<FXScreenViewDelegate>)wc screenSizeDidChange:self->screenSize];
+    }
 }
 
 - (void)renderFrame:(unsigned char *)bitmap
@@ -209,6 +215,13 @@
     [nsContext flushBuffer];
     
     [self->renderLock unlock];
+}
+
+#pragma mark - Public methods
+
+- (NSSize)screenSize
+{
+    return self->screenSize;
 }
 
 #pragma mark - Private methods

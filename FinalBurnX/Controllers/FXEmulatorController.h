@@ -29,7 +29,7 @@
 @class FXAudio;
 @class FXRunLoop;
 
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXScreenViewDelegate>
 {
     IBOutlet FXScreenView *screen;
 }

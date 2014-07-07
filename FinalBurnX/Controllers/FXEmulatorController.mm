@@ -57,7 +57,7 @@
     NSString *title = [[FXLoader sharedLoader] titleForDriverId:[self driverId]];
     [[self window] setTitle:title];
     
-    [[self video] setDelegate:screen];
+    [[self video] setDelegate:self->screen];
     [[self runLoop] start];
 }
 
@@ -81,6 +81,46 @@
 - (void)windowWillClose:(NSNotification *)notification
 {
     [[self runLoop] cancel];
+}
+
+- (NSSize)windowWillResize:(NSWindow *)sender
+                    toSize:(NSSize)frameSize
+{
+    NSSize screenSize = [self->screen screenSize];
+    if (screenSize.width == 0 || screenSize.height == 0) {
+        // Screen size is not yet available
+    } else {
+        NSRect windowFrame = [[self window] frame];
+        NSRect viewRect = [self->screen convertRect:[self->screen bounds]
+                                             toView: nil];
+        NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
+        
+        CGFloat screenRatio = screenSize.width / screenSize.height;
+        
+        float marginY = viewRect.origin.y + windowFrame.size.height - contentRect.size.height;
+        float marginX = contentRect.size.width - viewRect.size.width;
+        
+        // Clamp the minimum height
+        if ((frameSize.height - marginY) < screenSize.height) {
+            frameSize.height = screenSize.height + marginY;
+        }
+        
+        // Set the screen width as a percentage of the screen height
+        frameSize.width = (frameSize.height - marginY) * screenRatio + marginX;
+    }
+    
+    return frameSize;
+}
+
+#pragma mark - FXScreenViewDelegate
+
+- (void)screenSizeDidChange:(NSSize)newSize
+{
+#ifdef DEBUG
+    NSLog(@"screenSizeDidChange (%.02f,%.02f)", newSize.width, newSize.height);
+#endif
+    
+    [[self window] setContentSize:newSize];
 }
 
 #pragma mark - Core

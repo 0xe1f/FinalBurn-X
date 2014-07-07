@@ -24,6 +24,13 @@
 
 #import "FXVideo.h"
 
+@protocol FXScreenViewDelegate
+
+@required
+- (void)screenSizeDidChange:(NSSize)newSize;
+
+@end
+
 @interface FXScreenView : NSOpenGLView<FXVideoRenderDelegate>
 {
     @private
@@ -34,6 +41,9 @@
     int textureHeight;
     int textureBytesPerPixel;
     NSLock *renderLock;
+    NSSize screenSize;
 }
+
+- (NSSize)screenSize;
 
 @end
