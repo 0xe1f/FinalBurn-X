@@ -33,6 +33,8 @@
 @interface FXEmulatorController ()
 
 - (void)windowKeyDidChange:(BOOL)isKey;
+- (void)resizeFrame:(NSSize)newSize
+            animate:(BOOL)animate;
 
 @end
 
@@ -112,6 +114,19 @@
     return frameSize;
 }
 
+- (void)windowDidResize:(NSNotification *)notification
+{
+    NSSize screenSize = [self->screen screenSize];
+    if (screenSize.width != 0 && screenSize.height != 0) {
+        NSRect windowFrame = [[self window] frame];
+        NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
+        
+        NSLog(@"Screen resized. Actual: (%.00f,%.00f); Virtual: (%.00f,%.00f)",
+              screenSize.width, screenSize.height,
+              contentRect.size.width, contentRect.size.height);
+    }
+}
+
 #pragma mark - FXScreenViewDelegate
 
 - (void)screenSizeDidChange:(NSSize)newSize
@@ -121,6 +136,27 @@
 #endif
     
     [[self window] setContentSize:newSize];
+}
+
+#pragma mark - Actions
+
+- (void)resizeNormalSize:(id)sender
+{
+    NSSize screenSize = [self->screen screenSize];
+    if (screenSize.width != 0 && screenSize.height != 0) {
+        [self resizeFrame:screenSize
+                  animate:YES];
+    }
+}
+
+- (void)resizeDoubleSize:(id)sender
+{
+    NSSize screenSize = [self->screen screenSize];
+    if (screenSize.width != 0 && screenSize.height != 0) {
+        NSSize doubleSize = NSMakeSize(screenSize.width * 2, screenSize.height * 2);
+        [self resizeFrame:doubleSize
+                  animate:YES];
+    }
 }
 
 #pragma mark - Core
@@ -135,7 +171,25 @@
     BurnLibExit();
 }
 
-#pragma mark - etc...
+#pragma mark - Private methods
+
+- (void)resizeFrame:(NSSize)newSize
+            animate:(BOOL)animate
+{
+    NSRect windowRect = [[self window] frame];
+    NSSize windowSize = windowRect.size;
+    NSSize glViewSize = [self->screen frame].size;
+    
+    CGFloat newWidth = newSize.width + (windowSize.width - glViewSize.width);
+    CGFloat newHeight = newSize.height + (windowSize.height - glViewSize.height);
+    
+    NSRect newRect = NSMakeRect(windowRect.origin.x, windowRect.origin.y,
+                                newWidth, newHeight);
+    
+    [[self window] setFrame:newRect
+                    display:YES
+                    animate:animate];
+}
 
 - (void)windowKeyDidChange:(BOOL)isKey
 {

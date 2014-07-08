@@ -43,4 +43,5 @@
 enum {
     FXErrorDriverInitialization = -100,
     FXErrorDriverUnrecognized   = -101,
+    FXErrorDriverUnplayable     = -102,
 };

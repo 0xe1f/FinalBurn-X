@@ -74,6 +74,17 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="HyV-fh-RgO">
                         <items>
+                            <menuItem title="Normal Size" keyEquivalent="1" id="ysA-X5-lxJ">
+                                <connections>
+                                    <action selector="resizeNormalSize:" target="-1" id="gBI-tr-4h2"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Double Size" keyEquivalent="2" id="SF1-9F-wu9">
+                                <connections>
+                                    <action selector="resizeDoubleSize:" target="-1" id="Xf5-dt-6Yh"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="pQM-mh-dr7"/>
                             <menuItem title="Show Toolbar" keyEquivalent="t" id="snW-S8-Cw5">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>

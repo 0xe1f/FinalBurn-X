@@ -41,6 +41,9 @@
 
 @property (nonatomic, assign) int driverId;
 
+- (IBAction)resizeNormalSize:(id)sender;
+- (IBAction)resizeDoubleSize:(id)sender;
+
 - (instancetype)initWithDriverId:(int)driverId;
 
 + (void)initializeCore;

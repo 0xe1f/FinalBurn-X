@@ -77,17 +77,15 @@ static int cocoaGetNextSound(int draw);
     FXDriverAudit *driverAudit = [[FXLoader sharedLoader] auditDriver:driverId
                                                                 error:error];
     
-#ifdef DEBUG
-    if ([driverAudit availability] == FXDriverComplete) {
-        NSLog(@"%@: archive perfect", [driverAudit archiveName]);
-    } else {
-        NSLog(@"%@: archive is incomplete", [driverAudit archiveName]);
+    if (![driverAudit isPlayable]) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
+                                         code:FXErrorDriverInitialization
+                                     userInfo:@{ NSLocalizedDescriptionKey: @"Driver is missing essential files" }];
+        }
+        
+        return NO;
     }
-    
-    [[driverAudit ROMAudits] enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
-        NSLog(@"%@", [romAudit message]);
-    }];
-#endif
     
 	InputInit();
     
