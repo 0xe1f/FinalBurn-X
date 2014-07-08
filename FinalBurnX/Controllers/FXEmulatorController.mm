@@ -121,7 +121,13 @@
         NSRect windowFrame = [[self window] frame];
         NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
         
-        NSLog(@"Screen resized. Actual: (%.00f,%.00f); Virtual: (%.00f,%.00f)",
+        NSString *screenSizeString = NSStringFromSize(screenSize);
+        NSString *actualSizeString = NSStringFromSize(contentRect.size);
+        
+        [[NSUserDefaults standardUserDefaults] setObject:actualSizeString
+                                                  forKey:[@"windowSize-" stringByAppendingString:screenSizeString]];
+        
+        NSLog(@"FXEmulatorController/windowDidResize: (screen: {%.00f,%.00f}; view: {%.00f,%.00f})",
               screenSize.width, screenSize.height,
               contentRect.size.width, contentRect.size.height);
     }
@@ -129,13 +135,31 @@
 
 #pragma mark - FXScreenViewDelegate
 
-- (void)screenSizeDidChange:(NSSize)newSize
+- (void)screenSizeDidChange:(NSSize)newScreenSize
 {
+    NSString *screenSizeString = NSStringFromSize(newScreenSize);
+    NSString *actualSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:[@"windowSize-" stringByAppendingString:screenSizeString]];
+    
+    NSSize contentViewSize;
+    if (actualSizeString != nil) {
+        contentViewSize = NSSizeFromString(actualSizeString);
+    } else {
+        // Default size is double the size of screen
+        contentViewSize = NSMakeSize(newScreenSize.width * 2, newScreenSize.height * 2);
+    }
+    
+    if (contentViewSize.width < newScreenSize.width || contentViewSize.height < newScreenSize.height) {
+        // Can't be smaller than the size of screen
+        contentViewSize = newScreenSize;
+    }
+    
 #ifdef DEBUG
-    NSLog(@"screenSizeDidChange (%.02f,%.02f)", newSize.width, newSize.height);
+    NSLog(@"FXEmulatorController/screenSizeDidChange: (screen: {%.0f,%.0f}; view: {%.0f,%.0f})",
+          newScreenSize.width, newScreenSize.height,
+          contentViewSize.width, contentViewSize.height);
 #endif
     
-    [[self window] setContentSize:newSize];
+    [[self window] setContentSize:contentViewSize];
 }
 
 #pragma mark - Actions
