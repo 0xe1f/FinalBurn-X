@@ -189,7 +189,7 @@ static int cocoaGetNextSound(int draw);
 		if (VidFrame()) {
 			AudBlankSound();
 		}
-	} else {								// frame skipping
+	} else {
 		pBurnDraw = NULL;
 		BurnDrvFrame();
 	}

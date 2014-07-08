@@ -24,7 +24,14 @@
 
 #import "FXDriverAudit.h"
 
+static NSMutableDictionary *icons;
+
 @implementation FXStatusAsNSImage
+
++ (void)initialize
+{
+    icons = [[NSMutableDictionary alloc] init];
+}
 
 + (Class)transformedValueClass
 {
@@ -36,18 +43,31 @@
     return NO;
 }
 
+- (NSImage *)imageNamed:(NSString *)name
+{
+    // Keep each image in a local cache
+    NSImage *image = [icons objectForKey:name];
+    if (image == nil) {
+        image = [NSImage imageNamed:name];
+        [icons setObject:image
+                  forKey:name];
+    }
+    
+    return image;
+}
+
 - (id)transformedValue:(id)value
 {
     switch ([value integerValue]) {
         case FXDriverComplete:
-            return [NSImage imageNamed:@"NSStatusAvailable"];
+            return [self imageNamed:@"NSStatusAvailable"];
         case FXDriverPartial:
-            return [NSImage imageNamed:@"NSStatusPartiallyAvailable"];
+            return [self imageNamed:@"NSStatusPartiallyAvailable"];
         case FXDriverMissing:
-            return [NSImage imageNamed:@"NSStatusNone"];
+            return [self imageNamed:@"NSStatusNone"];
         default:
         case FXDriverUnplayable:
-            return [NSImage imageNamed:@"NSStatusUnavailable"];
+            return [self imageNamed:@"NSStatusUnavailable"];
     }
 }
 
