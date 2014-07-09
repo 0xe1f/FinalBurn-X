@@ -40,10 +40,10 @@
 @end
 
 enum {
-    FXROMAuditOK,
-    FXROMAuditBadCRC,
-    FXROMAuditBadLength,
-    FXROMAuditMissing,
+    FXROMAuditOK         = 100,
+    FXROMAuditBadCRC     = 101,
+    FXROMAuditBadLength  = 102,
+    FXROMAuditMissing    = 103,
 };
 
 enum {

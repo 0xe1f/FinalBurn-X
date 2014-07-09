@@ -20,13 +20,13 @@
  **
  ******************************************************************************
  */
-#import "FXStatusAsNSImage.h"
+#import "FXAuditStatusAsNSImage.h"
 
 #import "FXDriverAudit.h"
 
 static NSMutableDictionary *icons;
 
-@implementation FXStatusAsNSImage
+@implementation FXAuditStatusAsNSImage
 
 + (void)initialize
 {
@@ -59,13 +59,17 @@ static NSMutableDictionary *icons;
 - (id)transformedValue:(id)value
 {
     switch ([value integerValue]) {
+        case FXROMAuditOK:
         case FXDriverComplete:
             return [self imageNamed:@"NSStatusAvailable"];
         case FXDriverPartial:
             return [self imageNamed:@"NSStatusPartiallyAvailable"];
+        case FXROMAuditMissing:
         case FXDriverMissing:
             return [self imageNamed:@"NSStatusNone"];
         default:
+        case FXROMAuditBadCRC:
+        case FXROMAuditBadLength:
         case FXDriverUnplayable:
             return [self imageNamed:@"NSStatusUnavailable"];
     }

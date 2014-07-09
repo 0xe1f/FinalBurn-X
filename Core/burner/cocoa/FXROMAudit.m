@@ -44,20 +44,18 @@
     NSString *message = nil;
     switch ([self status]) {
         case FXROMAuditMissing:
-            message = [NSString stringWithFormat:NSLocalizedString(@"%@ not found", @""),
-                       [self filenameNeeded]];
+            message = NSLocalizedString(@"Missing", @"");
             break;
         case FXROMAuditBadCRC:
-            message = [NSString stringWithFormat:NSLocalizedString(@"%@ has an invalid checksum (wanted: %d; found: %d)", @""),
-                       [self filenameFound], [self CRCNeeded], [self CRCFound]];
+            message = [NSString stringWithFormat:NSLocalizedString(@"Checksum mismatch (expected: %dB; found: %dB)", @""),
+                       [self CRCNeeded], [self CRCFound]];
             break;
         case FXROMAuditBadLength:
-            message = [NSString stringWithFormat:NSLocalizedString(@"%@ has an invalid length (wanted: %d; found: %d)", @""),
-                       [self filenameFound], [self lengthNeeded], [self lengthFound]];
+            message = [NSString stringWithFormat:NSLocalizedString(@"Length mismatch (expected: %dB; found: %dB)", @""),
+                       [self lengthNeeded], [self lengthFound]];
             break;
         case FXROMAuditOK:
-            message = [NSString stringWithFormat:NSLocalizedString(@"%@ is OK", @""),
-                       [self filenameFound]];
+            message = NSLocalizedString(@"OK", @"");
             break;
     }
     

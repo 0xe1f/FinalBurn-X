@@ -22,6 +22,6 @@
  */
 #import <Foundation/Foundation.h>
 
-@interface FXStatusAsNSImage : NSValueTransformer
+@interface FXAuditStatusAsNSImage : NSValueTransformer
 
 @end

@@ -46,8 +46,8 @@
 @end
 
 enum {
-    FXDriverMissing,
-    FXDriverUnplayable,
-    FXDriverPartial,
-    FXDriverComplete,
+    FXDriverComplete    = 0,
+    FXDriverPartial     = 1,
+    FXDriverUnplayable  = 2,
+    FXDriverMissing     = 3,
 };

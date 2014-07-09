@@ -322,7 +322,8 @@ static FXLoader *sharedInstance = NULL;
     [driverAudit setArchiveName:[archiveNames firstObject]];
     [driverAudit setName:[self titleForDriverId:driverId]];
     
-    // See if any of archives are loadable
+    NSMutableArray *foundComponentIndices = [NSMutableArray array];
+    
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {
         NSString *archiveFilename = [archiveName stringByAppendingPathExtension:@"zip"];
         [romPaths enumerateObjectsUsingBlock:^(NSString *romPath, NSUInteger idx, BOOL *stop) {
@@ -341,6 +342,14 @@ static FXLoader *sharedInstance = NULL;
                         // Extract the BurnRomInfo struct
                         struct BurnRomInfo ri;
                         [value getValue:&ri];
+                        
+                        if (ri.nType == 0) {
+                            // No ROM in slot
+                            return;
+                        } else if ([foundComponentIndices containsObject:@(idx)]) {
+                            // Already found in an earlier set
+                            return;
+                        }
                         
                         NSArray *knownAliases = [self knownAliasesForDriverId:driverId
                                                                      romIndex:(int)idx];
@@ -371,6 +380,8 @@ static FXLoader *sharedInstance = NULL;
                             [romAudit setFilenameFound:[matchByCRC filename]];
                             [romAudit setLengthFound:[matchByCRC length]];
                             [romAudit setCRCFound:[matchByCRC CRC]];
+                            
+                            [foundComponentIndices addObject:@(idx)];
                         } else {
                             // File not found by CRC. Check by known aliases
                             FXZipFile *matchByAlias = [zip findFileNamedAnyOf:knownAliases];
@@ -381,6 +392,8 @@ static FXLoader *sharedInstance = NULL;
                                 [romAudit setFilenameFound:[matchByAlias filename]];
                                 [romAudit setLengthFound:[matchByAlias length]];
                                 [romAudit setCRCFound:[matchByAlias CRC]];
+                                
+                                [foundComponentIndices addObject:@(idx)];
                             } else {
                                 // File not found by any of known aliases
                             }
