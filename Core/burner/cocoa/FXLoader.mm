@@ -30,7 +30,7 @@
 #include "burnint.h"
 #include "driverlist.h"
 
-static FXLoader *sharedInstance = NULL;
+static FXLoader *sharedInstance = nil;
 
 @interface FXLoader()
 
@@ -54,7 +54,7 @@ static FXLoader *sharedInstance = NULL;
 
 + (id)sharedLoader
 {
-    if (sharedInstance == NULL) {
+    if (sharedInstance == nil) {
         sharedInstance = [[FXLoader alloc] init];
     }
     
@@ -172,7 +172,7 @@ static FXLoader *sharedInstance = NULL;
                            error:(NSError **)error
 {
     if (driverId >= nBurnDrvCount) {
-        if (error != NULL) {
+        if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
         }
@@ -201,7 +201,7 @@ static FXLoader *sharedInstance = NULL;
                              error:(NSError **)error
 {
     if (driverId >= nBurnDrvCount) {
-        if (error != NULL) {
+        if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
         }
@@ -274,7 +274,7 @@ static FXLoader *sharedInstance = NULL;
                          error:(NSError **)error
 {
     if (driverId >= nBurnDrvCount) {
-        if (error != NULL) {
+        if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
         }
@@ -291,12 +291,12 @@ static FXLoader *sharedInstance = NULL;
     NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
     
     // Get list of archive names for driver
-    NSError *archiveError = NULL;
+    NSError *archiveError = nil;
     NSArray *archiveNames = [self archiveNamesForDriver:driverId
                                                   error:&archiveError];
     
     if (archiveError != nil) {
-        if (error != NULL) {
+        if (error != nil) {
             *error = archiveError;
         }
         
@@ -304,12 +304,12 @@ static FXLoader *sharedInstance = NULL;
     }
     
     // Get list of components (ROM files) for driver
-    NSError *componentError = NULL;
+    NSError *componentError = nil;
     NSArray *driverComponents = [self componentsForDriver:driverId
                                                     error:&componentError];
     
     if (componentError != nil) {
-        if (error != NULL) {
+        if (error != nil) {
             *error = componentError;
         }
         
@@ -333,11 +333,11 @@ static FXLoader *sharedInstance = NULL;
             
             if (exists) {
                 // Open the file, read its table of contents
-                NSError *zipError = NULL;
+                NSError *zipError = nil;
                 FXZipArchive *zip = [[FXZipArchive alloc] initWithPath:fullPath
                                                                  error:&zipError];
                 
-                if (zipError == NULL) {
+                if (zipError == nil) {
                     [driverComponents enumerateObjectsUsingBlock:^(NSValue *value, NSUInteger idx, BOOL *stop) {
                         // Extract the BurnRomInfo struct
                         struct BurnRomInfo ri;
@@ -360,6 +360,12 @@ static FXLoader *sharedInstance = NULL;
                         [romAudit setCRCNeeded:ri.nCrc];
                         
                         NSInteger type = FXROMTypeNone;
+                        if (idx < 0x80) {
+                            // Not sure if this is a good idea; basing it off
+                            // STD_ROM_PICK to determine whether or not a ROM
+                            // is part of the original set
+                            type |= FXROMTypeCoreSet;
+                        }
                         if (ri.nType & 0x90) {
                             type |= FXROMTypeEssential;
                         }
@@ -384,7 +390,9 @@ static FXLoader *sharedInstance = NULL;
                             [foundComponentIndices addObject:@(idx)];
                         } else {
                             // File not found by CRC. Check by known aliases
-                            FXZipFile *matchByAlias = [zip findFileNamedAnyOf:knownAliases];
+                            FXZipFile *matchByAlias = [zip findFileNamedAnyOf:knownAliases
+                                                               matchExactPath:NO];
+                            
                             if (matchByAlias != nil) {
                                 // Found by alias
                                 // Update status
@@ -428,7 +436,7 @@ static FXLoader *sharedInstance = NULL;
     }
     
     FXDriverAudit *driverAudit = [self->driverAuditCache objectForKey:@(driverId)];
-    if (driverAudit == NULL) {
+    if (driverAudit == nil) {
         return 1;
     }
     
@@ -441,12 +449,12 @@ static FXLoader *sharedInstance = NULL;
     NSUInteger uncompressedLength = [romAudit lengthFound];
     NSUInteger foundCRC = [romAudit CRCFound];
     
-    NSError *error = NULL;
+    NSError *error = nil;
     // FIXME: keep files open during the loading phase
     FXZipArchive *zipFile = [[FXZipArchive alloc] initWithPath:path
                                                          error:&error];
     
-    if (error != NULL) {
+    if (error != nil) {
         return 1;
     }
     
@@ -455,7 +463,7 @@ static FXLoader *sharedInstance = NULL;
                                    bufferLength:uncompressedLength
                                           error:&error];
     
-    if (error != NULL) {
+    if (error != nil) {
         if (bytesRead > -1) {
             if (length != NULL) {
                 *length = bytesRead;

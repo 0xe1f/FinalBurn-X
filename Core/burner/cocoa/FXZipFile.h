@@ -27,7 +27,7 @@
 }
 
 @property (nonatomic, strong) NSString *filename;
-@property (nonatomic, assign) NSUInteger CRC;
+@property (nonatomic, assign) UInt32 CRC;
 @property (nonatomic, assign) NSUInteger length;
 
 @end

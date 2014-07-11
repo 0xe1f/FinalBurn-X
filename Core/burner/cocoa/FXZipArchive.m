@@ -71,10 +71,16 @@
 }
 
 - (FXZipFile *)findFileNamed:(NSString *)filename
+              matchExactPath:(BOOL)exactPath
 {
     __block FXZipFile *matching = nil;
     [[self files] enumerateObjectsUsingBlock:^(FXZipFile *file, NSUInteger idx, BOOL *stop) {
-        if ([[file filename] isEqualToString:filename]) {
+        NSString *path = [file filename];
+        if (!exactPath) {
+            path = [path lastPathComponent];
+        }
+        
+        if ([path isEqualToString:filename]) {
             matching = file;
             *stop = YES;
         }
@@ -84,10 +90,12 @@
 }
 
 - (FXZipFile *)findFileNamedAnyOf:(NSArray *)filenames
+                   matchExactPath:(BOOL)exactPath
 {
     __block FXZipFile *matching = nil;
     [filenames enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL *stop) {
-        FXZipFile *file = [self findFileNamed:filename];
+        FXZipFile *file = [self findFileNamed:filename
+                               matchExactPath:exactPath];
         if (file != nil) {
             matching = file;
             *stop = YES;
@@ -234,7 +242,7 @@
                 FXZipFile *file = [[FXZipFile alloc] init];
                 [file setFilename:[NSString stringWithCString:cFilename
                                                      encoding:NSUTF8StringEncoding]];
-                [file setCRC:fileInfo.crc];
+                [file setCRC:(UInt32)fileInfo.crc];
                 [file setLength:fileInfo.uncompressed_size];
                 
                 free(cFilename);

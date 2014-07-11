@@ -47,12 +47,12 @@
             message = NSLocalizedString(@"Missing", @"");
             break;
         case FXROMAuditBadCRC:
-            message = [NSString stringWithFormat:NSLocalizedString(@"Checksum mismatch (expected: %dB; found: %dB)", @""),
+            message = [NSString stringWithFormat:NSLocalizedString(@"Checksum mismatch (expected: %08x; found: %08x)", @""),
                        [self CRCNeeded], [self CRCFound]];
             break;
         case FXROMAuditBadLength:
-            message = [NSString stringWithFormat:NSLocalizedString(@"Length mismatch (expected: %dB; found: %dB)", @""),
-                       [self lengthNeeded], [self lengthFound]];
+            message = [NSString stringWithFormat:NSLocalizedString(@"Length mismatch (expected: %dkB; found: %dkB)", @""),
+                       [self lengthNeeded] >> 10, [self lengthFound] >> 10];
             break;
         case FXROMAuditOK:
             message = NSLocalizedString(@"OK", @"");

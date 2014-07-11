@@ -30,8 +30,8 @@
 @property (nonatomic, copy) NSString *filenameFound;
 @property (nonatomic, assign) NSUInteger lengthNeeded;
 @property (nonatomic, assign) NSUInteger lengthFound;
-@property (nonatomic, assign) NSUInteger CRCNeeded;
-@property (nonatomic, assign) NSUInteger CRCFound;
+@property (nonatomic, assign) UInt32 CRCNeeded;
+@property (nonatomic, assign) UInt32 CRCFound;
 @property (nonatomic, assign) NSUInteger type;
 
 - (NSInteger)status;
@@ -47,8 +47,9 @@ enum {
 };
 
 enum {
-    FXROMTypeNone      = 0x00,
-    FXROMTypeGraphics  = 0x01,
-    FXROMTypeSound     = 0x02,
-    FXROMTypeEssential = 0x04,
+    FXROMTypeNone        = 0x00,
+    FXROMTypeGraphics    = 0x01,
+    FXROMTypeSound       = 0x02,
+    FXROMTypeEssential   = 0x04,
+    FXROMTypeCoreSet = 0x08,
 };

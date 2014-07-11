@@ -40,8 +40,10 @@
 - (NSArray *)files;
 - (NSUInteger)fileCount;
 - (FXZipFile *)findFileWithCRC:(NSUInteger)crc;
-- (FXZipFile *)findFileNamed:(NSString *)filename;
-- (FXZipFile *)findFileNamedAnyOf:(NSArray *)filenames;
+- (FXZipFile *)findFileNamed:(NSString *)filename
+              matchExactPath:(BOOL)exactPath;
+- (FXZipFile *)findFileNamedAnyOf:(NSArray *)filenames
+                   matchExactPath:(BOOL)exactPath;
 - (UInt32)readFileWithCRC:(NSUInteger)crc
                intoBuffer:(void *)buffer
              bufferLength:(NSUInteger)length

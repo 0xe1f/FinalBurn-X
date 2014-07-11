@@ -58,15 +58,19 @@
     } else {
         [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
             if ([romAudit status] == FXROMAuditOK) {
-                // We're fine
+                // ROM present and correct
             } else if ([romAudit status] == FXROMAuditMissing) {
-                // Missing ROM
-                availability = FXDriverUnplayable;
+                // ROM missing
+                if ([romAudit type] & FXROMTypeCoreSet) {
+                    availability = FXDriverMissing;
+                } else {
+                    availability = FXDriverUnplayable;
+                }
                 *stop = YES;
             } else {
-                // Bad CRC or length
-                if ([romAudit type] & FXROMTypeEssential) {
-                    // Can't live without it
+                // ROM present, but CRC or length don't match
+                if ([romAudit type] & FXROMTypeEssential ||
+                    [romAudit type] & FXROMTypeCoreSet) {
                     availability = FXDriverUnplayable;
                     *stop = YES;
                 } else {

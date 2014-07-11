@@ -139,7 +139,7 @@
                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                     <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                     <tableColumns>
-                                        <tableColumn editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="2iY-rI-hQo">
+                                        <tableColumn identifier="romStatus" editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="2iY-rI-hQo">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Status">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -148,14 +148,14 @@
                                             <imageCell key="dataCell" controlSize="small" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="D61-24-43s"/>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.status" id="6aI-5M-SPg">
+                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.status" id="WRh-Td-qlX">
                                                     <dictionary key="options">
                                                         <string key="NSValueTransformerName">FXAuditStatusAsNSImage</string>
                                                     </dictionary>
                                                 </binding>
                                             </connections>
                                         </tableColumn>
-                                        <tableColumn editable="NO" width="116" minWidth="40" maxWidth="1000" id="tLb-bS-yFC">
+                                        <tableColumn identifier="romFilename" editable="NO" width="116" minWidth="40" maxWidth="1000" id="tLb-bS-yFC">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="File name">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -171,7 +171,7 @@
                                                 <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.filenameNeeded" id="IpU-pQ-yq3"/>
                                             </connections>
                                         </tableColumn>
-                                        <tableColumn editable="NO" width="325" minWidth="40" maxWidth="1000" id="2g0-HY-Oai">
+                                        <tableColumn identifier="romStatusDescription" editable="NO" width="325" minWidth="40" maxWidth="1000" id="2g0-HY-Oai">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Description">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -219,9 +219,14 @@
                 </binding>
             </connections>
         </treeController>
-        <arrayController objectClassName="FXROMAudit" id="qRp-OV-IjQ">
+        <arrayController objectClassName="FXROMAudit" editable="NO" id="qRp-OV-IjQ" userLabel="ROM Array Controller">
             <connections>
                 <binding destination="hya-yi-HSf" name="contentArray" keyPath="selection.representedObject.ROMAudits" id="LS5-hX-Tin"/>
+                <binding destination="TBz-FA-6e8" name="sortDescriptors" keyPath="values.driverROMSortDescriptors" id="gJ9-ks-ci0">
+                    <dictionary key="options">
+                        <string key="NSValueTransformerName">NSUnarchiveFromData</string>
+                    </dictionary>
+                </binding>
             </connections>
         </arrayController>
         <userDefaultsController representsSharedInstance="YES" id="TBz-FA-6e8"/>
