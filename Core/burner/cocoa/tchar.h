@@ -20,23 +20,24 @@
  **
  ******************************************************************************
  */
+#ifndef TCHAR_H
+#define TCHAR_H
+
 #ifdef _UNICODE
 
 #include <wchar.h>
+
 #define	__TEXT(q)	L##q
 
 typedef	wchar_t	TCHAR;
 typedef wchar_t _TCHAR;
 
-#else
-
+#else /* ifndef _UNICODE */
 
 #define	__TEXT(q)	q
 
-#ifndef RC_INVOKED
 typedef char	TCHAR;
 typedef char	_TCHAR;
-#endif
 
 #define wcslen(void)
 
@@ -77,3 +78,4 @@ typedef char	_TCHAR;
 #define _TEXT(x)	__TEXT(x)
 #define	_T(x)		__TEXT(x)
 
+#endif

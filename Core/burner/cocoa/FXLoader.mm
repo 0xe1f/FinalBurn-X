@@ -25,6 +25,8 @@
 #import "FXZipArchive.h"
 #import "FXAppDelegate.h"
 
+#include <wchar.h>
+
 #include "unzip.h"
 #include "burner.h"
 #include "burnint.h"
@@ -266,8 +268,24 @@ static FXLoader *sharedInstance = nil;
 
 - (NSString *)titleForDriverId:(int)driverId
 {
-    return [NSString stringWithCString:pDriver[driverId]->szFullNameA
-                              encoding:NSUTF8StringEncoding];
+#ifdef wcslen
+#undef wcslen
+#endif
+    NSString *title = nil;
+    const wchar_t *fullName = pDriver[driverId]->szFullNameW;
+    
+    if (fullName != NULL) {
+        title = [[NSString alloc] initWithBytes:fullName
+                                         length:sizeof(wchar_t) * wcslen(fullName)
+                                       encoding:NSUTF8StringEncoding];
+    }
+    
+    if (title == nil) {
+        title = [NSString stringWithCString:pDriver[driverId]->szFullNameA
+                                   encoding:NSUTF8StringEncoding];
+    }
+    
+    return title;
 }
 
 - (FXDriverAudit *)auditDriver:(int)driverId

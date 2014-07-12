@@ -216,5 +216,5 @@ struct InputInOut InputInOutCocoa = {
     cocoaInputFind,
     cocoaInputGetControlName,
     NULL,
-    "Cocoa Input",
+    _T("Cocoa Input"),
 };

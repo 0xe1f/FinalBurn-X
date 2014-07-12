@@ -28,6 +28,7 @@
 @interface FXScreenView ()
 
 + (int)powerOfTwoClosestTo:(int)number;
+- (void)resetProjection;
 
 @end
 
@@ -80,7 +81,7 @@
     glClear(GL_COLOR_BUFFER_BIT);
     
     GLfloat coordX = (GLfloat)self->imageWidth / self->textureWidth;
-    GLfloat coordY = 1.0f;
+    GLfloat coordY = (GLfloat)self->imageHeight / self->textureHeight;
     
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, screenTextureId);
@@ -113,13 +114,7 @@
     [[self openGLContext] makeCurrentContext];
     [[self openGLContext] update];
     
-    NSSize size = [self bounds].size;
-    
-    glViewport(0, 0, size.width, size.height);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, size.width, size.height, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
+    [self resetProjection];
     
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -130,6 +125,7 @@
 
 - (void)initTextureOfWidth:(int)width
                     height:(int)height
+                 isRotated:(BOOL)rotated
              bytesPerPixel:(int)bytesPerPixel
 {
     NSLog(@"FXScreenView/initTexture");
@@ -142,8 +138,10 @@
     free(self->texture);
     
     self->imageWidth = width;
-    self->textureWidth = [FXScreenView powerOfTwoClosestTo:width];
-    self->textureHeight = height;
+    self->imageHeight = height;
+    self->isRotated = rotated;
+    self->textureWidth = [FXScreenView powerOfTwoClosestTo:self->imageWidth];
+    self->textureHeight = [FXScreenView powerOfTwoClosestTo:self->imageHeight];
     self->textureBytesPerPixel = bytesPerPixel;
     self->screenSize = NSMakeSize((CGFloat)width, (CGFloat)height);
     
@@ -160,22 +158,17 @@
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     
     glTexImage2D(GL_TEXTURE_2D, 0, bytesPerPixel,
-                 self->textureWidth, height,
+                 self->textureWidth, self->textureHeight,
                  0, GL_BGR, GL_UNSIGNED_BYTE, self->texture);
     
     glDisable(GL_TEXTURE_2D);
     
-    [self->renderLock unlock];
+    [self resetProjection];
     
-    NSWindowController *wc = [[self window] windowController];
-    if ([wc conformsToProtocol:@protocol(FXScreenViewDelegate)]) {
-        [(id<FXScreenViewDelegate>)wc screenSizeDidChange:self->screenSize];
-    }
+    [self->renderLock unlock];
 }
 
 - (void)renderFrame:(unsigned char *)bitmap
-              width:(int)width
-             height:(int)height
 {
     [self->renderLock lock];
     
@@ -184,17 +177,17 @@
     
     glClear(GL_COLOR_BUFFER_BIT);
     
-    GLfloat coordX = (GLfloat)width / self->textureWidth;
-    GLfloat coordY = (GLfloat)height / self->textureHeight;
+    GLfloat coordX = (GLfloat)self->imageWidth / self->textureWidth;
+    GLfloat coordY = (GLfloat)self->imageHeight / self->textureHeight;
     
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, screenTextureId);
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     
-    for (int y = 0; y < height; y += 1) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width, 1,
+    for (int y = 0; y < self->imageHeight; y += 1) {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, self->imageWidth, 1,
                         GL_BGR, GL_UNSIGNED_BYTE,
-                        bitmap + y * width * self->textureBytesPerPixel);
+                        bitmap + y * self->imageWidth * self->textureBytesPerPixel);
     }
     
     NSSize size = [self bounds].size;
@@ -225,6 +218,26 @@
 }
 
 #pragma mark - Private methods
+
+- (void)resetProjection
+{
+    NSSize size = [self bounds].size;
+    
+    glViewport(0, 0, size.width, size.height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    
+	if (!self->isRotated) {
+	 	glOrtho(0, size.width, size.height, 0, -1, 1);
+	}
+	else
+	{
+		glRotatef(90.0, 0.0, 0.0, 1.0);
+	 	glOrtho(0, size.width, size.height, 0, -1, 5);
+	}
+    
+    glMatrixMode(GL_MODELVIEW);
+}
 
 + (int)powerOfTwoClosestTo:(int)number
 {

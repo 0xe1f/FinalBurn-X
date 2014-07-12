@@ -703,7 +703,7 @@ static void cps2_decrypt(const UINT32 *master_key, UINT32 upper_limit)
 			ui_set_startup_text(loadingMessage,FALSE);
 #endif
 
-#if 1
+#if 0
 			TCHAR loadingMessage[256]; // for displaying with UI 
 			_stprintf(loadingMessage, _T("Decrypting 68000 ROMs with key %d %s"), (i*100/0x10000), _T("%")); 
 			BurnUpdateProgress(0.0, loadingMessage, 0); 

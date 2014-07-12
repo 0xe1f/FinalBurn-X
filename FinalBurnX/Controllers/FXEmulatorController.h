@@ -23,13 +23,12 @@
 #import <Cocoa/Cocoa.h>
 
 #import "FXScreenView.h"
+#import "FXVideo.h"
+#import "FXInput.h"
+#import "FXAudio.h"
+#import "FXRunLoop.h"
 
-@class FXInput;
-@class FXVideo;
-@class FXAudio;
-@class FXRunLoop;
-
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXScreenViewDelegate>
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXVideoDelegate>
 {
     IBOutlet FXScreenView *screen;
 }

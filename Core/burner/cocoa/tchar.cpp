@@ -62,7 +62,7 @@
 	return NULL;
 #else
 	if (pszOutString) {
-		strcpy(pszOutString, pszInString);
+		_tcscpy(pszOutString, pszInString);
 		return pszOutString;
 	}
 

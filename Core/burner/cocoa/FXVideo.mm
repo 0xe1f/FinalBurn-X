@@ -40,6 +40,8 @@
 {
     if (self = [super init]) {
         self->screenBuffer = NULL;
+        self->observerLock = [[NSLock alloc] init];
+        self->observers = [[NSMutableArray alloc] init];
     }
 
     return self;
@@ -49,7 +51,9 @@
 {
     [self cleanup];
     
-    [self setDelegate:nil];
+    [self->observerLock lock];
+    [self->observers removeAllObjects];
+    [self->observerLock unlock];
 }
 
 #pragma mark - Core callbacks
@@ -65,33 +69,21 @@
     BurnDrvGetVisibleSize(&gameWidth, &gameHeight);
     
     if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
-        if (nVidRotationAdjust & 1) {
-            int n = gameWidth;
-            gameWidth = gameHeight;
-            gameHeight = n;
-            rotationMode |= (nVidRotationAdjust & 2);
-        } else {
-            rotationMode |= 1;
-        }
-
-		if (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
-			rotationMode ^= 2;
-		}
+        rotationMode |= 1;
     }
     
+    if (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
+        rotationMode ^= 2;
+    }
+    
+    nVidImageWidth = gameWidth;
+    nVidImageHeight = gameHeight;
     nVidImageDepth = 24;
 	nVidImageBPP = 3;
-	nBurnBpp = nVidImageBPP;
-    bVidScanlines = 0;
-    
-	if (rotationMode & 1) {
-		nVidImageWidth = gameHeight;
-		nVidImageHeight = gameWidth;
-        nVidImagePitch = nVidImageHeight * nVidImageBPP;
-	} else {
-		nVidImageWidth = gameWidth;
-		nVidImageHeight = gameHeight;
+	if (!rotationMode) {
         nVidImagePitch = nVidImageWidth * nVidImageBPP;
+	} else {
+        nVidImagePitch = nVidImageHeight * nVidImageBPP;
 	}
     
 	SetBurnHighCol(nVidImageDepth);
@@ -99,8 +91,6 @@
     self->bufferBytesPerPixel = nVidImageBPP;
     self->bufferWidth = gameWidth;
     self->bufferHeight = gameHeight;
-    
-    pVidImage = NULL;
     
     int bufSize = self->bufferWidth * self->bufferHeight * nVidImageBPP;
     @synchronized(self) {
@@ -112,14 +102,41 @@
         return NO;
     }
     
+	nBurnBpp = nVidImageBPP;
 	nBurnPitch = nVidImagePitch;
     pVidImage = self->screenBuffer;
     
     memset(self->screenBuffer, 0, bufSize);
     
-    [self->_delegate initTextureOfWidth:self->bufferWidth
-                                 height:self->bufferHeight
-                          bytesPerPixel:self->bufferBytesPerPixel];
+    int textureWidth;
+    int textureHeight;
+    BOOL isRotated = rotationMode & 1;
+    
+    if (!isRotated) {
+        textureWidth = self->bufferWidth;
+        textureHeight = self->bufferHeight;
+    } else {
+        textureWidth = self->bufferHeight;
+        textureHeight = self->bufferWidth;
+    }
+    
+    NSSize screenSize = NSMakeSize((CGFloat)self->bufferWidth,
+                                   (CGFloat)self->bufferHeight);
+    
+    [self->observerLock lock];
+    [self->observers enumerateObjectsUsingBlock:^(id<FXVideoDelegate> delegate, NSUInteger idx, BOOL *stop) {
+        if ([delegate respondsToSelector:@selector(initTextureOfWidth:height:isRotated:bytesPerPixel:)]) {
+            [delegate initTextureOfWidth:textureWidth
+                                  height:textureHeight
+                               isRotated:isRotated
+                           bytesPerPixel:self->bufferBytesPerPixel];
+        }
+        
+        if ([delegate respondsToSelector:@selector(screenSizeDidChange:)]) {
+            [delegate screenSizeDidChange:screenSize];
+        }
+    }];
+    [self->observerLock unlock];
     
     return YES;
 }
@@ -150,11 +167,31 @@
 
 - (BOOL)renderToSurface:(BOOL)validate
 {
-    [self->_delegate renderFrame:self->screenBuffer
-                           width:self->bufferWidth
-                          height:self->bufferHeight];
+    [self->observerLock lock];
+    [self->observers enumerateObjectsUsingBlock:^(id<FXVideoDelegate> delegate, NSUInteger idx, BOOL *stop) {
+        if ([delegate respondsToSelector:@selector(renderFrame:)]) {
+            [delegate renderFrame:self->screenBuffer];
+        }
+    }];
+    [self->observerLock unlock];
     
     return YES;
+}
+
+#pragma mark - Observer methods
+
+- (void)addObserver:(id<FXVideoDelegate>)observer
+{
+    [self->observerLock lock];
+    [self->observers addObject:observer];
+    [self->observerLock unlock];
+}
+
+- (void)removeObserver:(id<FXVideoDelegate>)observer
+{
+    [self->observerLock lock];
+    [self->observers removeObject:observer];
+    [self->observerLock unlock];
 }
 
 #pragma mark - Etc
@@ -214,5 +251,5 @@ struct VidOut VidOutCocoa = {
     cocoaVideoPaint,
     cocoaVideoScale,
     cocoaVideoGetSettings,
-    "Cocoa Video",
+    _T("Cocoa Video"),
 };

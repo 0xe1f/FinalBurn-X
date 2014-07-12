@@ -22,10 +22,6 @@
  */
 #import "FXEmulatorController.h"
 
-#import "FXInput.h"
-#import "FXVideo.h"
-#import "FXAudio.h"
-#import "FXRunLoop.h"
 #import "FXLoader.h"
 
 #include "burner.h"
@@ -59,7 +55,9 @@
     NSString *title = [[FXLoader sharedLoader] titleForDriverId:[self driverId]];
     [[self window] setTitle:title];
     
-    [[self video] setDelegate:self->screen];
+    [[self video] addObserver:self];
+    [[self video] addObserver:self->screen];
+    
     [[self runLoop] start];
 }
 
@@ -82,6 +80,9 @@
 
 - (void)windowWillClose:(NSNotification *)notification
 {
+    [[self video] removeObserver:self->screen];
+    [[self video] removeObserver:self];
+    
     [[self runLoop] cancel];
 }
 
@@ -133,7 +134,7 @@
     }
 }
 
-#pragma mark - FXScreenViewDelegate
+#pragma mark - FXVideoDelegate
 
 - (void)screenSizeDidChange:(NSSize)newScreenSize
 {
