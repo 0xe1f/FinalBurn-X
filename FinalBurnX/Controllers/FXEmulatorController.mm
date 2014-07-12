@@ -28,6 +28,7 @@
 
 @interface FXEmulatorController ()
 
+- (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize;
 - (void)windowKeyDidChange:(BOOL)isKey;
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate;
@@ -36,15 +37,15 @@
 
 @implementation FXEmulatorController
 
-- (instancetype)initWithDriverId:(int)driverId
+- (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverId:driverId]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriverId:[romSet driverId]]];
         
-        [self setDriverId:driverId];
+        [self setRomSet:romSet];
     }
     
     return self;
@@ -52,10 +53,13 @@
 
 - (void)awakeFromNib
 {
-    NSString *title = [[FXLoader sharedLoader] titleForDriverId:[self driverId]];
-    [[self window] setTitle:title];
+    NSString *title = [[self romSet] title];
+    NSSize screenSize = [[self romSet] screenSize];
+    NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
     
-    [[self video] addObserver:self];
+    [[self window] setTitle:title];
+    [[self window] setContentSize:preferredSize];
+    
     [[self video] addObserver:self->screen];
     
     [[self runLoop] start];
@@ -81,7 +85,6 @@
 - (void)windowWillClose:(NSNotification *)notification
 {
     [[self video] removeObserver:self->screen];
-    [[self video] removeObserver:self];
     
     [[self runLoop] cancel];
 }
@@ -89,7 +92,7 @@
 - (NSSize)windowWillResize:(NSWindow *)sender
                     toSize:(NSSize)frameSize
 {
-    NSSize screenSize = [self->screen screenSize];
+    NSSize screenSize = [[self romSet] screenSize];
     if (screenSize.width == 0 || screenSize.height == 0) {
         // Screen size is not yet available
     } else {
@@ -117,7 +120,7 @@
 
 - (void)windowDidResize:(NSNotification *)notification
 {
-    NSSize screenSize = [self->screen screenSize];
+    NSSize screenSize = [[self romSet] screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         NSRect windowFrame = [[self window] frame];
         NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
@@ -126,7 +129,7 @@
         NSString *actualSizeString = NSStringFromSize(contentRect.size);
         
         [[NSUserDefaults standardUserDefaults] setObject:actualSizeString
-                                                  forKey:[@"windowSize-" stringByAppendingString:screenSizeString]];
+                                                  forKey:[@"preferredSize-" stringByAppendingString:screenSizeString]];
         
         NSLog(@"FXEmulatorController/windowDidResize: (screen: {%.00f,%.00f}; view: {%.00f,%.00f})",
               screenSize.width, screenSize.height,
@@ -134,40 +137,11 @@
     }
 }
 
-#pragma mark - FXVideoDelegate
-
-- (void)screenSizeDidChange:(NSSize)newScreenSize
-{
-    NSString *screenSizeString = NSStringFromSize(newScreenSize);
-    NSString *actualSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:[@"windowSize-" stringByAppendingString:screenSizeString]];
-    
-    NSSize contentViewSize;
-    if (actualSizeString != nil) {
-        contentViewSize = NSSizeFromString(actualSizeString);
-    } else {
-        // Default size is double the size of screen
-        contentViewSize = NSMakeSize(newScreenSize.width * 2, newScreenSize.height * 2);
-    }
-    
-    if (contentViewSize.width < newScreenSize.width || contentViewSize.height < newScreenSize.height) {
-        // Can't be smaller than the size of screen
-        contentViewSize = newScreenSize;
-    }
-    
-#ifdef DEBUG
-    NSLog(@"FXEmulatorController/screenSizeDidChange: (screen: {%.0f,%.0f}; view: {%.0f,%.0f})",
-          newScreenSize.width, newScreenSize.height,
-          contentViewSize.width, contentViewSize.height);
-#endif
-    
-    [[self window] setContentSize:contentViewSize];
-}
-
 #pragma mark - Actions
 
 - (void)resizeNormalSize:(id)sender
 {
-    NSSize screenSize = [self->screen screenSize];
+    NSSize screenSize = [[self romSet] screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         [self resizeFrame:screenSize
                   animate:YES];
@@ -176,7 +150,7 @@
 
 - (void)resizeDoubleSize:(id)sender
 {
-    NSSize screenSize = [self->screen screenSize];
+    NSSize screenSize = [[self romSet] screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         NSSize doubleSize = NSMakeSize(screenSize.width * 2, screenSize.height * 2);
         [self resizeFrame:doubleSize
@@ -197,6 +171,19 @@
 }
 
 #pragma mark - Private methods
+
+- (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize
+{
+    NSString *screenSizeString = NSStringFromSize(screenSize);
+    NSString *preferredSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:[@"preferredSize-" stringByAppendingString:screenSizeString]];
+    
+    if (preferredSizeString != nil) {
+        return NSSizeFromString(preferredSizeString);
+    } else {
+        // Default size is double the size of screen
+        return NSMakeSize(screenSize.width * 2, screenSize.height * 2);
+    }
+}
 
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate

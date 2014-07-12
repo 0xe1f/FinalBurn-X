@@ -20,33 +20,19 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
-#import "FXScreenView.h"
-#import "FXVideo.h"
-#import "FXInput.h"
-#import "FXAudio.h"
-#import "FXRunLoop.h"
-#import "FXROMSet.h"
-
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
+@interface FXROMSet : NSObject
 {
-    IBOutlet FXScreenView *screen;
 }
 
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXVideo *video;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXRunLoop *runLoop;
+- (instancetype)initWithDriverId:(int)driverId;
 
-@property (nonatomic, strong) FXROMSet *romSet;
++ (NSString *)titleOfSetWithDriverId:(int)driverId;
++ (NSSize)screenSizeOfSetWithDriverId:(int)driverId;
 
-- (IBAction)resizeNormalSize:(id)sender;
-- (IBAction)resizeDoubleSize:(id)sender;
-
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-+ (void)initializeCore;
-+ (void)cleanupCore;
+@property (nonatomic, assign) int driverId;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, assign) NSSize screenSize;
 
 @end
