@@ -37,16 +37,12 @@
 @interface FXVideo : NSObject
 {
     @private
-    NSMutableArray *observers;
-    NSLock *observerLock;
-    
     unsigned char *screenBuffer;
     int bufferWidth;
     int bufferHeight;
     int bufferBytesPerPixel;
 }
 
-- (void)addObserver:(id<FXVideoDelegate>)observer;
-- (void)removeObserver:(id<FXVideoDelegate>)observer;
+@property (nonatomic, weak) id<FXVideoDelegate> delegate;
 
 @end

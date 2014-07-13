@@ -22,6 +22,8 @@
  */
 #import <Foundation/Foundation.h>
 
+struct BurnRomInfo;
+
 @interface FXROMSet : NSObject
 {
 }
@@ -30,6 +32,10 @@
 
 + (NSString *)titleOfSetWithDriverId:(int)driverId;
 + (NSSize)screenSizeOfSetWithDriverId:(int)driverId;
++ (BOOL)romInfoOfSetWithDriverId:(int)driverId
+                        romIndex:(int)romIndex
+                         romInfo:(struct BurnRomInfo *)romInfo;
++ (BOOL)isDriverIdValid:(int)driverId;
 
 @property (nonatomic, assign) int driverId;
 @property (nonatomic, copy) NSString *title;

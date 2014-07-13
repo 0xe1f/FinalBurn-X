@@ -71,4 +71,20 @@
 	return NSMakeSize(width, height);
 }
 
++ (BOOL)romInfoOfSetWithDriverId:(int)driverId
+                        romIndex:(int)romIndex
+                         romInfo:(struct BurnRomInfo *)romInfo
+{
+    if (pDriver[driverId]->GetRomInfo(romInfo, romIndex)) {
+        return NO;
+    }
+    
+    return YES;
+}
+
++ (BOOL)isDriverIdValid:(int)driverId
+{
+    return driverId >= 0 && driverId < nBurnDrvCount;
+}
+
 @end

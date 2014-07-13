@@ -22,12 +22,21 @@
  */
 #import <Foundation/Foundation.h>
 
-#include <sys/time.h>
+#import "FXDriverAudit.h"
+
+@protocol FXRunLoopDelegate<NSObject>
+
+@optional
+- (void)loadingDidStart;
+- (void)loadingDidEnd;
+
+@end
 
 @interface FXRunLoop : NSThread
 {
     @private
-    struct timeval start;
+    NSMutableDictionary *zipArchiveDictionary;
+    FXDriverAudit *driverAudit;
     UInt32 lastTick;
     int fraction;
     BOOL previouslyDrawn;
@@ -37,6 +46,7 @@
 - (instancetype)initWithDriverId:(int)driverId;
 
 @property (nonatomic, assign) int driverId;
+@property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
 
 @end
 

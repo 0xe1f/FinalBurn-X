@@ -32,8 +32,6 @@
 #include "burnint.h"
 #include "driverlist.h"
 
-static FXLoader *sharedInstance = nil;
-
 @interface FXLoader()
 
 - (NSArray *)componentsForDriver:(int)driverId
@@ -48,19 +46,9 @@ static FXLoader *sharedInstance = nil;
 - (instancetype)init
 {
     if (self = [super init]) {
-        self->driverAuditCache = [[NSMutableDictionary alloc] init];
     }
     
     return self;
-}
-
-+ (id)sharedLoader
-{
-    if (sharedInstance == nil) {
-        sharedInstance = [[FXLoader alloc] init];
-    }
-    
-    return sharedInstance;
 }
 
 + (NSError *)newErrorWithDescription:(NSString *)desc
@@ -173,7 +161,7 @@ static FXLoader *sharedInstance = nil;
 - (NSArray *)componentsForDriver:(int)driverId
                            error:(NSError **)error
 {
-    if (driverId >= nBurnDrvCount) {
+    if (![FXROMSet isDriverIdValid:driverId]) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -202,7 +190,7 @@ static FXLoader *sharedInstance = nil;
 - (NSArray *)archiveNamesForDriver:(int)driverId
                              error:(NSError **)error
 {
-    if (driverId >= nBurnDrvCount) {
+    if (![FXROMSet isDriverIdValid:driverId]) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -266,44 +254,16 @@ static FXLoader *sharedInstance = nil;
     return array;
 }
 
-- (NSString *)titleForDriverId:(int)driverId
-{
-#ifdef wcslen
-#undef wcslen
-#endif
-    NSString *title = nil;
-    const wchar_t *fullName = pDriver[driverId]->szFullNameW;
-    
-    if (fullName != NULL) {
-        title = [[NSString alloc] initWithBytes:fullName
-                                         length:sizeof(wchar_t) * wcslen(fullName)
-                                       encoding:NSUTF8StringEncoding];
-    }
-    
-    if (title == nil) {
-        title = [NSString stringWithCString:pDriver[driverId]->szFullNameA
-                                   encoding:NSUTF8StringEncoding];
-    }
-    
-    return title;
-}
-
 - (FXDriverAudit *)auditDriver:(int)driverId
                          error:(NSError **)error
 {
-    if (driverId >= nBurnDrvCount) {
+    if (![FXROMSet isDriverIdValid:driverId]) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
         }
         
         return nil;
-    }
-    
-    // Check the cache
-    FXDriverAudit *driverAudit = [self->driverAuditCache objectForKey:@(driverId)];
-    if (driverAudit != nil) {
-        return driverAudit;
     }
     
     NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
@@ -335,10 +295,10 @@ static FXLoader *sharedInstance = nil;
     }
     
     // Create a new audit object
-    driverAudit = [[FXDriverAudit alloc] init];
+    FXDriverAudit *driverAudit = [[FXDriverAudit alloc] init];
     [driverAudit setDriverId:driverId];
     [driverAudit setArchiveName:[archiveNames firstObject]];
-    [driverAudit setName:[self titleForDriverId:driverId]];
+    [driverAudit setName:[FXROMSet titleOfSetWithDriverId:driverId]];
     
     NSMutableArray *foundComponentIndices = [NSMutableArray array];
     
@@ -433,88 +393,8 @@ static FXLoader *sharedInstance = nil;
     }];
     
     [driverAudit updateAvailability];
-    [self->driverAuditCache setObject:driverAudit
-                               forKey:@(driverId)];
     
     return driverAudit;
 }
 
-- (UInt32)loadROMOfDriver:(int)driverId
-                    index:(int)romIndex
-               intoBuffer:(void *)buffer
-             bufferLength:(int *)length
-{
-    if (driverId >= nBurnDrvCount) {
-        return 1;
-    }
-    
-    struct BurnRomInfo info;
-    if (pDriver[driverId]->GetRomInfo(&info, romIndex)) {
-        return 1;
-    }
-    
-    FXDriverAudit *driverAudit = [self->driverAuditCache objectForKey:@(driverId)];
-    if (driverAudit == nil) {
-        return 1;
-    }
-    
-    FXROMAudit *romAudit = [driverAudit ROMAuditByNeededCRC:info.nCrc];
-    if (romAudit == nil || [romAudit status] == FXROMAuditMissing) {
-        return 1;
-    }
-    
-    NSString *path = [romAudit containerPath];
-    NSUInteger uncompressedLength = [romAudit lengthFound];
-    NSUInteger foundCRC = [romAudit CRCFound];
-    
-    NSError *error = nil;
-    // FIXME: keep files open during the loading phase
-    FXZipArchive *zipFile = [[FXZipArchive alloc] initWithPath:path
-                                                         error:&error];
-    
-    if (error != nil) {
-        return 1;
-    }
-    
-    UInt32 bytesRead = [zipFile readFileWithCRC:foundCRC
-                                     intoBuffer:buffer
-                                   bufferLength:uncompressedLength
-                                          error:&error];
-    
-    if (error != nil) {
-        if (bytesRead > -1) {
-            if (length != NULL) {
-                *length = bytesRead;
-            }
-            
-            return 2;
-        }
-        
-        return 1;
-    }
-    
-    if (length != NULL) {
-        *length = bytesRead;
-    }
-    
-    NSLog(@"%d/%d found in %@, read %d bytes", driverId, romIndex, path, bytesRead);
-    
-    return 0;
-}
-
-- (void)clearCache
-{
-    [self->driverAuditCache removeAllObjects];
-}
-
 @end
-
-#pragma mark - FinalBurn callbacks
-
-int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i)
-{
-    return [sharedInstance loadROMOfDriver:nBurnDrvActive
-                                     index:i
-                                intoBuffer:Dest
-                              bufferLength:pnWrote];
-}

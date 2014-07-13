@@ -1331,7 +1331,6 @@
 		FEC25355194CA3760039D85F /* hq2xs_16.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = hq2xs_16.cpp; sourceTree = "<group>"; };
 		FEC25357194CA3BF0039D85F /* epx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = epx.cpp; sourceTree = "<group>"; };
 		FEC25359194CA41B0039D85F /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
-		FED10DC2194CB35000754BE0 /* SDL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL.framework; path = ../../../../Library/Frameworks/SDL.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1370,7 +1369,6 @@
 		FE08934619475F9800F79190 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				FED10DC2194CB35000754BE0 /* SDL.framework */,
 				FE08A07E1949651D00F79190 /* OpenGL.framework */,
 				FE08934719475F9800F79190 /* Cocoa.framework */,
 				FE08934919475F9800F79190 /* Other Frameworks */,

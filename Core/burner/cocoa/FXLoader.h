@@ -26,19 +26,14 @@
 
 @interface FXLoader : NSObject
 {
-    @private
-    NSMutableDictionary *driverAuditCache;
 }
 
-- (NSString *)titleForDriverId:(int)driverId;
 - (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
 - (NSDictionary *)drivers;
 - (FXDriverAudit *)auditDriver:(int)driverId
                          error:(NSError **)error;
-
-+ (id)sharedLoader;
 
 @end
 

@@ -29,9 +29,10 @@
 #import "FXRunLoop.h"
 #import "FXROMSet.h"
 
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate>
 {
     IBOutlet FXScreenView *screen;
+    IBOutlet NSProgressIndicator *spinner;
 }
 
 @property (nonatomic, strong) FXInput *input;

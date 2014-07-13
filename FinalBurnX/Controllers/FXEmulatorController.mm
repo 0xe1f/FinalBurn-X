@@ -60,9 +60,22 @@
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
     
-    [[self video] addObserver:self->screen];
+    [[self video] setDelegate:self->screen];
+    [[self runLoop] setDelegate:self];
     
     [[self runLoop] start];
+}
+
+#pragma mark - FXRunLoopDelegate
+
+- (void)loadingDidStart
+{
+    [self->spinner startAnimation:self];
+}
+
+- (void)loadingDidEnd
+{
+    [self->spinner stopAnimation:self];
 }
 
 #pragma mark - NSWindowDelegate
@@ -84,7 +97,7 @@
 
 - (void)windowWillClose:(NSNotification *)notification
 {
-    [[self video] removeObserver:self->screen];
+    [[self video] setDelegate:nil];
     
     [[self runLoop] cancel];
 }

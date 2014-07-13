@@ -52,6 +52,14 @@
     return self;
 }
 
+- (void)dealloc
+{
+    if (self->zipFile != NULL) {
+        unzClose(self->zipFile);
+        self->zipFile = NULL;
+    }
+}
+
 - (void)invalidateFileCache
 {
     self->fileCache = nil;
@@ -255,14 +263,6 @@
     }
     
     return [NSArray arrayWithArray:self->fileCache];
-}
-
-- (void)dealloc
-{
-    if (self->zipFile != NULL) {
-        unzClose(self->zipFile);
-        self->zipFile = NULL;
-    }
 }
 
 @end
