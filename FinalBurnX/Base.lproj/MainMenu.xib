@@ -94,6 +94,20 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Game" id="y7g-GX-1b2">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Game" id="HXr-3q-h0W">
+                        <items>
+                            <menuItem title="Reset" keyEquivalent="r" id="2GN-qo-Cam"/>
+                            <menuItem isSeparatorItem="YES" id="6C3-Kc-4Y8"/>
+                            <menuItem title="Pause" keyEquivalent="p" id="ZxB-z2-x6d">
+                                <connections>
+                                    <action selector="pauseGameplay:" target="-1" id="rxp-s3-Okn"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="Window" id="aUF-d1-5bR">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Window" systemMenu="window" id="Td7-aD-5lo">

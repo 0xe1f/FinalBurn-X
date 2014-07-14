@@ -36,5 +36,6 @@
 }
 
 @property (nonatomic, strong) FXAudioEngine *audioEngine;
+@property (nonatomic, assign, getter = isPaused) BOOL paused;
 
 @end

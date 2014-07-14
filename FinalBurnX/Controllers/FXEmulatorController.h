@@ -44,6 +44,7 @@
 
 - (IBAction)resizeNormalSize:(id)sender;
 - (IBAction)resizeDoubleSize:(id)sender;
+- (IBAction)pauseGameplay:(id)sender;
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
 

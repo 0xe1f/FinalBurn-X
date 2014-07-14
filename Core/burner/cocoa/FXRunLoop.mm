@@ -79,6 +79,7 @@ static int cocoaGetNextSound(int draw);
     self->lastTick = [self ticks];
     self->previouslyDrawn = NO;
     self->previouslyPaused = NO;
+    self->soundBufferCleared = NO;
 }
 
 #pragma mark - Driver init
@@ -186,7 +187,7 @@ static int cocoaGetNextSound(int draw);
 	nBurnDrvSelect[0] = ~0U;			// no driver selected
     
 #ifdef DEBUG
-    NSLog(@"Driver cleaned up");
+    NSLog(@"runLoop/cleanupDriver");
 #endif
     
 	return YES;
@@ -209,6 +210,7 @@ static int cocoaGetNextSound(int draw);
         InputMake(false);
 		if (paused != self->previouslyPaused) {
 			VidPaint(2);
+            AudBlankSound();
 		}
 	} else {
 		nFramesEmulated++;
@@ -234,7 +236,11 @@ static int cocoaGetNextSound(int draw);
 
 - (BOOL)idle
 {
-    [self ticks];
+    if ([self isPaused] && !self->soundBufferCleared) {
+        AudBlankSound();
+        self->soundBufferCleared = YES;
+    }
+    
     if (bAudPlaying) {
         // Run with sound
         AudSoundCheck();
@@ -312,7 +318,7 @@ static int cocoaGetNextSound(int draw);
     [super cancel];
     
 #ifdef DEBUG
-    NSLog(@"Waiting for run loop to exit...");
+    NSLog(@"runLoop/shuttingDown...");
 #endif
     for (;;) {
         if ([self isFinished]) {
@@ -320,7 +326,21 @@ static int cocoaGetNextSound(int draw);
         }
     }
 #ifdef DEBUG
-    NSLog(@"Run loop terminated.");
+    NSLog(@"runLoop/terminated");
+#endif
+}
+
+- (BOOL)isPaused
+{
+    return bRunPause != 0;
+}
+
+- (void)setPaused:(BOOL)paused
+{
+    self->soundBufferCleared = NO;
+    bRunPause = paused;
+#ifdef DEBUG
+    NSLog(@"runLoop/setPaused:%d", paused);
 #endif
 }
 
@@ -414,9 +434,8 @@ static int cocoaGetNextSound(int draw)
 	}
     
     FXRunLoop *runLoop = [[[FXAppDelegate sharedInstance] emulator] runLoop];
-    
 	if (bRunPause) {
-        [runLoop runFrame:draw pause:YES];
+//        [runLoop runFrame:draw pause:YES];
 		return 0;
 	}
     

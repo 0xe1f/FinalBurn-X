@@ -113,24 +113,24 @@ static int cocoaGetNextSoundFiller(int draw);
     }
 }
 
-- (BOOL)play
+- (BOOL)isPaused
 {
-    NSLog(@"audio/play");
-    
-    [[self audioEngine] resume];
-    bAudPlaying = 1;
-    
-    return YES;
+    return !bAudPlaying;
 }
 
-- (BOOL)stop
+- (void)setPaused:(BOOL)paused
 {
-    NSLog(@"audio/stop");
-    
-    [[self audioEngine] pause];
-    bAudPlaying = 0;
-    
-    return YES;
+    if (paused != [self isPaused]) {
+        if (!paused) {
+            NSLog(@"audio/setPaused:NO");
+            [[self audioEngine] resume];
+            bAudPlaying = 1;
+        } else {
+            NSLog(@"audio/setPaused:YES");
+            [[self audioEngine] pause];
+            bAudPlaying = 0;
+        }
+    }
 }
 
 - (BOOL)clear
@@ -173,7 +173,8 @@ static int cocoaGetNextSoundFiller(int draw);
         return YES;
     }
     
-    // Since the SDL buffer is smaller than a segment, only fill the buffer up to the start of the currently playing segment
+    // Since the sound buffer is smaller than a segment, only fill
+    // the buffer up to the start of the currently playing segment
     int playSegment = self->playPosition / (nAudSegLen << 2) - 1;
     if (playSegment >= nAudSegCount) {
         playSegment -= nAudSegCount;
@@ -259,13 +260,15 @@ static int cocoaAudioSetCallback(int (*callback)(int))
 static int cocoaAudioPlay()
 {
     FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
-    return [audio play] ? 0 : 1;
+    [audio setPaused:NO];
+    return 0;
 }
 
 static int cocoaAudioStop()
 {
     FXAudio *audio = [[[FXAppDelegate sharedInstance] emulator] audio];
-    return [audio stop] ? 0 : 1;
+    [audio setPaused:YES];
+    return 0;
 }
 
 static int cocoaAudioExit()

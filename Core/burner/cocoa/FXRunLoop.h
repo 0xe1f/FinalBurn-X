@@ -41,12 +41,14 @@
     int fraction;
     BOOL previouslyDrawn;
     BOOL previouslyPaused;
+    BOOL soundBufferCleared;
 }
 
 - (instancetype)initWithDriverId:(int)driverId;
 
 @property (nonatomic, assign) int driverId;
 @property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
+@property (nonatomic, assign, getter = isPaused) BOOL paused;
 
 @end
 

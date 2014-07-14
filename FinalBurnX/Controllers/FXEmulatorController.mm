@@ -71,11 +71,19 @@
 - (void)loadingDidStart
 {
     [self->spinner startAnimation:self];
+    
+    // Block the window from being closed (until loading completes)
+    NSUInteger windowStyleMask = [[self window] styleMask];
+    [[self window] setStyleMask:(windowStyleMask &~ NSClosableWindowMask)];
 }
 
 - (void)loadingDidEnd
 {
     [self->spinner stopAnimation:self];
+    
+    // Make window closable again
+    NSUInteger windowStyleMask = [[self window] styleMask];
+    [[self window] setStyleMask:(windowStyleMask | NSClosableWindowMask)];
 }
 
 #pragma mark - NSWindowDelegate
@@ -171,6 +179,11 @@
     }
 }
 
+- (void)pauseGameplay:(id)sender
+{
+    [[self runLoop] setPaused:![[self runLoop] isPaused]];
+}
+
 #pragma mark - Core
 
 + (void)initializeCore
@@ -219,6 +232,26 @@
 - (void)windowKeyDidChange:(BOOL)isKey
 {
     [[self input] setFocus:isKey];
+}
+
+#pragma mark - NSUserInterfaceValidation
+
+- (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)item
+{
+    NSMenuItem *menuItem = (NSMenuItem*)item;
+    
+    if ([item action] == @selector(pauseGameplay:))
+    {
+        if (![[self runLoop] isPaused]) {
+            [menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
+        } else {
+            [menuItem setTitle:NSLocalizedString(@"Resume", @"Gameplay")];
+        }
+        
+        return YES;
+    }
+    
+    return [menuItem isEnabled];
 }
 
 @end
