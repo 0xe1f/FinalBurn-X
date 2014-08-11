@@ -34,10 +34,12 @@
 
 @interface FXLoader()
 
+- (int)driverIndexForArchive:(NSString *)archive;
 - (NSArray *)componentsForDriver:(int)driverId
                            error:(NSError **)error;
 - (NSArray *)knownAliasesForDriverId:(int)driverId
                             romIndex:(int)romIndex;
+- (NSString *)archiveNameForDriverId:(int)driverId;
 
 @end
 
@@ -62,19 +64,25 @@
                            userInfo:userInfo];
 }
 
-- (int)driverIdForName:(NSString *)driverName
+- (int)driverIndexForArchive:(NSString *)archive
 {
-    const char *cDriverName = [driverName cStringUsingEncoding:NSUTF8StringEncoding];
+    const char *cArchive = [archive cStringUsingEncoding:NSASCIIStringEncoding];
     
     int driverId = -1;
     for (int i = 0; i < nBurnDrvCount; i++) {
-        if (strcmp(pDriver[i]->szShortName, cDriverName) == 0) {
+        if (strcmp(pDriver[i]->szShortName, cArchive) == 0) {
             driverId = i;
             break;
         }
     }
     
     return driverId;
+}
+
+- (NSString *)archiveNameForDriverId:(int)driverId
+{
+    return [NSString stringWithCString:pDriver[driverId]->szShortName
+                              encoding:NSUTF8StringEncoding];
 }
 
 - (NSArray *)knownAliasesForDriverId:(int)driverId
@@ -96,16 +104,14 @@
     return aliases;
 }
 
-- (NSDictionary *)drivers
+- (NSArray *)romSets
 {
-    NSMutableDictionary *parentMap = [NSMutableDictionary dictionary];
+    // Create a map of archive to driver id
+    NSMutableDictionary *indexMap = [NSMutableDictionary dictionary];
+    NSMutableDictionary *setMap = [NSMutableDictionary dictionary];
     
-    // Parentless items
-    NSMutableArray *parentlessIds = [NSMutableArray array];
-    NSMutableArray *parentlessNames = [NSMutableArray array];
-    
-    for (int driverId = 0; driverId < nBurnDrvCount; driverId++) {
-        UInt32 hardware = pDriver[driverId]->Hardware & HARDWARE_PUBLIC_MASK;
+    for (int index = 0; index < nBurnDrvCount; index++) {
+        UInt32 hardware = pDriver[index]->Hardware & HARDWARE_PUBLIC_MASK;
         if ((hardware != HARDWARE_CAPCOM_CPS1) &&
             (hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
             (hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
@@ -118,50 +124,36 @@
             continue;
         }
         
-        if (pDriver[driverId]->szParent != NULL) {
-            // Place drivers with parents into a dictionary where the key is
-            // the parent driver's name and value is an array of child ID's
-            NSString *parentName = [NSString stringWithCString:pDriver[driverId]->szParent
-                                                      encoding:NSUTF8StringEncoding];
-            
-            NSMutableArray *children = [parentMap objectForKey:parentName];
-            if (children == nil) {
-                children = [NSMutableArray array];
-                [parentMap setObject:children forKey:parentName];
-            }
-            
-            [children addObject:@(driverId)];
-        } else {
-            NSString *name = [NSString stringWithCString:pDriver[driverId]->szShortName
-                                                encoding:NSUTF8StringEncoding];
-            
-            [parentlessIds addObject:@(driverId)];
-            [parentlessNames addObject:name];
-        }
+        NSString *archive = [self archiveNameForDriverId:index];
+        [indexMap setObject:@(index) forKey:archive];
+        
+        FXROMSet *romSet = [[FXROMSet alloc] initWithArchive:archive];
+        [setMap setObject:romSet forKey:archive];
     }
     
-    // Now turn this information into a dictionary where keys are
-    // parentless driver ids and values are NSArrays containing zero or more
-    // driver ids
-    NSMutableDictionary *drivers = [NSMutableDictionary dictionary];
-    [parentlessIds enumerateObjectsUsingBlock:^(NSNumber *driverId, NSUInteger idx, BOOL *stop) {
-        NSString *parentName = [parentlessNames objectAtIndex:idx];
-        NSArray *children = [parentMap objectForKey:parentName];
+    NSMutableArray *romSets = [NSMutableArray array];
+    [setMap enumerateKeysAndObjectsUsingBlock:^(NSString *archive, FXROMSet *romSet, BOOL *stop) {
+        int driverIndex = [[indexMap objectForKey:archive] intValue];
         
-        if (children == nil) {
-            children = [NSMutableArray array];
+        if (pDriver[driverIndex]->szParent != NULL) {
+            NSString *parentArchive = [NSString stringWithCString:pDriver[driverIndex]->szParent
+                                                         encoding:NSUTF8StringEncoding];
+            FXROMSet *parentSet = [setMap objectForKey:parentArchive];
+            
+            [[parentSet subsets] addObject:romSet];
+            [romSet setParentSet:parentSet];
+        } else {
+            [romSets addObject:romSet];
         }
-        
-        [drivers setObject:children forKey:driverId];
     }];
     
-    return drivers;
+    return romSets;
 }
 
 - (NSArray *)componentsForDriver:(int)driverId
                            error:(NSError **)error
 {
-    if (![FXROMSet isDriverIdValid:driverId]) {
+    if (driverId < 0 || driverId >= nBurnDrvCount) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -190,7 +182,7 @@
 - (NSArray *)archiveNamesForDriver:(int)driverId
                              error:(NSError **)error
 {
-    if (![FXROMSet isDriverIdValid:driverId]) {
+    if (driverId < 0 || driverId >= nBurnDrvCount) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -254,10 +246,11 @@
     return array;
 }
 
-- (FXDriverAudit *)auditDriver:(int)driverId
-                         error:(NSError **)error
+- (FXDriverAudit *)auditSet:(FXROMSet *)romSet
+                      error:(NSError **)error
 {
-    if (![FXROMSet isDriverIdValid:driverId]) {
+    int driverIndex = [self driverIndexForArchive:[romSet archive]];
+    if (driverIndex < 0 || driverIndex >= nBurnDrvCount) {
         if (error != nil) {
             *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
                                                   code:FXRomSetUnrecognized];
@@ -270,7 +263,7 @@
     
     // Get list of archive names for driver
     NSError *archiveError = nil;
-    NSArray *archiveNames = [self archiveNamesForDriver:driverId
+    NSArray *archiveNames = [self archiveNamesForDriver:driverIndex
                                                   error:&archiveError];
     
     if (archiveError != nil) {
@@ -283,7 +276,7 @@
     
     // Get list of components (ROM files) for driver
     NSError *componentError = nil;
-    NSArray *driverComponents = [self componentsForDriver:driverId
+    NSArray *driverComponents = [self componentsForDriver:driverIndex
                                                     error:&componentError];
     
     if (componentError != nil) {
@@ -296,10 +289,6 @@
     
     // Create a new audit object
     FXDriverAudit *driverAudit = [[FXDriverAudit alloc] init];
-    [driverAudit setDriverId:driverId];
-    [driverAudit setArchiveName:[archiveNames firstObject]];
-    [driverAudit setName:[FXROMSet titleOfSetWithDriverId:driverId]];
-    
     NSMutableArray *foundComponentIndices = [NSMutableArray array];
     
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {
@@ -329,7 +318,7 @@
                             return;
                         }
                         
-                        NSArray *knownAliases = [self knownAliasesForDriverId:driverId
+                        NSArray *knownAliases = [self knownAliasesForDriverId:driverIndex
                                                                      romIndex:(int)idx];
                         
                         FXROMAudit *romAudit = [[FXROMAudit alloc] init];
@@ -385,7 +374,7 @@
                             }
                         }
                         
-                        [driverAudit addROMAudit:romAudit];
+                        [[driverAudit romAudits] addObject:romAudit];
                     }];
                 }
             }

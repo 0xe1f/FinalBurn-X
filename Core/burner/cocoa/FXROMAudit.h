@@ -22,17 +22,17 @@
  */
 #import <Foundation/Foundation.h>
 
-@interface FXROMAudit : NSObject
+@interface FXROMAudit : NSObject<NSCoding>
 
 @property (nonatomic, copy) NSString *containerPath;
 
 @property (nonatomic, copy) NSString *filenameNeeded;
 @property (nonatomic, copy) NSString *filenameFound;
-@property (nonatomic, assign) NSUInteger lengthNeeded;
-@property (nonatomic, assign) NSUInteger lengthFound;
+@property (nonatomic, assign) NSInteger lengthNeeded;
+@property (nonatomic, assign) NSInteger lengthFound;
 @property (nonatomic, assign) UInt32 CRCNeeded;
 @property (nonatomic, assign) UInt32 CRCFound;
-@property (nonatomic, assign) NSUInteger type;
+@property (nonatomic, assign) NSInteger type;
 
 - (NSInteger)status;
 - (NSString *)message;

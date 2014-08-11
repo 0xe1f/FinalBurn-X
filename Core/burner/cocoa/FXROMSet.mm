@@ -26,28 +26,70 @@
 #include "burnint.h"
 #include "driverlist.h"
 
+@interface FXROMSet ()
+
++ (NSString *)archiveForDriverIndex:(int)driverId;
++ (NSString *)titleOfArchive:(NSString *)archive;
++ (NSSize)screenSizeOfArchive:(NSString *)archive;
++ (BOOL)romInfoOfArchive:(NSString *)archive
+                romIndex:(int)romIndex
+                 romInfo:(struct BurnRomInfo *)romInfo;
+
+@end
+
 @implementation FXROMSet
 
 #pragma mark - Init & dealloc
 
-- (instancetype)initWithDriverId:(int)driverId
+- (instancetype)initWithArchive:(NSString *)archive
 {
-    if (self = [super init]) {
-        [self setDriverId:driverId];
-        [self setTitle:[FXROMSet titleOfSetWithDriverId:driverId]];
-        [self setScreenSize:[FXROMSet screenSizeOfSetWithDriverId:driverId]];
+    if ((self = [super init]) != nil) {
+        _subsets = [NSMutableArray array];
+        
+        [self setArchive:archive];
+        [self setTitle:[FXROMSet titleOfArchive:archive]];
+        [self setScreenSize:[FXROMSet screenSizeOfArchive:archive]];
     }
     
     return self;
 }
 
-+ (NSString *)titleOfSetWithDriverId:(int)driverId
+#pragma mark - Static
+
++ (int)driverIndexOfArchive:(NSString *)archive
 {
+    const char *cArchive = [archive cStringUsingEncoding:NSASCIIStringEncoding];
+    for (int i = 0; i < nBurnDrvCount; i++) {
+        if (strcmp(pDriver[i]->szShortName, cArchive) == 0) {
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
++ (NSString *)archiveForDriverIndex:(int)driverId
+{
+    if (driverId < 0 || driverId > nBurnDrvCount) {
+        return nil;
+    }
+    
+    return [NSString stringWithCString:pDriver[driverId]->szShortName
+                              encoding:NSUTF8StringEncoding];
+}
+
++ (NSString *)titleOfArchive:(NSString *)archive
+{
+    int driverIndex = [self driverIndexOfArchive:archive];
+    if (driverIndex < 0) {
+        return nil;
+    }
+    
 #ifdef wcslen
 #undef wcslen
 #endif
     NSString *title = nil;
-    const wchar_t *fullName = pDriver[driverId]->szFullNameW;
+    const wchar_t *fullName = pDriver[driverIndex]->szFullNameW;
     
     if (fullName != NULL) {
         title = [[NSString alloc] initWithBytes:fullName
@@ -56,35 +98,40 @@
     }
     
     if (title == nil) {
-        title = [NSString stringWithCString:pDriver[driverId]->szFullNameA
+        title = [NSString stringWithCString:pDriver[driverIndex]->szFullNameA
                                    encoding:NSUTF8StringEncoding];
     }
     
     return title;
 }
 
-+ (NSSize)screenSizeOfSetWithDriverId:(int)driverId
++ (NSSize)screenSizeOfArchive:(NSString *)archive
 {
-	int width = pDriver[driverId]->nWidth;
-	int height = pDriver[driverId]->nHeight;
+    int driverIndex = [self driverIndexOfArchive:archive];
+    if (driverIndex < 0) {
+        return NSZeroSize;
+    }
+    
+	int width = pDriver[driverIndex]->nWidth;
+	int height = pDriver[driverIndex]->nHeight;
     
 	return NSMakeSize(width, height);
 }
 
-+ (BOOL)romInfoOfSetWithDriverId:(int)driverId
++ (BOOL)romInfoOfArchive:(NSString *)archive
                         romIndex:(int)romIndex
                          romInfo:(struct BurnRomInfo *)romInfo
 {
-    if (pDriver[driverId]->GetRomInfo(romInfo, romIndex)) {
+    int driverIndex = [self driverIndexOfArchive:archive];
+    if (driverIndex < 0) {
+        return NO;
+    }
+    
+    if (pDriver[driverIndex]->GetRomInfo(romInfo, romIndex)) {
         return NO;
     }
     
     return YES;
-}
-
-+ (BOOL)isDriverIdValid:(int)driverId
-{
-    return driverId >= 0 && driverId < nBurnDrvCount;
 }
 
 @end

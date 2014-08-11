@@ -28,9 +28,14 @@
 #import "FXZipArchive.h"
 
 #include "burner.h"
+#include "burnint.h"
+#include "driverlist.h"
 
 @interface FXRunLoop ()
 
++ (BOOL)romInfoOfDriverIndex:(int)driverIndex
+                    romIndex:(int)romIndex
+                     romInfo:(struct BurnRomInfo *)romInfo;
 - (BOOL)initializeDriver:(NSError **)error;
 - (BOOL)cleanupDriver;
 
@@ -53,11 +58,11 @@ static int cocoaGetNextSound(int draw);
 
 #pragma mark - init
 
-- (instancetype)initWithDriverId:(int)driverId
+- (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if (self = [super init]) {
         self->zipArchiveDictionary = [[NSMutableDictionary alloc] init];
-        [self setDriverId:driverId];
+        self->_romSet = romSet;
     }
     
     return self;
@@ -86,7 +91,7 @@ static int cocoaGetNextSound(int draw);
 
 - (BOOL)initializeDriver:(NSError **)error
 {
-    int driverId = [self driverId];
+    int driverIndex = [FXROMSet driverIndexOfArchive:[[self romSet] archive]];
     
 	InputInit();
     
@@ -99,8 +104,8 @@ static int cocoaGetNextSound(int draw);
     
 	AudSoundInit();
     
-    nBurnDrvActive = driverId;
-	nBurnDrvSelect[0] = driverId;
+    nBurnDrvActive = driverIndex;
+	nBurnDrvSelect[0] = driverIndex;
     
 	nMaxPlayers = BurnDrvGetMaxPlayers();
 	GameInpInit();
@@ -109,11 +114,6 @@ static int cocoaGetNextSound(int draw);
 	InputMake(true);
     
 	GameInpDefault();
-    
-    // Audit the driver - it'll be needed during the loading phase
-    FXLoader *loader = [[FXLoader alloc] init];
-    driverAudit = [loader auditDriver:driverId
-                                error:error];
     
     BurnExtLoadRom = cocoaLoadROMCallback;
     
@@ -351,23 +351,34 @@ static int cocoaGetNextSound(int draw);
     return (UInt32)([[NSDate date] timeIntervalSince1970] * 1000.0);
 }
 
-- (UInt32)loadROMOfDriver:(int)driverId
++ (BOOL)romInfoOfDriverIndex:(int)driverIndex
+                    romIndex:(int)romIndex
+                     romInfo:(struct BurnRomInfo *)romInfo
+{
+    if (pDriver[driverIndex]->GetRomInfo(romInfo, romIndex)) {
+        return NO;
+    }
+    
+    return YES;
+}
+
+- (UInt32)loadROMOfDriver:(int)driverIndex
                     index:(int)romIndex
                intoBuffer:(void *)buffer
              bufferLength:(int *)length
 {
-    if (![FXROMSet isDriverIdValid:driverId]) {
+    if (driverIndex < 0 || driverIndex >= nBurnDrvCount) {
         return 1;
     }
     
     struct BurnRomInfo info;
-    if (![FXROMSet romInfoOfSetWithDriverId:driverId
-                                   romIndex:romIndex
-                                    romInfo:&info]) {
+    if (![FXRunLoop romInfoOfDriverIndex:driverIndex
+                               romIndex:romIndex
+                                romInfo:&info]) {
         return 1;
     }
     
-    FXROMAudit *romAudit = [driverAudit ROMAuditByNeededCRC:info.nCrc];
+    FXROMAudit *romAudit = [[[self romSet] audit] findROMAuditByNeededCRC:info.nCrc];
     if (romAudit == nil || [romAudit status] == FXROMAuditMissing) {
         return 1;
     }
@@ -416,7 +427,7 @@ static int cocoaGetNextSound(int draw);
     
 #ifdef DEBUG
     NSLog(@"%d/%d found in %@, read %d bytes",
-          driverId, romIndex, path, bytesRead);
+          driverIndex, romIndex, path, bytesRead);
 #endif
     
     return 0;

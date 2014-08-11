@@ -24,30 +24,21 @@
 
 #import "FXROMAudit.h"
 
-@interface FXDriverAudit : NSObject
-{
-    @private
-    NSMutableDictionary *romAuditsByNeededCRC;
-}
+@interface FXDriverAudit : NSObject<NSCoding>
 
-@property (nonatomic, copy) NSString *name;
-@property (nonatomic, copy) NSString *archiveName;
-@property (nonatomic, assign) int driverId;
 @property (nonatomic, assign) NSInteger availability;
 @property (nonatomic, assign) BOOL isPlayable;
+@property (nonatomic, readonly) NSMutableArray *romAudits;
 
-- (void)addROMAudit:(FXROMAudit *)romAudit;
-
-- (NSArray *)ROMAudits;
-- (FXROMAudit *)ROMAuditByNeededCRC:(NSUInteger)crc;
+- (FXROMAudit *)findROMAuditByNeededCRC:(UInt32)crc;
 
 - (void)updateAvailability;
 
 @end
 
 enum {
-    FXDriverComplete    = 0,
-    FXDriverPartial     = 1,
-    FXDriverUnplayable  = 2,
-    FXDriverMissing     = 3,
+    FXDriverMissing     = 0,
+    FXDriverUnplayable  = 1,
+    FXDriverPartial     = 2,
+    FXDriverComplete    = 3,
 };

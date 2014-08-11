@@ -27,36 +27,45 @@
 - (instancetype)init
 {
     if (self = [super init]) {
-        self->romAuditsByNeededCRC = [[NSMutableDictionary alloc] init];
+        self->_romAudits = [NSMutableArray array];
     }
     
     return self;
 }
 
-- (void)addROMAudit:(FXROMAudit *)romAudit
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    [self->romAuditsByNeededCRC setObject:romAudit
-                                   forKey:@([romAudit CRCNeeded])];
+    if ((self = [super init]) != nil) {
+        self->_availability = [coder decodeIntegerForKey:@"availability"];
+        self->_isPlayable = [coder decodeBoolForKey:@"isPlayable"];
+        self->_romAudits = [coder decodeObjectForKey:@"romAudits"];
+    }
+    
+    return self;
 }
 
-- (FXROMAudit *)ROMAuditByNeededCRC:(NSUInteger)crc
-{
-    return [self->romAuditsByNeededCRC objectForKey:@(crc)];
-}
 
-- (NSArray *)ROMAudits
+- (FXROMAudit *)findROMAuditByNeededCRC:(UInt32)crc
 {
-    return [self->romAuditsByNeededCRC allValues];
+    __block FXROMAudit *found = nil;
+    [self->_romAudits enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
+        if ([romAudit CRCNeeded] == crc) {
+            found = romAudit;
+            *stop = YES;
+        }
+    }];
+    
+    return found;
 }
 
 - (void)updateAvailability
 {
     __block NSInteger availability = FXDriverComplete;
     
-    if ([self->romAuditsByNeededCRC count] <= 0) {
+    if ([self->_romAudits count] <= 0) {
         availability = FXDriverMissing;
     } else {
-        [self->romAuditsByNeededCRC enumerateKeysAndObjectsUsingBlock:^(id key, FXROMAudit *romAudit, BOOL *stop) {
+        [self->_romAudits enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
             if ([romAudit status] == FXROMAuditOK) {
                 // ROM present and correct
             } else if ([romAudit status] == FXROMAuditMissing) {
@@ -82,6 +91,15 @@
     
     [self setIsPlayable:(availability == FXDriverComplete || availability == FXDriverPartial)];
     [self setAvailability:availability];
+}
+
+#pragma mark - NSCoding
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeInteger:[self availability] forKey:@"availability"];
+    [coder encodeBool:[self isPlayable] forKey:@"isPlayable"];
+    [coder encodeObject:[self romAudits] forKey:@"romAudits"];
 }
 
 @end

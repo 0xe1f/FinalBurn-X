@@ -22,23 +22,23 @@
  */
 #import <Foundation/Foundation.h>
 
-struct BurnRomInfo;
+#import "FXDriverAudit.h"
 
 @interface FXROMSet : NSObject
 {
 }
 
-- (instancetype)initWithDriverId:(int)driverId;
+- (instancetype)initWithArchive:(NSString *)archive;
 
-+ (NSString *)titleOfSetWithDriverId:(int)driverId;
-+ (NSSize)screenSizeOfSetWithDriverId:(int)driverId;
-+ (BOOL)romInfoOfSetWithDriverId:(int)driverId
-                        romIndex:(int)romIndex
-                         romInfo:(struct BurnRomInfo *)romInfo;
-+ (BOOL)isDriverIdValid:(int)driverId;
++ (int)driverIndexOfArchive:(NSString *)archive;
 
-@property (nonatomic, assign) int driverId;
+@property (nonatomic, copy) NSString *archive;
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, assign) NSSize screenSize;
+
+@property (nonatomic, strong) FXROMSet *parentSet;
+@property (nonatomic, readonly) NSMutableArray *subsets;
+
+@property (nonatomic, strong) FXDriverAudit *audit;
 
 @end

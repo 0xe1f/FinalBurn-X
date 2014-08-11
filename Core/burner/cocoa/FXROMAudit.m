@@ -24,6 +24,22 @@
 
 @implementation FXROMAudit
 
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if ((self = [super init]) != nil) {
+        _containerPath = [coder decodeObjectForKey:@"containerPath"];
+        _filenameNeeded = [coder decodeObjectForKey:@"filenameNeeded"];
+        _filenameFound = [coder decodeObjectForKey:@"filenameFound"];
+        _lengthNeeded = [coder decodeIntegerForKey:@"lengthNeeded"];
+        _lengthFound = [coder decodeIntegerForKey:@"lengthFound"];
+        _CRCNeeded = (UInt32)[coder decodeInt64ForKey:@"crcNeeded"];
+        _CRCFound = (UInt32)[coder decodeInt64ForKey:@"crcFound"];
+        _type = [coder decodeIntegerForKey:@"type"];
+    }
+    
+    return self;
+}
+
 - (NSInteger)status
 {
     if ([self filenameFound] == nil) {
@@ -60,6 +76,20 @@
     }
     
     return message;
+}
+
+#pragma mark - NSCoding
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:[self containerPath] forKey:@"containerPath"];
+    [coder encodeObject:[self filenameNeeded] forKey:@"filenameNeeded"];
+    [coder encodeObject:[self filenameFound] forKey:@"filenameFound"];
+    [coder encodeInteger:[self lengthNeeded] forKey:@"lengthNeeded"];
+    [coder encodeInteger:[self lengthFound] forKey:@"lengthFound"];
+    [coder encodeInt64:[self CRCNeeded] forKey:@"crcNeeded"];
+    [coder encodeInt64:[self CRCFound] forKey:@"crcFound"];
+    [coder encodeInteger:[self type] forKey:@"type"];
 }
 
 @end

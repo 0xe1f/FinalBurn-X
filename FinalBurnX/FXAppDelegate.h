@@ -34,12 +34,11 @@
     NSString *romPath;
 }
 
-- (void)launch:(int)driverId;
-
 + (FXAppDelegate *)sharedInstance;
 
+- (NSURL *)appSupportURL;
 - (FXEmulatorController *)emulator;
-
 - (NSString *)ROMPath;
+- (void)launch:(FXROMSet *)romSet;
 
 @end

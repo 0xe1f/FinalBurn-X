@@ -24,12 +24,6 @@
 
 #import "FXROMSet.h"
 
-@interface FXAppDelegate()
-
-- (NSURL *)appSupportURL;
-
-@end
-
 @implementation FXAppDelegate
 
 static FXAppDelegate *sharedInstance = nil;
@@ -108,12 +102,10 @@ static FXAppDelegate *sharedInstance = nil;
     return self->emulator;
 }
 
-- (void)launch:(int)driverId
+- (void)launch:(FXROMSet *)romSet
 {
     @synchronized(self) {
         [self->emulator close];
-        
-        FXROMSet *romSet = [[FXROMSet alloc] initWithDriverId:driverId];
         
         self->emulator = [[FXEmulatorController alloc] initWithROMSet:romSet];
         [self->emulator showWindow:self];

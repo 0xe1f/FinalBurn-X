@@ -29,7 +29,10 @@
 
 @interface FXLauncherController ()
 
-- (void)reloadDrivers;
+- (NSString *)auditCachePath;
+- (void)identifyROMSets;
+- (NSDictionary *)auditROMSets;
+- (void)updateAudits:(NSDictionary *)audits;
 
 @end
 
@@ -46,7 +49,27 @@
 
 - (void)awakeFromNib
 {
-    [self reloadDrivers];
+    [self identifyROMSets];
+    
+    NSDictionary *audits;
+    
+    // Load the audit data from cache, if available
+    NSString *auditCachePath = [self auditCachePath];
+    NSFileManager *fm = [NSFileManager defaultManager];
+    
+    if ([fm fileExistsAtPath:auditCachePath isDirectory:nil]) {
+        if ((audits = [NSKeyedUnarchiver unarchiveObjectWithFile:auditCachePath]) == nil) {
+            NSLog(@"Error reading audit cache");
+        }
+    }
+    
+    // Nothing in cache, or error loading. Rescan
+    if (audits == nil) {
+        audits = [self auditROMSets];
+    }
+    
+    // Update ROM sets with audit data
+    [self updateAudits:audits];
     
     [self->driversTreeController rearrangeObjects];
 }
@@ -55,50 +78,105 @@
 
 - (void)launchGame:(id)sender
 {
-    NSTreeNode *selectedNode = [[self->driversTreeController selectedObjects] firstObject];
-    FXDriverAudit *driverAudit = [selectedNode representedObject];
-    if ([driverAudit isPlayable]) {
+    FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
+    if ([[romSet audit] isPlayable]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        [app launch:[driverAudit driverId]];
+        [app launch:romSet];
     }
 }
 
 #pragma mark - Private methods
 
-- (void)reloadDrivers
+- (NSString *)auditCachePath
+{
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    NSURL *supportURL = [app appSupportURL];
+    
+    return [[supportURL URLByAppendingPathComponent:@"audits.cache"] path];
+}
+
+- (void)identifyROMSets
 {
 #ifdef DEBUG
     NSDate *started = [NSDate date];
-    NSLog(@"Loading drivers...");
+    NSLog(@"Identifying sets...");
 #endif
-    [[self drivers] removeAllObjects];
     
     FXLoader *loader = [[FXLoader alloc] init];
-    NSDictionary *availableDrivers = [loader drivers];
+    [[self drivers] addObjectsFromArray:[loader romSets]];
     
-    [availableDrivers enumerateKeysAndObjectsUsingBlock:^(NSNumber *parentDriverId, NSArray *children, BOOL *stop) {
-        NSError *parentError = NULL;
-        FXDriverAudit *parentDriverAudit = [loader auditDriver:[parentDriverId intValue]
-                                                         error:&parentError];
+#ifdef DEBUG
+    NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
+}
+
+- (NSDictionary *)auditROMSets
+{
+#ifdef DEBUG
+    NSDate *started = [NSDate date];
+    NSLog(@"Auditing sets...");
+#endif
+    
+    NSMutableDictionary *audits = [NSMutableDictionary dictionary];
+    FXLoader *loader = [[FXLoader alloc] init];
+    
+    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+        NSError *parentError = nil;
+        FXDriverAudit *parentDriverAudit = [loader auditSet:romSet
+                                                      error:&parentError];
         
-        // FIXME: else if parentError != NULL..
+        if (parentError == nil) {
+            [audits setObject:parentDriverAudit forKey:[romSet archive]];
+        } else {
+            NSLog(@"Error scanning archive %@: %@",
+                  [romSet archive], [parentError description]);
+        }
         
-        NSTreeNode *parentNode = [NSTreeNode treeNodeWithRepresentedObject:parentDriverAudit];
-        
-        [children enumerateObjectsUsingBlock:^(NSNumber *childDriverId, NSUInteger idx, BOOL *stop) {
+        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
             // Go through the children as well
             NSError *childError = NULL;
-            FXDriverAudit *childDriverAudit = [loader auditDriver:[childDriverId intValue]
-                                                            error:&childError];
+            FXDriverAudit *childDriverAudit = [loader auditSet:subset
+                                                         error:&childError];
             
-            // FIXME: else if parentError != NULL..
-            
-            NSTreeNode *childNode = [NSTreeNode treeNodeWithRepresentedObject:childDriverAudit];
-            [[parentNode mutableChildNodes] addObject:childNode];
+            if (childError == nil) {
+                [audits setObject:childDriverAudit forKey:[subset archive]];
+            } else {
+                NSLog(@"Error scanning archive %@: %@",
+                      [subset archive], [childError description]);
+            }
         }];
-        
-        [[self drivers] addObject:parentNode];
     }];
+    
+    // Save the audit data to cache file
+    NSString *auditCachePath = [self auditCachePath];
+#ifdef DEBUG
+    NSLog(@"Writing audit data to %@", auditCachePath);
+#endif
+    
+    if (![NSKeyedArchiver archiveRootObject:audits
+                                     toFile:auditCachePath]) {
+        NSLog(@"Error writing to audit cache");
+    }
+    
+#ifdef DEBUG
+    NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
+    
+    return audits;
+}
+
+- (void)updateAudits:(NSDictionary *)audits
+{
+#ifdef DEBUG
+    NSDate *started = [NSDate date];
+    NSLog(@"Updating audit data...");
+#endif
+    
+    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+        FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
+        [romSet setAudit:audit];
+    }];
+    
 #ifdef DEBUG
     NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
 #endif

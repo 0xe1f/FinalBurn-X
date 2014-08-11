@@ -22,18 +22,18 @@
  */
 #import <Foundation/Foundation.h>
 
+#import "FXROMSet.h"
 #import "FXDriverAudit.h"
 
 @interface FXLoader : NSObject
 {
 }
 
-- (int)driverIdForName:(NSString *)driverName;
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
-- (NSDictionary *)drivers;
-- (FXDriverAudit *)auditDriver:(int)driverId
-                         error:(NSError **)error;
+- (NSArray *)romSets;
+- (FXDriverAudit *)auditSet:(FXROMSet *)romSet
+                      error:(NSError **)error;
 
 @end
 

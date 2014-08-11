@@ -31,18 +31,18 @@
                         </buttonCell>
                         <connections>
                             <action selector="launchGame:" target="-2" id="DI9-Tf-6gl"/>
-                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.representedObject.isPlayable" id="KWo-bn-eJF"/>
+                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.audit.isPlayable" id="knJ-Um-urI"/>
                         </connections>
                     </button>
                     <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="Xgx-S9-UFg">
-                        <rect key="frame" x="20" y="208" width="541" height="208"/>
+                        <rect key="frame" x="20" y="207" width="541" height="209"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <clipView key="contentView" id="YAY-cw-GSs">
-                            <rect key="frame" x="1" y="17" width="539" height="190"/>
+                            <rect key="frame" x="1" y="17" width="539" height="191"/>
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                             <subviews>
                                 <outlineView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" multipleSelection="NO" autosaveColumns="NO" autosaveName="" headerView="bBz-bb-9BE" indentationPerLevel="16" outlineTableColumn="uNg-8A-m5f" id="7cv-AF-5oi">
-                                    <rect key="frame" x="0.0" y="0.0" width="539" height="190"/>
+                                    <rect key="frame" x="0.0" y="0.0" width="539" height="191"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <size key="intercellSpacing" width="3" height="2"/>
                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
@@ -57,7 +57,7 @@
                                             <imageCell key="dataCell" controlSize="small" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="OPU-sE-Uoz"/>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.representedObject.availability" id="R7R-kc-TCG">
+                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.audit.availability" id="xRn-D7-lWS">
                                                     <dictionary key="options">
                                                         <string key="NSValueTransformerName">FXAuditStatusAsNSImage</string>
                                                     </dictionary>
@@ -77,7 +77,11 @@
                                             </textFieldCell>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.representedObject.archiveName" id="M4c-jb-RkC"/>
+                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.archive" id="fK5-Mp-288">
+                                                    <dictionary key="options">
+                                                        <bool key="NSConditionallySetsEditable" value="YES"/>
+                                                    </dictionary>
+                                                </binding>
                                             </connections>
                                         </tableColumn>
                                         <tableColumn identifier="driverName" editable="NO" width="385" minWidth="40" maxWidth="1000" id="hwc-SX-ybW">
@@ -93,17 +97,16 @@
                                             </textFieldCell>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.representedObject.name" id="3ID-gv-TOx"/>
+                                                <binding destination="hya-yi-HSf" name="value" keyPath="arrangedObjects.title" id="FHw-uY-Ui9">
+                                                    <dictionary key="options">
+                                                        <bool key="NSConditionallySetsEditable" value="YES"/>
+                                                    </dictionary>
+                                                </binding>
                                             </connections>
                                         </tableColumn>
                                     </tableColumns>
                                     <connections>
-                                        <binding destination="hya-yi-HSf" name="doubleClickArgument" keyPath="selection.representedObject" id="drp-cD-Abw">
-                                            <dictionary key="options">
-                                                <string key="NSSelectorName">launchGame:</string>
-                                            </dictionary>
-                                        </binding>
-                                        <binding destination="-2" name="doubleClickTarget" keyPath="self" previousBinding="drp-cD-Abw" id="Lsh-W9-qjy">
+                                        <binding destination="-2" name="doubleClickTarget" keyPath="self" id="ptB-3R-FuK">
                                             <dictionary key="options">
                                                 <string key="NSSelectorName">launchGame:</string>
                                             </dictionary>
@@ -209,10 +212,10 @@
                 </subviews>
             </view>
         </window>
-        <treeController objectClassName="NSTreeNode" editable="NO" childrenKeyPath="childNodes" id="hya-yi-HSf" userLabel="Driver Tree Controller">
+        <treeController objectClassName="FXROMSet" editable="NO" childrenKeyPath="subsets" id="hya-yi-HSf" userLabel="Driver Tree Controller">
             <connections>
-                <binding destination="-2" name="contentArray" keyPath="self.drivers" id="waQ-X6-lFO"/>
-                <binding destination="TBz-FA-6e8" name="sortDescriptors" keyPath="values.driverSortDescriptors" id="lWG-MT-G70">
+                <binding destination="-2" name="contentArray" keyPath="drivers" id="8Ac-dN-hEK"/>
+                <binding destination="TBz-FA-6e8" name="sortDescriptors" keyPath="values.DriverSD" id="YvC-YX-SbT">
                     <dictionary key="options">
                         <bool key="NSValidatesImmediately" value="YES"/>
                         <string key="NSValueTransformerName">NSUnarchiveFromData</string>
@@ -222,8 +225,8 @@
         </treeController>
         <arrayController objectClassName="FXROMAudit" editable="NO" id="qRp-OV-IjQ" userLabel="ROM Array Controller">
             <connections>
-                <binding destination="hya-yi-HSf" name="contentArray" keyPath="selection.representedObject.ROMAudits" id="LS5-hX-Tin"/>
-                <binding destination="TBz-FA-6e8" name="sortDescriptors" keyPath="values.driverROMSortDescriptors" id="gJ9-ks-ci0">
+                <binding destination="hya-yi-HSf" name="contentArray" keyPath="selection.audit.romAudits" id="CcH-J1-UYg"/>
+                <binding destination="TBz-FA-6e8" name="sortDescriptors" keyPath="values.DriverROMSD" id="uI9-8Z-aeY">
                     <dictionary key="options">
                         <string key="NSValueTransformerName">NSUnarchiveFromData</string>
                     </dictionary>

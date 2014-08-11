@@ -43,7 +43,7 @@
         [self setInput:[[FXInput alloc] init]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriverId:[romSet driverId]]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
         
         [self setRomSet:romSet];
     }

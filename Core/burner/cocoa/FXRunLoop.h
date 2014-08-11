@@ -22,6 +22,7 @@
  */
 #import <Foundation/Foundation.h>
 
+#import "FXROMSet.h"
 #import "FXDriverAudit.h"
 
 @protocol FXRunLoopDelegate<NSObject>
@@ -36,7 +37,6 @@
 {
     @private
     NSMutableDictionary *zipArchiveDictionary;
-    FXDriverAudit *driverAudit;
     UInt32 lastTick;
     int fraction;
     BOOL previouslyDrawn;
@@ -44,9 +44,9 @@
     BOOL soundBufferCleared;
 }
 
-- (instancetype)initWithDriverId:(int)driverId;
+- (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
-@property (nonatomic, assign) int driverId;
+@property (nonatomic, readonly) FXROMSet *romSet;
 @property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
 @property (nonatomic, assign, getter = isPaused) BOOL paused;
 
