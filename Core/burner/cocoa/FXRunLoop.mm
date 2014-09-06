@@ -379,7 +379,7 @@ static int cocoaGetNextSound(int draw);
     }
     
     FXROMAudit *romAudit = [[[self romSet] audit] findROMAuditByNeededCRC:info.nCrc];
-    if (romAudit == nil || [romAudit status] == FXROMAuditMissing) {
+    if (romAudit == nil || [romAudit statusCode] == FXROMAuditMissing) {
         return 1;
     }
     

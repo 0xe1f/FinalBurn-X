@@ -34,8 +34,8 @@
 @property (nonatomic, assign) UInt32 CRCFound;
 @property (nonatomic, assign) NSInteger type;
 
-- (NSInteger)status;
-- (NSString *)message;
+@property (nonatomic, assign) NSInteger statusCode;
+@property (nonatomic, copy) NSString *statusDescription;
 
 @end
 

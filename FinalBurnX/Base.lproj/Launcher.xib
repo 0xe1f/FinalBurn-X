@@ -8,12 +8,17 @@
             <connections>
                 <outlet property="driversOutlineView" destination="7cv-AF-5oi" id="xou-Lw-2bs"/>
                 <outlet property="driversTreeController" destination="hya-yi-HSf" id="5wD-N5-oYP"/>
+                <outlet property="importCancelButton" destination="NNR-EM-qvp" id="Gqb-Yd-GzM"/>
+                <outlet property="importProgressBar" destination="E6h-JL-oTM" id="HIc-i4-VrK"/>
+                <outlet property="importProgressLabel" destination="w7o-i1-yn6" id="2qq-Kl-1CC"/>
+                <outlet property="importProgressPanel" destination="Ikr-1E-PEA" id="06K-Bo-ilL"/>
+                <outlet property="window" destination="mRL-h4-pjH" id="R3K-sj-dsy"/>
             </connections>
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application"/>
         <window title="FinalBurn X" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" frameAutosaveName="launcherWindow" animationBehavior="default" id="mRL-h4-pjH">
-            <windowStyleMask key="styleMask" titled="YES" miniaturizable="YES" resizable="YES"/>
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="283" y="305" width="581" height="436"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
@@ -22,34 +27,22 @@
                 <rect key="frame" x="0.0" y="0.0" width="581" height="436"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <button verticalHuggingPriority="750" id="KvR-IL-2yO">
-                        <rect key="frame" x="471" y="171" width="96" height="32"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                        <buttonCell key="cell" type="push" title="Launch" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Ppa-8V-OsV">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="launchGame:" target="-2" id="DI9-Tf-6gl"/>
-                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.audit.isPlayable" id="knJ-Um-urI"/>
-                        </connections>
-                    </button>
-                    <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="Xgx-S9-UFg">
-                        <rect key="frame" x="20" y="207" width="541" height="209"/>
+                    <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="Xgx-S9-UFg" customClass="FXDroppableScrollView">
+                        <rect key="frame" x="-1" y="191" width="583" height="246"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <clipView key="contentView" id="YAY-cw-GSs">
-                            <rect key="frame" x="1" y="17" width="539" height="191"/>
+                            <rect key="frame" x="1" y="17" width="581" height="228"/>
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                             <subviews>
                                 <outlineView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" multipleSelection="NO" autosaveColumns="NO" autosaveName="" headerView="bBz-bb-9BE" indentationPerLevel="16" outlineTableColumn="uNg-8A-m5f" id="7cv-AF-5oi">
-                                    <rect key="frame" x="0.0" y="0.0" width="539" height="191"/>
+                                    <rect key="frame" x="0.0" y="0.0" width="581" height="228"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <size key="intercellSpacing" width="3" height="2"/>
                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                     <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                     <tableColumns>
                                         <tableColumn identifier="driverAvailability" editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="Hn1-oQ-g53">
-                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Status">
+                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
@@ -84,7 +77,7 @@
                                                 </binding>
                                             </connections>
                                         </tableColumn>
-                                        <tableColumn identifier="driverName" editable="NO" width="385" minWidth="40" maxWidth="1000" id="hwc-SX-ybW">
+                                        <tableColumn identifier="driverName" editable="NO" width="427" minWidth="40" maxWidth="1000" id="hwc-SX-ybW">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Title">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -125,26 +118,29 @@
                             <autoresizingMask key="autoresizingMask"/>
                         </scroller>
                         <tableHeaderView key="headerView" id="bBz-bb-9BE">
-                            <rect key="frame" x="0.0" y="0.0" width="539" height="17"/>
+                            <rect key="frame" x="0.0" y="0.0" width="581" height="17"/>
                             <autoresizingMask key="autoresizingMask"/>
                         </tableHeaderView>
+                        <connections>
+                            <outlet property="scanner" destination="-2" id="aa3-Zv-0cc"/>
+                        </connections>
                     </scrollView>
                     <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="di3-Pz-vQY">
-                        <rect key="frame" x="20" y="20" width="449" height="179"/>
+                        <rect key="frame" x="-1" y="31" width="583" height="161"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
                         <clipView key="contentView" id="DbX-xd-dW0">
-                            <rect key="frame" x="1" y="17" width="447" height="146"/>
+                            <rect key="frame" x="1" y="17" width="581" height="143"/>
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                             <subviews>
                                 <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="Csx-Jg-TUB" id="Lho-XY-dNe">
-                                    <rect key="frame" x="0.0" y="0.0" width="494" height="146"/>
+                                    <rect key="frame" x="0.0" y="0.0" width="581" height="143"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <size key="intercellSpacing" width="3" height="2"/>
                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                     <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                     <tableColumns>
                                         <tableColumn identifier="romStatus" editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="2iY-rI-hQo">
-                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Status">
+                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
@@ -152,7 +148,7 @@
                                             <imageCell key="dataCell" controlSize="small" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="D61-24-43s"/>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.status" id="WRh-Td-qlX">
+                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.statusCode" id="1Cq-Du-Rph">
                                                     <dictionary key="options">
                                                         <string key="NSValueTransformerName">FXAuditStatusAsNSImage</string>
                                                     </dictionary>
@@ -160,7 +156,7 @@
                                             </connections>
                                         </tableColumn>
                                         <tableColumn identifier="romFilename" editable="NO" width="116" minWidth="40" maxWidth="1000" id="tLb-bS-yFC">
-                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="File name">
+                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="File">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" white="0.33333298560000002" alpha="1" colorSpace="calibratedWhite"/>
@@ -175,8 +171,8 @@
                                                 <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.filenameNeeded" id="IpU-pQ-yq3"/>
                                             </connections>
                                         </tableColumn>
-                                        <tableColumn identifier="romStatusDescription" editable="NO" width="325" minWidth="40" maxWidth="1000" id="2g0-HY-Oai">
-                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Description">
+                                        <tableColumn identifier="romStatusDescription" editable="NO" width="412" minWidth="40" maxWidth="1000" id="2g0-HY-Oai">
+                                            <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Status">
                                                 <font key="font" metaFont="smallSystem"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" white="0.33333298560000002" alpha="1" colorSpace="calibratedWhite"/>
@@ -188,7 +184,11 @@
                                             </textFieldCell>
                                             <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                             <connections>
-                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.message" id="zY3-0j-Eb2"/>
+                                                <binding destination="qRp-OV-IjQ" name="value" keyPath="arrangedObjects.statusDescription" id="Hcf-cI-e7C">
+                                                    <dictionary key="options">
+                                                        <bool key="NSConditionallySetsEditable" value="YES"/>
+                                                    </dictionary>
+                                                </binding>
                                             </connections>
                                         </tableColumn>
                                     </tableColumns>
@@ -196,8 +196,8 @@
                             </subviews>
                             <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </clipView>
-                        <scroller key="horizontalScroller" verticalHuggingPriority="750" horizontal="YES" id="0uW-bP-Fw1">
-                            <rect key="frame" x="1" y="163" width="447" height="15"/>
+                        <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="0uW-bP-Fw1">
+                            <rect key="frame" x="1" y="145" width="207" height="15"/>
                             <autoresizingMask key="autoresizingMask"/>
                         </scroller>
                         <scroller key="verticalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="NO" id="5pZ-Dz-b28">
@@ -205,12 +205,25 @@
                             <autoresizingMask key="autoresizingMask"/>
                         </scroller>
                         <tableHeaderView key="headerView" id="Csx-Jg-TUB">
-                            <rect key="frame" x="0.0" y="0.0" width="494" height="17"/>
+                            <rect key="frame" x="0.0" y="0.0" width="581" height="17"/>
                             <autoresizingMask key="autoresizingMask"/>
                         </tableHeaderView>
                     </scrollView>
+                    <button verticalHuggingPriority="750" id="KvR-IL-2yO">
+                        <rect key="frame" x="513" y="3" width="56" height="25"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                        <buttonCell key="cell" type="roundTextured" title="Play" bezelStyle="texturedRounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Ppa-8V-OsV">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="launchGame:" target="-2" id="DI9-Tf-6gl"/>
+                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.audit.isPlayable" id="knJ-Um-urI"/>
+                        </connections>
+                    </button>
                 </subviews>
             </view>
+            <contentBorderThickness minY="32"/>
         </window>
         <treeController objectClassName="FXROMSet" editable="NO" childrenKeyPath="subsets" id="hya-yi-HSf" userLabel="Driver Tree Controller">
             <connections>
@@ -234,5 +247,44 @@
             </connections>
         </arrayController>
         <userDefaultsController representsSharedInstance="YES" id="TBz-FA-6e8"/>
+        <window title="Import in Progress..." allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="Ikr-1E-PEA" customClass="NSPanel">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" utility="YES"/>
+            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
+            <rect key="contentRect" x="272" y="172" width="407" height="86"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1280" height="778"/>
+            <view key="contentView" id="0Cb-nZ-jAA">
+                <rect key="frame" x="0.0" y="0.0" width="407" height="86"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <progressIndicator maxValue="1" style="bar" id="E6h-JL-oTM">
+                        <rect key="frame" x="20" y="33" width="289" height="20"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    </progressIndicator>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="w7o-i1-yn6">
+                        <rect key="frame" x="18" y="60" width="319" height="14"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Label" id="YBQ-du-625">
+                            <font key="font" metaFont="smallSystem"/>
+                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
+                    <button verticalHuggingPriority="750" id="NNR-EM-qvp">
+                        <rect key="frame" x="312" y="28" width="80" height="28"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="push" title="Cancel" bezelStyle="rounded" alignment="center" controlSize="small" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="p48-1q-tRn">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="smallSystem"/>
+                            <string key="keyEquivalent" base64-UTF8="YES">
+Gw
+</string>
+                        </buttonCell>
+                        <connections>
+                            <action selector="cancelImport:" target="-2" id="nMs-pq-OAz"/>
+                        </connections>
+                    </button>
+                </subviews>
+            </view>
+        </window>
     </objects>
 </document>

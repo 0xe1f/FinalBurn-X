@@ -20,26 +20,18 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 
-#import "FXDroppableScrollView.h"
+@protocol FXScannerDelegate
 
-@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXScannerDelegate>
-{
-    IBOutlet NSPanel *importProgressPanel;
-    IBOutlet NSProgressIndicator *importProgressBar;
-    IBOutlet NSButton *importCancelButton;
-    IBOutlet NSTextField *importProgressLabel;
-    
-    IBOutlet NSTreeController *driversTreeController;
-    IBOutlet NSOutlineView *driversOutlineView;
-    
-    NSOperationQueue *importOpQueue;
-}
+@required
+- (BOOL)isArchiveSupported:(NSString *)path;
+- (void)importArchives:(NSArray *)paths;
 
-- (IBAction)launchGame:(id)sender;
-- (IBAction)cancelImport:(id)sender;
+@end
 
-@property (nonatomic, strong) NSMutableArray *drivers;
+@interface FXDroppableScrollView : NSScrollView<NSDraggingDestination>
+
+@property (nonatomic, weak) IBOutlet id<FXScannerDelegate> scanner;
 
 @end

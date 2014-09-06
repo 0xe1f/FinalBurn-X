@@ -35,47 +35,11 @@
         _CRCNeeded = (UInt32)[coder decodeInt64ForKey:@"crcNeeded"];
         _CRCFound = (UInt32)[coder decodeInt64ForKey:@"crcFound"];
         _type = [coder decodeIntegerForKey:@"type"];
+        _statusCode = [coder decodeIntegerForKey:@"statusCode"];
+        _statusDescription = [coder decodeObjectForKey:@"statusDescription"];
     }
     
     return self;
-}
-
-- (NSInteger)status
-{
-    if ([self filenameFound] == nil) {
-        return FXROMAuditMissing;
-    } else {
-        if ([self CRCNeeded] == [self CRCFound]) {
-            return FXROMAuditOK;
-        } else if ([self lengthFound] != [self lengthNeeded]) {
-            return FXROMAuditBadLength;
-        } else {
-            return FXROMAuditBadCRC;
-        }
-    }
-}
-
-- (NSString *)message
-{
-    NSString *message = nil;
-    switch ([self status]) {
-        case FXROMAuditMissing:
-            message = NSLocalizedString(@"Missing", @"");
-            break;
-        case FXROMAuditBadCRC:
-            message = [NSString stringWithFormat:NSLocalizedString(@"Checksum mismatch (expected: %08x; found: %08x)", @""),
-                       [self CRCNeeded], [self CRCFound]];
-            break;
-        case FXROMAuditBadLength:
-            message = [NSString stringWithFormat:NSLocalizedString(@"Length mismatch (expected: %dkB; found: %dkB)", @""),
-                       [self lengthNeeded] >> 10, [self lengthFound] >> 10];
-            break;
-        case FXROMAuditOK:
-            message = NSLocalizedString(@"OK", @"");
-            break;
-    }
-    
-    return message;
 }
 
 #pragma mark - NSCoding
@@ -90,6 +54,8 @@
     [coder encodeInt64:[self CRCNeeded] forKey:@"crcNeeded"];
     [coder encodeInt64:[self CRCFound] forKey:@"crcFound"];
     [coder encodeInteger:[self type] forKey:@"type"];
+    [coder encodeInteger:[self statusCode] forKey:@"statusCode"];
+    [coder encodeObject:[self statusDescription] forKey:@"statusDescription"];
 }
 
 @end

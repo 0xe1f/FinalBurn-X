@@ -41,6 +41,9 @@
                             romIndex:(int)romIndex;
 - (NSString *)archiveNameForDriverId:(int)driverId;
 
+- (void)updateStatus:(FXROMAudit *)romAudit;
+- (void)updateAvailability:(FXDriverAudit *)driverAudit;
+
 @end
 
 @implementation FXLoader
@@ -374,6 +377,7 @@
                             }
                         }
                         
+                        [self updateStatus:romAudit];
                         [[driverAudit romAudits] addObject:romAudit];
                     }];
                 }
@@ -381,9 +385,63 @@
         }];
     }];
     
-    [driverAudit updateAvailability];
+    [self updateAvailability:driverAudit];
     
     return driverAudit;
+}
+
+- (void)updateStatus:(FXROMAudit *)romAudit
+{
+    if ([romAudit filenameFound] == nil) {
+        [romAudit setStatusCode:FXROMAuditMissing];
+        [romAudit setStatusDescription:NSLocalizedString(@"Missing", @"")];
+    } else {
+        if ([romAudit CRCNeeded] == [romAudit CRCFound]) {
+            [romAudit setStatusCode:FXROMAuditOK];
+            [romAudit setStatusDescription:NSLocalizedString(@"OK", @"")];
+        } else if ([romAudit lengthFound] != [romAudit lengthNeeded]) {
+            [romAudit setStatusCode:FXROMAuditBadLength];
+            [romAudit setStatusDescription:[NSString stringWithFormat:NSLocalizedString(@"Length mismatch (expected: %dkB; found: %dkB)", @""), [romAudit lengthNeeded] >> 10, [romAudit lengthFound] >> 10]];
+        } else {
+            [romAudit setStatusCode:FXROMAuditBadCRC];
+            [romAudit setStatusDescription:[NSString stringWithFormat:NSLocalizedString(@"Checksum mismatch (expected: 0x%08x; found: 0x%08x)", @""), [romAudit CRCNeeded], [romAudit CRCFound]]];
+        }
+    }
+}
+
+- (void)updateAvailability:(FXDriverAudit *)driverAudit
+{
+    __block NSInteger availability = FXDriverComplete;
+    
+    if ([[driverAudit romAudits] count] <= 0) {
+        availability = FXDriverMissing;
+    } else {
+        [[driverAudit romAudits] enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
+            if ([romAudit statusCode] == FXROMAuditOK) {
+                // ROM present and correct
+            } else if ([romAudit statusCode] == FXROMAuditMissing) {
+                // ROM missing
+                if ([romAudit type] & FXROMTypeCoreSet) {
+                    availability = FXDriverMissing;
+                } else {
+                    availability = FXDriverUnplayable;
+                }
+                *stop = YES;
+            } else {
+                // ROM present, but CRC or length don't match
+                if ([romAudit type] & FXROMTypeEssential ||
+                    [romAudit type] & FXROMTypeCoreSet) {
+                    availability = FXDriverUnplayable;
+                    *stop = YES;
+                } else {
+                    availability = FXDriverPartial;
+                }
+            }
+        }];
+    }
+    
+    [driverAudit setIsPlayable:(availability == FXDriverComplete || availability == FXDriverPartial)];
+    [driverAudit setAvailability:availability];
 }
 
 @end

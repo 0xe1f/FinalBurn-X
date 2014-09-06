@@ -41,4 +41,6 @@
 - (NSString *)ROMPath;
 - (void)launch:(FXROMSet *)romSet;
 
+- (IBAction)showLauncher:(id)sender;
+
 @end

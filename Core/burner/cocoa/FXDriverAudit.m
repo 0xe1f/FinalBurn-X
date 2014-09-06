@@ -58,41 +58,6 @@
     return found;
 }
 
-- (void)updateAvailability
-{
-    __block NSInteger availability = FXDriverComplete;
-    
-    if ([self->_romAudits count] <= 0) {
-        availability = FXDriverMissing;
-    } else {
-        [self->_romAudits enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
-            if ([romAudit status] == FXROMAuditOK) {
-                // ROM present and correct
-            } else if ([romAudit status] == FXROMAuditMissing) {
-                // ROM missing
-                if ([romAudit type] & FXROMTypeCoreSet) {
-                    availability = FXDriverMissing;
-                } else {
-                    availability = FXDriverUnplayable;
-                }
-                *stop = YES;
-            } else {
-                // ROM present, but CRC or length don't match
-                if ([romAudit type] & FXROMTypeEssential ||
-                    [romAudit type] & FXROMTypeCoreSet) {
-                    availability = FXDriverUnplayable;
-                    *stop = YES;
-                } else {
-                    availability = FXDriverPartial;
-                }
-            }
-        }];
-    }
-    
-    [self setIsPlayable:(availability == FXDriverComplete || availability == FXDriverPartial)];
-    [self setAvailability:availability];
-}
-
 #pragma mark - NSCoding
 
 - (void)encodeWithCoder:(NSCoder *)coder

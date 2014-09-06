@@ -32,6 +32,7 @@
 - (NSArray *)archiveNamesForDriver:(int)romIndex
                              error:(NSError **)error;
 - (NSArray *)romSets;
+
 - (FXDriverAudit *)auditSet:(FXROMSet *)romSet
                       error:(NSError **)error;
 

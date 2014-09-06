@@ -85,9 +85,11 @@ static FXAppDelegate *sharedInstance = nil;
     [FXEmulatorController cleanupCore];
 }
 
-- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApplication
+#pragma mark - Actions
+
+- (void)showLauncher:(id)sender
 {
-    return YES;
+    [[self->launcher window] makeKeyAndOrderFront:self];
 }
 
 #pragma mark - Public methods

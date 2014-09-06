@@ -32,8 +32,6 @@
 
 - (FXROMAudit *)findROMAuditByNeededCRC:(UInt32)crc;
 
-- (void)updateAvailability;
-
 @end
 
 enum {

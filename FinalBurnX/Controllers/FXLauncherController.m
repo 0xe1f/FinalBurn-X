@@ -33,6 +33,7 @@
 - (void)identifyROMSets;
 - (NSDictionary *)auditROMSets;
 - (void)updateAudits:(NSDictionary *)audits;
+- (void)importWithProgress:(NSArray *)paths;
 
 @end
 
@@ -41,6 +42,9 @@
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
+        self->importOpQueue = [[NSOperationQueue alloc] init];
+        [self->importOpQueue setMaxConcurrentOperationCount:1];
+        
         [self setDrivers:[NSMutableArray array]];
     }
     
@@ -72,6 +76,101 @@
     [self updateAudits:audits];
     
     [self->driversTreeController rearrangeObjects];
+    
+    [self->importProgressBar startAnimation:self];
+    [self->importProgressBar setMaxValue:0];
+    [self->importProgressBar setDoubleValue:0];
+    
+    // Observe the import queue to be notified when tasks are available/done
+    [self->importOpQueue addObserver:self
+                          forKeyPath:@"operationCount"
+                             options:NSKeyValueObservingOptionNew
+                             context:NULL];
+}
+
+#pragma mark - NSWindowDelegate
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    [self->importOpQueue cancelAllOperations];
+    [self->importOpQueue waitUntilAllOperationsAreFinished];
+}
+
+#pragma mark - FXScannerDelegate
+
+- (BOOL)isArchiveSupported:(NSString *)path
+{
+    // Make sure it's a ZIP file
+    if (![[path pathExtension] caseInsensitiveCompare:@"zip"] == NSOrderedSame) {
+        return NO;
+    }
+    
+    // Make sure it's one of the supported ROM sets
+    __block BOOL supported = NO;
+    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
+    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+        if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
+            supported = YES;
+            *stop = YES;
+        }
+    }];
+    
+    return supported;
+}
+
+- (void)importArchives:(NSArray *)paths
+{
+    [self importWithProgress:paths];
+}
+
+#pragma mark - KVO
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+    if (object == self->importOpQueue && [keyPath isEqualToString:@"operationCount"]) {
+        NSInteger newCount = [[change objectForKey:NSKeyValueChangeNewKey] intValue];
+        
+        void(^block)(void) = ^{
+            if (newCount == 0) {
+                // Reset panel's properties
+                [self->importCancelButton setEnabled:YES];
+                [self->importProgressBar setMaxValue:0];
+                [self->importProgressBar setDoubleValue:0];
+                
+                // Hide the panel
+                [NSApp endSheet:self->importProgressPanel];
+                
+                // FIXME
+                // Re-audit
+                [self updateAudits:[self auditROMSets]];
+            } else {
+                // Set the current progress
+                [self->importProgressBar setDoubleValue:[self->importProgressBar maxValue] - newCount + .99];
+                
+                if (![self->importProgressPanel isVisible]) {
+                    // Show the import progress panel
+                    [NSApp beginSheet:self->importProgressPanel
+                       modalForWindow:[self window]
+                        modalDelegate:self
+                       didEndSelector:@selector(didEndSheet:returnCode:contextInfo:)
+                          contextInfo:nil];
+                }
+            }
+        };
+        
+        // TODO
+        if (dispatch_get_current_queue() == dispatch_get_main_queue())
+        {
+            block();
+        }
+        else
+        {
+            [[NSOperationQueue mainQueue] addOperationWithBlock:block];
+        }
+    }
 }
 
 #pragma mark - Actions
@@ -85,7 +184,51 @@
     }
 }
 
+- (void)cancelImport:(id)sender
+{
+    [self->importCancelButton setEnabled:NO];
+    [self->importProgressLabel setStringValue:NSLocalizedString(@"Cancelling...", @"")];
+    [self->importOpQueue cancelAllOperations];
+}
+
+#pragma mark - Callbacks
+
+- (void)didEndSheet:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
+{
+    [sheet orderOut:self];
+}
+
 #pragma mark - Private methods
+
+- (void)importWithProgress:(NSArray *)paths
+{
+    double maxValue = [self->importProgressBar maxValue] + [paths count];
+    [self->importProgressBar setMaxValue:maxValue];
+    
+    [paths enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
+        NSOperation *op = [NSBlockOperation blockOperationWithBlock:^{
+            NSString *filename = [path lastPathComponent];
+            NSString *label = [NSString stringWithFormat:NSLocalizedString(@"Importing %@...", @""),
+                               [filename stringByDeletingPathExtension]];
+            
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                [self->importProgressLabel setStringValue:label];
+            }];
+            
+            // FIXME
+            NSError *error = nil;
+            NSString *dstPath = [[[FXAppDelegate sharedInstance] ROMPath] stringByAppendingPathComponent:filename];
+            
+            NSLog(@"Importing %@ as %@", filename, dstPath);
+            
+            [[NSFileManager defaultManager] copyItemAtPath:path
+                                                    toPath:dstPath
+                                                     error:&error];
+        }];
+        
+        [self->importOpQueue addOperation:op];
+    }];
+}
 
 - (NSString *)auditCachePath
 {

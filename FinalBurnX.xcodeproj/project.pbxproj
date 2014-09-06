@@ -562,6 +562,8 @@
 		FEC25356194CA3760039D85F /* hq2xs_16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25355194CA3760039D85F /* hq2xs_16.cpp */; };
 		FEC25358194CA3BF0039D85F /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25357194CA3BF0039D85F /* epx.cpp */; };
 		FEC2535A194CA41B0039D85F /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25359194CA41B0039D85F /* misc.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-variable -Wno-shorten-64-to-32"; }; };
+		FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FECDF58619BA8366008F7B63 /* Localizable.strings */; };
+		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1331,6 +1333,9 @@
 		FEC25355194CA3760039D85F /* hq2xs_16.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = hq2xs_16.cpp; sourceTree = "<group>"; };
 		FEC25357194CA3BF0039D85F /* epx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = epx.cpp; sourceTree = "<group>"; };
 		FEC25359194CA41B0039D85F /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
+		FECDF58719BA8366008F7B63 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Localizable.strings; sourceTree = "<group>"; };
+		FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDroppableScrollView.h; sourceTree = "<group>"; };
+		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1416,6 +1421,8 @@
 		FE0DC79419509EEB004A03A3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */,
+				FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */,
 				FE0DC79519509F50004A03A3 /* FXScreenView.mm */,
 				FE0DC79619509F51004A03A3 /* FXScreenView.h */,
 			);
@@ -1439,6 +1446,7 @@
 				FEC1003C1952A79700B2F8C3 /* MainMenu.xib */,
 				FE9FA3EB195340C100F791EB /* Emulator.xib */,
 				FE23E4F81963171300429FCA /* Launcher.xib */,
+				FECDF58619BA8366008F7B63 /* Localizable.strings */,
 			);
 			name = Resources;
 			path = FinalBurnX/Base.lproj;
@@ -2697,6 +2705,7 @@
 				FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */,
 				FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */,
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
+				FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */,
 				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
 				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
@@ -3079,6 +3088,7 @@
 				FE505C88194BC532003A2BC7 /* cave.cpp in Sources */,
 				FE505DE0194BC533003A2BC7 /* toa_palette.cpp in Sources */,
 				FE505CA7194BC532003A2BC7 /* d_dietgogo.cpp in Sources */,
+				FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */,
 				FE50607E194BD4E6003A2BC7 /* inftrees.c in Sources */,
 				FE505DDB194BC533003A2BC7 /* d_vimana.cpp in Sources */,
 				FE505D34194BC532003A2BC7 /* d_sonson.cpp in Sources */,
@@ -3299,6 +3309,14 @@
 				FEC1003D1952A79700B2F8C3 /* Base */,
 			);
 			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+		FECDF58619BA8366008F7B63 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FECDF58719BA8366008F7B63 /* Base */,
+			);
+			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
