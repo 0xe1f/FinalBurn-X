@@ -62,6 +62,12 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="File" id="bib-Uj-vzu">
                         <items>
+                            <menuItem title="Rescan" keyEquivalent="R" id="aHd-ww-ttl">
+                                <connections>
+                                    <action selector="rescanROMs:" target="-1" id="mey-HB-ENI"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="hdQ-LG-mLb"/>
                             <menuItem title="Close" keyEquivalent="w" id="Was-JA-tGl">
                                 <connections>
                                     <action selector="performClose:" target="-1" id="hQr-80-VXW"/>
