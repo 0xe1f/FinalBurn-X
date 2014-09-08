@@ -46,6 +46,9 @@
 - (IBAction)resizeDoubleSize:(id)sender;
 - (IBAction)pauseGameplay:(id)sender;
 
+- (IBAction)resetEmulation:(id)sender;
+- (IBAction)toggleTestMode:(id)sender;
+
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
 + (void)initializeCore;

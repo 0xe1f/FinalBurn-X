@@ -104,7 +104,17 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Game" id="HXr-3q-h0W">
                         <items>
-                            <menuItem title="Reset" keyEquivalent="r" id="2GN-qo-Cam"/>
+                            <menuItem title="Reset" keyEquivalent="r" id="2GN-qo-Cam">
+                                <connections>
+                                    <action selector="resetEmulation:" target="-1" id="If8-cQ-bWW"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Enter Test Mode" id="80E-zS-Iib">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="toggleTestMode:" target="-1" id="JI2-at-qpb"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="6C3-Kc-4Y8"/>
                             <menuItem title="Pause" keyEquivalent="p" id="ZxB-z2-x6d">
                                 <connections>

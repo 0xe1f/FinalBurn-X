@@ -87,10 +87,22 @@
         return self->keyStates[AKKeyCodeRightArrow];
     case FBK_F1:
         return self->keyStates[AKKeyCodeF1];
-    case FBK_F2:
-        return self->keyStates[AKKeyCodeF2];
-    case FBK_F3:
-        return self->keyStates[AKKeyCodeF3];
+    case FBK_F2: {
+        BOOL isPressed = [self isTestPressed];
+        if (isPressed) {
+            [self setTestPressed:NO];
+        }
+        
+        return isPressed;
+    }
+    case FBK_F3: {
+        BOOL isPressed = [self isResetPressed];
+        if (isPressed) {
+            [self setResetPressed:NO];
+        }
+        
+        return isPressed;
+    }
     case FBK_F4:
         return self->keyStates[AKKeyCodeF4];
     case FBK_F5:

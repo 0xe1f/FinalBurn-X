@@ -184,6 +184,16 @@
     [[self runLoop] setPaused:![[self runLoop] isPaused]];
 }
 
+- (void)resetEmulation:(id)sender
+{
+    [[self input] setResetPressed:YES];
+}
+
+- (void)toggleTestMode:(id)sender
+{
+    [[self input] setTestPressed:YES];
+}
+
 #pragma mark - Core
 
 + (void)initializeCore
