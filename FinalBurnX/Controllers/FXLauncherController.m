@@ -101,7 +101,15 @@
 - (BOOL)isArchiveSupported:(NSString *)path
 {
     // Make sure it's a ZIP file
-    if (![[path pathExtension] caseInsensitiveCompare:@"zip"] == NSOrderedSame) {
+    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
+        return NO;
+    }
+    
+    // Disallow importing from the library directory
+    NSString *parentPath = [path stringByDeletingLastPathComponent];
+    NSString *romPath = [[FXAppDelegate sharedInstance] ROMPath];
+    
+    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
         return NO;
     }
     
