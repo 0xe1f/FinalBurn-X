@@ -385,6 +385,11 @@
     [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
         FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
         [romSet setAudit:audit];
+        
+        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
+            FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
+            [subset setAudit:subAudit];
+        }];
     }];
     
 #ifdef DEBUG
