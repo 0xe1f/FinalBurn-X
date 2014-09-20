@@ -45,6 +45,9 @@
            pause:(BOOL)pause;
 - (void)reset;
 
+- (void)loadNVRAM;
+- (void)saveNVRAM;
+
 - (UInt32)loadROMOfDriver:(int)driverId
                     index:(int)romIndex
                intoBuffer:(void *)buffer
@@ -159,6 +162,21 @@ static int cocoaGetNextSound(int draw);
 	nBurnLayer = 0xFF;
     
     return YES;
+}
+
+- (void)loadNVRAM
+{
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@".nvram"];
+    NSString *nvramPath = [[app nvramPath] stringByAppendingPathComponent:nvramFile];
+    
+    const char *cPath = [nvramPath cStringUsingEncoding:NSUTF8StringEncoding];
+//    BurnStateLoad(cPath, 0, NULL);
+}
+
+- (void)saveNVRAM
+{
+    
 }
 
 - (BOOL)cleanupDriver

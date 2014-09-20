@@ -48,9 +48,11 @@ static FXAppDelegate *sharedInstance = nil;
     // Initialize paths
     self->appSupportPath = [[self appSupportURL] path];
     self->romPath = [self->appSupportPath stringByAppendingPathComponent:@"roms"];
+    self->_nvramPath = [self->appSupportPath stringByAppendingPathComponent:@"nvram"];
     
     NSArray *pathsToCreate = @[self->appSupportPath,
-                               self->romPath];
+                               self->romPath,
+                               self->_nvramPath];
     
     NSFileManager *fm = [NSFileManager defaultManager];
     [pathsToCreate enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {

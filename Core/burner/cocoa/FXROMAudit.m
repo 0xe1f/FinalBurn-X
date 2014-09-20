@@ -42,6 +42,11 @@
     return self;
 }
 
+- (BOOL)isExactMatch
+{
+    return [self CRCNeeded] == [self CRCFound];
+}
+
 #pragma mark - NSCoding
 
 - (void)encodeWithCoder:(NSCoder *)coder

@@ -37,6 +37,8 @@
 @property (nonatomic, assign) NSInteger statusCode;
 @property (nonatomic, copy) NSString *statusDescription;
 
+- (BOOL)isExactMatch;
+
 @end
 
 enum {
@@ -51,5 +53,5 @@ enum {
     FXROMTypeGraphics    = 0x01,
     FXROMTypeSound       = 0x02,
     FXROMTypeEssential   = 0x04,
-    FXROMTypeCoreSet = 0x08,
+    FXROMTypeBIOS        = 0x08,
 };

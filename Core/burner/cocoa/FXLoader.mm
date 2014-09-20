@@ -292,7 +292,49 @@
     
     // Create a new audit object
     FXDriverAudit *driverAudit = [[FXDriverAudit alloc] init];
-    NSMutableArray *foundComponentIndices = [NSMutableArray array];
+    NSMutableDictionary *romAudits = [NSMutableDictionary dictionary];
+    NSMutableDictionary *aliasDict = [NSMutableDictionary dictionary];
+    
+    [driverComponents enumerateObjectsUsingBlock:^(NSValue *value, NSUInteger idx, BOOL *stop) {
+        // Extract the BurnRomInfo struct
+        struct BurnRomInfo ri;
+        [value getValue:&ri];
+        
+        if (ri.nType == 0) {
+            // No ROM in slot
+            return;
+        }
+        
+        NSArray *aliases = [self knownAliasesForDriverId:driverIndex
+                                                romIndex:(int)idx];
+        [aliasDict setObject:aliases
+                      forKey:@(idx)];
+        
+        FXROMAudit *romAudit = romAudit = [[FXROMAudit alloc] init];
+        [romAudit setFilenameNeeded:[aliases firstObject]];
+        [romAudit setLengthNeeded:ri.nLen];
+        [romAudit setCRCNeeded:ri.nCrc];
+        
+        NSInteger type = FXROMTypeNone;
+        if (ri.nType & BRF_ESS) {
+            type |= FXROMTypeEssential;
+        }
+        if (ri.nType & BRF_BIOS) {
+            type |= FXROMTypeBIOS;
+        }
+        if (ri.nType & BRF_GRA) {
+            type |= FXROMTypeGraphics;
+        }
+        if (ri.nType & BRF_SND) {
+            type |= FXROMTypeSound;
+        }
+        [romAudit setType:type];
+        
+        [romAudits setObject:romAudit forKey:@(idx)];
+        [[driverAudit romAudits] addObject:romAudit];
+        
+        [self updateStatus:romAudit];
+    }];
     
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {
         NSString *archiveFilename = [archiveName stringByAppendingPathExtension:@"zip"];
@@ -316,37 +358,15 @@
                         if (ri.nType == 0) {
                             // No ROM in slot
                             return;
-                        } else if ([foundComponentIndices containsObject:@(idx)]) {
-                            // Already found in an earlier set
+                        }
+                        
+                        NSArray *aliases = [aliasDict objectForKey:@(idx)];
+                        FXROMAudit *romAudit = [romAudits objectForKey:@(idx)];
+                        
+                        if ([romAudit isExactMatch]) {
+                            // Already have an exact match
                             return;
                         }
-                        
-                        NSArray *knownAliases = [self knownAliasesForDriverId:driverIndex
-                                                                     romIndex:(int)idx];
-                        
-                        FXROMAudit *romAudit = [[FXROMAudit alloc] init];
-                        [romAudit setFilenameNeeded:[knownAliases firstObject]];
-                        [romAudit setLengthNeeded:ri.nLen];
-                        [romAudit setCRCNeeded:ri.nCrc];
-                        
-                        NSInteger type = FXROMTypeNone;
-                        if (idx < 0x80) {
-                            // Not sure if this is a good idea; basing it off
-                            // STD_ROM_PICK to determine whether or not a ROM
-                            // is part of the original set
-                            type |= FXROMTypeCoreSet;
-                        }
-                        if (ri.nType & 0x90) {
-                            type |= FXROMTypeEssential;
-                        }
-                        if (ri.nType & 0x01) {
-                            type |= FXROMTypeGraphics;
-                        }
-                        if (ri.nType & 0x02) {
-                            type |= FXROMTypeSound;
-                        }
-                        
-                        [romAudit setType:type];
                         
                         FXZipFile *matchByCRC = [zip findFileWithCRC:ri.nCrc];
                         if (matchByCRC != nil) {
@@ -356,11 +376,9 @@
                             [romAudit setFilenameFound:[matchByCRC filename]];
                             [romAudit setLengthFound:[matchByCRC length]];
                             [romAudit setCRCFound:[matchByCRC CRC]];
-                            
-                            [foundComponentIndices addObject:@(idx)];
                         } else {
                             // File not found by CRC. Check by known aliases
-                            FXZipFile *matchByAlias = [zip findFileNamedAnyOf:knownAliases
+                            FXZipFile *matchByAlias = [zip findFileNamedAnyOf:aliases
                                                                matchExactPath:NO];
                             
                             if (matchByAlias != nil) {
@@ -370,15 +388,10 @@
                                 [romAudit setFilenameFound:[matchByAlias filename]];
                                 [romAudit setLengthFound:[matchByAlias length]];
                                 [romAudit setCRCFound:[matchByAlias CRC]];
-                                
-                                [foundComponentIndices addObject:@(idx)];
-                            } else {
-                                // File not found by any of known aliases
                             }
                         }
                         
                         [self updateStatus:romAudit];
-                        [[driverAudit romAudits] addObject:romAudit];
                     }];
                 }
             }
@@ -413,32 +426,18 @@
 {
     __block NSInteger availability = FXDriverComplete;
     
-    if ([[driverAudit romAudits] count] <= 0) {
-        availability = FXDriverMissing;
-    } else {
-        [[driverAudit romAudits] enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
-            if ([romAudit statusCode] == FXROMAuditOK) {
-                // ROM present and correct
-            } else if ([romAudit statusCode] == FXROMAuditMissing) {
-                // ROM missing
-                if ([romAudit type] & FXROMTypeCoreSet) {
-                    availability = FXDriverMissing;
-                } else {
-                    availability = FXDriverUnplayable;
-                }
-                *stop = YES;
-            } else {
-                // ROM present, but CRC or length don't match
-                if ([romAudit type] & FXROMTypeEssential ||
-                    [romAudit type] & FXROMTypeCoreSet) {
-                    availability = FXDriverUnplayable;
-                    *stop = YES;
-                } else {
-                    availability = FXDriverPartial;
-                }
-            }
-        }];
-    }
+    [[driverAudit romAudits] enumerateObjectsUsingBlock:^(FXROMAudit *romAudit, NSUInteger idx, BOOL *stop) {
+        if ([romAudit statusCode] == FXROMAuditOK) {
+            // ROM present and correct
+        } else if ([romAudit statusCode] == FXROMAuditMissing) {
+            // ROM missing
+            availability = FXDriverMissing;
+            *stop = YES;
+        } else {
+            // ROM present, but CRC or length don't match
+            availability = FXDriverPartial;
+        }
+    }];
     
     [driverAudit setIsPlayable:(availability == FXDriverComplete || availability == FXDriverPartial)];
     [driverAudit setAvailability:availability];

@@ -2184,20 +2184,17 @@
 		FE505E0E194BCCBD003A2BC7 /* burner */ = {
 			isa = PBXGroup;
 			children = (
+				FEE8E45D19CCF7D200B93643 /* minizip */,
 				FED10DC4194CD91700754BE0 /* cocoa */,
 				FE505E0F194BCCBE003A2BC7 /* burner.h */,
 				FEC252F2194C3CFD0039D85F /* cong.cpp */,
 				FE505E13194BCCBE003A2BC7 /* gamc.cpp */,
 				FE7800CA194C24CF0024716B /* gameinp.h */,
 				FE505E15194BCCBE003A2BC7 /* gami.cpp */,
-				FE780134194C36BD0024716B /* ioapi.c */,
-				FE780135194C36BD0024716B /* ioapi.h */,
 				FEC25359194CA41B0039D85F /* misc.cpp */,
 				FE507706194C18B5003A2BC7 /* neocdlist.h */,
 				FE505E4A194BCCBE003A2BC7 /* state.cpp */,
 				FE505E4B194BCCBE003A2BC7 /* statec.cpp */,
-				FE7800F2194C31E90024716B /* unzip.c */,
-				FE7800F3194C31E90024716B /* unzip.h */,
 				FE505E85194BCCBE003A2BC7 /* zipfn.cpp */,
 			);
 			path = burner;
@@ -2645,6 +2642,17 @@
 				FE0230591951685200661A17 /* tchar.cpp */,
 			);
 			path = cocoa;
+			sourceTree = "<group>";
+		};
+		FEE8E45D19CCF7D200B93643 /* minizip */ = {
+			isa = PBXGroup;
+			children = (
+				FE780134194C36BD0024716B /* ioapi.c */,
+				FE780135194C36BD0024716B /* ioapi.h */,
+				FE7800F2194C31E90024716B /* unzip.c */,
+				FE7800F3194C31E90024716B /* unzip.h */,
+			);
+			name = minizip;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

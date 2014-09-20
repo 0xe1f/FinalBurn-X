@@ -43,4 +43,6 @@
 
 - (IBAction)showLauncher:(id)sender;
 
+@property (nonatomic, readonly, strong) NSString *nvramPath;
+
 @end
