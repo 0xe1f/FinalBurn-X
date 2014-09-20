@@ -159,6 +159,7 @@ static int cocoaGetNextSound(int draw);
     }
     
 	bDrvOkay = 1;
+    [self loadNVRAM];
 	nBurnLayer = 0xFF;
     
     return YES;
@@ -167,16 +168,21 @@ static int cocoaGetNextSound(int draw);
 - (void)loadNVRAM
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@".nvram"];
+    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@"nvram"];
     NSString *nvramPath = [[app nvramPath] stringByAppendingPathComponent:nvramFile];
     
     const char *cPath = [nvramPath cStringUsingEncoding:NSUTF8StringEncoding];
-//    BurnStateLoad(cPath, 0, NULL);
+    BurnStateLoad((char *)cPath, 0, NULL);
 }
 
 - (void)saveNVRAM
 {
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@"nvram"];
+    NSString *nvramPath = [[app nvramPath] stringByAppendingPathComponent:nvramFile];
     
+    const char *cPath = [nvramPath cStringUsingEncoding:NSUTF8StringEncoding];
+    BurnStateSave((char *)cPath, 0);
 }
 
 - (BOOL)cleanupDriver
@@ -185,6 +191,8 @@ static int cocoaGetNextSound(int draw);
         InputExit();
 		VidExit();
         AudSoundExit();
+        
+        [self saveNVRAM];
         
 		if (nBurnDrvSelect[0] < nBurnDrvCount) {
 			ConfigGameSave(bSaveInputs);
