@@ -1,29 +1,38 @@
 FinalBurn X
 ===========
 
-![Screenshot](http://i.imgur.com/tlMB03y.png "Screenshot")
+![Screenshot](http://i.imgur.com/J4cofFF.png "Screenshot")
 
 FinalBurn X is a port of [FinalBurn Alpha][1] to OS X. The goal of FinalBurn X
 is the emulation of Capcom Systems I, II, III and SNK Neo Geo.
 
-The emulator is not yet finished, but is playable for most CPS I/II/III games.
-To play:
+The emulator is incomplete, but playable
 
-1. Create a directory called `roms` in the Application Support directory of 
-FinalBurn X - normally `~/Library/Application Support/FinalBurnX/`. The 
-`roms` directory will be automatically created the first time you run the
-emulator
-2. Copy ROM file archives to that directory - following the same naming 
-convention as the other versions of FinalBurn
-3. If the emulator is already running, restart it to update the list of ROMs
+To Play
+-------
 
-Currently, the only supported format for ROMs is ZIP - 7zip and plain folders
-(uncompressed) are not supported.
+1. Launch the emulator
+2. Drop any ZIP files over the Launcher window. If the ROM set is supported,
+   FinalBurn X will import them automatically
 
-Controls are currently fixed and not configurable. They are:
+Note that to play Neo Geo games, the Neo Geo BIOS (`neogeo.zip`) is required.
 
+Controls
+--------
+
+Capcom:
 `1`,`5`,`A`,`S`,`D`,`Z`,`X`,`C` for 
 `1P Start`,`1P Coin`,`Jab`,`Strong`,`Fierce`,`Short`,`Forward` and `Roundhouse`,
 respectively.
+
+Neo Geo:
+`1`,`5`,`Z`,`X`,`C`,`V` for `1P Start`,`1P Coin`,`A`,`B`,`C` and `D`,
+respectively.
+
+Limitations
+-----------
+
+* Only ZIP-compressed ROMs are currently supported
+* Controls are not yet configurable
 
 [1]: http://www.barryharris.me.uk/fba.php

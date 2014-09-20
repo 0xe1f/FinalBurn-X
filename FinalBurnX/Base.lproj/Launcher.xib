@@ -36,7 +36,7 @@
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
                                     <scrollView borderType="none" autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="Xgx-S9-UFg" customClass="FXDroppableScrollView">
-                                        <rect key="frame" x="0.0" y="0.0" width="655" height="360"/>
+                                        <rect key="frame" x="0.0" y="1" width="655" height="360"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <clipView key="contentView" id="YAY-cw-GSs">
                                             <rect key="frame" x="0.0" y="17" width="655" height="343"/>

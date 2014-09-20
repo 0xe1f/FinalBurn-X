@@ -123,9 +123,15 @@
         return NO;
     }
     
+    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
+    
+    // FIXME
+    if ([archive isEqualToString:@"neogeo"]) {
+        return YES;
+    }
+    
     // Make sure it's one of the supported ROM sets
     __block BOOL supported = NO;
-    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
     [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
         if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
             supported = YES;
@@ -272,7 +278,7 @@
         
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
             // Update the label
-            [self->importProgressLabel setStringValue:NSLocalizedString(@"Scanning sets...", @"")];
+            [self->importProgressLabel setStringValue:NSLocalizedString(@"Scanning...", @"")];
             // Enable the cancel button
             [self->importCancelButton setEnabled:YES];
         }];
