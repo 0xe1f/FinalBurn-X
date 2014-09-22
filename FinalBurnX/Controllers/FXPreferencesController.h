@@ -22,31 +22,12 @@
  */
 #import <Cocoa/Cocoa.h>
 
-#import "FXEmulatorController.h"
-#import "FXLauncherController.h"
-#import "FXPreferencesController.h"
-
-@interface FXAppDelegate : NSObject <NSApplicationDelegate>
+@interface FXPreferencesController : NSWindowController
 {
-    @private
-    FXEmulatorController *emulator;
-    FXLauncherController *launcher;
-    FXPreferencesController *prefs;
-    NSString *appSupportPath;
-    NSString *romPath;
+    IBOutlet NSToolbar *toolbar;
+    IBOutlet NSTabView *contentTabView;
 }
 
-+ (FXAppDelegate *)sharedInstance;
-
-- (NSURL *)appSupportURL;
-- (FXEmulatorController *)emulator;
-- (FXPreferencesController *)prefs;
-- (NSString *)ROMPath;
-- (void)launch:(FXROMSet *)romSet;
-
-- (IBAction)showLauncher:(id)sender;
-- (IBAction)showPreferences:(id)sender;
-
-@property (nonatomic, readonly, strong) NSString *nvramPath;
+- (IBAction)tabChanged:(id)sender;
 
 @end

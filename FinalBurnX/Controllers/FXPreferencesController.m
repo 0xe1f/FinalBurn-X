@@ -20,33 +20,37 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
-
-#import "FXEmulatorController.h"
-#import "FXLauncherController.h"
 #import "FXPreferencesController.h"
 
-@interface FXAppDelegate : NSObject <NSApplicationDelegate>
+@interface FXPreferencesController ()
+
+@end
+
+@implementation FXPreferencesController
+
+- (id)init
 {
-    @private
-    FXEmulatorController *emulator;
-    FXLauncherController *launcher;
-    FXPreferencesController *prefs;
-    NSString *appSupportPath;
-    NSString *romPath;
+    if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
+        
+    }
+    
+    return self;
 }
 
-+ (FXAppDelegate *)sharedInstance;
+- (void)tabChanged:(id)sender
+{
+    NSToolbarItem *selectedItem = (NSToolbarItem *)sender;
+    NSString *tabIdentifier = [selectedItem itemIdentifier];
+    
+    [toolbar setSelectedItemIdentifier:tabIdentifier];
+    [[NSUserDefaults standardUserDefaults] setObject:tabIdentifier forKey:@"selectedPreferencesTab"];
+}
 
-- (NSURL *)appSupportURL;
-- (FXEmulatorController *)emulator;
-- (FXPreferencesController *)prefs;
-- (NSString *)ROMPath;
-- (void)launch:(FXROMSet *)romSet;
+#pragma mark - NSWindowController
 
-- (IBAction)showLauncher:(id)sender;
-- (IBAction)showPreferences:(id)sender;
-
-@property (nonatomic, readonly, strong) NSString *nvramPath;
+- (void)windowDidLoad
+{
+    [toolbar setSelectedItemIdentifier:[[NSUserDefaults standardUserDefaults] objectForKey:@"selectedPreferencesTab"]];
+}
 
 @end

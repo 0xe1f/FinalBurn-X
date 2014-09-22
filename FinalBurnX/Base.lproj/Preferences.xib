@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="5056" systemVersion="13E28" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5056"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="FXPreferencesController">
+            <connections>
+                <outlet property="contentTabView" destination="ECm-DT-5Mg" id="Ql0-hC-LkZ"/>
+                <outlet property="toolbar" destination="bLF-vd-vaH" id="zEo-Rj-54w"/>
+                <outlet property="window" destination="QvC-M9-y7g" id="9Cp-RB-DRN"/>
+            </connections>
+        </customObject>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application"/>
+        <window title="Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" animationBehavior="default" id="QvC-M9-y7g">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
+            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
+            <rect key="contentRect" x="196" y="240" width="600" height="500"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
+            <view key="contentView" id="EiT-Mj-1SZ">
+                <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <tabView drawsBackground="NO" allowsTruncatedLabels="NO" type="noTabsNoBorder" id="ECm-DT-5Mg">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <font key="font" metaFont="system"/>
+                        <tabViewItems>
+                            <tabViewItem label="General" identifier="general" id="gss-aO-IfB">
+                                <view key="view" id="HGE-kW-jgB">
+                                    <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="FvX-S0-j84">
+                                            <rect key="frame" x="274" y="242" width="53" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="General" id="qUM-yd-8yD">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
+                            <tabViewItem label="Input" identifier="input" id="rlJ-Eu-7Yl">
+                                <view key="view" id="Dgp-s5-tTf">
+                                    <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="PkQ-JI-exe">
+                                            <rect key="frame" x="281" y="242" width="38" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Input" id="Z1O-6j-eVh">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
+                        </tabViewItems>
+                        <connections>
+                            <binding destination="fpA-S9-PLa" name="selectedIdentifier" keyPath="values.selectedPreferencesTab" id="AFT-wQ-rQF"/>
+                        </connections>
+                    </tabView>
+                </subviews>
+            </view>
+            <toolbar key="toolbar" implicitIdentifier="68995BA2-666E-4F5C-930F-FB5FDDF72038" autosavesConfiguration="NO" allowsUserCustomization="NO" displayMode="iconAndLabel" sizeMode="regular" id="bLF-vd-vaH">
+                <allowedToolbarItems>
+                    <toolbarItem implicitItemIdentifier="D1D1D2FA-441F-4497-833C-EF6CB3A17097" explicitItemIdentifier="general" label="General" paletteLabel="General" tag="-1" image="NSPreferencesGeneral" selectable="YES" id="mqF-vo-QXz">
+                        <connections>
+                            <action selector="tabChanged:" target="-2" id="3Ak-ID-X4r"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="B4EBBB97-82CB-4DEA-B2A8-4CACD5F6536E" explicitItemIdentifier="input" label="Input" paletteLabel="Input" tag="-1" image="toolbar-joypad" selectable="YES" id="5sm-os-Oaw">
+                        <connections>
+                            <action selector="tabChanged:" target="-2" id="8k7-AD-85A"/>
+                        </connections>
+                    </toolbarItem>
+                </allowedToolbarItems>
+                <defaultToolbarItems>
+                    <toolbarItem reference="mqF-vo-QXz"/>
+                    <toolbarItem reference="5sm-os-Oaw"/>
+                </defaultToolbarItems>
+            </toolbar>
+        </window>
+        <userDefaultsController representsSharedInstance="YES" id="fpA-S9-PLa"/>
+    </objects>
+    <resources>
+        <image name="NSPreferencesGeneral" width="32" height="32"/>
+        <image name="toolbar-joypad" width="38.400001525878906" height="38.400001525878906"/>
+    </resources>
+</document>

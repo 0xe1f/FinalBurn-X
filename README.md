@@ -1,19 +1,22 @@
 FinalBurn X
 ===========
 
-![Screenshot](http://i.imgur.com/J4cofFF.png "Screenshot")
+![Screenshot](http://i.imgur.com/9pCL8PA.png "Parodius")
 
 FinalBurn X is a port of [FinalBurn Alpha][1] to OS X. The goal of FinalBurn X
 is the emulation of Capcom Systems I, II, III and SNK Neo Geo.
 
-The emulator is incomplete, but playable
+The emulator is incomplete, but playable.
+
+(The screenshot doesn't belong to any of the four,
+[but I couldn't resist the reference](https://github.com/pokebyte/CocoaMSX/))
 
 To Play
 -------
 
 1. Launch the emulator
 2. Drop any ZIP files over the Launcher window. If the ROM set is supported,
-   FinalBurn X will import them automatically
+   FinalBurn X will import it automatically
 
 Note that to play Neo Geo games, the Neo Geo BIOS (`neogeo.zip`) is required.
 

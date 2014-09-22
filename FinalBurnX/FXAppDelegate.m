@@ -28,6 +28,15 @@
 
 static FXAppDelegate *sharedInstance = nil;
 
++ (void)initialize
+{
+    // Register the NSUserDefaults
+    NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"Defaults" ofType:@"plist"];
+    NSDictionary *defaults = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
+    
+    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+}
+
 - (instancetype)init
 {
     if (self = [super init]) {
@@ -94,6 +103,16 @@ static FXAppDelegate *sharedInstance = nil;
     [[self->launcher window] makeKeyAndOrderFront:self];
 }
 
+- (void)showPreferences:(id)sender
+{
+    if (self->prefs == nil) {
+        self->prefs = [[FXPreferencesController alloc] init];
+        [self->prefs showWindow:self];
+    } else {
+        [[self->prefs window] makeKeyAndOrderFront:self];
+    }
+}
+
 #pragma mark - Public methods
 
 - (NSString *)ROMPath
@@ -104,6 +123,11 @@ static FXAppDelegate *sharedInstance = nil;
 - (FXEmulatorController *)emulator
 {
     return self->emulator;
+}
+
+- (FXPreferencesController *)prefs
+{
+    return self->prefs;
 }
 
 - (void)launch:(FXROMSet *)romSet

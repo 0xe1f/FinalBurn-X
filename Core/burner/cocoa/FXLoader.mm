@@ -122,6 +122,7 @@
             (hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
             (hardware != HARDWARE_CAPCOM_CPS3) &&
             (hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
+//            (hardware != HARDWARE_PREFIX_KONAMI) &&
             (hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE))) {
             // Don't care
             continue;
