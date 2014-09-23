@@ -23,8 +23,11 @@
 #import "FXInput.h"
 
 #import "FXAppDelegate.h"
+#import "FXInputInfo.h"
 
-#import "burner.h"
+#include "burner.h"
+#include "burnint.h"
+#include "driverlist.h"
 
 //#define DEBUG_KEY_STATE
 
@@ -110,6 +113,35 @@
     }
     
     return NO;
+}
+
++ (NSArray *)inputsForDriver:(NSString *)archive
+                       error:(NSError **)error
+{
+    int driverId = [FXROMSet driverIndexOfArchive:archive];
+    if (driverId == -1) {
+        if (error != nil) {
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
+                                         code:0
+                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
+        }
+        
+        return nil;
+    }
+    
+    NSMutableArray *inputs = [NSMutableArray array];
+    
+    struct BurnInputInfo bii;
+    for (int i = 0; i < 0x1000; i++) {
+        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
+            break;
+        }
+        
+        FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
+        [inputs addObject:inputInfo];
+    }
+    
+    return inputs;
 }
 
 #pragma mark - AKKeyboardEventDelegate

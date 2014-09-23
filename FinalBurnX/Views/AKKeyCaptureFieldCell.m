@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
- ** Copyright (C) 2014 Akop Karapetyan
+ ** CocoaMSX: MSX Emulator for Mac OS X
+ ** http://www.cocoamsx.com
+ ** Copyright (C) 2013 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,22 +20,18 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "AKKeyCaptureFieldCell.h"
 
-#import "AKKeyboardManager.h"
+@implementation AKKeyCaptureFieldCell
 
-@interface FXInput : NSObject<AKKeyboardEventDelegate>
+#pragma mark - NSTextField
+
+- (void)drawWithFrame:(NSRect)cellFrame inView:(NSView *)controlView
 {
-    BOOL hasFocus;
-    BOOL keyStates[256];
+    [super drawWithFrame:cellFrame inView:controlView];
+    
+    // This allows the entire cell to trigger editing 
+    // (otherwise, user must click on the text)
 }
-
-- (void)setFocus:(BOOL)focus;
-
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error;
-
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
 
 @end

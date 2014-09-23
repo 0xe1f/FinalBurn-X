@@ -22,10 +22,17 @@
  */
 #import <Cocoa/Cocoa.h>
 
-@interface FXPreferencesController : NSWindowController
+#import "AKKeyCaptureView.h"
+
+@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate>
 {
     IBOutlet NSToolbar *toolbar;
     IBOutlet NSTabView *contentTabView;
+    IBOutlet NSTableView *inputTableView;
+    
+    @private
+    NSMutableArray *inputList;
+    AKKeyCaptureView *keyCaptureView;
 }
 
 - (IBAction)tabChanged:(id)sender;

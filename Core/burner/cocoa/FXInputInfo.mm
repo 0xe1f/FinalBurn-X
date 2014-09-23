@@ -20,22 +20,23 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXInputInfo.h"
 
-#import "AKKeyboardManager.h"
+#include "burner.h"
 
-@interface FXInput : NSObject<AKKeyboardEventDelegate>
+@implementation FXInputInfo
+
+- (instancetype)initWithBurnInputInfo:(const struct BurnInputInfo *)inputInfo
 {
-    BOOL hasFocus;
-    BOOL keyStates[256];
+    if ((self = [super init]) != nil) {
+        [self setName:[NSString stringWithCString:inputInfo->szName
+                                         encoding:NSUTF8StringEncoding]];
+        [self setType:inputInfo->nType];
+        [self setCode:[NSString stringWithCString:inputInfo->szInfo
+                                         encoding:NSUTF8StringEncoding]];
+    }
+    
+    return self;
 }
-
-- (void)setFocus:(BOOL)focus;
-
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error;
-
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
 
 @end

@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
- ** Copyright (C) 2014 Akop Karapetyan
+ ** CocoaMSX: MSX Emulator for Mac OS X
+ ** http://www.cocoamsx.com
+ ** Copyright (C) 2013 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,22 +20,17 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 
-#import "AKKeyboardManager.h"
-
-@interface FXInput : NSObject<AKKeyboardEventDelegate>
+@interface AKKeyCaptureView : NSTextView
 {
-    BOOL hasFocus;
-    BOOL keyStates[256];
 }
 
-- (void)setFocus:(BOOL)focus;
+#define AKKeyNone (-1)
 
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error;
++ (NSString *)descriptionForKeyCode:(NSNumber *)keyCode;
++ (NSNumber *)keyCodeForDescription:(NSString *)description;
 
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
+- (BOOL)captureKeyCode:(NSInteger)keyCode;
 
 @end

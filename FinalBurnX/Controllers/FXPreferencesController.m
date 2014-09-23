@@ -22,6 +22,10 @@
  */
 #import "FXPreferencesController.h"
 
+#import "FXAppDelegate.h"
+#import "FXInput.h"
+#import "FXInputInfo.h"
+
 @interface FXPreferencesController ()
 
 @end
@@ -31,7 +35,7 @@
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
-        
+        self->inputList = [NSMutableArray array];
     }
     
     return self;
@@ -51,6 +55,74 @@
 - (void)windowDidLoad
 {
     [toolbar setSelectedItemIdentifier:[[NSUserDefaults standardUserDefaults] objectForKey:@"selectedPreferencesTab"]];
+    
+    [self resetInput];
+}
+
+- (id)windowWillReturnFieldEditor:(NSWindow *)sender
+                         toObject:(id)anObject
+{
+    if (anObject == inputTableView) {
+        if (keyCaptureView == nil) {
+            keyCaptureView = [[AKKeyCaptureView alloc] init];
+        }
+        
+        return keyCaptureView;
+    }
+    
+    return nil;
+}
+
+#pragma mark - NSTableViewDataSource
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
+{
+    return [self->inputList count];
+}
+
+- (id)tableView:(NSTableView *)tableView
+objectValueForTableColumn:(NSTableColumn *)tableColumn
+            row:(NSInteger)row
+{
+    if (tableView == self->inputTableView) {
+        if ([[tableColumn identifier] isEqualToString:@"name"]) {
+            return [[self->inputList objectAtIndex:row] name];
+        }
+    }
+    
+    return nil;
+}
+
+- (void)tableView:(NSTableView *)tableView
+   setObjectValue:(id)object
+   forTableColumn:(NSTableColumn *)tableColumn
+              row:(NSInteger)row
+{
+    
+}
+
+#pragma mark - Private methods
+
+- (void)resetInput
+{
+    [self->inputList removeAllObjects];
+    
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    FXEmulatorController *emulator = [app emulator];
+    
+    if (emulator != nil) {
+        NSError *error = nil;
+        NSArray *inputs = [FXInput inputsForDriver:[[emulator romSet] archive]
+                                             error:&error];
+        
+        if (error != nil) {
+            // FIXME
+        }
+        
+        [self->inputList addObjectsFromArray:inputs];
+    }
+    
+    [self->inputTableView reloadData];
 }
 
 @end
