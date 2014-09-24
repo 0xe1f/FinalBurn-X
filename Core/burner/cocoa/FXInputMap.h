@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** CocoaMSX: MSX Emulator for Mac OS X
- ** http://www.cocoamsx.com
- ** Copyright (C) 2013 Akop Karapetyan
+ ** FinalBurn X: Port of FinalBurn to OS X
+ ** https://github.com/pokebyte/FinalBurnX
+ ** Copyright (C) 2014 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,17 +20,19 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
-@interface AKKeyCaptureView : NSTextView
+@interface FXInputMap : NSObject<NSCoding>
 {
+    @private
+    NSMutableDictionary *physicalToVirtualCodeMap;
+    NSMutableDictionary *virtualToPhysicalCodeMap;
 }
 
-#define AKKeyNone (-1)
+@property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
 
-+ (NSString *)descriptionForKeyCode:(NSInteger)keyCode;
-+ (NSInteger)keyCodeForDescription:(NSString *)description;
-
-- (BOOL)captureKeyCode:(NSInteger)keyCode;
+- (void)markClean;
+- (void)assignKeyCode:(NSInteger)keyCode
+               toCode:(NSString *)code;
 
 @end

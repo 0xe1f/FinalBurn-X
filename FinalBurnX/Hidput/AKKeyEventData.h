@@ -43,6 +43,8 @@
 @end
 
 enum {
+    AKKeyInvalid = 0xff,
+    
     AKKeyCodeA = 0x00,
     AKKeyCodeB = 0x0b,
     AKKeyCodeC = 0x08,

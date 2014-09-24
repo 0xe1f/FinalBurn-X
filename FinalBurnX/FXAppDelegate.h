@@ -48,5 +48,6 @@
 - (IBAction)showPreferences:(id)sender;
 
 @property (nonatomic, readonly, strong) NSString *nvramPath;
+@property (nonatomic, readonly, strong) NSString *inputMapPath;
 
 @end

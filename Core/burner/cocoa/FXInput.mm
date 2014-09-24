@@ -41,6 +41,15 @@
 
 #pragma mark - Init, dealloc
 
+- (instancetype)initWithROMSet:(FXROMSet *)romSet
+{
+    if ((self = [super init]) != nil) {
+        [self setRomSet:romSet];
+    }
+    
+    return self;
+}
+
 - (void)dealloc
 {
     // Release all virtual keys
@@ -184,6 +193,40 @@
 #endif
         // Start listening for key events
         [[AKKeyboardManager sharedInstance] addObserver:self];
+    }
+}
+
+- (void)restoreInputMap
+{
+    self->_inputMap = nil;
+    
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    NSString *file = [[self->_romSet archive] stringByAppendingPathExtension:@"inp"];
+    NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
+    
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if ([fm fileExistsAtPath:path isDirectory:nil]) {
+        if ((self->_inputMap = [NSKeyedUnarchiver unarchiveObjectWithFile:path]) == nil) {
+            NSLog(@"Error reading input configuration");
+        }
+    }
+    
+    if (self->_inputMap == nil) {
+        self->_inputMap = [[FXInputMap alloc] init];
+    }
+}
+
+- (void)saveInputMap
+{
+    if ([self->_inputMap isDirty]) {
+        FXAppDelegate *app = [FXAppDelegate sharedInstance];
+        NSString *file = [[self->_romSet archive] stringByAppendingPathExtension:@"inp"];
+        NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
+
+        if (![NSKeyedArchiver archiveRootObject:self->_inputMap
+                                         toFile:path]) {
+            NSLog(@"Error writing to input configuration");
+        }
     }
 }
 

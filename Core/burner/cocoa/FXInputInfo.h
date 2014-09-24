@@ -29,6 +29,7 @@ struct BurnInputInfo;
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, assign) int type;
 @property (nonatomic, copy) NSString *code;
+@property (nonatomic, assign) NSInteger keyCode;
 
 - (instancetype)initWithBurnInputInfo:(const struct BurnInputInfo *)inputInfo;
 

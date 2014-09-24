@@ -23,19 +23,28 @@
 #import <Foundation/Foundation.h>
 
 #import "AKKeyboardManager.h"
+#import "FXInputMap.h"
+#import "FXROMSet.h"
 
 @interface FXInput : NSObject<AKKeyboardEventDelegate>
 {
+    @private
     BOOL hasFocus;
     BOOL keyStates[256];
 }
 
+- (instancetype)initWithROMSet:(FXROMSet *)romSet;
+
 - (void)setFocus:(BOOL)focus;
+- (void)saveInputMap;
+- (void)restoreInputMap;
 
 + (NSArray *)inputsForDriver:(NSString *)archive
                        error:(NSError **)error;
 
+@property (nonatomic, strong) FXROMSet *romSet;
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
 @property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
+@property (nonatomic, readonly) FXInputMap *inputMap;
 
 @end

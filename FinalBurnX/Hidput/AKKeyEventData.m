@@ -28,13 +28,9 @@
 
 @implementation AKKeyEventData
 
-@synthesize scanCode = _scanCode;
-@synthesize keyCode = _keyCode;
-@synthesize modifierFlags = _modifierFlags;
-
 - (BOOL)hasKeyCodeEquivalent
 {
-    return _keyCode != 0xff;
+    return _keyCode != AKKeyInvalid;
 }
 
 @end

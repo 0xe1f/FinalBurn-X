@@ -73,6 +73,16 @@
     return nil;
 }
 
+- (void)windowDidBecomeKey:(NSNotification *)notification
+{
+    [[AKKeyboardManager sharedInstance] addObserver:self];
+}
+
+- (void)windowDidResignKey:(NSNotification *)notification
+{
+    [[AKKeyboardManager sharedInstance] removeObserver:self];
+}
+
 #pragma mark - NSTableViewDataSource
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
@@ -85,8 +95,12 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             row:(NSInteger)row
 {
     if (tableView == self->inputTableView) {
+        FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
-            return [[self->inputList objectAtIndex:row] name];
+            return [inputInfo name];
+        } else if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
+            // FIXME
+            return [AKKeyCaptureView descriptionForKeyCode:[inputInfo keyCode]];
         }
     }
     
@@ -98,7 +112,26 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
    forTableColumn:(NSTableColumn *)tableColumn
               row:(NSInteger)row
 {
-    
+    if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
+        NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
+        FXInputInfo *inputInfo = [inputList objectAtIndex:row];
+        [inputInfo setKeyCode:keyCode];
+    }
+}
+
+#pragma mark - AKKeyboardEventDelegate
+
+- (void)keyStateChanged:(AKKeyEventData *)event
+                 isDown:(BOOL)isDown
+{
+    if ([event hasKeyCodeEquivalent]) {
+        if ([[self window] firstResponder] == keyCaptureView) {
+            BOOL isReturn = [event keyCode] == AKKeyCodeReturn || [event keyCode] == AKKeyCodeKeypadEnter;
+            if (isReturn || !isDown) {
+                [keyCaptureView captureKeyCode:[event keyCode]];
+            }
+        }
+    }
 }
 
 #pragma mark - Private methods

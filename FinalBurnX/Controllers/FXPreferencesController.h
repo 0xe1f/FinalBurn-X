@@ -23,8 +23,9 @@
 #import <Cocoa/Cocoa.h>
 
 #import "AKKeyCaptureView.h"
+#import "AKKeyboardManager.h"
 
-@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate>
+@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate>
 {
     IBOutlet NSToolbar *toolbar;
     IBOutlet NSTabView *contentTabView;

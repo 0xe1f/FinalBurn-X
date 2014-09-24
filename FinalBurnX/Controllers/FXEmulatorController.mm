@@ -40,7 +40,7 @@
 - (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
-        [self setInput:[[FXInput alloc] init]];
+        [self setInput:[[FXInput alloc] initWithROMSet:romSet]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
         [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
@@ -56,6 +56,8 @@
     NSString *title = [[self romSet] title];
     NSSize screenSize = [[self romSet] screenSize];
     NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
+    
+    [[self input] restoreInputMap];
     
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
@@ -106,6 +108,7 @@
 - (void)windowWillClose:(NSNotification *)notification
 {
     [[self video] setDelegate:nil];
+    [[self input] saveInputMap];
     
     [[self runLoop] cancel];
 }

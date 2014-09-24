@@ -149,8 +149,7 @@ static NSArray *keyCodesToIgnore;
 	OSStatus err;
 	TISInputSourceRef tisSource = TISCopyCurrentKeyboardInputSource();
     
-    if (tisSource)
-    {
+    if (tisSource) {
         CFDataRef layoutData;
         UInt32 keysDown = 0;
         layoutData = (CFDataRef)TISGetInputSourceProperty(tisSource,
@@ -161,28 +160,26 @@ static NSArray *keyCodesToIgnore;
         // For non-unicode layouts such as Chinese, Japanese, and
         // Korean, get the ASCII capable layout
         
-        if (!layoutData)
-        {
+        if (!layoutData) {
             tisSource = TISCopyCurrentASCIICapableKeyboardLayoutInputSource();
             layoutData = (CFDataRef)TISGetInputSourceProperty(tisSource,
                                                               kTISPropertyUnicodeKeyLayoutData);
             CFRelease(tisSource);
         }
         
-        if (layoutData)
-        {
+        if (layoutData) {
             const UCKeyboardLayout *keyLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
             
             UniCharCount length = 4, realLength;
             UniChar chars[4];
             
-            for (int keyCode = 0; keyCode < 255; keyCode++)
-            {
+            for (int keyCode = 0; keyCode < 255; keyCode++) {
                 NSNumber *keyCodeObj = @(keyCode);
                 
                 // Skip through codes we already know
-                if ([keyCodeLookupTable objectForKey:keyCodeObj])
+                if ([keyCodeLookupTable objectForKey:keyCodeObj]) {
                     continue;
+                }
                 
                 err = UCKeyTranslate(keyLayout,
                                      keyCode,
@@ -195,10 +192,8 @@ static NSArray *keyCodesToIgnore;
                                      &realLength,
                                      chars);
                 
-                if (err == noErr && realLength > 0)
-                {
+                if (err == noErr && realLength > 0) {
                     NSString *keyName = [[NSString stringWithCharacters:chars length:1] uppercaseString];
-                    
                     [keyCodeLookupTable setObject:keyName forKey:keyCodeObj];
                 }
             }
@@ -208,16 +203,13 @@ static NSArray *keyCodesToIgnore;
     // Generate reverse lookup table
     reverseKeyCodeLookupTable = [[NSMutableDictionary alloc] init];
     
-    [keyCodeLookupTable enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop)
-    {
+    [keyCodeLookupTable enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         NSNumber *keyCodeObj = key;
         NSString *keyName = obj;
         NSNumber *existingCode;
         
-        if ([keyName length] > 0)
-        {
-            if ((existingCode = [reverseKeyCodeLookupTable objectForKey:keyName]))
-            {
+        if ([keyName length] > 0) {
+            if ((existingCode = [reverseKeyCodeLookupTable objectForKey:keyName])) {
                 NSLog(@"reverseKeyCodeLookupTable conflict: name: '%@' code: %@ (existing: %@)",
                       keyName, keyCodeObj, existingCode);
                 
@@ -233,8 +225,7 @@ static NSArray *keyCodesToIgnore;
 
 - (BOOL)becomeFirstResponder
 {
-    if ([super becomeFirstResponder])
-    {
+    if ([super becomeFirstResponder]) {
         [self setEditable:NO];
         [self setSelectable:NO];
         
@@ -248,11 +239,11 @@ static NSArray *keyCodesToIgnore;
 {
     [super mouseDown:theEvent];
     
-    if ([self canUnmap])
-    {
+    if ([self canUnmap]) {
         NSPoint mousePosition = [self convertPoint:[theEvent locationInWindow] fromView:nil];
-        if (NSPointInRect(mousePosition, [self unmapRect]))
+        if (NSPointInRect(mousePosition, [self unmapRect])) {
             [self captureKeyCode:AKKeyNone];
+        }
     }
 }
 
@@ -268,12 +259,14 @@ static NSArray *keyCodesToIgnore;
 
 - (BOOL)captureKeyCode:(NSInteger)keyCode
 {
-    if ([keyCodesToIgnore containsObject:@(keyCode)])
+    if ([keyCodesToIgnore containsObject:@(keyCode)]) {
         return NO;
+    }
 
-    NSString *keyName = [AKKeyCaptureView descriptionForKeyCode:@(keyCode)];
-    if (!keyName)
+    NSString *keyName = [AKKeyCaptureView descriptionForKeyCode:keyCode];
+    if (!keyName) {
         keyName = @"";
+    }
     
     // Update the editor's text with the code's description
     [[self textStorage] replaceCharactersInRange:NSMakeRange(0, [[self textStorage] length])
@@ -285,39 +278,38 @@ static NSArray *keyCodesToIgnore;
     return YES;
 }
 
-+ (NSString *)descriptionForKeyCode:(NSNumber *)keyCode
++ (NSString *)descriptionForKeyCode:(NSInteger)keyCode
 {
-	if ([keyCode integerValue] != AKKeyNone)
-    {
+	if (keyCode != AKKeyNone) {
         NSString *string = nil;
-        if ((string = [keyCodeLookupTable objectForKey:keyCode]))
+        if ((string = [keyCodeLookupTable objectForKey:@(keyCode)])) {
             return string;
+        }
     }
 	
     return @"";
 }
 
-+ (NSNumber *)keyCodeForDescription:(NSString *)description
++ (NSInteger)keyCodeForDescription:(NSString *)description
 {
-    if (description && [description length] > 0)
-    {
+    if (description && [description length] > 0) {
         NSNumber *keyCode = [reverseKeyCodeLookupTable objectForKey:description];
-        if (keyCode)
-            return keyCode;
+        if (keyCode) {
+            return [keyCode integerValue];
+        }
     }
     
-    return @AKKeyNone;
+    return AKKeyNone;
 }
 
 - (BOOL)canUnmap
 {
-    return ([self string] && [[self string] length] > 0);
+    return [[self string] length] > 0;
 }
 
 - (NSRect)unmapRect
 {
     NSRect cellFrame = [self bounds];
-    
     CGFloat diam = cellFrame.size.height * .70;
     return NSMakeRect(cellFrame.origin.x + cellFrame.size.width - cellFrame.size.height,
                       cellFrame.origin.y + (cellFrame.size.height - diam) / 2.0,
@@ -332,8 +324,7 @@ static NSArray *keyCodesToIgnore;
     
     [[NSGraphicsContext currentContext] saveGraphicsState];
     
-    if ([self canUnmap])
-    {
+    if ([self canUnmap]) {
         // Valid key
         
         NSRect circleRect = [self unmapRect];
@@ -350,9 +341,7 @@ static NSArray *keyCodesToIgnore;
         
         [[NSColor whiteColor] set];
         [path fill];
-    }
-    else
-    {
+    } else {
         // No key
         
         NSBezierPath *bgRect = [NSBezierPath bezierPathWithRect:[self bounds]];
