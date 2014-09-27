@@ -35,4 +35,7 @@
 - (void)assignKeyCode:(NSInteger)keyCode
                toCode:(NSString *)code;
 
+- (NSInteger)keyCodeAssignedToCode:(NSString *)code;
+- (NSString *)codeAssignedToKeyCode:(NSInteger)keyCode;
+
 @end

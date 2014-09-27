@@ -66,6 +66,10 @@
     [[self runLoop] setDelegate:self];
     
     [[self runLoop] start];
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
+                                                        object:self
+                                                      userInfo:@{ FXROMSetInfo: [self romSet] } ];
 }
 
 #pragma mark - FXRunLoopDelegate
@@ -107,6 +111,10 @@
 
 - (void)windowWillClose:(NSNotification *)notification
 {
+    [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
+                                                        object:self
+                                                      userInfo:nil];
+    
     [[self video] setDelegate:nil];
     [[self input] saveInputMap];
     

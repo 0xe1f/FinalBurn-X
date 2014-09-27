@@ -29,6 +29,9 @@
 #import "FXRunLoop.h"
 #import "FXROMSet.h"
 
+#define FXEmulatorChanged @"org.akop.fbx.EmulatorChanged"
+#define FXROMSetInfo @"romSet"
+
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate>
 {
     IBOutlet FXScreenView *screen;

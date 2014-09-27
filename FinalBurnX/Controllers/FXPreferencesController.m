@@ -28,6 +28,8 @@
 
 @interface FXPreferencesController ()
 
+- (void)emulationChangedNotification:(NSNotification *)notification;
+
 @end
 
 @implementation FXPreferencesController
@@ -41,13 +43,21 @@
     return self;
 }
 
-- (void)tabChanged:(id)sender
+- (void)awakeFromNib
 {
-    NSToolbarItem *selectedItem = (NSToolbarItem *)sender;
-    NSString *tabIdentifier = [selectedItem itemIdentifier];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(emulationChangedNotification:)
+                                                 name:FXEmulatorChanged
+                                               object:nil];
     
-    [toolbar setSelectedItemIdentifier:tabIdentifier];
-    [[NSUserDefaults standardUserDefaults] setObject:tabIdentifier forKey:@"selectedPreferencesTab"];
+    [self resetInput];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:FXEmulatorChanged
+                                                  object:nil];
 }
 
 #pragma mark - NSWindowController
@@ -55,8 +65,6 @@
 - (void)windowDidLoad
 {
     [toolbar setSelectedItemIdentifier:[[NSUserDefaults standardUserDefaults] objectForKey:@"selectedPreferencesTab"]];
-    
-    [self resetInput];
 }
 
 - (id)windowWillReturnFieldEditor:(NSWindow *)sender
@@ -99,8 +107,13 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
             return [inputInfo name];
         } else if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
-            // FIXME
-            return [AKKeyCaptureView descriptionForKeyCode:[inputInfo keyCode]];
+            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+            FXEmulatorController *emulator = [app emulator];
+            FXInput *input = [emulator input];
+            FXInputMap *inputMap = [input inputMap];
+            NSInteger keyCode = [inputMap keyCodeAssignedToCode:[inputInfo code]];
+            
+            return [AKKeyCaptureView descriptionForKeyCode:keyCode];
         }
     }
     
@@ -115,7 +128,12 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
         NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
         FXInputInfo *inputInfo = [inputList objectAtIndex:row];
-        [inputInfo setKeyCode:keyCode];
+        
+        FXAppDelegate *app = [FXAppDelegate sharedInstance];
+        FXEmulatorController *emulator = [app emulator];
+        FXInput *input = [emulator input];
+        FXInputMap *inputMap = [input inputMap];
+        [inputMap assignKeyCode:keyCode toCode:[inputInfo code]];
     }
 }
 
@@ -134,7 +152,27 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     }
 }
 
+#pragma mark - Actions
+
+- (void)tabChanged:(id)sender
+{
+    NSToolbarItem *selectedItem = (NSToolbarItem *)sender;
+    NSString *tabIdentifier = [selectedItem itemIdentifier];
+    
+    [toolbar setSelectedItemIdentifier:tabIdentifier];
+    [[NSUserDefaults standardUserDefaults] setObject:tabIdentifier forKey:@"selectedPreferencesTab"];
+}
+
 #pragma mark - Private methods
+
+- (void)emulationChangedNotification:(NSNotification *)notification
+{
+#ifdef DEBUG
+    NSLog(@"emulationChangedNotification");
+#endif
+    
+    [self resetInput];
+}
 
 - (void)resetInput
 {
