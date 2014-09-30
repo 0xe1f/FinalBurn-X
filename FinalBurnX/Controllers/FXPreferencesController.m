@@ -29,6 +29,7 @@
 @interface FXPreferencesController ()
 
 - (void)emulationChangedNotification:(NSNotification *)notification;
+- (void)resetInput:(FXROMSet *)set;
 
 @end
 
@@ -50,7 +51,10 @@
                                                  name:FXEmulatorChanged
                                                object:nil];
     
-    [self resetInput];
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    FXEmulatorController *emulator = [app emulator];
+    
+    [self resetInput:[emulator romSet]];
 }
 
 - (void)dealloc
@@ -171,19 +175,19 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     NSLog(@"emulationChangedNotification");
 #endif
     
-    [self resetInput];
-}
-
-- (void)resetInput
-{
-    [self->inputList removeAllObjects];
-    
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
     
-    if (emulator != nil) {
+    [self resetInput:[emulator romSet]];
+}
+
+- (void)resetInput:(FXROMSet *)romSet
+{
+    [self->inputList removeAllObjects];
+    
+    if (romSet != nil) {
         NSError *error = nil;
-        NSArray *inputs = [FXInput inputsForDriver:[[emulator romSet] archive]
+        NSArray *inputs = [FXInput inputsForDriver:[romSet archive]
                                              error:&error];
         
         if (error != nil) {

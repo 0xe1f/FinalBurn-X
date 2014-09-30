@@ -54,6 +54,9 @@
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
+- (void)saveSettings;
+- (void)restoreSettings;
+
 + (void)initializeCore;
 + (void)cleanupCore;
 

@@ -135,9 +135,12 @@ static FXAppDelegate *sharedInstance = nil;
 - (void)launch:(FXROMSet *)romSet
 {
     @synchronized(self) {
+        [self->emulator saveSettings];
         [self->emulator close];
         
         self->emulator = [[FXEmulatorController alloc] initWithROMSet:romSet];
+        [self->emulator restoreSettings];
+        
         [self->emulator showWindow:self];
     }
 }

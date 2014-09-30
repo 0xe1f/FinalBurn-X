@@ -57,8 +57,6 @@
     NSSize screenSize = [[self romSet] screenSize];
     NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
     
-    [[self input] restoreInputMap];
-    
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
     
@@ -116,8 +114,6 @@
                                                       userInfo:nil];
     
     [[self video] setDelegate:nil];
-    [[self input] saveInputMap];
-    
     [[self runLoop] cancel];
 }
 
@@ -215,6 +211,16 @@
 + (void)cleanupCore
 {
     BurnLibExit();
+}
+
+- (void)saveSettings
+{
+    [[self input] saveInputMap];
+}
+
+- (void)restoreSettings
+{
+    [[self input] restoreInputMap];
 }
 
 #pragma mark - Private methods
