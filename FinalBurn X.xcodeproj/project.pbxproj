@@ -462,7 +462,6 @@
 		FE505E0B194BC533003A2BC7 /* ymz280b.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C51194BC532003A2BC7 /* ymz280b.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505E0C194BC533003A2BC7 /* tiles_generic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C55194BC532003A2BC7 /* tiles_generic.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE505E0D194BC533003A2BC7 /* timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C57194BC532003A2BC7 /* timer.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-shorten-64-to-32"; }; };
-		FE505E89194BCCBE003A2BC7 /* gamc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E13194BCCBE003A2BC7 /* gamc.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-invalid-source-encoding -Wno-shorten-64-to-32"; }; };
 		FE505E8A194BCCBE003A2BC7 /* gami.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E15194BCCBE003A2BC7 /* gami.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-invalid-source-encoding -Wno-format -Wno-shorten-64-to-32"; }; };
 		FE505EAD194BCCBE003A2BC7 /* state.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E4A194BCCBE003A2BC7 /* state.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-shorten-64-to-32"; }; };
 		FE505EAE194BCCBE003A2BC7 /* statec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E4B194BCCBE003A2BC7 /* statec.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-shorten-64-to-32"; }; };
@@ -560,7 +559,6 @@
 		FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZipArchive.m */; };
 		FE9FA40D195D349B00F791EB /* FXZipFile.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA40C195D349B00F791EB /* FXZipFile.m */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
-		FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F2194C3CFD0039D85F /* cong.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-format -Wno-shorten-64-to-32"; }; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25318194C410B0039D85F /* vid_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-variable"; }; };
 		FEC2533F194C410B0039D85F /* vid_softfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25319194C410B0039D85F /* vid_softfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
@@ -1150,7 +1148,6 @@
 		FE505C58194BC532003A2BC7 /* timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = timer.h; sourceTree = "<group>"; };
 		FE505C59194BC532003A2BC7 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = version.h; sourceTree = "<group>"; };
 		FE505E0F194BCCBE003A2BC7 /* burner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner.h; sourceTree = "<group>"; };
-		FE505E13194BCCBE003A2BC7 /* gamc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gamc.cpp; sourceTree = "<group>"; };
 		FE505E15194BCCBE003A2BC7 /* gami.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gami.cpp; sourceTree = "<group>"; };
 		FE505E4A194BCCBE003A2BC7 /* state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = state.cpp; sourceTree = "<group>"; };
 		FE505E4B194BCCBE003A2BC7 /* statec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = statec.cpp; sourceTree = "<group>"; };
@@ -1291,7 +1288,6 @@
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
-		FE7800CD194C29A50024716B /* inp_keys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inp_keys.h; sourceTree = "<group>"; };
 		FE7800DC194C2ABB0024716B /* interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = interface.cpp; sourceTree = "<group>"; };
 		FE7800DD194C2ABB0024716B /* interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interface.h; sourceTree = "<group>"; };
 		FE7800F2194C31E90024716B /* unzip.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unzip.c; sourceTree = "<group>"; };
@@ -1338,7 +1334,6 @@
 		FE9FA40B195D349B00F791EB /* FXZipFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipFile.h; sourceTree = "<group>"; };
 		FE9FA40C195D349B00F791EB /* FXZipFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipFile.m; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
-		FEC252F2194C3CFD0039D85F /* cong.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cong.cpp; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
 		FEC25318194C410B0039D85F /* vid_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_interface.cpp; sourceTree = "<group>"; };
 		FEC25319194C410B0039D85F /* vid_softfx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_softfx.cpp; sourceTree = "<group>"; };
@@ -2228,8 +2223,6 @@
 				FEE8E45D19CCF7D200B93643 /* minizip */,
 				FED10DC4194CD91700754BE0 /* cocoa */,
 				FE505E0F194BCCBE003A2BC7 /* burner.h */,
-				FEC252F2194C3CFD0039D85F /* cong.cpp */,
-				FE505E13194BCCBE003A2BC7 /* gamc.cpp */,
 				FE7800CA194C24CF0024716B /* gameinp.h */,
 				FE505E15194BCCBE003A2BC7 /* gami.cpp */,
 				FEC25359194CA41B0039D85F /* misc.cpp */,
@@ -2577,7 +2570,6 @@
 			isa = PBXGroup;
 			children = (
 				FE7800CC194C29A50024716B /* inp_interface.cpp */,
-				FE7800CD194C29A50024716B /* inp_keys.h */,
 			);
 			path = input;
 			sourceTree = "<group>";
@@ -2952,7 +2944,6 @@
 				FE505DBC194BC533003A2BC7 /* tc0180vcu.cpp in Sources */,
 				FE505D96194BC533003A2BC7 /* sys16_run.cpp in Sources */,
 				FE505CA6194BC532003A2BC7 /* d_dec8.cpp in Sources */,
-				FEC252F3194C3CFD0039D85F /* cong.cpp in Sources */,
 				FE505D15194BC532003A2BC7 /* d_jack.cpp in Sources */,
 				FE505D5A194BC533003A2BC7 /* d_gaelco.cpp in Sources */,
 				FE505DCA194BC533003A2BC7 /* d_fixeight.cpp in Sources */,
@@ -3225,7 +3216,6 @@
 				FE505E03194BC533003A2BC7 /* segapcm.cpp in Sources */,
 				FE505C83194BC532003A2BC7 /* ps_z.cpp in Sources */,
 				FE505D05194BC532003A2BC7 /* d_bombjack.cpp in Sources */,
-				FE505E89194BCCBE003A2BC7 /* gamc.cpp in Sources */,
 				FE505CEA194BC532003A2BC7 /* neo_palette.cpp in Sources */,
 				FE505F83194BCDD1003A2BC7 /* m68000_intf.cpp in Sources */,
 				FE505CC2194BC532003A2BC7 /* d_blockhl.cpp in Sources */,

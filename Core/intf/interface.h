@@ -5,7 +5,7 @@
 // GameInp structure
 #include "gameinp.h"
 // Key codes
-#include "inp_keys.h"
+//#include "inp_keys.h"
 
 // Interface info (used for all modules)
 struct InterfaceInfo {

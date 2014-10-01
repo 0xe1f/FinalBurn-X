@@ -113,10 +113,10 @@ static int cocoaGetNextSound(int draw);
 	nMaxPlayers = BurnDrvGetMaxPlayers();
 	GameInpInit();
     
-	ConfigGameLoad(true);
+//	ConfigGameLoad(true);
 	InputMake(true);
     
-	GameInpDefault();
+//	GameInpDefault();
     
     BurnExtLoadRom = cocoaLoadROMCallback;
     
@@ -195,7 +195,7 @@ static int cocoaGetNextSound(int draw);
         [self saveNVRAM];
         
 		if (nBurnDrvSelect[0] < nBurnDrvCount) {
-			ConfigGameSave(bSaveInputs);
+//			ConfigGameSave(bSaveInputs);
             
 			GameInpExit();
 			BurnDrvExit();
