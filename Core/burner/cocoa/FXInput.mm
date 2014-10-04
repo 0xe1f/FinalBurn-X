@@ -34,6 +34,7 @@
 @interface FXInput()
 
 - (void)releaseAllKeys;
+- (void)initializeInput;
 
 @end
 
@@ -67,61 +68,23 @@
         return NO;
     }
     
-    switch(code)
-	{
-    case 100 /* FIXME */: // start
-        return self->keyStates[AKKeyCode1];
-    case 101 /* FIXME */: // coin
-        return self->keyStates[AKKeyCode5];
-//    case FBK_A:
-//        return self->keyStates[AKKeyCodeA];
-//    case FBK_S:
-//        return self->keyStates[AKKeyCodeS];
-//    case FBK_D:
-//        return self->keyStates[AKKeyCodeD];
-//    case FBK_F:
-//        return self->keyStates[AKKeyCodeF];
-//    case FBK_Z:
-//        return self->keyStates[AKKeyCodeZ];
-//    case FBK_X:
-//        return self->keyStates[AKKeyCodeX];
-//    case FBK_C:
-//        return self->keyStates[AKKeyCodeC];
-//    case FBK_V:
-//        return self->keyStates[AKKeyCodeV];
-//    case FBK_UPARROW:
-//        return self->keyStates[AKKeyCodeUpArrow];
-//    case FBK_DOWNARROW:
-//        return self->keyStates[AKKeyCodeDownArrow];
-//    case FBK_LEFTARROW:
-//        return self->keyStates[AKKeyCodeLeftArrow];
-//    case FBK_RIGHTARROW:
-//        return self->keyStates[AKKeyCodeRightArrow];
-//    case FBK_F1:
-//        return self->keyStates[AKKeyCodeF1];
-//    case FBK_F2: {
-//        BOOL isPressed = [self isTestPressed];
-//        if (isPressed) {
-//            [self setTestPressed:NO];
-//        }
-//        
-//        return isPressed;
-//    }
-//    case FBK_F3: {
-//        BOOL isPressed = [self isResetPressed];
-//        if (isPressed) {
-//            [self setResetPressed:NO];
-//        }
-//        
-//        return isPressed;
-//    }
-//    case FBK_F4:
-//        return self->keyStates[AKKeyCodeF4];
-//    case FBK_F5:
-//        return self->keyStates[AKKeyCodeF5];
+    NSInteger keyCode = [self->_inputMap keyCodeForInputCode:code];
+    if (keyCode == AKKeyInvalid) {
+        return NO;
     }
     
-    return NO;
+    return self->keyStates[keyCode];
+}
+
+- (void)initializeInput
+{
+    NSArray *inputInfoArray = [FXInput inputsForDriver:[self->_romSet archive]
+                                                 error:nil];
+    
+    [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *info, NSUInteger idx, BOOL *stop) {
+        GameInp[idx].nInput = GIT_SWITCH;
+        GameInp[idx].Input.Switch.nCode = (UINT16)[info inputCode];
+    }];
 }
 
 + (NSArray *)inputsForDriver:(NSString *)archive
@@ -147,6 +110,7 @@
         }
         
         FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
+        [inputInfo setInputCode:(i + 1)];
         [inputs addObject:inputInfo];
     }
     
@@ -169,11 +133,6 @@
     // Don't generate a KeyDown if Command is pressed
     if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
         self->keyStates[[event keyCode]] = isDown;
-        
-        if (isDown) {
-            (GameInp)->nInput = GIT_SWITCH; (GameInp)->Input.Switch.nCode = (UINT16)(101);
-            (GameInp + 1)->nInput = GIT_SWITCH; (GameInp + 1)->Input.Switch.nCode = (UINT16)(100);
-        }
     }
 }
 
@@ -217,7 +176,10 @@
     }
     
     if (self->_inputMap == nil) {
-        self->_inputMap = [[FXInputMap alloc] init];
+        NSArray *inputInfoArray = [FXInput inputsForDriver:[self->_romSet archive]
+                                                     error:nil];
+        
+        self->_inputMap = [[FXInputMap alloc] initWithInputInfoArray:inputInfoArray];
     }
 }
 
@@ -261,6 +223,9 @@ static int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
 
 static int cocoaInputStart()
 {
+    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
+    [input initializeInput];
+    
 	return 0;
 }
 

@@ -25,17 +25,20 @@
 @interface FXInputMap : NSObject<NSCoding>
 {
     @private
-    NSMutableDictionary *physicalToVirtualCodeMap;
-    NSMutableDictionary *virtualToPhysicalCodeMap;
+    NSMutableArray *inputs;
 }
+
+- (instancetype)initWithInputInfoArray:(NSArray *)inputs;
 
 @property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
 
 - (void)markClean;
-- (void)assignKeyCode:(NSInteger)keyCode
-               toCode:(NSString *)code;
 
-- (NSInteger)keyCodeAssignedToCode:(NSString *)code;
-- (NSString *)codeAssignedToKeyCode:(NSInteger)keyCode;
+- (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
+- (int)inputCodeForKeyCode:(NSInteger)keyCode;
+- (NSInteger)keyCodeForInputCode:(int)inputCode;
+
+- (void)assignKeyCode:(NSInteger)keyCode
+         toDriverCode:(NSString *)driverCode;
 
 @end

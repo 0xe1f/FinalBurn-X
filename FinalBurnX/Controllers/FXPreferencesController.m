@@ -115,7 +115,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             FXEmulatorController *emulator = [app emulator];
             FXInput *input = [emulator input];
             FXInputMap *inputMap = [input inputMap];
-            NSInteger keyCode = [inputMap keyCodeAssignedToCode:[inputInfo code]];
+            NSInteger keyCode = [inputMap keyCodeForDriverCode:[inputInfo code]];
             
             return [AKKeyCaptureView descriptionForKeyCode:keyCode];
         }
@@ -137,7 +137,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
         FXEmulatorController *emulator = [app emulator];
         FXInput *input = [emulator input];
         FXInputMap *inputMap = [input inputMap];
-        [inputMap assignKeyCode:keyCode toCode:[inputInfo code]];
+        [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
     }
 }
 

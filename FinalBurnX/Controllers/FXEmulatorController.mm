@@ -40,12 +40,11 @@
 - (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
+        [self setRomSet:romSet];
         [self setInput:[[FXInput alloc] initWithROMSet:romSet]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
         [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
-        
-        [self setRomSet:romSet];
     }
     
     return self;

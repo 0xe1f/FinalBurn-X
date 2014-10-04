@@ -23,44 +23,113 @@
 #import "FXInputMap.h"
 
 #import "AKKeyEventData.h"
+#import "FXInputInfo.h"
 
-@implementation FXInputMap
+@interface FXInputMapItem : NSObject<NSCoding>
 
-- (instancetype)init
+@property (nonatomic, assign) int inputCode;
+@property (nonatomic, assign) NSInteger keyCode;
+@property (nonatomic, copy) NSString *driverCode;
+
+@end
+
+@implementation FXInputMapItem
+
+#pragma mark - NSCoding
+
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
     if ((self = [super init]) != nil) {
-        self->physicalToVirtualCodeMap = [NSMutableDictionary dictionary];
-        self->virtualToPhysicalCodeMap = [NSMutableDictionary dictionary];
+        [self setInputCode:[coder decodeIntForKey:@"inputCode"]];
+        [self setKeyCode:[coder decodeIntegerForKey:@"keyCode"]];
+        [self setDriverCode:[coder decodeObjectForKey:@"driverCode"]];
     }
     
     return self;
 }
 
-- (void)assignKeyCode:(NSInteger)keyCode
-               toCode:(NSString *)code
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    NSNumber *kc = @(keyCode);
-    [self->physicalToVirtualCodeMap setObject:code
-                                       forKey:kc];
-    [self->virtualToPhysicalCodeMap setObject:kc
-                                       forKey:code];
-    
-    self->_dirty = YES;
+    [coder encodeInt:self->_inputCode forKey:@"inputCode"];
+    [coder encodeInteger:self->_keyCode forKey:@"keyCode"];
+    [coder encodeObject:self->_driverCode forKey:@"driverCode"];
 }
 
-- (NSInteger)keyCodeAssignedToCode:(NSString *)code
+@end
+
+@implementation FXInputMap
+
+- (instancetype)initWithInputInfoArray:(NSArray *)inputInfoArray
 {
-    NSNumber *kc = [virtualToPhysicalCodeMap objectForKey:code];
-    if (kc == nil) {
-        return AKKeyInvalid;
+    if ((self = [super init]) != nil) {
+        self->inputs = [NSMutableArray array];
+        [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
+            FXInputMapItem *item = [[FXInputMapItem alloc] init];
+            [item setInputCode:[ii inputCode]];
+            [item setDriverCode:[ii code]];
+            [item setKeyCode:AKKeyInvalid];
+            
+            [self->inputs addObject:item];
+        }];
     }
     
-    return [kc integerValue];
+    return self;
 }
 
-- (NSString *)codeAssignedToKeyCode:(NSInteger)keyCode
+- (NSInteger)keyCodeForDriverCode:(NSString *)driverCode
 {
-    return [physicalToVirtualCodeMap objectForKey:@(keyCode)];
+    // FIXME: map
+    __block NSInteger keyCode = AKKeyInvalid;
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([[item driverCode] isEqualToString:driverCode]) {
+            keyCode = [item keyCode];
+            *stop = YES;
+        }
+    }];
+    
+    return keyCode;
+}
+
+- (int)inputCodeForKeyCode:(NSInteger)keyCode
+{
+    // FIXME: map
+    __block int inputCode = 0;
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([item keyCode] == keyCode) {
+            inputCode = [item inputCode];
+            *stop = YES;
+        }
+    }];
+    
+    return inputCode;
+}
+
+- (NSInteger)keyCodeForInputCode:(int)inputCode
+{
+    // FIXME: map
+    __block NSInteger keyCode = AKKeyInvalid;
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([item inputCode] == inputCode) {
+            keyCode = [item keyCode];
+            *stop = YES;
+        }
+    }];
+    
+    return keyCode;
+}
+
+- (void)assignKeyCode:(NSInteger)keyCode
+         toDriverCode:(NSString *)driverCode
+{
+    // FIXME: map
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([[item driverCode] isEqualToString:driverCode]) {
+            [item setKeyCode:keyCode];
+            *stop = YES;
+        }
+    }];
+    
+    self->_dirty = YES;
 }
 
 - (void)markClean
@@ -73,8 +142,7 @@
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     if ((self = [super init]) != nil) {
-        self->virtualToPhysicalCodeMap = [coder decodeObjectForKey:@"virtualToPhysicalCodeMap"];
-        self->physicalToVirtualCodeMap = [coder decodeObjectForKey:@"physicalToVirtualCodeMap"];
+        self->inputs = [coder decodeObjectForKey:@"inputs"];
     }
     
     return self;
@@ -82,10 +150,7 @@
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-    [coder encodeObject:self->virtualToPhysicalCodeMap
-                 forKey:@"virtualToPhysicalCodeMap"];
-    [coder encodeObject:self->physicalToVirtualCodeMap
-                 forKey:@"physicalToVirtualCodeMap"];
+    [coder encodeObject:self->inputs forKey:@"inputs"];
 }
 
 @end
