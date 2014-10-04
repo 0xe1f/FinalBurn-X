@@ -24,6 +24,12 @@
 
 #import "FXROMSet.h"
 
+@interface FXAppDelegate ()
+
+- (void)shutDown;
+
+@end
+
 @implementation FXAppDelegate
 
 static FXAppDelegate *sharedInstance = nil;
@@ -95,6 +101,8 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void)applicationWillTerminate:(NSNotification *)notification
 {
+    [self shutDown];
+    
     [FXEmulatorController cleanupCore];
 }
 
@@ -134,10 +142,9 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void)launch:(FXROMSet *)romSet
 {
+    [self shutDown];
+    
     @synchronized(self) {
-        [self->emulator saveSettings];
-        [self->emulator close];
-        
         self->emulator = [[FXEmulatorController alloc] initWithROMSet:romSet];
         [self->emulator restoreSettings];
         
@@ -151,6 +158,14 @@ static FXAppDelegate *sharedInstance = nil;
 }
 
 #pragma mark - Private methods
+
+- (void)shutDown
+{
+    @synchronized(self) {
+        [self->emulator saveSettings];
+        [self->emulator close];
+    }
+}
 
 - (NSURL *)appSupportURL
 {

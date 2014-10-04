@@ -208,6 +208,9 @@
 
 static int cocoaInputInit()
 {
+    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
+    [input initializeInput];
+    
 	return 0;
 }
 
@@ -223,9 +226,6 @@ static int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
 
 static int cocoaInputStart()
 {
-    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
-    [input initializeInput];
-    
 	return 0;
 }
 

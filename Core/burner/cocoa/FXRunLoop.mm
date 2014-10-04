@@ -96,6 +96,10 @@ static int cocoaGetNextSound(int draw);
 {
     int driverIndex = [FXROMSet driverIndexOfArchive:[[self romSet] archive]];
     
+    nBurnDrvActive = driverIndex;
+    nBurnDrvSelect[0] = driverIndex;
+    
+    GameInpInit();
 	InputInit();
     
 	bBurnUseASMCPUEmulation = 0;
@@ -107,16 +111,9 @@ static int cocoaGetNextSound(int draw);
     
 	AudSoundInit();
     
-    nBurnDrvActive = driverIndex;
-	nBurnDrvSelect[0] = driverIndex;
-    
 	nMaxPlayers = BurnDrvGetMaxPlayers();
-	GameInpInit();
     
-//	ConfigGameLoad(true);
 	InputMake(true);
-    
-//	GameInpDefault();
     
     BurnExtLoadRom = cocoaLoadROMCallback;
     
@@ -195,8 +192,6 @@ static int cocoaGetNextSound(int draw);
         [self saveNVRAM];
         
 		if (nBurnDrvSelect[0] < nBurnDrvCount) {
-//			ConfigGameSave(bSaveInputs);
-            
 			GameInpExit();
 			BurnDrvExit();
 		}

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="5056" systemVersion="13E28" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="6245" systemVersion="13F34" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5056"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="6245"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="FXLauncherController">
@@ -16,34 +16,34 @@
             </connections>
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
-        <customObject id="-3" userLabel="Application"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <window title="FinalBurn X" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" frameAutosaveName="launcherWindow" animationBehavior="default" id="mRL-h4-pjH">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="283" y="305" width="655" height="554"/>
+            <rect key="contentRect" x="283" y="305" width="655" height="619"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
             <value key="minSize" type="size" width="640" height="480"/>
             <view key="contentView" id="bQY-6H-Qmi">
-                <rect key="frame" x="0.0" y="0.0" width="655" height="554"/>
+                <rect key="frame" x="0.0" y="-5" width="655" height="619"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
                     <splitView dividerStyle="thin" id="fwM-l9-OKz">
-                        <rect key="frame" x="0.0" y="32" width="655" height="522"/>
+                        <rect key="frame" x="0.0" y="0.0" width="655" height="619"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <customView id="wtj-fQ-mSs">
-                                <rect key="frame" x="0.0" y="0.0" width="655" height="360"/>
+                                <rect key="frame" x="0.0" y="0.0" width="655" height="427"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
                                     <scrollView borderType="none" autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="Xgx-S9-UFg" customClass="FXDroppableScrollView">
-                                        <rect key="frame" x="0.0" y="1" width="655" height="360"/>
+                                        <rect key="frame" x="0.0" y="1" width="655" height="427"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <clipView key="contentView" id="YAY-cw-GSs">
                                             <rect key="frame" x="0.0" y="17" width="655" height="343"/>
                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             <subviews>
                                                 <outlineView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" multipleSelection="NO" autosaveColumns="NO" autosaveName="" headerView="bBz-bb-9BE" indentationPerLevel="16" outlineTableColumn="uNg-8A-m5f" id="7cv-AF-5oi">
-                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="343"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="19"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <size key="intercellSpacing" width="3" height="2"/>
                                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
@@ -136,18 +136,18 @@
                                 </subviews>
                             </customView>
                             <customView id="MYa-Ry-r9s">
-                                <rect key="frame" x="0.0" y="361" width="655" height="161"/>
+                                <rect key="frame" x="0.0" y="428" width="655" height="191"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
                                     <scrollView borderType="none" autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="di3-Pz-vQY">
-                                        <rect key="frame" x="0.0" y="0.0" width="655" height="161"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="655" height="191"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <clipView key="contentView" id="DbX-xd-dW0">
                                             <rect key="frame" x="0.0" y="17" width="655" height="144"/>
                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             <subviews>
                                                 <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="Csx-Jg-TUB" id="Lho-XY-dNe">
-                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="144"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="19"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <size key="intercellSpacing" width="3" height="2"/>
                                                     <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
@@ -231,21 +231,35 @@
                             <real value="250"/>
                         </holdingPriorities>
                     </splitView>
-                    <button verticalHuggingPriority="750" id="KvR-IL-2yO">
-                        <rect key="frame" x="593" y="3" width="56" height="25"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                        <buttonCell key="cell" type="roundTextured" title="Play" bezelStyle="texturedRounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Ppa-8V-OsV">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="launchGame:" target="-2" id="DI9-Tf-6gl"/>
-                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.audit.isPlayable" id="knJ-Um-urI"/>
-                        </connections>
-                    </button>
                 </subviews>
             </view>
-            <contentBorderThickness minY="32"/>
+            <toolbar key="toolbar" implicitIdentifier="97AF7144-6FCC-4172-B46E-4BB379D6E7E9" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="fEk-GO-CwC">
+                <allowedToolbarItems>
+                    <toolbarItem implicitItemIdentifier="FEE95A2D-CCC9-4BDF-8A72-837E949F7A0A" label="Play" paletteLabel="Play" image="NSGoRightTemplate" id="JwR-eu-lg3">
+                        <nil key="toolTip"/>
+                        <size key="minSize" width="55" height="25"/>
+                        <size key="maxSize" width="64" height="25"/>
+                        <button key="view" verticalHuggingPriority="750" id="9Fg-ef-dG8">
+                            <rect key="frame" x="0.0" y="14" width="55" height="25"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <buttonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" image="NSGoRightTemplate" imagePosition="overlaps" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="pdJ-bu-HuZ">
+                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                <font key="font" metaFont="system"/>
+                            </buttonCell>
+                            <connections>
+                                <action selector="launchGame:" target="-2" id="Cfm-ey-zxb"/>
+                            </connections>
+                        </button>
+                        <connections>
+                            <binding destination="hya-yi-HSf" name="enabled" keyPath="selection.audit.isPlayable" id="KU6-gB-WbR"/>
+                        </connections>
+                    </toolbarItem>
+                </allowedToolbarItems>
+                <defaultToolbarItems>
+                    <toolbarItem reference="JwR-eu-lg3"/>
+                </defaultToolbarItems>
+            </toolbar>
+            <point key="canvasLocation" x="371.5" y="474.5"/>
         </window>
         <treeController objectClassName="FXROMSet" editable="NO" childrenKeyPath="subsets" id="hya-yi-HSf" userLabel="Driver Tree Controller">
             <connections>
@@ -309,4 +323,7 @@ Gw
             </view>
         </window>
     </objects>
+    <resources>
+        <image name="NSGoRightTemplate" width="9" height="9"/>
+    </resources>
 </document>
