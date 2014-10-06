@@ -180,6 +180,8 @@
                                                      error:nil];
         
         self->_inputMap = [[FXInputMap alloc] initWithInputInfoArray:inputInfoArray];
+        [self->_inputMap restoreDefaults];
+        [self->_inputMap markClean];
     }
 }
 
@@ -189,7 +191,7 @@
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
         NSString *file = [[self->_romSet archive] stringByAppendingPathExtension:@"inp"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
-
+        
         if (![NSKeyedArchiver archiveRootObject:self->_inputMap
                                          toFile:path]) {
             NSLog(@"Error writing to input configuration");

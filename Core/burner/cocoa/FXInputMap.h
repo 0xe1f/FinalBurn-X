@@ -33,6 +33,7 @@
 @property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
 
 - (void)markClean;
+- (void)restoreDefaults;
 
 - (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
 - (int)inputCodeForKeyCode:(NSInteger)keyCode;

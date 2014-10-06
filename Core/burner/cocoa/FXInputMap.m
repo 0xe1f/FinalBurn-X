@@ -76,6 +76,48 @@
     return self;
 }
 
+- (void)restoreDefaults
+{
+    /*
+     if (nFireButtons >= 5 && (BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_CAPCOM_CPS2) {
+     bStreetFighterLayout = true;
+     }
+     */
+    
+    // FIXME: map
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([[item driverCode] isEqualToString:@"p1 coin"]) {
+            [item setKeyCode:AKKeyCode5];
+        } else if ([[item driverCode] isEqualToString:@"p1 start"]) {
+            [item setKeyCode:AKKeyCode1];
+        } else if ([[item driverCode] isEqualToString:@"p1 up"]) {
+            [item setKeyCode:AKKeyCodeUpArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 down"]) {
+            [item setKeyCode:AKKeyCodeDownArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 left"]) {
+            [item setKeyCode:AKKeyCodeLeftArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 right"]) {
+            [item setKeyCode:AKKeyCodeRightArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 1"]) {
+            [item setKeyCode:AKKeyCodeA];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 2"]) {
+            [item setKeyCode:AKKeyCodeS];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 3"]) {
+            [item setKeyCode:AKKeyCodeD];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 4"]) {
+            [item setKeyCode:AKKeyCodeZ];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 5"]) {
+            [item setKeyCode:AKKeyCodeX];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 6"]) {
+            [item setKeyCode:AKKeyCodeC];
+        } else {
+            NSLog(@"unrecognized code: %@", [item driverCode]);
+        }
+    }];
+    
+    self->_dirty = YES;
+}
+
 - (NSInteger)keyCodeForDriverCode:(NSString *)driverCode
 {
     // FIXME: map
