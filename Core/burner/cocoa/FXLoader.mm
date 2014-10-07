@@ -132,6 +132,7 @@
         [indexMap setObject:@(index) forKey:archive];
         
         FXROMSet *romSet = [[FXROMSet alloc] initWithArchive:archive];
+        [romSet setHardware:hardware];
         [setMap setObject:romSet forKey:archive];
     }
     

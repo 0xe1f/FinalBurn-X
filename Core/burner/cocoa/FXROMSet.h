@@ -35,6 +35,7 @@
 @property (nonatomic, copy) NSString *archive;
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, assign) NSSize screenSize;
+@property (nonatomic, assign) NSUInteger hardware;
 
 @property (nonatomic, strong) FXROMSet *parentSet;
 @property (nonatomic, readonly) NSMutableArray *subsets;

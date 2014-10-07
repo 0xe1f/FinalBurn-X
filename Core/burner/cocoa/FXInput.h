@@ -39,9 +39,6 @@
 - (void)saveInputMap;
 - (void)restoreInputMap;
 
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error;
-
 @property (nonatomic, strong) FXROMSet *romSet;
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
 @property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;

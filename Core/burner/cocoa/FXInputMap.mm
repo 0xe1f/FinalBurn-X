@@ -25,6 +25,10 @@
 #import "AKKeyEventData.h"
 #import "FXInputInfo.h"
 
+#include "burner.h"
+#include "burnint.h"
+#include "driverlist.h"
+
 @interface FXInputMapItem : NSObject<NSCoding>
 
 @property (nonatomic, assign) int inputCode;
@@ -57,34 +61,103 @@
 
 @end
 
+@interface FXInputMap ()
+
+- (void)restoreGenericDefaults;
+- (void)restoreStreetFighterDefaults;
+
+@end
+
 @implementation FXInputMap
 
-- (instancetype)initWithInputInfoArray:(NSArray *)inputInfoArray
+- (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if ((self = [super init]) != nil) {
+        self->hardware = [romSet hardware];
+        self->archive = [[romSet archive] copy];
         self->inputs = [NSMutableArray array];
-        [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
-            FXInputMapItem *item = [[FXInputMapItem alloc] init];
-            [item setInputCode:[ii inputCode]];
-            [item setDriverCode:[ii code]];
-            [item setKeyCode:AKKeyInvalid];
-            
-            [self->inputs addObject:item];
-        }];
+        
+        NSError *error = nil;
+        NSArray *inputInfoArray = [FXInputMap inputsForDriver:[romSet archive]
+                                                        error:&error];
+        
+        if (error == nil) {
+            [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
+                FXInputMapItem *item = [[FXInputMapItem alloc] init];
+                [item setInputCode:[ii inputCode]];
+                [item setDriverCode:[ii code]];
+                [item setKeyCode:AKKeyInvalid];
+                
+                [self->inputs addObject:item];
+            }];
+        }
     }
     
     return self;
 }
 
-- (void)restoreDefaults
+- (NSInteger)fireButtonCount
 {
-    /*
-     if (nFireButtons >= 5 && (BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_CAPCOM_CPS2) {
-     bStreetFighterLayout = true;
-     }
-     */
+    __block NSInteger count = 0;
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([[item driverCode] hasPrefix:@"p1 fire "]) {
+            count++;
+        }
+    }];
     
-    // FIXME: map
+    return count;
+}
+
+- (BOOL)usesStreetFighterLayout
+{
+    if ((self->hardware != HARDWARE_CAPCOM_CPS1) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS2) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS3) &&
+        (self->hardware != HARDWARE_CAPCOM_CPS3_NO_CD)) {
+        return NO;
+    }
+    
+    return [self fireButtonCount] >= 6;
+}
+
+- (void)restoreGenericDefaults
+{
+    NSLog(@"Restoring Generic defaults");
+    
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        if ([[item driverCode] isEqualToString:@"p1 coin"]) {
+            [item setKeyCode:AKKeyCode5];
+        } else if ([[item driverCode] isEqualToString:@"p1 start"]) {
+            [item setKeyCode:AKKeyCode1];
+        } else if ([[item driverCode] isEqualToString:@"p1 up"]) {
+            [item setKeyCode:AKKeyCodeUpArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 down"]) {
+            [item setKeyCode:AKKeyCodeDownArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 left"]) {
+            [item setKeyCode:AKKeyCodeLeftArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 right"]) {
+            [item setKeyCode:AKKeyCodeRightArrow];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 1"]) {
+            [item setKeyCode:AKKeyCodeA];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 2"]) {
+            [item setKeyCode:AKKeyCodeS];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 3"]) {
+            [item setKeyCode:AKKeyCodeD];
+        } else if ([[item driverCode] isEqualToString:@"p1 fire 4"]) {
+            [item setKeyCode:AKKeyCodeF];
+        } else {
+            NSLog(@"unrecognized code: %@", [item driverCode]);
+        }
+    }];
+}
+
+- (void)restoreStreetFighterDefaults
+{
+    NSLog(@"Restoring SF defaults");
+    
     [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] isEqualToString:@"p1 coin"]) {
             [item setKeyCode:AKKeyCode5];
@@ -111,11 +184,30 @@
         } else if ([[item driverCode] isEqualToString:@"p1 fire 6"]) {
             [item setKeyCode:AKKeyCodeC];
         } else {
-            NSLog(@"unrecognized code: %@", [item driverCode]);
+            NSLog(@"Unrecognized driver code: %@", [item driverCode]);
         }
     }];
+}
+
+- (void)restoreDefaults
+{
+    if ([self usesStreetFighterLayout]) {
+        [self restoreStreetFighterDefaults];
+    } else {
+        [self restoreGenericDefaults];
+    }
     
     self->_dirty = YES;
+}
+
+- (NSArray *)inputCodes
+{
+    NSMutableArray *inputCodes = [NSMutableArray array];
+    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+        [inputCodes addObject:@([item inputCode])];
+    }];
+    
+    return inputCodes;
 }
 
 - (NSInteger)keyCodeForDriverCode:(NSString *)driverCode
@@ -185,6 +277,8 @@
 {
     if ((self = [super init]) != nil) {
         self->inputs = [coder decodeObjectForKey:@"inputs"];
+        self->archive = [coder decodeObjectForKey:@"archive"];
+        self->hardware = (NSUInteger)[coder decodeIntegerForKey:@"hardware"];
     }
     
     return self;
@@ -193,6 +287,42 @@
 - (void)encodeWithCoder:(NSCoder *)coder
 {
     [coder encodeObject:self->inputs forKey:@"inputs"];
+    [coder encodeObject:self->archive forKey:@"archive"];
+    [coder encodeInteger:self->hardware forKey:@"hardware"];
+}
+
+#pragma mark - Private methods
+
++ (NSArray *)inputsForDriver:(NSString *)archive
+                       error:(NSError **)error
+{
+    int driverId = [FXROMSet driverIndexOfArchive:archive];
+    if (driverId == -1) {
+        if (error != nil) {
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
+                                         code:0
+                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
+        }
+        
+        return nil;
+    }
+    
+    NSMutableArray *inputs = [NSMutableArray array];
+    
+    struct BurnInputInfo bii;
+    for (int i = 0; i < 0x1000; i++) {
+        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
+            break;
+        }
+        
+        if (bii.nType == BIT_DIGITAL) {
+            FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
+            [inputInfo setInputCode:(i + 1)];
+            [inputs addObject:inputInfo];
+        }
+    }
+    
+    return inputs;
 }
 
 @end

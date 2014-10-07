@@ -13,7 +13,7 @@
 		FE02306019516AA500661A17 /* inpdipsw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE02305F19516AA500661A17 /* inpdipsw.cpp */; };
 		FE0230631956BB9B00661A17 /* FXRunLoop.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0230621956BB9B00661A17 /* FXRunLoop.mm */; };
 		FE0230691957F7F500661A17 /* FXAudioEngine.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0230681957F7F500661A17 /* FXAudioEngine.m */; };
-		FE05E61819D2469D00DA5CDC /* FXInputMap.m in Sources */ = {isa = PBXBuildFile; fileRef = FE05E61719D2469D00DA5CDC /* FXInputMap.m */; };
+		FE05E61819D2469D00DA5CDC /* FXInputMap.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE05E61719D2469D00DA5CDC /* FXInputMap.mm */; };
 		FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
 		FE08935219475F9800F79190 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FE08935019475F9800F79190 /* InfoPlist.strings */; };
 		FE08935419475F9800F79190 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935319475F9800F79190 /* main.m */; };
@@ -585,7 +585,7 @@
 		FE0230681957F7F500661A17 /* FXAudioEngine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAudioEngine.m; sourceTree = "<group>"; };
 		FE02306A19595F6800661A17 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
 		FE05E61619D2469D00DA5CDC /* FXInputMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputMap.h; sourceTree = "<group>"; };
-		FE05E61719D2469D00DA5CDC /* FXInputMap.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXInputMap.m; sourceTree = "<group>"; };
+		FE05E61719D2469D00DA5CDC /* FXInputMap.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInputMap.mm; sourceTree = "<group>"; };
 		FE08934419475F9800F79190 /* FinalBurn X.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FinalBurn X.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE08934719475F9800F79190 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		FE08934A19475F9800F79190 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -2657,7 +2657,7 @@
 				FE1FB77619D132A60070325C /* FXInputInfo.h */,
 				FE1FB77719D132A60070325C /* FXInputInfo.mm */,
 				FE05E61619D2469D00DA5CDC /* FXInputMap.h */,
-				FE05E61719D2469D00DA5CDC /* FXInputMap.m */,
+				FE05E61719D2469D00DA5CDC /* FXInputMap.mm */,
 				FE9FA4021959E81E00F791EB /* FXLoader.h */,
 				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
 				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
@@ -3002,7 +3002,7 @@
 				FE505DE1194BC533003A2BC7 /* toaplan.cpp in Sources */,
 				FE505CFD194BC532003A2BC7 /* d_armedf.cpp in Sources */,
 				FE505D70194BC533003A2BC7 /* d_raiden.cpp in Sources */,
-				FE05E61819D2469D00DA5CDC /* FXInputMap.m in Sources */,
+				FE05E61819D2469D00DA5CDC /* FXInputMap.mm in Sources */,
 				FE505D48194BC532003A2BC7 /* d_airbustr.cpp in Sources */,
 				FE505D54194BC532003A2BC7 /* d_egghunt.cpp in Sources */,
 				FE505F8B194BCDD1003A2BC7 /* m6809_intf.cpp in Sources */,

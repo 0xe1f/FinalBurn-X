@@ -62,13 +62,13 @@
 
 #pragma mark - Core callbacks
 
-- (BOOL)isInputActiveForCode:(int)code
+- (BOOL)isInputActiveForCode:(int)inputCode
 {
-    if (code < 0) {
+    if (inputCode < 0) {
         return NO;
     }
     
-    NSInteger keyCode = [self->_inputMap keyCodeForInputCode:code];
+    NSInteger keyCode = [self->_inputMap keyCodeForInputCode:inputCode];
     if (keyCode == AKKeyInvalid) {
         return NO;
     }
@@ -78,43 +78,11 @@
 
 - (void)initializeInput
 {
-    NSArray *inputInfoArray = [FXInput inputsForDriver:[self->_romSet archive]
-                                                 error:nil];
-    
-    [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *info, NSUInteger idx, BOOL *stop) {
+    NSArray *inputCodes = [self->_inputMap inputCodes];
+    [inputCodes enumerateObjectsUsingBlock:^(NSNumber *inputCode, NSUInteger idx, BOOL *stop) {
         GameInp[idx].nInput = GIT_SWITCH;
-        GameInp[idx].Input.Switch.nCode = (UINT16)[info inputCode];
+        GameInp[idx].Input.Switch.nCode = [inputCode unsignedShortValue];
     }];
-}
-
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error
-{
-    int driverId = [FXROMSet driverIndexOfArchive:archive];
-    if (driverId == -1) {
-        if (error != nil) {
-            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
-                                         code:0
-                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
-        }
-        
-        return nil;
-    }
-    
-    NSMutableArray *inputs = [NSMutableArray array];
-    
-    struct BurnInputInfo bii;
-    for (int i = 0; i < 0x1000; i++) {
-        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
-            break;
-        }
-        
-        FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
-        [inputInfo setInputCode:(i + 1)];
-        [inputs addObject:inputInfo];
-    }
-    
-    return inputs;
 }
 
 #pragma mark - AKKeyboardEventDelegate
@@ -176,10 +144,8 @@
     }
     
     if (self->_inputMap == nil) {
-        NSArray *inputInfoArray = [FXInput inputsForDriver:[self->_romSet archive]
-                                                     error:nil];
+        self->_inputMap = [[FXInputMap alloc] initWithROMSet:self->_romSet];
         
-        self->_inputMap = [[FXInputMap alloc] initWithInputInfoArray:inputInfoArray];
         [self->_inputMap restoreDefaults];
         [self->_inputMap markClean];
     }

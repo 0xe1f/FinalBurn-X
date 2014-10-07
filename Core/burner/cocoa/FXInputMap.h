@@ -22,18 +22,29 @@
  */
 #import <Foundation/Foundation.h>
 
+#import "FXROMSet.h"
+
 @interface FXInputMap : NSObject<NSCoding>
 {
     @private
     NSMutableArray *inputs;
+    NSUInteger hardware;
+    NSString *archive;
 }
 
-- (instancetype)initWithInputInfoArray:(NSArray *)inputs;
++ (NSArray *)inputsForDriver:(NSString *)archive
+                       error:(NSError **)error;
+
+- (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
 @property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
 
+- (NSArray *)inputCodes;
 - (void)markClean;
 - (void)restoreDefaults;
+
+- (NSInteger)fireButtonCount;
+- (BOOL)usesStreetFighterLayout;
 
 - (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
 - (int)inputCodeForKeyCode:(NSInteger)keyCode;

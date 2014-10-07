@@ -187,8 +187,8 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     
     if (romSet != nil) {
         NSError *error = nil;
-        NSArray *inputs = [FXInput inputsForDriver:[romSet archive]
-                                             error:&error];
+        NSArray *inputs = [FXInputMap inputsForDriver:[romSet archive]
+                                                error:&error];
         
         if (error != nil) {
             // FIXME
