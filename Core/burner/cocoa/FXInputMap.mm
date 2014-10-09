@@ -291,8 +291,6 @@
     [coder encodeInteger:self->hardware forKey:@"hardware"];
 }
 
-#pragma mark - Private methods
-
 + (NSArray *)inputsForDriver:(NSString *)archive
                        error:(NSError **)error
 {
@@ -317,7 +315,17 @@
         
         if (bii.nType == BIT_DIGITAL) {
             FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
-            [inputInfo setInputCode:(i + 1)];
+            
+            int inputCode;
+            if ([[inputInfo code] isEqualToString:@"reset"]) {
+                inputCode = FXInputReset;
+            } else if ([[inputInfo code] isEqualToString:@"diag"]) {
+                inputCode = FXInputDiagnostic;
+            } else {
+                inputCode = i + 1;
+            }
+            
+            [inputInfo setInputCode:inputCode];
             [inputs addObject:inputInfo];
         }
     }

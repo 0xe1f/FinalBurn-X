@@ -39,6 +39,7 @@
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
         self->inputList = [NSMutableArray array];
+        self->dipswitchList = [NSMutableArray array];
     }
     
     return self;
@@ -99,7 +100,13 @@
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
-    return [self->inputList count];
+    if (tableView == self->inputTableView) {
+        return [self->inputList count];
+    } else if (tableView == self->dipswitchTableView) {
+        return [self->dipswitchList count];
+    }
+    
+    return 0;
 }
 
 - (id)tableView:(NSTableView *)tableView
@@ -119,6 +126,8 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             
             return [AKKeyCaptureView descriptionForKeyCode:keyCode];
         }
+    } else if (tableView == self->dipswitchTableView) {
+        // FIXME
     }
     
     return nil;
@@ -129,15 +138,19 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
    forTableColumn:(NSTableColumn *)tableColumn
               row:(NSInteger)row
 {
-    if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
-        NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
-        FXInputInfo *inputInfo = [inputList objectAtIndex:row];
-        
-        FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        FXEmulatorController *emulator = [app emulator];
-        FXInput *input = [emulator input];
-        FXInputMap *inputMap = [input inputMap];
-        [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
+    if (tableView == self->inputTableView) {
+        if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
+            NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
+            FXInputInfo *inputInfo = [inputList objectAtIndex:row];
+            
+            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+            FXEmulatorController *emulator = [app emulator];
+            FXInput *input = [emulator input];
+            FXInputMap *inputMap = [input inputMap];
+            [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
+        }
+    } else if (tableView == self->dipswitchTableView) {
+        // FIXME
     }
 }
 
@@ -184,6 +197,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 - (void)resetInput:(FXROMSet *)romSet
 {
     [self->inputList removeAllObjects];
+    [self->dipswitchList removeAllObjects];
     
     if (romSet != nil) {
         NSError *error = nil;
@@ -197,7 +211,11 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
         [self->inputList addObjectsFromArray:inputs];
     }
     
+    [self->inputTableView setEnabled:[self->inputList count] > 0];
+    [self->dipswitchTableView setEnabled:[self->dipswitchList count] > 0];
+    
     [self->inputTableView reloadData];
+    [self->dipswitchTableView reloadData];
 }
 
 @end

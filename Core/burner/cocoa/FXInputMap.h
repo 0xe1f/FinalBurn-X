@@ -54,3 +54,8 @@
          toDriverCode:(NSString *)driverCode;
 
 @end
+
+enum {
+    FXInputReset       = 0xff,
+    FXInputDiagnostic  = 0xfe,
+};

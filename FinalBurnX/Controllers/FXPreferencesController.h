@@ -30,9 +30,11 @@
     IBOutlet NSToolbar *toolbar;
     IBOutlet NSTabView *contentTabView;
     IBOutlet NSTableView *inputTableView;
+    IBOutlet NSTableView *dipswitchTableView;
     
     @private
     NSMutableArray *inputList;
+    NSMutableArray *dipswitchList;
     AKKeyCaptureView *keyCaptureView;
 }
 

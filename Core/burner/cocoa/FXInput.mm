@@ -68,6 +68,23 @@
         return NO;
     }
     
+    if (inputCode == FXInputReset) {
+        BOOL isPressed = [self isResetPressed];
+        if (isPressed) {
+            [self setResetPressed:NO];
+        }
+        
+        return isPressed;
+    } else if (inputCode == FXInputDiagnostic) {
+        BOOL isPressed = [self isTestPressed];
+        if (isPressed) {
+            [self setTestPressed:NO];
+        }
+        
+        return isPressed;
+    }
+    
+    
     NSInteger keyCode = [self->_inputMap keyCodeForInputCode:inputCode];
     if (keyCode == AKKeyInvalid) {
         return NO;

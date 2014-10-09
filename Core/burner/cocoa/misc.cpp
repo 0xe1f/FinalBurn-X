@@ -14,22 +14,6 @@ bool AppProcessKeyboardInput()
 	return true;
 }
 
-// The automatic save
-int StatedAuto(int bSave)
-{
-	return 0;
-}
-
-int StatedLoad(int nSlot)		// int nSlot = 0
-{
-	return 0;
-}
-
-int StatedSave(int nSlot)		// int nSlot = 0
-{
-	return 0;
-}
-
 void IpsApplyPatches(UINT8 *, char *)
 {
 }
