@@ -25,6 +25,7 @@
 #import "FXAppDelegate.h"
 #import "FXInput.h"
 #import "FXInputInfo.h"
+#import "FXDIPSwitchInfo.h"
 
 @interface FXPreferencesController ()
 
@@ -117,7 +118,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
         FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
             return [inputInfo name];
-        } else if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
+        } else if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
             FXAppDelegate *app = [FXAppDelegate sharedInstance];
             FXEmulatorController *emulator = [app emulator];
             FXInput *input = [emulator input];
@@ -127,7 +128,19 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             return [AKKeyCaptureView descriptionForKeyCode:keyCode];
         }
     } else if (tableView == self->dipswitchTableView) {
-        // FIXME
+        FXDIPSwitchInfo *dipswitchInfo = [self->dipswitchList objectAtIndex:row];
+        if ([[tableColumn identifier] isEqualToString:@"name"]) {
+            return [dipswitchInfo name];
+        } else if ([[tableColumn identifier] isEqualToString:@"value"]) {
+            // FIXME
+//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//            FXEmulatorController *emulator = [app emulator];
+//            FXInput *input = [emulator input];
+//            FXInputMap *inputMap = [input inputMap];
+//            NSInteger keyCode = [inputMap keyCodeForDriverCode:[inputInfo code]];
+//            
+//            return [AKKeyCaptureView descriptionForKeyCode:keyCode];
+        }
     }
     
     return nil;
@@ -139,7 +152,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
               row:(NSInteger)row
 {
     if (tableView == self->inputTableView) {
-        if ([[tableColumn identifier] isEqualToString:@"assigned"]) {
+        if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
             NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
             FXInputInfo *inputInfo = [inputList objectAtIndex:row];
             
@@ -201,14 +214,23 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     
     if (romSet != nil) {
         NSError *error = nil;
-        NSArray *inputs = [FXInputMap inputsForDriver:[romSet archive]
-                                                error:&error];
+        NSArray *inputs = [FXInput inputsForDriver:[romSet archive]
+                                             error:&error];
         
         if (error != nil) {
             // FIXME
+        } else {
+            [self->inputList addObjectsFromArray:inputs];
         }
         
-        [self->inputList addObjectsFromArray:inputs];
+        NSArray *dipswitches = [FXInput dipswitchesForDriver:[romSet archive]
+                                                       error:&error];
+        
+        if (error != nil) {
+            // FIXME
+        } else {
+            [self->dipswitchList addObjectsFromArray:dipswitches];
+        }
     }
     
     [self->inputTableView setEnabled:[self->inputList count] > 0];

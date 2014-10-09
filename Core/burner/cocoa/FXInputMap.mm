@@ -23,11 +23,10 @@
 #import "FXInputMap.h"
 
 #import "AKKeyEventData.h"
+#import "FXInput.h"
 #import "FXInputInfo.h"
 
 #include "burner.h"
-#include "burnint.h"
-#include "driverlist.h"
 
 @interface FXInputMapItem : NSObject<NSCoding>
 
@@ -78,8 +77,8 @@
         self->inputs = [NSMutableArray array];
         
         NSError *error = nil;
-        NSArray *inputInfoArray = [FXInputMap inputsForDriver:[romSet archive]
-                                                        error:&error];
+        NSArray *inputInfoArray = [FXInput inputsForDriver:[romSet archive]
+                                                     error:&error];
         
         if (error == nil) {
             [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
@@ -289,48 +288,6 @@
     [coder encodeObject:self->inputs forKey:@"inputs"];
     [coder encodeObject:self->archive forKey:@"archive"];
     [coder encodeInteger:self->hardware forKey:@"hardware"];
-}
-
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error
-{
-    int driverId = [FXROMSet driverIndexOfArchive:archive];
-    if (driverId == -1) {
-        if (error != nil) {
-            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
-                                         code:0
-                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
-        }
-        
-        return nil;
-    }
-    
-    NSMutableArray *inputs = [NSMutableArray array];
-    
-    struct BurnInputInfo bii;
-    for (int i = 0; i < 0x1000; i++) {
-        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
-            break;
-        }
-        
-        if (bii.nType == BIT_DIGITAL) {
-            FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
-            
-            int inputCode;
-            if ([[inputInfo code] isEqualToString:@"reset"]) {
-                inputCode = FXInputReset;
-            } else if ([[inputInfo code] isEqualToString:@"diag"]) {
-                inputCode = FXInputDiagnostic;
-            } else {
-                inputCode = i + 1;
-            }
-            
-            [inputInfo setInputCode:inputCode];
-            [inputs addObject:inputInfo];
-        }
-    }
-    
-    return inputs;
 }
 
 @end

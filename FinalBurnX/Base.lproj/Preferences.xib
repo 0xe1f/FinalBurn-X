@@ -79,7 +79,7 @@
                                                                 </textFieldCell>
                                                                 <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                             </tableColumn>
-                                                            <tableColumn identifier="assigned" width="111" minWidth="40" maxWidth="1000" id="h0q-G2-B7F">
+                                                            <tableColumn identifier="keyboard" width="111" minWidth="40" maxWidth="1000" id="h0q-G2-B7F">
                                                                 <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Keyboard">
                                                                     <font key="font" metaFont="smallSystem"/>
                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -129,14 +129,14 @@
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="jLE-eJ-I97" id="8Mb-Qz-JDT">
-                                                        <rect key="frame" x="0.0" y="0.0" width="238" height="117"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="274" height="19"/>
                                                         <autoresizingMask key="autoresizingMask"/>
                                                         <size key="intercellSpacing" width="3" height="2"/>
                                                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                                         <tableViewGridLines key="gridStyleMask" vertical="YES"/>
                                                         <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                         <tableColumns>
-                                                            <tableColumn width="116" minWidth="40" maxWidth="1000" id="9cF-M1-cnV">
+                                                            <tableColumn identifier="name" editable="NO" width="116" minWidth="40" maxWidth="1000" id="9cF-M1-cnV">
                                                                 <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Name">
                                                                     <font key="font" metaFont="smallSystem"/>
                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -149,7 +149,7 @@
                                                                 </textFieldCell>
                                                                 <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                             </tableColumn>
-                                                            <tableColumn width="152.15625" minWidth="40" maxWidth="1000" id="S9z-iq-O6R">
+                                                            <tableColumn identifier="value" width="152.15625" minWidth="40" maxWidth="1000" id="S9z-iq-O6R">
                                                                 <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Value">
                                                                     <font key="font" metaFont="smallSystem"/>
                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -231,7 +231,7 @@
     </objects>
     <resources>
         <image name="NSPreferencesGeneral" width="32" height="32"/>
-        <image name="toolbar-dipswitch" width="39.050846099853516" height="39.050846099853516"/>
-        <image name="toolbar-joypad" width="38.400001525878906" height="38.400001525878906"/>
+        <image name="toolbar-dipswitch" width="25.600000381469727" height="25.600000381469727"/>
+        <image name="toolbar-joypad" width="25.600000381469727" height="25.600000381469727"/>
     </resources>
 </document>

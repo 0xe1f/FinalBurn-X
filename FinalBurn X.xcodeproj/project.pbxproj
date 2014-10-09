@@ -574,6 +574,7 @@
 		FED4361519E60D0F00315655 /* toolbar-dipswitch@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361119E60D0F00315655 /* toolbar-dipswitch@2x.png */; };
 		FED4361619E60D0F00315655 /* toolbar-dipswitch.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361219E60D0F00315655 /* toolbar-dipswitch.png */; };
 		FED4361719E60D0F00315655 /* toolbar-joypad@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */; };
+		FED4361A19E63D5800315655 /* FXDIPSwitchInfo.mm in Sources */ = {isa = PBXBuildFile; fileRef = FED4361919E63D5800315655 /* FXDIPSwitchInfo.mm */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 /* End PBXBuildFile section */
 
@@ -1360,6 +1361,8 @@
 		FED4361119E60D0F00315655 /* toolbar-dipswitch@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-dipswitch@2x.png"; sourceTree = "<group>"; };
 		FED4361219E60D0F00315655 /* toolbar-dipswitch.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-dipswitch.png"; sourceTree = "<group>"; };
 		FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-joypad@3x.png"; sourceTree = "<group>"; };
+		FED4361819E63D5800315655 /* FXDIPSwitchInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchInfo.h; sourceTree = "<group>"; };
+		FED4361919E63D5800315655 /* FXDIPSwitchInfo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXDIPSwitchInfo.mm; sourceTree = "<group>"; };
 		FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDroppableScrollView.h; sourceTree = "<group>"; };
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -2662,6 +2665,8 @@
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
 				FE0230671957F7F500661A17 /* FXAudioEngine.h */,
 				FE0230681957F7F500661A17 /* FXAudioEngine.m */,
+				FED4361819E63D5800315655 /* FXDIPSwitchInfo.h */,
+				FED4361919E63D5800315655 /* FXDIPSwitchInfo.mm */,
 				FE23E4EF1961D06B00429FCA /* FXDriverAudit.h */,
 				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
 				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
@@ -3107,6 +3112,7 @@
 				FE506067194BD4E6003A2BC7 /* pngread.c in Sources */,
 				FE505D78194BC533003A2BC7 /* d_suprnova.cpp in Sources */,
 				FE505DB9194BC533003A2BC7 /* tc0110pcr.cpp in Sources */,
+				FED4361A19E63D5800315655 /* FXDIPSwitchInfo.mm in Sources */,
 				FE505CD0194BC532003A2BC7 /* d_pooyan.cpp in Sources */,
 				FE505D37194BC532003A2BC7 /* d_terracre.cpp in Sources */,
 				FE505D07194BC532003A2BC7 /* d_cybertnk.cpp in Sources */,

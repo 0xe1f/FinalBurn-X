@@ -33,6 +33,11 @@
     BOOL keyStates[256];
 }
 
++ (NSArray *)inputsForDriver:(NSString *)archive
+                       error:(NSError **)error;
++ (NSArray *)dipswitchesForDriver:(NSString *)archive
+                            error:(NSError **)error;
+
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
 - (void)setFocus:(BOOL)focus;
@@ -45,3 +50,8 @@
 @property (nonatomic, readonly) FXInputMap *inputMap;
 
 @end
+
+enum {
+    FXInputReset       = 0xff,
+    FXInputDiagnostic  = 0xfe,
+};

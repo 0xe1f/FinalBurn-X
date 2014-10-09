@@ -20,34 +20,10 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXDIPSwitchInfo.h"
 
-#import "FXROMSet.h"
+#include "burner.h"
 
-@interface FXInputMap : NSObject<NSCoding>
-{
-    @private
-    NSMutableArray *inputs;
-    NSUInteger hardware;
-    NSString *archive;
-}
-
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-@property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
-
-- (NSArray *)inputCodes;
-- (void)markClean;
-- (void)restoreDefaults;
-
-- (NSInteger)fireButtonCount;
-- (BOOL)usesStreetFighterLayout;
-
-- (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
-- (int)inputCodeForKeyCode:(NSInteger)keyCode;
-- (NSInteger)keyCodeForInputCode:(int)inputCode;
-
-- (void)assignKeyCode:(NSInteger)keyCode
-         toDriverCode:(NSString *)driverCode;
+@implementation FXDIPSwitchInfo
 
 @end

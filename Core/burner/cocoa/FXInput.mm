@@ -23,7 +23,9 @@
 #import "FXInput.h"
 
 #import "FXAppDelegate.h"
+
 #import "FXInputInfo.h"
+#import "FXDIPSwitchInfo.h"
 
 #include "burner.h"
 #include "burnint.h"
@@ -185,6 +187,94 @@
 - (void)releaseAllKeys
 {
     memset(self->keyStates, 0, sizeof(self->keyStates));
+}
+
+
++ (NSArray *)inputsForDriver:(NSString *)archive
+                       error:(NSError **)error
+{
+    int driverId = [FXROMSet driverIndexOfArchive:archive];
+    if (driverId == -1) {
+        if (error != nil) {
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
+                                         code:0
+                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
+        }
+        
+        return nil;
+    }
+    
+    NSMutableArray *inputs = [NSMutableArray array];
+    
+    struct BurnInputInfo bii;
+    for (int i = 0; i < 0x1000; i++) {
+        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
+            break;
+        }
+        
+        if (bii.nType == BIT_DIGITAL) {
+            FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
+            
+            int inputCode;
+            if ([[inputInfo code] isEqualToString:@"reset"]) {
+                inputCode = FXInputReset;
+            } else if ([[inputInfo code] isEqualToString:@"diag"]) {
+                inputCode = FXInputDiagnostic;
+            } else {
+                inputCode = i + 1;
+            }
+            
+            [inputInfo setInputCode:inputCode];
+            [inputs addObject:inputInfo];
+        }
+    }
+    
+    return inputs;
+}
+
++ (NSArray *)dipswitchesForDriver:(NSString *)archive
+                            error:(NSError **)error
+{
+    int driverId = [FXROMSet driverIndexOfArchive:archive];
+    if (driverId == -1) {
+        if (error != nil) {
+            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
+                                         code:0
+                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
+        }
+        
+        return nil;
+    }
+    
+    NSMutableArray *switches = [NSMutableArray array];
+    
+    struct BurnDIPInfo bdi;
+    FXDIPSwitchInfo *dipSwitchInfo = nil;
+    
+    for (int i = 0; ; i++) {
+        if (pDriver[driverId]->GetDIPInfo != NULL) {
+            if (pDriver[driverId]->GetDIPInfo(&bdi, i)) {
+                break;
+            }
+        } else {
+            break;
+        }
+        
+        if ((bdi.nFlags & 0xF0) == 0xF0) {
+            if (bdi.nFlags == 0xFE || bdi.nFlags == 0xFD) {
+                dipSwitchInfo = [[FXDIPSwitchInfo alloc] init];
+                [dipSwitchInfo setFlags:bdi.nFlags];
+                [dipSwitchInfo setName:[NSString stringWithCString:bdi.szText
+                                                          encoding:NSUTF8StringEncoding]];
+                
+                [switches addObject:dipSwitchInfo];
+            }
+        }
+        
+        NSLog(@" %@: %s", [dipSwitchInfo name], bdi.szText);
+    }
+    
+    return switches;
 }
 
 @end

@@ -22,32 +22,11 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXROMSet.h"
+struct BurnDIPInfo;
 
-@interface FXInputMap : NSObject<NSCoding>
-{
-    @private
-    NSMutableArray *inputs;
-    NSUInteger hardware;
-    NSString *archive;
-}
+@interface FXDIPSwitchInfo : NSObject
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-@property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
-
-- (NSArray *)inputCodes;
-- (void)markClean;
-- (void)restoreDefaults;
-
-- (NSInteger)fireButtonCount;
-- (BOOL)usesStreetFighterLayout;
-
-- (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
-- (int)inputCodeForKeyCode:(NSInteger)keyCode;
-- (NSInteger)keyCodeForInputCode:(int)inputCode;
-
-- (void)assignKeyCode:(NSInteger)keyCode
-         toDriverCode:(NSString *)driverCode;
+@property (nonatomic, assign) UInt8 flags;
+@property (nonatomic, copy) NSString *name;
 
 @end
