@@ -248,30 +248,81 @@
     
     NSMutableArray *switches = [NSMutableArray array];
     
-    struct BurnDIPInfo bdi;
+    BurnDIPInfo bdi;
     FXDIPSwitchInfo *dipSwitchInfo = nil;
     
-    for (int i = 0; ; i++) {
-        if (pDriver[driverId]->GetDIPInfo != NULL) {
+    int firstDipSwitchOffset = -1;
+    int lastDipSwitchOffset = -1;
+    
+    if (pDriver[driverId]->GetDIPInfo != NULL) {
+        for (int i = 0;;) {
             if (pDriver[driverId]->GetDIPInfo(&bdi, i)) {
                 break;
             }
-        } else {
-            break;
-        }
-        
-        if ((bdi.nFlags & 0xF0) == 0xF0) {
-            if (bdi.nFlags == 0xFE || bdi.nFlags == 0xFD) {
-                dipSwitchInfo = [[FXDIPSwitchInfo alloc] init];
-                [dipSwitchInfo setFlags:bdi.nFlags];
-                [dipSwitchInfo setName:[NSString stringWithCString:bdi.szText
-                                                          encoding:NSUTF8StringEncoding]];
+            
+            if ((bdi.nFlags & 0xF0) == 0xF0) {
+                if (firstDipSwitchOffset == -1) {
+                    firstDipSwitchOffset = i;
+                }
+                lastDipSwitchOffset = i;
                 
-                [switches addObject:dipSwitchInfo];
+                if (bdi.nFlags == 0xFE || bdi.nFlags == 0xFD) {
+                    dipSwitchInfo = [[FXDIPSwitchInfo alloc] init];
+                    [dipSwitchInfo setFlags:bdi.nFlags];
+                    [dipSwitchInfo setName:[NSString stringWithCString:bdi.szText
+                                                              encoding:NSUTF8StringEncoding]];
+                    
+                    [switches addObject:dipSwitchInfo];
+                }
+                
+                i++;
+                
+                NSLog(@" *** -- %@: %s (0x%x) %d", [dipSwitchInfo name], bdi.szText, bdi.nFlags, bdi.nInput);
+            } else {
+                BurnInputInfo bii;
+                pDriver[driverId]->GetInputInfo(&bii, bdi.nInput + firstDipSwitchOffset);
+                
+                if ((*bii.pVal & bdi.nMask) == bdi.nSetting) {
+                    if ((bdi.nFlags & 0x0F) <= 1) {
+                        NSLog(@"YES! %s", bdi.szText);
+                    } else {
+                        int zoo = 1;
+                        for (int j = 1; j < (bdi.nFlags & 0x0F); j++) {
+                            BurnDIPInfo boodoo;
+                            BurnInputInfo beeeee;
+                            pDriver[driverId]->GetDIPInfo(&boodoo, i + j);
+                            pDriver[driverId]->GetInputInfo(&beeeee, boodoo.nInput + firstDipSwitchOffset);
+
+                            if (bdi.nFlags & 0x80) {
+                                if ((*beeeee.pVal & boodoo.nMask) == boodoo.nSetting) {
+                                    zoo = 0;
+                                }
+                            } else {
+                                if ((*beeeee.pVal & boodoo.nMask) != boodoo.nSetting) {
+                                    zoo = 0;
+                                }
+                            }
+                        }
+                        
+                        if (!zoo)
+                            NSLog(@"NO! %s", bdi.szText);
+                        else
+                            NSLog(@"YES! %s", bdi.szText);
+                    }
+//                    NSLog(@"   > 0x%x -- %@: %s (0x%x) %d", bdi.nFlags & 0x0f, [dipSwitchInfo name], bdi.szText, bdi.nFlags, bdi.nInput);
+                } else {
+                    NSLog(@"NO!!!!! %s", bdi.szText);
+                }
+                
+//                if (bii.nType & BIT_GROUP_CONSTANT) {							// Further initialisation for constants/DIPs
+//                    pgi->nInput = GIT_CONSTANT;
+//                    pgi->Input.Constant.nConst = *bii.pVal;
+//                }
+                ////
+                
+                i += (bdi.nFlags & 0x0F);
             }
         }
-        
-        NSLog(@" %@: %s", [dipSwitchInfo name], bdi.szText);
     }
     
     return switches;
