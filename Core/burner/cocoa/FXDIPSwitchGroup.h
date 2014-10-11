@@ -22,11 +22,17 @@
  */
 #import <Foundation/Foundation.h>
 
-struct BurnDIPInfo;
+#include "FXDIPSwitchSetting.h"
 
-@interface FXDIPSwitchInfo : NSObject
+@interface FXDIPSwitchGroup : NSObject<NSCoding>
 
 @property (nonatomic, assign) UInt8 flags;
 @property (nonatomic, copy) NSString *name;
+@property (nonatomic, assign) int index;
+
+@property (nonatomic, readonly) NSMutableArray *settings;
+
+- (void)enableSetting:(FXDIPSwitchSetting *)setting;
+- (BOOL)anyEnabled;
 
 @end

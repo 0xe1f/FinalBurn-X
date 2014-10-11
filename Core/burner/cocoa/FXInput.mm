@@ -25,7 +25,6 @@
 #import "FXAppDelegate.h"
 
 #import "FXInputInfo.h"
-#import "FXDIPSwitchInfo.h"
 
 #include "burner.h"
 #include "burnint.h"
@@ -37,6 +36,13 @@
 
 - (void)releaseAllKeys;
 - (void)initializeInput;
+- (int)dipSwitchOffset;
+
+- (void)restoreInputMap;
+- (void)saveInputMap;
+
+- (void)restoreDipSwitches;
+- (void)saveDipSwitches;
 
 @end
 
@@ -147,6 +153,25 @@
     }
 }
 
+- (void)restore
+{
+    [self restoreInputMap];
+    [self restoreDipSwitches];
+}
+
+- (void)save
+{
+    [self saveInputMap];
+    [self saveDipSwitches];
+}
+
+#pragma mark - Private
+
+- (void)restoreDipSwitches
+{
+    NSLog(@"FIXME: restore DIP");
+}
+
 - (void)restoreInputMap
 {
     self->_inputMap = nil;
@@ -168,6 +193,11 @@
         [self->_inputMap restoreDefaults];
         [self->_inputMap markClean];
     }
+}
+
+- (void)saveDipSwitches
+{
+    NSLog(@"FIXME: save DIP");
 }
 
 - (void)saveInputMap
@@ -232,100 +262,147 @@
     return inputs;
 }
 
-+ (NSArray *)dipswitchesForDriver:(NSString *)archive
-                            error:(NSError **)error
+- (int)dipSwitchOffset
 {
-    int driverId = [FXROMSet driverIndexOfArchive:archive];
-    if (driverId == -1) {
-        if (error != nil) {
-            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
-                                         code:0
-                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
+    int offset = 0;
+    BurnDIPInfo bdi;
+    for (int i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+        if (bdi.nFlags == 0xF0) {
+            offset = bdi.nInput;
+            break;
         }
-        
-        return nil;
     }
     
-    NSMutableArray *switches = [NSMutableArray array];
-    
+    return offset;
+}
+
+- (void)resetDipSwitches
+{
+    int i = 0;
     BurnDIPInfo bdi;
-    FXDIPSwitchInfo *dipSwitchInfo = nil;
+    struct GameInp* pgi;
     
-    int firstDipSwitchOffset = -1;
-    int lastDipSwitchOffset = -1;
+    int offset = [self dipSwitchOffset];
+    while (BurnDrvGetDIPInfo(&bdi, i) == 0) {
+        if (bdi.nFlags == 0xFF) {
+            pgi = GameInp + bdi.nInput + offset;
+            pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
+        }
+        i++;
+    }
+}
+
+- (void)setDipSwitchSetting:(FXDIPSwitchSetting *)setting
+{
+    BurnDIPInfo bdi = {0, 0, 0, 0, NULL};
+    struct GameInp *pgi;
     
-    if (pDriver[driverId]->GetDIPInfo != NULL) {
-        for (int i = 0;;) {
-            if (pDriver[driverId]->GetDIPInfo(&bdi, i)) {
+    int offset = [self dipSwitchOffset];
+    
+    FXDIPSwitchGroup *group = [setting group];
+    int nSel = [setting index];
+    int j = 0;
+    for (int i = 0; i <= nSel; i++) {
+        do {
+            BurnDrvGetDIPInfo(&bdi, [group index] + 1 + j++);
+        } while (bdi.nFlags == 0);
+    }
+    
+    pgi = GameInp + bdi.nInput + offset;
+    pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
+    if (bdi.nFlags & 0x40) {
+        while (BurnDrvGetDIPInfo(&bdi, [group index] + 1 + j++) == 0) {
+            if (bdi.nFlags == 0) {
+                pgi = GameInp + bdi.nInput + offset;
+                pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
+            } else {
                 break;
             }
-            
-            if ((bdi.nFlags & 0xF0) == 0xF0) {
-                if (firstDipSwitchOffset == -1) {
-                    firstDipSwitchOffset = i;
-                }
-                lastDipSwitchOffset = i;
-                
-                if (bdi.nFlags == 0xFE || bdi.nFlags == 0xFD) {
-                    dipSwitchInfo = [[FXDIPSwitchInfo alloc] init];
-                    [dipSwitchInfo setFlags:bdi.nFlags];
-                    [dipSwitchInfo setName:[NSString stringWithCString:bdi.szText
-                                                              encoding:NSUTF8StringEncoding]];
-                    
-                    [switches addObject:dipSwitchInfo];
-                }
-                
-                i++;
-                
-                NSLog(@" *** -- %@: %s (0x%x) %d", [dipSwitchInfo name], bdi.szText, bdi.nFlags, bdi.nInput);
-            } else {
-                BurnInputInfo bii;
-                pDriver[driverId]->GetInputInfo(&bii, bdi.nInput + firstDipSwitchOffset);
-                
-                if ((*bii.pVal & bdi.nMask) == bdi.nSetting) {
-                    if ((bdi.nFlags & 0x0F) <= 1) {
-                        NSLog(@"YES! %s", bdi.szText);
-                    } else {
-                        int zoo = 1;
-                        for (int j = 1; j < (bdi.nFlags & 0x0F); j++) {
-                            BurnDIPInfo boodoo;
-                            BurnInputInfo beeeee;
-                            pDriver[driverId]->GetDIPInfo(&boodoo, i + j);
-                            pDriver[driverId]->GetInputInfo(&beeeee, boodoo.nInput + firstDipSwitchOffset);
+        }
+    }
+}
 
-                            if (bdi.nFlags & 0x80) {
-                                if ((*beeeee.pVal & boodoo.nMask) == boodoo.nSetting) {
-                                    zoo = 0;
-                                }
-                            } else {
-                                if ((*beeeee.pVal & boodoo.nMask) != boodoo.nSetting) {
-                                    zoo = 0;
-                                }
+- (NSArray *)inputs
+{
+    return [FXInput inputsForDriver:[[self romSet] archive]
+                              error:nil];
+}
+
+- (NSArray *)dipSwitches
+{
+    NSMutableArray *groups = [NSMutableArray array];
+    
+    FXDIPSwitchGroup *group = nil;
+    int dipSwitchIndex = -1;
+    
+    BurnDIPInfo dipGroup;
+    int dipSwitchOffset = [self dipSwitchOffset];
+    int dipSwitchCount = 0;
+    
+    for (int i = 0; BurnDrvGetDIPInfo(&dipGroup, i) == 0; i++) {
+        if ((dipGroup.nFlags & 0xF0) == 0xF0) {
+            if (dipGroup.nFlags == 0xFE || dipGroup.nFlags == 0xFD) {
+                if ([group anyEnabled]) {
+                    [groups addObject:group];
+                }
+                
+                dipSwitchCount = dipGroup.nSetting;
+                dipSwitchIndex = 0;
+                
+                group = [[FXDIPSwitchGroup alloc] init];
+                [group setIndex:i];
+                [group setFlags:dipGroup.nFlags];
+                [group setName:[NSString stringWithCString:dipGroup.szText
+                                                          encoding:NSUTF8StringEncoding]];
+            }
+        } else {
+            BOOL isEnabled = NO;
+            struct GameInp *pgi = GameInp + dipGroup.nInput + dipSwitchOffset;
+            
+            if ((pgi->Input.Constant.nConst & dipGroup.nMask) == dipGroup.nSetting) {
+                isEnabled = YES;
+                if ((dipGroup.nFlags & 0x0F) > 1) {
+                    for (int j = 1; j < (dipGroup.nFlags & 0x0F); j++) {
+                        BurnDIPInfo dipSetting;
+                        BurnDrvGetDIPInfo(&dipSetting, i + j);
+                        struct GameInp *dipInput = GameInp + dipSetting.nInput + dipSwitchOffset;
+                        
+                        if (dipGroup.nFlags & 0x80) {
+                            if ((dipInput->Input.Constant.nConst & dipSetting.nMask) == dipSetting.nSetting) {
+                                isEnabled = NO;
+                                break;
+                            }
+                        } else {
+                            if ((dipInput->Input.Constant.nConst & dipSetting.nMask) != dipSetting.nSetting) {
+                                isEnabled = NO;
+                                break;
                             }
                         }
-                        
-                        if (!zoo)
-                            NSLog(@"NO! %s", bdi.szText);
-                        else
-                            NSLog(@"YES! %s", bdi.szText);
                     }
-//                    NSLog(@"   > 0x%x -- %@: %s (0x%x) %d", bdi.nFlags & 0x0f, [dipSwitchInfo name], bdi.szText, bdi.nFlags, bdi.nInput);
-                } else {
-                    NSLog(@"NO!!!!! %s", bdi.szText);
                 }
-                
-//                if (bii.nType & BIT_GROUP_CONSTANT) {							// Further initialisation for constants/DIPs
-//                    pgi->nInput = GIT_CONSTANT;
-//                    pgi->Input.Constant.nConst = *bii.pVal;
-//                }
-                ////
-                
-                i += (bdi.nFlags & 0x0F);
             }
+            
+            if (dipSwitchIndex < dipSwitchCount && dipGroup.szText != NULL) {
+                FXDIPSwitchSetting *setting = [[FXDIPSwitchSetting alloc] init];
+                [setting setIndex:dipSwitchIndex];
+                [setting setGroup:group];
+                [setting setEnabled:isEnabled];
+                [setting setName:[NSString stringWithCString:dipGroup.szText
+                                                    encoding:NSUTF8StringEncoding]];
+                
+                [[group settings] addObject:setting];
+            }
+            
+            dipSwitchIndex++;
+            i += (dipGroup.nFlags & 0x0F) - 1; // loop will add another increment
         }
     }
     
-    return switches;
+    if ([group anyEnabled]) {
+        [groups addObject:group];
+    }
+    
+    return groups;
 }
 
 @end

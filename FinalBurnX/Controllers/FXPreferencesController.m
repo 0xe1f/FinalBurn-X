@@ -25,12 +25,15 @@
 #import "FXAppDelegate.h"
 #import "FXInput.h"
 #import "FXInputInfo.h"
-#import "FXDIPSwitchInfo.h"
+#import "FXDIPSwitchGroup.h"
 
 @interface FXPreferencesController ()
 
 - (void)emulationChangedNotification:(NSNotification *)notification;
-- (void)resetInput:(FXROMSet *)set;
+
+- (void)updateSpecifics;
+- (void)updateInput;
+- (void)updateDipSwitches;
 
 @end
 
@@ -40,7 +43,7 @@
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
         self->inputList = [NSMutableArray array];
-        self->dipswitchList = [NSMutableArray array];
+        self->dipSwitchList = [NSMutableArray array];
     }
     
     return self;
@@ -53,10 +56,7 @@
                                                  name:FXEmulatorChanged
                                                object:nil];
     
-    FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    FXEmulatorController *emulator = [app emulator];
-    
-    [self resetInput:[emulator romSet]];
+    [self updateSpecifics];
 }
 
 - (void)dealloc
@@ -104,7 +104,7 @@
     if (tableView == self->inputTableView) {
         return [self->inputList count];
     } else if (tableView == self->dipswitchTableView) {
-        return [self->dipswitchList count];
+        return [self->dipSwitchList count];
     }
     
     return 0;
@@ -128,18 +128,22 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             return [AKKeyCaptureView descriptionForKeyCode:keyCode];
         }
     } else if (tableView == self->dipswitchTableView) {
-        FXDIPSwitchInfo *dipswitchInfo = [self->dipswitchList objectAtIndex:row];
+        FXDIPSwitchGroup *group = [self->dipSwitchList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
-            return [dipswitchInfo name];
+            return [group name];
         } else if ([[tableColumn identifier] isEqualToString:@"value"]) {
-            // FIXME
-//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
-//            FXEmulatorController *emulator = [app emulator];
-//            FXInput *input = [emulator input];
-//            FXInputMap *inputMap = [input inputMap];
-//            NSInteger keyCode = [inputMap keyCodeForDriverCode:[inputInfo code]];
-//            
-//            return [AKKeyCaptureView descriptionForKeyCode:keyCode];
+            NSPopUpButtonCell* cell = [tableColumn dataCell];
+            [cell removeAllItems];
+            
+            __block NSUInteger enabledIndex = -1;
+            [[group settings] enumerateObjectsUsingBlock:^(FXDIPSwitchSetting *setting, NSUInteger idx, BOOL *stop) {
+                [cell addItemWithTitle:[setting name]];
+                if ([setting isEnabled]) {
+                    enabledIndex = idx;
+                }
+            }];
+            
+            return @(enabledIndex);
         }
     }
     
@@ -154,7 +158,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     if (tableView == self->inputTableView) {
         if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
             NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
-            FXInputInfo *inputInfo = [inputList objectAtIndex:row];
+            FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
             
             FXAppDelegate *app = [FXAppDelegate sharedInstance];
             FXEmulatorController *emulator = [app emulator];
@@ -163,7 +167,16 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
         }
     } else if (tableView == self->dipswitchTableView) {
-        // FIXME
+        if ([[tableColumn identifier] isEqualToString:@"value"]) {
+            FXDIPSwitchGroup *dipSwitchGroup = [self->dipSwitchList objectAtIndex:row];
+            FXDIPSwitchSetting *setting = [[dipSwitchGroup settings] objectAtIndex:[object intValue]];
+            
+            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+            FXEmulatorController *emulator = [app emulator];
+            FXInput *input = [emulator input];
+            [input setDipSwitchSetting:setting];
+            [dipSwitchGroup enableSetting:setting];
+        }
     }
 }
 
@@ -193,6 +206,16 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     [[NSUserDefaults standardUserDefaults] setObject:tabIdentifier forKey:@"selectedPreferencesTab"];
 }
 
+- (void)resetDipSwitchesClicked:(id)sender
+{
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    FXEmulatorController *emulator = [app emulator];
+    FXInput *input = [emulator input];
+    
+    [input resetDipSwitches];
+    [self updateDipSwitches];
+}
+
 #pragma mark - Private methods
 
 - (void)emulationChangedNotification:(NSNotification *)notification
@@ -201,43 +224,44 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     NSLog(@"emulationChangedNotification");
 #endif
     
+    [self updateSpecifics];
+}
+
+- (void)updateDipSwitches
+{
+    [self->dipSwitchList removeAllObjects];
+    
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
     
-    [self resetInput:[emulator romSet]];
+    if (emulator != nil) {
+        [self->dipSwitchList addObjectsFromArray:[[emulator input] dipSwitches]];
+    }
+    
+    [self->resetDipSwitchesButton setEnabled:[self->dipSwitchList count] > 0];
+    [self->dipswitchTableView setEnabled:[self->dipSwitchList count] > 0];
+    [self->dipswitchTableView reloadData];
 }
 
-- (void)resetInput:(FXROMSet *)romSet
+- (void)updateInput
 {
     [self->inputList removeAllObjects];
-    [self->dipswitchList removeAllObjects];
     
-    if (romSet != nil) {
-        NSError *error = nil;
-        NSArray *inputs = [FXInput inputsForDriver:[romSet archive]
-                                             error:&error];
-        
-        if (error != nil) {
-            // FIXME
-        } else {
-            [self->inputList addObjectsFromArray:inputs];
-        }
-        
-        NSArray *dipswitches = [FXInput dipswitchesForDriver:[romSet archive]
-                                                       error:&error];
-        
-        if (error != nil) {
-            // FIXME
-        } else {
-            [self->dipswitchList addObjectsFromArray:dipswitches];
-        }
+    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+    FXEmulatorController *emulator = [app emulator];
+    
+    if (emulator != nil) {
+        [self->inputList addObjectsFromArray:[[emulator input] inputs]];
     }
     
     [self->inputTableView setEnabled:[self->inputList count] > 0];
-    [self->dipswitchTableView setEnabled:[self->dipswitchList count] > 0];
-    
     [self->inputTableView reloadData];
-    [self->dipswitchTableView reloadData];
+}
+
+- (void)updateSpecifics
+{
+    [self updateDipSwitches];
+    [self updateInput];
 }
 
 @end

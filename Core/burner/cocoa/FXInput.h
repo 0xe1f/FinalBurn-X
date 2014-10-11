@@ -25,6 +25,7 @@
 #import "AKKeyboardManager.h"
 #import "FXInputMap.h"
 #import "FXROMSet.h"
+#import "FXDIPSwitchGroup.h"
 
 @interface FXInput : NSObject<AKKeyboardEventDelegate>
 {
@@ -35,14 +36,19 @@
 
 + (NSArray *)inputsForDriver:(NSString *)archive
                        error:(NSError **)error;
-+ (NSArray *)dipswitchesForDriver:(NSString *)archive
-                            error:(NSError **)error;
+
+- (NSArray *)inputs;
+- (NSArray *)dipSwitches;
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
 
 - (void)setFocus:(BOOL)focus;
-- (void)saveInputMap;
-- (void)restoreInputMap;
+
+- (void)save;
+- (void)restore;
+
+- (void)setDipSwitchSetting:(FXDIPSwitchSetting *)setting;
+- (void)resetDipSwitches;
 
 @property (nonatomic, strong) FXROMSet *romSet;
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;

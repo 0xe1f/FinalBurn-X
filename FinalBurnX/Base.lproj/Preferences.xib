@@ -9,6 +9,7 @@
                 <outlet property="contentTabView" destination="ECm-DT-5Mg" id="Ql0-hC-LkZ"/>
                 <outlet property="dipswitchTableView" destination="8Mb-Qz-JDT" id="cok-Wl-n6D"/>
                 <outlet property="inputTableView" destination="Sxf-xQ-z9A" id="yr5-4C-bih"/>
+                <outlet property="resetDipSwitchesButton" destination="wFR-D2-MGA" id="Xkd-XZ-6bw"/>
                 <outlet property="toolbar" destination="bLF-vd-vaH" id="zEo-Rj-54w"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="9Cp-RB-DRN"/>
             </connections>
@@ -122,7 +123,7 @@
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="l21-VY-xvB">
-                                            <rect key="frame" x="20" y="20" width="560" height="460"/>
+                                            <rect key="frame" x="20" y="272" width="560" height="208"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="ffG-tB-SS8">
                                                 <rect key="frame" x="1" y="17" width="238" height="117"/>
@@ -155,12 +156,12 @@
                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                                     <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
                                                                 </tableHeaderCell>
-                                                                <popUpButtonCell key="dataCell" type="bevel" title="Item 1" bezelStyle="rounded" alignment="left" controlSize="small" lineBreakMode="truncatingTail" state="on" borderStyle="bezel" imageScaling="proportionallyDown" inset="2" arrowPosition="arrowAtCenter" preferredEdge="maxY" selectedItem="mDp-B1-EsP" id="scC-G1-v6a">
+                                                                <popUpButtonCell key="dataCell" type="bevel" bezelStyle="rounded" alignment="left" controlSize="small" lineBreakMode="truncatingTail" borderStyle="bezel" imageScaling="proportionallyDown" inset="2" arrowPosition="arrowAtCenter" preferredEdge="maxY" id="scC-G1-v6a">
                                                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                                                     <font key="font" metaFont="smallSystem"/>
                                                                     <menu key="menu" id="xdU-pN-hgT">
                                                                         <items>
-                                                                            <menuItem title="Item 1" state="on" id="mDp-B1-EsP"/>
+                                                                            <menuItem title="Item 1" id="mDp-B1-EsP"/>
                                                                             <menuItem title="Item 2" id="8fo-vl-EhB"/>
                                                                             <menuItem title="Item 3" id="yES-i2-jMZ"/>
                                                                         </items>
@@ -189,6 +190,17 @@
                                                 <autoresizingMask key="autoresizingMask"/>
                                             </tableHeaderView>
                                         </scrollView>
+                                        <button verticalHuggingPriority="750" id="wFR-D2-MGA">
+                                            <rect key="frame" x="443" y="233" width="143" height="32"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="push" title="Restore Defaults" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="CAN-8U-35h">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="system"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="resetDipSwitchesClicked:" target="-2" id="UNk-K1-gjc"/>
+                                            </connections>
+                                        </button>
                                     </subviews>
                                 </view>
                             </tabViewItem>

@@ -20,10 +20,28 @@
  **
  ******************************************************************************
  */
-#import "FXDIPSwitchInfo.h"
+#import "FXDIPSwitchSetting.h"
 
-#include "burner.h"
+@implementation FXDIPSwitchSetting
 
-@implementation FXDIPSwitchInfo
+#pragma mark - NSCoding
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if ((self = [super init]) != nil) {
+        [self setName:[coder decodeObjectForKey:@"name"]];
+        [self setEnabled:[coder decodeBoolForKey:@"enabled"]];
+        [self setIndex:[coder decodeIntForKey:@"index"]];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self->_name forKey:@"name"];
+    [coder encodeBool:self->_enabled forKey:@"enabled"];
+    [coder encodeInt:self->_index forKey:@"index"];
+}
 
 @end

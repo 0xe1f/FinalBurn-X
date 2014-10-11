@@ -20,26 +20,16 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
-#import "AKKeyCaptureView.h"
-#import "AKKeyboardManager.h"
+@class FXDIPSwitchGroup;
 
-@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate>
-{
-    IBOutlet NSToolbar *toolbar;
-    IBOutlet NSTabView *contentTabView;
-    IBOutlet NSTableView *inputTableView;
-    IBOutlet NSTableView *dipswitchTableView;
-    IBOutlet NSButton *resetDipSwitchesButton;
-    
-    @private
-    NSMutableArray *inputList;
-    NSMutableArray *dipSwitchList;
-    AKKeyCaptureView *keyCaptureView;
-}
+@interface FXDIPSwitchSetting: NSObject<NSCoding>
 
-- (IBAction)tabChanged:(id)sender;
-- (IBAction)resetDipSwitchesClicked:(id)sender;
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, assign, getter = isEnabled) BOOL enabled;
+@property (nonatomic, assign) int index;
+
+@property (nonatomic, weak) FXDIPSwitchGroup *group;
 
 @end

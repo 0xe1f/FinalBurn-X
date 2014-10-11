@@ -214,12 +214,12 @@
 
 - (void)saveSettings
 {
-    [[self input] saveInputMap];
+    [[self input] save];
 }
 
 - (void)restoreSettings
 {
-    [[self input] restoreInputMap];
+    [[self input] restore];
 }
 
 #pragma mark - Private methods
