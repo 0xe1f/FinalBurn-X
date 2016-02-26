@@ -22,6 +22,7 @@
  */
 #import "FXLauncherController.h"
 
+#import "FXGameController.h"
 #import "FXEmulatorController.h"
 #import "FXAppDelegate.h"
 
@@ -42,6 +43,7 @@
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
+		self->FIXME = [[NSMutableArray alloc] init];
         self->importOpQueue = [[NSOperationQueue alloc] init];
         [self->importOpQueue setMaxConcurrentOperationCount:1];
         
@@ -192,10 +194,15 @@
 - (void)launchGame:(id)sender
 {
     FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
-    if ([[romSet audit] isPlayable]) {
-        FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        [app launch:romSet];
-    }
+
+	FXGameController *e = [[FXGameController alloc] initWithArchive:[romSet archive]];
+	[e showWindow:self];
+	
+	[FIXME addObject:e];
+//    if ([[romSet audit] isPlayable]) {
+//        FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//        [app launch:romSet];
+//    }
 }
 
 - (void)cancelImport:(id)sender

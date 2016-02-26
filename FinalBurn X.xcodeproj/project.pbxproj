@@ -531,6 +531,8 @@
 		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
+		FE6D55241C803164001B1A7E /* FXGameController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6D55221C803164001B1A7E /* FXGameController.m */; };
+		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
@@ -1839,6 +1841,9 @@
 		FE5FD7D8196896C300BD1386 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		FE5FD7DB1968F68500BD1386 /* FXAuditStatusAsNSImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAuditStatusAsNSImage.h; sourceTree = "<group>"; };
 		FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAuditStatusAsNSImage.m; sourceTree = "<group>"; };
+		FE6D55221C803164001B1A7E /* FXGameController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameController.m; sourceTree = "<group>"; };
+		FE6D55231C803164001B1A7E /* FXGameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameController.h; sourceTree = "<group>"; };
+		FE6D55261C8032F6001B1A7E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Game.xib; sourceTree = "<group>"; };
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
@@ -2057,6 +2062,8 @@
 			children = (
 				FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */,
 				FE0DC79A1950AC33004A03A3 /* FXEmulatorController.mm */,
+				FE6D55231C803164001B1A7E /* FXGameController.h */,
+				FE6D55221C803164001B1A7E /* FXGameController.m */,
 				FE23E4F5196316B000429FCA /* FXLauncherController.h */,
 				FE23E4F6196316B000429FCA /* FXLauncherController.m */,
 				FE1FB76A19CFD71C0070325C /* FXPreferencesController.h */,
@@ -2072,6 +2079,7 @@
 				FE1FB77319CFE14B0070325C /* Defaults.plist */,
 				FEC1003C1952A79700B2F8C3 /* MainMenu.xib */,
 				FE9FA3EB195340C100F791EB /* Emulator.xib */,
+				FE6D55251C8032F6001B1A7E /* Game.xib */,
 				FE23E4F81963171300429FCA /* Launcher.xib */,
 				FE1FB76719CFD6770070325C /* Preferences.xib */,
 				FECDF58619BA8366008F7B63 /* Localizable.strings */,
@@ -3434,6 +3442,7 @@
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
 				FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */,
 				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
+				FE6D55271C8032F6001B1A7E /* Game.xib in Resources */,
 				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
@@ -3655,6 +3664,7 @@
 				FE505DEB194BC533003A2BC7 /* burn_ym2610.cpp in Sources */,
 				FE505F6F194BCDD1003A2BC7 /* h6280_intf.cpp in Sources */,
 				FE505CF5194BC532003A2BC7 /* pgm_prot.cpp in Sources */,
+				FE6D55241C803164001B1A7E /* FXGameController.m in Sources */,
 				FE505D8F194BC533003A2BC7 /* d_ybrd.cpp in Sources */,
 				FE505C7D194BC532003A2BC7 /* d_cps1.cpp in Sources */,
 				FE505D83194BC533003A2BC7 /* nmk004.cpp in Sources */,
@@ -4588,6 +4598,14 @@
 			name = Launcher.xib;
 			sourceTree = "<group>";
 		};
+		FE6D55251C8032F6001B1A7E /* Game.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FE6D55261C8032F6001B1A7E /* Base */,
+			);
+			name = Game.xib;
+			sourceTree = "<group>";
+		};
 		FE9FA3EB195340C100F791EB /* Emulator.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -4773,6 +4791,10 @@
 				CODE_SIGN_IDENTITY = "-";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/OpenEmuXPCCommunicator/build/Debug",
+				);
 				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -4787,6 +4809,10 @@
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/OpenEmuXPCCommunicator/build/Debug",
+				);
 				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;

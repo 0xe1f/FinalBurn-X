@@ -20,30 +20,26 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 
-#import "FXDroppableScrollView.h"
+#import "FXScreenView.h"
 
-@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXScannerDelegate>
+@interface FXGameController : NSWindowController<NSWindowDelegate>
 {
-    IBOutlet NSPanel *importProgressPanel;
-    IBOutlet NSProgressIndicator *importProgressBar;
-    IBOutlet NSButton *importCancelButton;
-    IBOutlet NSTextField *importProgressLabel;
-    
-    IBOutlet NSTreeController *driversTreeController;
-    IBOutlet NSOutlineView *driversOutlineView;
-    
-    NSOperationQueue *importOpQueue;
-	NSMutableArray *FIXME;
-    
-    BOOL rescanROMsAtStartup;
+    IBOutlet FXScreenView *screen;
+    IBOutlet NSProgressIndicator *spinner;
+	
+	@private
+	NSString *_archive;
 }
 
-- (IBAction)launchGame:(id)sender;
-- (IBAction)cancelImport:(id)sender;
-- (IBAction)rescanROMs:(id)sender;
+- (IBAction) resizeNormalSize:(id) sender;
+- (IBAction) resizeDoubleSize:(id) sender;
+- (IBAction) pauseGameplay:(id) sender;
 
-@property (nonatomic, strong) NSMutableArray *drivers;
+- (IBAction) resetEmulation:(id) sender;
+- (IBAction) toggleTestMode:(id) sender;
+
+- (instancetype) initWithArchive:(NSString *) archive;
 
 @end
