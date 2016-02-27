@@ -22,6 +22,8 @@
  */
 #import "FXGameController.h"
 
+#import "FXAppDelegate.h"
+
 @interface FXGameController ()
 
 - (NSSize) preferredSizeOfScreenWithSize:(NSSize) screenSize;
@@ -42,9 +44,12 @@
     return self;
 }
 
-- (void)awakeFromNib
+- (void) awakeFromNib
 {
 	[[self window] setTitle:self->_archive];
+	
+	[self->wrapper setUpWithArchive:self->_archive
+								uid:nil];
 }
 
 #pragma mark - NSWindowDelegate
@@ -111,6 +116,13 @@
 //              contentRect.size.width, contentRect.size.height);
 //    }
 //}
+
+- (void) windowWillClose:(NSNotification *) notification
+{
+	[self->wrapper terminate];
+	
+	[[FXAppDelegate sharedInstance] cleanupWindow:self];
+}
 
 #pragma mark - Actions
 

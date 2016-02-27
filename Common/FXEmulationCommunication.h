@@ -22,27 +22,9 @@
  */
 #import <Foundation/Foundation.h>
 
-@protocol FXVideoDelegate<NSObject>
+@protocol FXEmulationCommunication <NSObject>
 
-@optional
-- (void)screenSizeDidChange:(NSSize)newSize;
-- (void)initTextureOfWidth:(int)width
-                    height:(int)height
-                 isRotated:(BOOL)rotated
-             bytesPerPixel:(int)bytesPerPixel;
-- (void)renderFrame:(unsigned char *)bitmap;
-
-@end
-
-@interface FXVideo : NSObject
-{
-    @private
-    unsigned char *screenBuffer;
-    int bufferWidth;
-    int bufferHeight;
-    int bufferBytesPerPixel;
-}
-
-@property (nonatomic, weak) id<FXVideoDelegate> delegate;
+- (void) renderScreenWithHandler:(void(^)(NSData *bitmap)) handler;
+- (void) describeScreenWithHandler:(void(^)(BOOL isReady, int width, int height, BOOL isRotated, int bytesPerPixel)) handler;
 
 @end

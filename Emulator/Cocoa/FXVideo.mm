@@ -27,13 +27,20 @@
 #import "FXEmulator.h"
 
 @implementation FXVideo
+{
+	unsigned char *_buffer;
+	int _bufferSize;
+	NSMutableData *_screenBuffer;
+}
 
 #pragma mark - Init and dealloc
 
 - (instancetype) init
 {
     if (self = [super init]) {
-		self->screenBuffer = NULL;
+		self->_screenBuffer = nil;
+		self->_ready = NO;
+		self->_buffer = NULL;
     }
 
     return self;
@@ -76,53 +83,40 @@
     
 	SetBurnHighCol(nVidImageDepth);
 	
-    self->bufferBytesPerPixel = nVidImageBPP;
-    self->bufferWidth = gameWidth;
-    self->bufferHeight = gameHeight;
-    
-    int bufSize = self->bufferWidth * self->bufferHeight * nVidImageBPP;
+    self->_bytesPerPixel = nVidImageBPP;
+    self->_bufferWidth = gameWidth;
+    self->_bufferHeight = gameHeight;
+	
+    self->_bufferSize = self->_bufferWidth * self->_bufferHeight * nVidImageBPP;
     @synchronized(self) {
-        free(self->screenBuffer);
-        self->screenBuffer = (unsigned char *)malloc(bufSize);
+        free(self->_buffer);
+        self->_buffer = (unsigned char *) malloc(self->_bufferSize);
+		self->_screenBuffer = [NSMutableData dataWithLength:self->_bufferSize];
     }
     
-    if (self->screenBuffer == NULL) {
+    if (self->_buffer == NULL) {
         return NO;
     }
 	
 	nBurnBpp = nVidImageBPP;
 	nBurnPitch = nVidImagePitch;
-    pVidImage = self->screenBuffer;
+    pVidImage = self->_buffer;
     
-    memset(self->screenBuffer, 0, bufSize);
+    memset(self->_buffer, 0, self->_bufferSize);
     
     int textureWidth;
     int textureHeight;
-    BOOL isRotated = rotationMode & 1;
+    self->_isRotated = rotationMode & 1;
     
-    if (!isRotated) {
-        textureWidth = self->bufferWidth;
-        textureHeight = self->bufferHeight;
+    if (!self->_isRotated) {
+        textureWidth = self->_bufferWidth;
+        textureHeight = self->_bufferHeight;
     } else {
-        textureWidth = self->bufferHeight;
-        textureHeight = self->bufferWidth;
+        textureWidth = self->_bufferHeight;
+        textureHeight = self->_bufferWidth;
     }
-
-	// FIXME
-//    NSSize screenSize = NSMakeSize((CGFloat)self->bufferWidth,
-//                                   (CGFloat)self->bufferHeight);
-//    
-//    id<FXVideoDelegate> delegate = [self delegate];
-//    if ([delegate respondsToSelector:@selector(initTextureOfWidth:height:isRotated:bytesPerPixel:)]) {
-//        [delegate initTextureOfWidth:textureWidth
-//                              height:textureHeight
-//                           isRotated:isRotated
-//                       bytesPerPixel:self->bufferBytesPerPixel];
-//    }
-//    
-//    if ([delegate respondsToSelector:@selector(screenSizeDidChange:)]) {
-//        [delegate screenSizeDidChange:screenSize];
-//    }
+	
+	self->_ready = YES;
 	
     return YES;
 }
@@ -144,25 +138,29 @@
 	return YES;
 }
 
-// FIXME
-//- (BOOL) renderToSurface:(BOOL) validate
-//{
-//    id<FXVideoDelegate> delegate = [self delegate];
-//    if ([delegate respondsToSelector:@selector(renderFrame:)]) {
-//        [delegate renderFrame:self->screenBuffer];
-//    }
-//    
-//    return YES;
-//}
+- (BOOL) renderToSurface:(BOOL) validate
+{
+	[self->_screenBuffer replaceBytesInRange:NSMakeRange(0, self->_bufferSize)
+								   withBytes:self->_buffer];
+	
+    return YES;
+}
 
 #pragma mark - Etc
 
 - (void) cleanup
 {
     @synchronized(self) {
-        free(self->screenBuffer);
-        self->screenBuffer = NULL;
+        free(self->_buffer);
+        self->_buffer = NULL;
     }
+}
+
+#pragma mark - Public
+
+- (NSData *) screenBuffer
+{
+	return [self->_screenBuffer copy];
 }
 
 @end
@@ -191,10 +189,8 @@ static int cocoaVideoFrame(bool redraw)
 
 static int cocoaVideoPaint(int validate)
 {
-	// FIXME
-//	FXVideo *video = [[FXEmulator sharedInstance] video];
-//    return [video renderToSurface:(validate & 2)] ? 0 : 1;
-	return 0;
+	FXVideo *video = [[FXEmulator sharedInstance] video];
+    return [video renderToSurface:(validate & 2)] ? 0 : 1;
 }
 
 static int cocoaVideoScale(RECT* , int, int)

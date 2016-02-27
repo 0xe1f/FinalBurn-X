@@ -23,7 +23,6 @@
 #import <Cocoa/Cocoa.h>
 
 #import "FXScreenView.h"
-#import "FXVideo.h"
 #import "FXInput.h"
 #import "FXAudio.h"
 #import "FXRunLoop.h"
@@ -39,7 +38,6 @@
 }
 
 @property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXVideo *video;
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
 

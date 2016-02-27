@@ -22,6 +22,9 @@
  */
 #import "FXAppDelegate.h"
 
+#import <OpenEmuXPCCommunicator/OpenEmuXPCCommunicator.h>
+
+#import "FXGameController.h"
 #import "FXROMSet.h"
 
 @interface FXAppDelegate ()
@@ -43,10 +46,11 @@ static FXAppDelegate *sharedInstance = nil;
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 }
 
-- (instancetype)init
+- (instancetype) init
 {
     if (self = [super init]) {
         sharedInstance = self;
+		self->_emulatorWindows = [NSMutableArray array];
     }
     
     return self;
@@ -96,6 +100,9 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
+	[OEXPCCAgentConfiguration defaultConfiguration];
+	[OEXPCCAgent defaultAgent];
+	
     [self->launcher showWindow:self];
 }
 
@@ -104,6 +111,8 @@ static FXAppDelegate *sharedInstance = nil;
     [self shutDown];
     
     [FXEmulatorController cleanupCore];
+	
+	[[OEXPCCAgentConfiguration defaultConfiguration] tearDownAgent];
 }
 
 #pragma mark - Actions
@@ -140,16 +149,17 @@ static FXAppDelegate *sharedInstance = nil;
     return self->prefs;
 }
 
-- (void)launch:(FXROMSet *)romSet
+- (void) launch:(FXROMSet *) romSet
 {
-    [self shutDown];
-    
-    @synchronized(self) {
-        self->emulator = [[FXEmulatorController alloc] initWithROMSet:romSet];
-        [self->emulator restoreSettings];
-        
-        [self->emulator showWindow:self];
-    }
+	FXGameController *e = [[FXGameController alloc] initWithArchive:[romSet archive]];
+	[e showWindow:self];
+	
+	[self->_emulatorWindows addObject:e];
+}
+
+- (void) cleanupWindow:(FXGameController *) controller
+{
+	[self->_emulatorWindows removeObject:controller];
 }
 
 + (FXAppDelegate *)sharedInstance

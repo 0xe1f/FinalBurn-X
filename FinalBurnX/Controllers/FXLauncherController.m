@@ -43,7 +43,6 @@
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
-		self->FIXME = [[NSMutableArray alloc] init];
         self->importOpQueue = [[NSOperationQueue alloc] init];
         [self->importOpQueue setMaxConcurrentOperationCount:1];
         
@@ -194,15 +193,8 @@
 - (void)launchGame:(id)sender
 {
     FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
-
-	FXGameController *e = [[FXGameController alloc] initWithArchive:[romSet archive]];
-	[e showWindow:self];
-	
-	[FIXME addObject:e];
-//    if ([[romSet audit] isPlayable]) {
-//        FXAppDelegate *app = [FXAppDelegate sharedInstance];
-//        [app launch:romSet];
-//    }
+	FXAppDelegate *app = [FXAppDelegate sharedInstance];
+	[app launch:romSet];
 }
 
 - (void)cancelImport:(id)sender

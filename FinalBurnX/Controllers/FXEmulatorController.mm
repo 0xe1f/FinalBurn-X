@@ -42,7 +42,6 @@
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
         [self setRomSet:romSet];
         [self setInput:[[FXInput alloc] initWithROMSet:romSet]];
-        [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
         [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
     }
@@ -59,7 +58,6 @@
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
     
-    [[self video] setDelegate:self->screen];
     [[self runLoop] setDelegate:self];
     
     [[self runLoop] start];
@@ -112,7 +110,6 @@
                                                         object:self
                                                       userInfo:nil];
     
-    [[self video] setDelegate:nil];
     [[self runLoop] cancel];
 }
 

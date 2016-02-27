@@ -23,12 +23,14 @@
 #import <Foundation/Foundation.h>
 
 @interface FXVideo : NSObject
-{
-@private
-	unsigned char *screenBuffer;
-	int bufferWidth;
-	int bufferHeight;
-	int bufferBytesPerPixel;
-}
+
+@property (nonatomic, readonly) BOOL ready;
+
+@property (nonatomic, readonly) BOOL isRotated;
+@property (nonatomic, readonly) int bufferWidth;
+@property (nonatomic, readonly) int bufferHeight;
+@property (nonatomic, readonly) int bytesPerPixel;
+
+- (NSData *) screenBuffer;
 
 @end

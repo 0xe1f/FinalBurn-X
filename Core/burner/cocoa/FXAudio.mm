@@ -301,3 +301,13 @@ struct AudOut AudOutCocoa = {
     cocoaAudioGetSettings,
     "Cocoa audio output"
 };
+
+struct VidOut VidOutCocoa = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	_T("Stub"),
+};

@@ -20,31 +20,18 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
 #import <Cocoa/Cocoa.h>
 
 #import "FXEmulationCommunication.h"
 
-@class FXInput;
-@class FXAudio;
-@class FXVideo;
-@class FXRunLoop;
-
-@interface FXEmulator : NSObject<NSApplicationDelegate, NSXPCListenerDelegate, FXEmulationCommunication>
-
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXVideo *video;
-@property (nonatomic, strong) FXRunLoop *runLoop;
+@interface FXEmulatorProcessWrapper : NSObject
 
 @property (nonatomic, readonly) NSString *archive;
+@property (nonatomic, readonly) NSString *uid;
+@property (nonatomic, readonly) id<FXEmulationCommunication> remoteObjectProxy;
 
-@property (nonatomic, strong) NSURL *romPath;
-
-+ (FXEmulator *) sharedInstance;
-
-- (instancetype) initWithArchive:(NSString *) archive;
-
-- (void) resumeConnection;
+- (void) setUpWithArchive:(NSString *) archive
+					  uid:(NSString *) uid;
+- (void) terminate;
 
 @end

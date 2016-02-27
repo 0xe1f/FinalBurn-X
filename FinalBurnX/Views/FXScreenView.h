@@ -22,23 +22,13 @@
  */
 #import <Cocoa/Cocoa.h>
 
-#import "FXVideo.h"
+#import "FXEmulatorProcessWrapper.h"
 
-@interface FXScreenView : NSOpenGLView<FXVideoDelegate>
+@interface FXScreenView : NSOpenGLView
 {
-    @private
-    GLuint screenTextureId;
-    unsigned char *texture;
-    int imageWidth;
-    int imageHeight;
-    BOOL isRotated;
-    int textureWidth;
-    int textureHeight;
-    int textureBytesPerPixel;
-    NSLock *renderLock;
-    NSSize screenSize;
+	IBOutlet FXEmulatorProcessWrapper *wrapper;
 }
 
-- (NSSize)screenSize;
+@property (nonatomic, readonly) NSSize screenSize;
 
 @end

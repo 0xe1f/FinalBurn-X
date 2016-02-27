@@ -26,6 +26,8 @@
 #import "FXLauncherController.h"
 #import "FXPreferencesController.h"
 
+@class FXGameController;
+
 @interface FXAppDelegate : NSObject <NSApplicationDelegate>
 {
     @private
@@ -34,6 +36,8 @@
     FXPreferencesController *prefs;
     NSString *appSupportPath;
     NSString *romPath;
+	
+	NSMutableArray *_emulatorWindows;
 }
 
 + (FXAppDelegate *)sharedInstance;
@@ -42,7 +46,9 @@
 - (FXEmulatorController *)emulator;
 - (FXPreferencesController *)prefs;
 - (NSString *)ROMPath;
+
 - (void)launch:(FXROMSet *)romSet;
+- (void) cleanupWindow:(FXGameController *) controller;
 
 - (IBAction)showLauncher:(id)sender;
 - (IBAction)showPreferences:(id)sender;

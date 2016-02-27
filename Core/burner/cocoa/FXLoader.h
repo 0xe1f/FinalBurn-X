@@ -23,7 +23,6 @@
 #import <Foundation/Foundation.h>
 
 #import "FXROMSet.h"
-#import "FXDriverAudit.h"
 
 @interface FXLoader : NSObject
 {

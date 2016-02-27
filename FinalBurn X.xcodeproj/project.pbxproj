@@ -21,7 +21,7 @@
 		FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935A19475F9800F79190 /* FXAppDelegate.m */; };
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
-		FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* FXScreenView.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* FXScreenView.m */; };
 		FE0DC79C1950AC33004A03A3 /* FXEmulatorController.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79A1950AC33004A03A3 /* FXEmulatorController.mm */; };
 		FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC7A21951ED06004A03A3 /* FXInput.mm */; };
 		FE1FB76919CFD6770070325C /* Preferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76719CFD6770070325C /* Preferences.xib */; };
@@ -533,6 +533,7 @@
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
 		FE6D55241C803164001B1A7E /* FXGameController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6D55221C803164001B1A7E /* FXGameController.m */; };
 		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
+		FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
@@ -555,7 +556,6 @@
 		FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE9FA3EB195340C100F791EB /* Emulator.xib */; };
 		FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */; };
 		FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F9195346F000F791EB /* AKKeyEventData.m */; };
-		FE9FA3FE19548C1E00F791EB /* FXVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3FD19548C1E00F791EB /* FXVideo.mm */; };
 		FE9FA4011954B97B00F791EB /* FXAudio.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4001954B97B00F791EB /* FXAudio.mm */; };
 		FE9FA4041959E81E00F791EB /* FXLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4031959E81E00F791EB /* FXLoader.mm */; };
 		FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZipArchive.m */; };
@@ -1096,6 +1096,10 @@
 		FEA0B9301C7F9F1900591D44 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B92F1C7F9F1900591D44 /* FXInput.mm */; };
 		FEA0B9311C7FA5E400591D44 /* FXLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9011C7F944200591D44 /* FXLoader.mm */; };
 		FEA0B9321C7FAD7500591D44 /* FXRunLoop.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9071C7F944200591D44 /* FXRunLoop.mm */; };
+		FEA0BB761C80E35900591D44 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
+		FEA0BB771C80E7A400591D44 /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
+		FEA0BB781C80EEEF00591D44 /* Emulator in Resources */ = {isa = PBXBuildFile; fileRef = FEA0B6DD1C7F8BCD00591D44 /* Emulator */; };
+		FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0BB7D1C80F01F00591D44 /* FXEmulatorProcessWrapper.m */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
 		FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25318194C410B0039D85F /* vid_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-unused-variable"; }; };
@@ -1116,6 +1120,16 @@
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FEA0BB791C80EF4B00591D44 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FE08933C19475F9800F79190 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FEA0B6DC1C7F8BCD00591D44;
+			remoteInfo = Emulator;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		FEA0B6DB1C7F8BCD00591D44 /* CopyFiles */ = {
@@ -1156,7 +1170,7 @@
 		FE08935A19475F9800F79190 /* FXAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FXAppDelegate.m; sourceTree = "<group>"; };
 		FE08935F19475F9800F79190 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		FE08A07E1949651D00F79190 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
-		FE0DC79519509F50004A03A3 /* FXScreenView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXScreenView.mm; sourceTree = "<group>"; };
+		FE0DC79519509F50004A03A3 /* FXScreenView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXScreenView.m; sourceTree = "<group>"; };
 		FE0DC79619509F51004A03A3 /* FXScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScreenView.h; sourceTree = "<group>"; };
 		FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulatorController.h; sourceTree = "<group>"; };
 		FE0DC79A1950AC33004A03A3 /* FXEmulatorController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXEmulatorController.mm; sourceTree = "<group>"; };
@@ -1844,6 +1858,7 @@
 		FE6D55221C803164001B1A7E /* FXGameController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameController.m; sourceTree = "<group>"; };
 		FE6D55231C803164001B1A7E /* FXGameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameController.h; sourceTree = "<group>"; };
 		FE6D55261C8032F6001B1A7E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Game.xib; sourceTree = "<group>"; };
+		FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenEmuXPCCommunicator.framework; path = "../../Library/Developer/Xcode/DerivedData/FinalBurnX-bekkzkpyfeoywecsdtnphpfehgjt/Build/Products/Debug/OpenEmuXPCCommunicator.framework"; sourceTree = "<group>"; };
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
@@ -1882,8 +1897,6 @@
 		FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyboardManager.m; sourceTree = "<group>"; };
 		FE9FA3F8195346F000F791EB /* AKKeyEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyEventData.h; sourceTree = "<group>"; };
 		FE9FA3F9195346F000F791EB /* AKKeyEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyEventData.m; sourceTree = "<group>"; };
-		FE9FA3FC19548C1E00F791EB /* FXVideo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVideo.h; sourceTree = "<group>"; };
-		FE9FA3FD19548C1E00F791EB /* FXVideo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXVideo.mm; sourceTree = "<group>"; };
 		FE9FA3FF1954B97B00F791EB /* FXAudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAudio.h; sourceTree = "<group>"; };
 		FE9FA4001954B97B00F791EB /* FXAudio.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXAudio.mm; sourceTree = "<group>"; };
 		FE9FA4021959E81E00F791EB /* FXLoader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXLoader.h; sourceTree = "<group>"; };
@@ -1922,6 +1935,9 @@
 		FEA0B92C1C7F98D900591D44 /* FXEmulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulator.h; sourceTree = "<group>"; };
 		FEA0B92E1C7F9F1900591D44 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
 		FEA0B92F1C7F9F1900591D44 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
+		FEA0BB741C80CBAF00591D44 /* FXEmulationCommunication.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulationCommunication.h; sourceTree = "<group>"; };
+		FEA0BB7C1C80F01F00591D44 /* FXEmulatorProcessWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulatorProcessWrapper.h; sourceTree = "<group>"; };
+		FEA0BB7D1C80F01F00591D44 /* FXEmulatorProcessWrapper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXEmulatorProcessWrapper.m; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
 		FEC25318194C410B0039D85F /* vid_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_interface.cpp; sourceTree = "<group>"; };
@@ -1958,6 +1974,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */,
 				FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */,
 				FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */,
 			);
@@ -1967,6 +1984,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FEA0BB771C80E7A400591D44 /* OpenEmuXPCCommunicator.framework in Frameworks */,
+				FEA0BB761C80E35900591D44 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1976,11 +1995,12 @@
 		FE08933B19475F9800F79190 = {
 			isa = PBXGroup;
 			children = (
+				FEA0BB701C80C91800591D44 /* Common */,
 				FE505956194BC41E003A2BC7 /* Core */,
+				FEA0B6DE1C7F8BCD00591D44 /* Emulator */,
 				FE08934D19475F9800F79190 /* FinalBurnX */,
 				FE0DC79E1950AC61004A03A3 /* Resources */,
 				FE5FD7D71968962E00BD1386 /* Documentation */,
-				FEA0B6DE1C7F8BCD00591D44 /* Emulator */,
 				FE08934619475F9800F79190 /* Frameworks */,
 				FE08934519475F9800F79190 /* Products */,
 			);
@@ -1998,6 +2018,7 @@
 		FE08934619475F9800F79190 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */,
 				FE08A07E1949651D00F79190 /* OpenGL.framework */,
 				FE08934719475F9800F79190 /* Cocoa.framework */,
 				FE08934919475F9800F79190 /* Other Frameworks */,
@@ -2020,6 +2041,7 @@
 			children = (
 				FE9FA3F5195346F000F791EB /* HIDput */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
+				FEA0BB7B1C80F00600591D44 /* XPC */,
 				FE5FD7DA1968F61400BD1386 /* ValueTransformers */,
 				FE0DC79419509EEB004A03A3 /* Views */,
 				FE08935919475F9800F79190 /* FXAppDelegate.h */,
@@ -2051,8 +2073,8 @@
 				FE1FB77919D13D0A0070325C /* AKKeyCaptureView.m */,
 				FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */,
 				FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */,
-				FE0DC79519509F50004A03A3 /* FXScreenView.mm */,
 				FE0DC79619509F51004A03A3 /* FXScreenView.h */,
+				FE0DC79519509F50004A03A3 /* FXScreenView.m */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -3269,6 +3291,23 @@
 			path = Cocoa;
 			sourceTree = "<group>";
 		};
+		FEA0BB701C80C91800591D44 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				FEA0BB741C80CBAF00591D44 /* FXEmulationCommunication.h */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		FEA0BB7B1C80F00600591D44 /* XPC */ = {
+			isa = PBXGroup;
+			children = (
+				FEA0BB7C1C80F01F00591D44 /* FXEmulatorProcessWrapper.h */,
+				FEA0BB7D1C80F01F00591D44 /* FXEmulatorProcessWrapper.m */,
+			);
+			path = XPC;
+			sourceTree = "<group>";
+		};
 		FEC252F8194C410B0039D85F /* video */ = {
 			isa = PBXGroup;
 			children = (
@@ -3327,8 +3366,6 @@
 				FE326E2E197121A900B8D130 /* FXROMSet.mm */,
 				FE0230611956BB9B00661A17 /* FXRunLoop.h */,
 				FE0230621956BB9B00661A17 /* FXRunLoop.mm */,
-				FE9FA3FC19548C1E00F791EB /* FXVideo.h */,
-				FE9FA3FD19548C1E00F791EB /* FXVideo.mm */,
 				FE9FA405195BF00500F791EB /* FXZipArchive.h */,
 				FE9FA406195BF00500F791EB /* FXZipArchive.m */,
 				FE9FA40B195D349B00F791EB /* FXZipFile.h */,
@@ -3367,6 +3404,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				FEA0BB7A1C80EF4B00591D44 /* PBXTargetDependency */,
 			);
 			name = "FinalBurn X";
 			productName = "FinalBurn X";
@@ -3429,6 +3467,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FEA0BB781C80EEEF00591D44 /* Emulator in Resources */,
 				FE08935219475F9800F79190 /* InfoPlist.strings in Resources */,
 				FE1FB77119CFD9330070325C /* toolbar-joypad.png in Resources */,
 				FED4361519E60D0F00315655 /* toolbar-dipswitch@2x.png in Resources */,
@@ -3536,7 +3575,7 @@
 				FE505C77194BC532003A2BC7 /* cps_scr.cpp in Sources */,
 				FE505DC5194BC533003A2BC7 /* d_batsugun.cpp in Sources */,
 				FE505C89194BC532003A2BC7 /* cave_palette.cpp in Sources */,
-				FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */,
+				FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */,
 				FE505CF0194BC532003A2BC7 /* d_pce.cpp in Sources */,
 				FE506073194BD4E6003A2BC7 /* adler32.c in Sources */,
 				FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */,
@@ -3627,7 +3666,6 @@
 				FE505C9B194BC532003A2BC7 /* cps3snd.cpp in Sources */,
 				FE506082194BD4E6003A2BC7 /* zutil.c in Sources */,
 				FE505CB4194BC532003A2BC7 /* gal_gfx.cpp in Sources */,
-				FE9FA3FE19548C1E00F791EB /* FXVideo.mm in Sources */,
 				FE505E0C194BC533003A2BC7 /* tiles_generic.cpp in Sources */,
 				FE505CCC194BC532003A2BC7 /* d_kontest.cpp in Sources */,
 				FE505DBC194BC533003A2BC7 /* tc0180vcu.cpp in Sources */,
@@ -3738,6 +3776,7 @@
 				FE505DB3194BC533003A2BC7 /* pc080sn.cpp in Sources */,
 				FE505DC0194BC533003A2BC7 /* tc0480scp.cpp in Sources */,
 				FE506062194BD4E6003A2BC7 /* png.c in Sources */,
+				FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */,
 				FE505D3C194BC532003A2BC7 /* d_wc90.cpp in Sources */,
 				FE505D7C194BC533003A2BC7 /* d_unico.cpp in Sources */,
 				FE505C94194BC532003A2BC7 /* d_mazinger.cpp in Sources */,
@@ -4556,6 +4595,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FEA0BB7A1C80EF4B00591D44 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FEA0B6DC1C7F8BCD00591D44 /* Emulator */;
+			targetProxy = FEA0BB791C80EF4B00591D44 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		FE08935019475F9800F79190 /* InfoPlist.strings */ = {

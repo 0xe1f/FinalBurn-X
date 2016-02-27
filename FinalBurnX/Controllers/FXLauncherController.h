@@ -35,7 +35,6 @@
     IBOutlet NSOutlineView *driversOutlineView;
     
     NSOperationQueue *importOpQueue;
-	NSMutableArray *FIXME;
     
     BOOL rescanROMsAtStartup;
 }

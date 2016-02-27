@@ -22,12 +22,14 @@
  */
 #import <Cocoa/Cocoa.h>
 
+#import "FXEmulatorProcessWrapper.h"
 #import "FXScreenView.h"
 
 @interface FXGameController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSProgressIndicator *spinner;
+	IBOutlet FXEmulatorProcessWrapper *wrapper;
 	
 	@private
 	NSString *_archive;

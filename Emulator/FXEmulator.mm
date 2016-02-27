@@ -22,6 +22,9 @@
  */
 #import "FXEmulator.h"
 
+#import "OpenEmuXPCCommunicator/OpenEmuXPCCommunicator.h"
+#import "FXEmulationCommunication.h"
+
 #include "burner.h"
 
 #import "FXInput.h"
@@ -39,10 +42,16 @@ static FXEmulator *sharedInstance = nil;
 - (void) cleanupCore;
 
 - (void) initPaths;
+- (BOOL) start;
 
 @end
 
 @implementation FXEmulator
+{
+	NSURL *_supportURL;
+	NSXPCListener *_listener;
+	NSXPCConnection *_mainAppConnection;
+}
 
 - (instancetype) initWithArchive:(NSString *) archive
 {
@@ -60,9 +69,6 @@ static FXEmulator *sharedInstance = nil;
 		[self setVideo:[[FXVideo alloc] init]];
 		// FIXME
 //		[self setRunLoop:[[FXRunLoop alloc] init]];
-		
-		[self initPaths];
-		[self initCore];
     }
     
     return self;
@@ -90,12 +96,6 @@ static FXEmulator *sharedInstance = nil;
 - (void) cleanupCore
 {
 	BurnLibExit();
-}
-
-#pragma mark - Interaction
-
-- (void) timerTick:(NSTimer *) aTimer
-{
 }
 
 #pragma mark - Private
@@ -151,8 +151,6 @@ static FXEmulator *sharedInstance = nil;
 		}];
 	}];
 	
-	NSLog(@"Loading: %@", [selected title]);
-
 	// FIXME
 //	[[self runLoop] setDelegate:self];
 	
@@ -160,6 +158,68 @@ static FXEmulator *sharedInstance = nil;
 	[[self runLoop] start];
 	
 	return YES;
+}
+
+#pragma mark - NSApplicationDelegate
+
+- (void) applicationWillFinishLaunching:(NSNotification *) notification
+{
+	[self initPaths];
+	[self initCore];
+}
+
+- (void) applicationDidFinishLaunching:(NSNotification *) notification
+{
+	[self start];
+}
+
+- (void) applicationWillTerminate:(NSNotification *) notification
+{
+	[[self runLoop] cancel];
+}
+
+#pragma mark - NSXPCListenerDelegate
+
+- (BOOL) listener:(NSXPCListener *) listener
+shouldAcceptNewConnection:(NSXPCConnection *) newConnection
+{
+	self->_mainAppConnection = newConnection;
+	[self->_mainAppConnection setExportedInterface:[NSXPCInterface interfaceWithProtocol:@protocol(FXEmulationCommunication)]];
+	[self->_mainAppConnection setExportedObject:self];
+	[self->_mainAppConnection resume];
+	
+	return YES;
+}
+
+#pragma mark - FXEmulationCommunication
+
+- (void) describeScreenWithHandler:(void (^)(BOOL, int, int, BOOL, int)) handler
+{
+	handler([self->_video ready],
+			[self->_video bufferWidth], [self->_video bufferHeight],
+			[self->_video isRotated], [self->_video bytesPerPixel]);
+}
+
+- (void) renderScreenWithHandler:(void (^)(NSData *)) handler
+{
+	handler([self->_video screenBuffer]);
+}
+
+#pragma mark - Other XPC
+
+- (void) resumeConnection
+{
+	self->_listener = [NSXPCListener anonymousListener];
+	[self->_listener setDelegate:self];
+	[self->_listener resume];
+	
+	NSXPCListenerEndpoint *endpoint = [self->_listener endpoint];
+	[[OEXPCCAgent defaultAgent] registerListenerEndpoint:endpoint
+										   forIdentifier:[OEXPCCAgent defaultProcessIdentifier]
+									   completionHandler:^(BOOL success)
+	{
+		NSLog(@"Connection successful!");
+	}];
 }
 
 @end

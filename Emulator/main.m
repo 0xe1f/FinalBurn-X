@@ -6,36 +6,28 @@
 //  Copyright © 2016 Akop Karapetyan. All rights reserved.
 //
 
+#import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
 
 #import "FXEmulator.h"
 
 int main(int argc, const char * argv[])
 {
-	if (argc < 2) {
-		fprintf(stderr, "Which archive?\n");
+	if (argc < 4) {
+		fprintf(stderr, "Missing required arguments\n");
 		return 1;
 	}
 	
     @autoreleasepool {
-		NSString *archive = [NSString stringWithCString:argv[1]
+		NSString *archive = [NSString stringWithCString:argv[3]
 											   encoding:NSUTF8StringEncoding];
 		
+		NSApplication *app = [NSApplication sharedApplication];
 		FXEmulator *em = [[FXEmulator alloc] initWithArchive:archive];
-		BOOL started = [em start];
+		[app setDelegate:em];
+		[em resumeConnection];
 		
-		if (started) {
-			[NSTimer scheduledTimerWithTimeInterval:0.5
-											 target:em
-										   selector:@selector(timerTick:)
-										   userInfo:nil
-											repeats:YES];
-			
-			[[NSRunLoop currentRunLoop] run];
-		} else {
-			NSLog(@"Couldn't start");
-			return 1;
-		}
+		[app run];
     }
 	
     return 0;
