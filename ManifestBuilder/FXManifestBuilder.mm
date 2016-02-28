@@ -32,18 +32,24 @@
 
 - (NSString *) titleOfArchive:(int) index;
 - (NSDictionary *) romSets;
+- (NSDictionary *) componentsForSets:(NSDictionary *) sets;
 
 @end
 
 @implementation FXManifestBuilder
 
-- (void) writeManifest:(NSURL *) path
+- (void) writeManifests:(NSURL *) setPath
+		  componentPath:(NSURL *) componentPath
 {
 	BurnLibInit();
 	
 	NSDictionary *sets = [self romSets];
-	[sets writeToURL:path
+	[sets writeToURL:setPath
 		  atomically:NO];
+	
+	NSDictionary *components = [self componentsForSets:sets];
+	[components writeToURL:componentPath
+				atomically:NO];
 	
 	BurnLibExit();
 }
@@ -134,6 +140,76 @@
 	}];
 	
 	return dictionary;
+}
+
+- (NSDictionary *) componentsForSets:(NSDictionary *) sets
+{
+	NSMutableDictionary *components = [NSMutableDictionary dictionary];
+	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *info, BOOL * _Nonnull stop) {
+		NSNumber *driver = [info objectForKey:@"driver"];
+		[components setObject:[self componentsForDriver:[driver intValue]]
+					   forKey:[driver stringValue]];
+	}];
+	
+	return components;
+}
+
+- (NSArray *) componentsForDriver:(int) driverId
+{
+	NSMutableArray *array = [NSMutableArray array];
+	
+	NSArray *typeMasks = @[ @(BRF_ESS), @(BRF_BIOS), @(BRF_GRA), @(BRF_SND), @(BRF_PRG) ];
+	NSArray *typeDescs = @[ @"essential", @"bios", @"graphics", @"sound", @"program" ];
+	
+	struct BurnRomInfo ri;
+	for (int i = 0; ; i++) {
+		if (pDriver[driverId]->GetRomInfo(&ri, i)) {
+			break;
+		}
+		
+		if (ri.nType == 0) {
+			continue;
+		}
+
+		NSMutableString *types = [NSMutableString string];
+		[typeDescs enumerateObjectsUsingBlock:^(NSString *typeDesc, NSUInteger idx, BOOL * _Nonnull stop) {
+			if (ri.nType & (UINT32)[[typeMasks objectAtIndex:idx] unsignedIntegerValue]) {
+				if ([types length] > 0) {
+					[types appendString:@","];
+				}
+				[types appendString:typeDesc];
+			}
+		}];
+		
+		NSMutableArray *aliases = [NSMutableArray array];
+		for (int aliasIndex = 0; aliasIndex < 0x10000; aliasIndex++) {
+			char *cAlias = NULL;
+			if (pDriver[driverId]->GetRomName(&cAlias, i, aliasIndex)) {
+				break;
+			}
+			
+			NSString *alias = [NSString stringWithCString:cAlias
+												 encoding:NSUTF8StringEncoding];
+			
+			[aliases addObject:alias];
+		}
+		
+		NSMutableDictionary *romInfo = [@{
+										  @"name": [aliases firstObject],
+										  @"len": @(ri.nLen),
+										  @"crc": @(ri.nCrc),
+										  @"type": types,
+										  } mutableCopy];
+		
+		if ([aliases count] > 1) {
+			[romInfo setObject:[aliases subarrayWithRange:NSMakeRange(1, [aliases count] - 1)]
+						forKey:@"aliases"];
+		}
+		
+		[array addObject:romInfo];
+	}
+	
+	return array;
 }
 
 @end

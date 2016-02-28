@@ -1645,7 +1645,6 @@
 		FEF152B01C8182CD0030CB84 /* d_dietgogo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A98194BC531003A2BC7 /* d_dietgogo.cpp */; };
 		FEF152B11C8182CD0030CB84 /* h6280_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EF9194BCDD1003A2BC7 /* h6280_intf.cpp */; };
 		FEF152B21C8182CD0030CB84 /* m6502_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F18194BCDD1003A2BC7 /* m6502_intf.cpp */; };
-		FEF152B51C8182CD0030CB84 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -2540,7 +2539,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FEF152B51C8182CD0030CB84 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4090,7 +4088,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} \"${TARGET_BUILD_DIR}/SetManifest.plist\"";
+			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/Components.plist\"";
 		};
 		FE68437D1C81964400A859C0 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -4103,7 +4101,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cp \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"";
+			shellScript = "cp \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\ncp \"${TARGET_BUILD_DIR}/Components.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
