@@ -172,7 +172,6 @@ static FXAppDelegate *sharedInstance = nil;
 - (void)shutDown
 {
     @synchronized(self) {
-        [self->emulator saveSettings];
         [self->emulator close];
     }
 }

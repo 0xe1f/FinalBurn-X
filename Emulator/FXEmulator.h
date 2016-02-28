@@ -24,13 +24,13 @@
 #import <Cocoa/Cocoa.h>
 
 #import "FXEmulationCommunication.h"
+#import "FXRunLoop.h"
 
 @class FXInput;
 @class FXAudio;
 @class FXVideo;
-@class FXRunLoop;
 
-@interface FXEmulator : NSObject<NSApplicationDelegate, NSXPCListenerDelegate, FXEmulationCommunication>
+@interface FXEmulator : NSObject<NSApplicationDelegate, NSXPCListenerDelegate, FXEmulationCommunication, FXRunLoopDelegate>
 
 @property (nonatomic, strong) FXInput *input;
 @property (nonatomic, strong) FXAudio *audio;

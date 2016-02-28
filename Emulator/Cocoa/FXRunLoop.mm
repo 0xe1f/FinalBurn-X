@@ -62,17 +62,16 @@ static int cocoaGetNextSound(int draw);
 
 #pragma mark - init
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet
+- (instancetype) init
 {
     if (self = [super init]) {
-        self->zipArchiveDictionary = [[NSMutableDictionary alloc] init];
-        self->_romSet = romSet;
+		self->zipArchiveDictionary = [NSMutableDictionary dictionary];
     }
     
     return self;
 }
 
-- (void)dealloc
+- (void) dealloc
 {
     // This should close any open files
     [self->zipArchiveDictionary removeAllObjects];

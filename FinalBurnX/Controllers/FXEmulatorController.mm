@@ -29,7 +29,6 @@
 @interface FXEmulatorController ()
 
 - (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize;
-- (void)windowKeyDidChange:(BOOL)isKey;
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate;
 
@@ -41,9 +40,6 @@
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
         [self setRomSet:romSet];
-        [self setInput:[[FXInput alloc] initWithROMSet:romSet]];
-        [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
     }
     
     return self;
@@ -57,10 +53,6 @@
     
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
-    
-    [[self runLoop] setDelegate:self];
-    
-    [[self runLoop] start];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
@@ -89,28 +81,9 @@
 
 #pragma mark - NSWindowDelegate
 
-- (void)windowDidBecomeKey:(NSNotification *)notification
-{
-    [self windowKeyDidChange:YES];
-}
-
-- (void)windowDidResignKey:(NSNotification *)notification
-{
-    [self windowKeyDidChange:NO];
-}
-
 - (void)keyDown:(NSEvent *)theEvent
 {
     // Suppress the beeps
-}
-
-- (void)windowWillClose:(NSNotification *)notification
-{
-    [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
-                                                        object:self
-                                                      userInfo:nil];
-    
-    [[self runLoop] cancel];
 }
 
 - (NSSize)windowWillResize:(NSWindow *)sender
@@ -182,21 +155,6 @@
     }
 }
 
-- (void)pauseGameplay:(id)sender
-{
-    [[self runLoop] setPaused:![[self runLoop] isPaused]];
-}
-
-- (void)resetEmulation:(id)sender
-{
-    [[self input] setResetPressed:YES];
-}
-
-- (void)toggleTestMode:(id)sender
-{
-    [[self input] setTestPressed:YES];
-}
-
 #pragma mark - Core
 
 + (void)initializeCore
@@ -207,16 +165,6 @@
 + (void)cleanupCore
 {
     BurnLibExit();
-}
-
-- (void)saveSettings
-{
-    [[self input] save];
-}
-
-- (void)restoreSettings
-{
-    [[self input] restore];
 }
 
 #pragma mark - Private methods
@@ -250,31 +198,6 @@
     [[self window] setFrame:newRect
                     display:YES
                     animate:animate];
-}
-
-- (void)windowKeyDidChange:(BOOL)isKey
-{
-    [[self input] setFocus:isKey];
-}
-
-#pragma mark - NSUserInterfaceValidation
-
-- (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)item
-{
-    NSMenuItem *menuItem = (NSMenuItem*)item;
-    
-    if ([item action] == @selector(pauseGameplay:))
-    {
-        if (![[self runLoop] isPaused]) {
-            [menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
-        } else {
-            [menuItem setTitle:NSLocalizedString(@"Resume", @"Gameplay")];
-        }
-        
-        return YES;
-    }
-    
-    return [menuItem isEnabled];
 }
 
 @end

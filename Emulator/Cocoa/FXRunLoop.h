@@ -28,8 +28,8 @@
 @protocol FXRunLoopDelegate<NSObject>
 
 @optional
-- (void)loadingDidStart;
-- (void)loadingDidEnd;
+- (void) loadingDidStart;
+- (void) loadingDidEnd;
 
 @end
 
@@ -44,9 +44,7 @@
     BOOL soundBufferCleared;
 }
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-@property (nonatomic, readonly) FXROMSet *romSet;
+@property (nonatomic, strong) FXROMSet *romSet;
 @property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
 @property (nonatomic, assign, getter = isPaused) BOOL paused;
 

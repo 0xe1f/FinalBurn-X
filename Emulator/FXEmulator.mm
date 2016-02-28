@@ -67,8 +67,9 @@ static FXEmulator *sharedInstance = nil;
 		[self setInput:[[FXInput alloc] init]];
 		[self setAudio:[[FXAudio alloc] init]];
 		[self setVideo:[[FXVideo alloc] init]];
-		// FIXME
-//		[self setRunLoop:[[FXRunLoop alloc] init]];
+		[self setRunLoop:[[FXRunLoop alloc] init]];
+		
+		[[self runLoop] setDelegate:self];
     }
     
     return self;
@@ -151,10 +152,7 @@ static FXEmulator *sharedInstance = nil;
 		}];
 	}];
 	
-	// FIXME
-//	[[self runLoop] setDelegate:self];
-	
-	[self setRunLoop:[[FXRunLoop alloc] initWithROMSet:selected]];
+	[[self runLoop] setRomSet:selected];
 	[[self runLoop] start];
 	
 	return YES;

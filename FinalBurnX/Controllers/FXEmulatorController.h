@@ -23,23 +23,16 @@
 #import <Cocoa/Cocoa.h>
 
 #import "FXScreenView.h"
-#import "FXInput.h"
-#import "FXAudio.h"
-#import "FXRunLoop.h"
 #import "FXROMSet.h"
 
 #define FXEmulatorChanged @"org.akop.fbx.EmulatorChanged"
 #define FXROMSetInfo @"romSet"
 
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate>
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSProgressIndicator *spinner;
 }
-
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXRunLoop *runLoop;
 
 @property (nonatomic, strong) FXROMSet *romSet;
 
@@ -51,9 +44,6 @@
 - (IBAction)toggleTestMode:(id)sender;
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-- (void)saveSettings;
-- (void)restoreSettings;
 
 + (void)initializeCore;
 + (void)cleanupCore;

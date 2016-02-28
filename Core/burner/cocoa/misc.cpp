@@ -30,3 +30,53 @@ void Reinitialise(void)
 void wav_pause(bool bResume)
 {
 }
+
+
+struct AudOut AudOutCocoa = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"Stub",
+};
+
+struct VidOut VidOutCocoa = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"Stub",
+};
+
+struct InputInOut InputInOutCocoa = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"Stub",
+};
+
+static void InpDIPSWGetOffset()
+{
+}
+
+void InpDIPSWResetDIPs()
+{
+}
+
+void NeoCDInfo_Exit()
+{
+}
