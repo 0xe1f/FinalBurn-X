@@ -30,9 +30,6 @@
     IBOutlet FXScreenView *screen;
     IBOutlet NSProgressIndicator *spinner;
 	IBOutlet FXEmulatorProcessWrapper *wrapper;
-	
-	@private
-	NSString *_archive;
 }
 
 - (IBAction) resizeNormalSize:(id) sender;

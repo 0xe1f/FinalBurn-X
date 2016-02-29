@@ -20,22 +20,19 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import "FXROMSet.h"
 
-@interface FXAppDelegate : NSObject <NSApplicationDelegate>
+@implementation FXROMSet
 
-+ (FXAppDelegate *) sharedInstance;
+#pragma mark - Init & dealloc
 
-- (void) launch:(NSString *) archive;
-- (void) cleanupWindow:(NSString *) archive;
-
-- (IBAction) showLauncher:(id) sender;
-- (IBAction) showPreferences:(id) sender;
-
-@property (nonatomic, readonly) NSURL *supportRootURL;
-@property (nonatomic, readonly) NSURL *inputMapRootURL;
-@property (nonatomic, readonly) NSURL *romRootURL;
-
-@property (nonatomic, readonly) NSMutableDictionary *games;
+- (instancetype) init
+{
+    if ((self = [super init]) != nil) {
+        _subsets = [NSMutableArray array];
+    }
+    
+    return self;
+}
 
 @end

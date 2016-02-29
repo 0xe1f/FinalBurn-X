@@ -22,23 +22,14 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXROMSet.h"
+@interface FXGame : NSObject<NSCoding>
 
-@interface FXLoader : NSObject
-{
-}
-
-- (NSArray *)archiveNamesForDriver:(int)romIndex
-                             error:(NSError **)error;
-- (NSArray *)romSets;
-
-- (FXDriverAudit *)auditSet:(FXROMSet *)romSet
-                      error:(NSError **)error;
+@property (nonatomic, copy) NSString *archive;
+@property (nonatomic, assign) NSInteger driver;
+@property (nonatomic, assign) NSInteger width;
+@property (nonatomic, assign) NSInteger height;
+@property (nonatomic, copy) NSString *system;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, strong) FXGame *parent;
 
 @end
-
-enum {
-    FXRomSetUnrecognized = -100,
-};
-
-int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i);

@@ -20,22 +20,36 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import "FXGame.h"
 
-@interface FXAppDelegate : NSObject <NSApplicationDelegate>
+@implementation FXGame
 
-+ (FXAppDelegate *) sharedInstance;
+#pragma mark - NSCoding
 
-- (void) launch:(NSString *) archive;
-- (void) cleanupWindow:(NSString *) archive;
+- (instancetype) initWithCoder:(NSCoder *) coder
+{
+    if ((self = [super init]) != nil) {
+        self->_archive = [coder decodeObjectForKey:@"archive"];
+		self->_driver = [coder decodeIntegerForKey:@"driver"];
+		self->_width = [coder decodeIntegerForKey:@"width"];
+		self->_height = [coder decodeIntegerForKey:@"height"];
+		self->_system = [coder decodeObjectForKey:@"system"];
+		self->_title = [coder decodeObjectForKey:@"title"];
+		self->_parent = [coder decodeObjectForKey:@"parent"];
+    }
+    
+    return self;
+}
 
-- (IBAction) showLauncher:(id) sender;
-- (IBAction) showPreferences:(id) sender;
-
-@property (nonatomic, readonly) NSURL *supportRootURL;
-@property (nonatomic, readonly) NSURL *inputMapRootURL;
-@property (nonatomic, readonly) NSURL *romRootURL;
-
-@property (nonatomic, readonly) NSMutableDictionary *games;
+- (void) encodeWithCoder:(NSCoder *) coder
+{
+	[coder encodeObject:self->_archive forKey:@"archive"];
+	[coder encodeInteger:self->_driver forKey:@"driver"];
+	[coder encodeInteger:self->_width forKey:@"width"];
+	[coder encodeInteger:self->_height forKey:@"height"];
+	[coder encodeObject:self->_system forKey:@"system"];
+	[coder encodeObject:self->_title forKey:@"title"];
+	[coder encodeObject:self->_parent forKey:@"parent"];
+}
 
 @end
