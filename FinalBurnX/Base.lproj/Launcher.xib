@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="6245" systemVersion="13F34" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="9532" systemVersion="15D21" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="6245"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="9532"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="FXLauncherController">
@@ -24,7 +25,7 @@
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
             <value key="minSize" type="size" width="640" height="480"/>
             <view key="contentView" id="bQY-6H-Qmi">
-                <rect key="frame" x="0.0" y="-5" width="655" height="619"/>
+                <rect key="frame" x="0.0" y="0.0" width="655" height="619"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
                     <splitView dividerStyle="thin" id="fwM-l9-OKz">
@@ -46,7 +47,7 @@
                                                     <rect key="frame" x="0.0" y="0.0" width="655" height="19"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <size key="intercellSpacing" width="3" height="2"/>
-                                                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                    <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                     <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                     <tableColumns>
                                                         <tableColumn identifier="driverAvailability" editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="Hn1-oQ-g53">
@@ -147,10 +148,10 @@
                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             <subviews>
                                                 <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="Csx-Jg-TUB" id="Lho-XY-dNe">
-                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="19"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="655" height="174"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <size key="intercellSpacing" width="3" height="2"/>
-                                                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                    <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                     <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                     <tableColumns>
                                                         <tableColumn identifier="romStatus" editable="NO" width="44" minWidth="32" maxWidth="3.4028234663852886e+38" id="2iY-rI-hQo">
@@ -324,6 +325,6 @@ Gw
         </window>
     </objects>
     <resources>
-        <image name="NSGoRightTemplate" width="9" height="9"/>
+        <image name="NSGoRightTemplate" width="9" height="12"/>
     </resources>
 </document>

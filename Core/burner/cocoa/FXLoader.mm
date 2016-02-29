@@ -264,7 +264,7 @@
         return nil;
     }
     
-    NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
+    NSArray *romPaths = @[[[FXAppDelegate sharedInstance] romRootURL]];
     
     // Get list of archive names for driver
     NSError *archiveError = nil;
@@ -340,15 +340,15 @@
     
     [archiveNames enumerateObjectsUsingBlock:^(NSString *archiveName, NSUInteger idx, BOOL *stop) {
         NSString *archiveFilename = [archiveName stringByAppendingPathExtension:@"zip"];
-        [romPaths enumerateObjectsUsingBlock:^(NSString *romPath, NSUInteger idx, BOOL *stop) {
-            NSString *fullPath = [romPath stringByAppendingPathComponent:archiveFilename];
-            BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:fullPath
+        [romPaths enumerateObjectsUsingBlock:^(NSURL *romPath, NSUInteger idx, BOOL *stop) {
+            NSURL *fullPath = [romPath URLByAppendingPathComponent:archiveFilename];
+            BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:[fullPath path]
                                                                isDirectory:NULL];
             
             if (exists) {
                 // Open the file, read its table of contents
                 NSError *zipError = nil;
-                FXZipArchive *zip = [[FXZipArchive alloc] initWithPath:fullPath
+                FXZipArchive *zip = [[FXZipArchive alloc] initWithPath:[fullPath path]
                                                                  error:&zipError];
                 
                 if (zipError == nil) {
@@ -374,7 +374,7 @@
                         if (matchByCRC != nil) {
                             // Found by CRC
                             // Update status
-                            [romAudit setContainerPath:fullPath];
+                            [romAudit setContainerPath:[fullPath path]];
                             [romAudit setFilenameFound:[matchByCRC filename]];
                             [romAudit setLengthFound:[matchByCRC length]];
                             [romAudit setCRCFound:[matchByCRC CRC]];
@@ -386,7 +386,7 @@
                             if (matchByAlias != nil) {
                                 // Found by alias
                                 // Update status
-                                [romAudit setContainerPath:fullPath];
+                                [romAudit setContainerPath:[fullPath path]];
                                 [romAudit setFilenameFound:[matchByAlias filename]];
                                 [romAudit setLengthFound:[matchByAlias length]];
                                 [romAudit setCRCFound:[matchByAlias CRC]];

@@ -26,8 +26,6 @@
 
 @interface FXPreferencesController ()
 
-- (void)emulationChangedNotification:(NSNotification *)notification;
-
 - (void)updateSpecifics;
 - (void)updateInput;
 - (void)updateDipSwitches;
@@ -48,19 +46,7 @@
 
 - (void)awakeFromNib
 {
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(emulationChangedNotification:)
-                                                 name:FXEmulatorChanged
-                                               object:nil];
-    
     [self updateSpecifics];
-}
-
-- (void)dealloc
-{
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:FXEmulatorChanged
-                                                  object:nil];
 }
 
 #pragma mark - NSWindowController
@@ -217,16 +203,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 
 #pragma mark - Private methods
 
-- (void)emulationChangedNotification:(NSNotification *)notification
-{
-#ifdef DEBUG
-    NSLog(@"emulationChangedNotification");
-#endif
-    
-    [self updateSpecifics];
-}
-
-- (void)updateDipSwitches
+- (void) updateDipSwitches
 {
 //    [self->dipSwitchList removeAllObjects];
 //    
@@ -242,7 +219,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 //    [self->dipswitchTableView reloadData];
 }
 
-- (void)updateInput
+- (void) updateInput
 {
     [self->inputList removeAllObjects];
     
@@ -257,7 +234,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     [self->inputTableView reloadData];
 }
 
-- (void)updateSpecifics
+- (void) updateSpecifics
 {
     [self updateDipSwitches];
     [self updateInput];

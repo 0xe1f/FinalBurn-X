@@ -103,8 +103,13 @@ static FXEmulator *sharedInstance = nil;
 
 - (void) initPaths
 {
-	// FIXME
-	self->_supportURL = [NSURL fileURLWithPath:@"/Users/akop/Library/Application Support/FinalBurn X"];
+	NSFileManager* fm = [NSFileManager defaultManager];
+	NSURL *appSupportUrl = [[fm URLsForDirectory:NSApplicationSupportDirectory
+									   inDomains:NSUserDomainMask] lastObject];
+	
+	NSAssert(appSupportUrl != nil, @"App Support URL is null");
+	
+	self->_supportURL = [appSupportUrl URLByAppendingPathComponent:@"FinalBurn X"];
 	
 	[self setRomPath:[self->_supportURL URLByAppendingPathComponent:@"roms"]];
 }

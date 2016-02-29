@@ -23,7 +23,6 @@
 #import "FXLauncherController.h"
 
 #import "FXGameController.h"
-#import "FXEmulatorController.h"
 #import "FXAppDelegate.h"
 
 #import "FXLoader.h"
@@ -39,13 +38,18 @@
 @end
 
 @implementation FXLauncherController
+{
+	NSOperationQueue *_importOpQueue;
+	BOOL _rescanROMsAtStartup;
+	NSDictionary *_setManifest;
+}
 
 - (id)init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
-        self->importOpQueue = [[NSOperationQueue alloc] init];
-        [self->importOpQueue setMaxConcurrentOperationCount:1];
-        
+        self->_importOpQueue = [[NSOperationQueue alloc] init];
+        [self->_importOpQueue setMaxConcurrentOperationCount:1];
+		
         [self setDrivers:[NSMutableArray array]];
     }
     
@@ -54,10 +58,14 @@
 
 - (void)awakeFromNib
 {
+	// Read the set manifest
+	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
+																   ofType:@"plist"];
+	self->_setManifest = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
+	
     [self identifyROMSets];
-    
-    self->rescanROMsAtStartup = NO;
-    
+	self->_rescanROMsAtStartup = NO;
+	
     NSDictionary *audits;
     
     // Load the audit data from cache, if available
@@ -72,7 +80,7 @@
     
     if (audits == nil) {
         // Nothing in cache, or error loading. Rescan whenever possible
-        self->rescanROMsAtStartup = YES;
+        self->_rescanROMsAtStartup = YES;
     }
     
     // Update ROM sets with audit data
@@ -85,26 +93,26 @@
     [self->importProgressBar setDoubleValue:0];
     
     // Observe the import queue to be notified when tasks are available/done
-    [self->importOpQueue addObserver:self
-                          forKeyPath:@"operationCount"
-                             options:NSKeyValueObservingOptionNew
-                             context:NULL];
+    [self->_importOpQueue addObserver:self
+						   forKeyPath:@"operationCount"
+							  options:NSKeyValueObservingOptionNew
+							  context:NULL];
 }
 
 #pragma mark - NSWindowDelegate
 
 - (void)windowDidLoad
 {
-    if (self->rescanROMsAtStartup) {
+    if (self->_rescanROMsAtStartup) {
         [self auditAsync];
-        self->rescanROMsAtStartup = NO;
+        self->_rescanROMsAtStartup = NO;
     }
 }
 
 - (void)windowWillClose:(NSNotification *)notification
 {
-    [self->importOpQueue cancelAllOperations];
-    [self->importOpQueue waitUntilAllOperationsAreFinished];
+    [self->_importOpQueue cancelAllOperations];
+    [self->_importOpQueue waitUntilAllOperationsAreFinished];
 }
 
 #pragma mark - FXScannerDelegate
@@ -118,7 +126,7 @@
     
     // Disallow importing from the library directory
     NSString *parentPath = [path stringByDeletingLastPathComponent];
-    NSString *romPath = [[FXAppDelegate sharedInstance] ROMPath];
+    NSString *romPath = [[[FXAppDelegate sharedInstance] romRootURL] path];
     
     if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
         return NO;
@@ -155,7 +163,7 @@
                         change:(NSDictionary *)change
                        context:(void *)context
 {
-    if (object == self->importOpQueue && [keyPath isEqualToString:@"operationCount"]) {
+    if (object == self->_importOpQueue && [keyPath isEqualToString:@"operationCount"]) {
         NSInteger newCount = [[change objectForKey:NSKeyValueChangeNewKey] intValue];
         
         void(^block)(void) = ^{
@@ -194,14 +202,14 @@
 {
     FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
 	FXAppDelegate *app = [FXAppDelegate sharedInstance];
-	[app launch:romSet];
+	[app launch:[romSet archive]];
 }
 
 - (void)cancelImport:(id)sender
 {
     [self->importCancelButton setEnabled:NO];
     [self->importProgressLabel setStringValue:NSLocalizedString(@"Cancelling...", @"")];
-    [self->importOpQueue cancelAllOperations];
+    [self->_importOpQueue cancelAllOperations];
 }
 
 - (void)rescanROMs:(id)sender
@@ -236,13 +244,13 @@
                 [self->importCancelButton setEnabled:YES];
             }];
             
-            NSString *dstPath = [[[FXAppDelegate sharedInstance] ROMPath] stringByAppendingPathComponent:filename];
+            NSURL *dstPath = [[[FXAppDelegate sharedInstance] romRootURL] URLByAppendingPathComponent:filename];
             NSLog(@"Importing %@ as %@", filename, dstPath);
             
             // FIXME
             NSError *error = nil;
             [[NSFileManager defaultManager] copyItemAtPath:path
-                                                    toPath:dstPath
+                                                    toPath:[dstPath path]
                                                      error:&error];
             
             [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -251,7 +259,7 @@
             }];
         }];
         
-        [self->importOpQueue addOperation:importOp];
+        [self->_importOpQueue addOperation:importOp];
     }];
     
     if ([paths count] > 0) {
@@ -354,15 +362,25 @@
 #endif
     }];
     
-    [self->importOpQueue addOperation:auditOp];
+    [self->_importOpQueue addOperation:auditOp];
 }
 
-- (NSString *)auditCachePath
+- (NSString *) auditCachePath
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSURL *supportURL = [app appSupportURL];
-    
-    return [[supportURL URLByAppendingPathComponent:@"audits.cache"] path];
+    return [[[app supportRootURL] URLByAppendingPathComponent:@"audits.cache"] path];
+}
+
+- (FXROMSet *) FIXMEsetFromArchive:(NSString *) archive
+						dictionary:(NSDictionary *) dictionary
+{
+	FXROMSet *set = [[FXROMSet alloc] init];
+	[set setSubsets:[NSMutableArray array]];
+	[set setArchive:archive];
+	[set setTitle:[dictionary objectForKey:@"title"]];
+	[set setScreenSize:NSMakeSize([[dictionary objectForKey:@"width"] intValue], [[dictionary objectForKey:@"height"] intValue])];
+	
+	return set;
 }
 
 - (void)identifyROMSets
@@ -372,9 +390,19 @@
     NSLog(@"Identifying sets...");
 #endif
     
-    FXLoader *loader = [[FXLoader alloc] init];
-    [[self drivers] addObjectsFromArray:[loader romSets]];
-    
+	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
+		FXROMSet *romSet = [self FIXMEsetFromArchive:archive
+										  dictionary:values];
+		[[values objectForKey:@"subsets"] enumerateKeysAndObjectsUsingBlock:^(NSString *subarchive, NSDictionary *subvalues, BOOL * _Nonnull stop) {
+			FXROMSet *subset = [self FIXMEsetFromArchive:subarchive
+											  dictionary:subvalues];
+			[subset setParentSet:romSet];
+			[[romSet subsets] addObject:subset];
+		}];
+		
+		[[self drivers] addObject:romSet];
+	}];
+	
 #ifdef DEBUG
     NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
 #endif

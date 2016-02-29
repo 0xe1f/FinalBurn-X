@@ -37,8 +37,8 @@
 @property (nonatomic, assign) NSSize screenSize;
 @property (nonatomic, assign) NSUInteger hardware;
 
-@property (nonatomic, strong) FXROMSet *parentSet;
-@property (nonatomic, readonly) NSMutableArray *subsets;
+@property (nonatomic, weak) FXROMSet *parentSet;
+@property (nonatomic, strong) NSMutableArray *subsets;
 
 @property (nonatomic, strong) FXDriverAudit *audit;
 

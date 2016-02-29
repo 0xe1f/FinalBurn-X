@@ -33,15 +33,11 @@
     
     IBOutlet NSTreeController *driversTreeController;
     IBOutlet NSOutlineView *driversOutlineView;
-    
-    NSOperationQueue *importOpQueue;
-    
-    BOOL rescanROMsAtStartup;
 }
 
-- (IBAction)launchGame:(id)sender;
-- (IBAction)cancelImport:(id)sender;
-- (IBAction)rescanROMs:(id)sender;
+- (IBAction) launchGame:(id) sender;
+- (IBAction) cancelImport:(id) sender;
+- (IBAction) rescanROMs:(id) sender;
 
 @property (nonatomic, strong) NSMutableArray *drivers;
 

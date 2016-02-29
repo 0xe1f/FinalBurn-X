@@ -22,38 +22,18 @@
  */
 #import <Cocoa/Cocoa.h>
 
-#import "FXEmulatorController.h"
-#import "FXLauncherController.h"
-#import "FXPreferencesController.h"
-
-@class FXGameController;
-
 @interface FXAppDelegate : NSObject <NSApplicationDelegate>
-{
-    @private
-    FXEmulatorController *emulator;
-    FXLauncherController *launcher;
-    FXPreferencesController *prefs;
-    NSString *appSupportPath;
-    NSString *romPath;
-	
-	NSMutableArray *_emulatorWindows;
-}
 
-+ (FXAppDelegate *)sharedInstance;
++ (FXAppDelegate *) sharedInstance;
 
-- (NSURL *)appSupportURL;
-- (FXEmulatorController *)emulator;
-- (FXPreferencesController *)prefs;
-- (NSString *)ROMPath;
+- (void) launch:(NSString *) archive;
+- (void) cleanupWindow:(NSString *) archive;
 
-- (void)launch:(FXROMSet *)romSet;
-- (void) cleanupWindow:(FXGameController *) controller;
+- (IBAction) showLauncher:(id) sender;
+- (IBAction) showPreferences:(id) sender;
 
-- (IBAction)showLauncher:(id)sender;
-- (IBAction)showPreferences:(id)sender;
-
-@property (nonatomic, readonly, strong) NSString *nvramPath;
-@property (nonatomic, readonly, strong) NSString *inputMapPath;
+@property (nonatomic, readonly) NSURL *supportRootURL;
+@property (nonatomic, readonly) NSURL *inputMapRootURL;
+@property (nonatomic, readonly) NSURL *romRootURL;
 
 @end

@@ -121,7 +121,7 @@
 {
 	[self->wrapper terminate];
 	
-	[[FXAppDelegate sharedInstance] cleanupWindow:self];
+	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
 }
 
 #pragma mark - Actions

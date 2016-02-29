@@ -24,23 +24,26 @@
 
 #import <OpenEmuXPCCommunicator/OpenEmuXPCCommunicator.h>
 
+#import "FXPreferencesController.h"
+#import "FXLauncherController.h"
 #import "FXGameController.h"
-#import "FXROMSet.h"
-
-@interface FXAppDelegate ()
-
-- (void)shutDown;
-
-@end
 
 @implementation FXAppDelegate
+{
+	FXLauncherController *_launcher;
+	FXPreferencesController *_prefs;
+	
+	NSMutableDictionary *_emulatorWindows;
+	NSObject *_windowLock;
+}
 
 static FXAppDelegate *sharedInstance = nil;
 
-+ (void)initialize
++ (void) initialize
 {
     // Register the NSUserDefaults
-    NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"Defaults" ofType:@"plist"];
+    NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"Defaults"
+																   ofType:@"plist"];
     NSDictionary *defaults = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
     
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
@@ -50,34 +53,41 @@ static FXAppDelegate *sharedInstance = nil;
 {
     if (self = [super init]) {
         sharedInstance = self;
-		self->_emulatorWindows = [NSMutableArray array];
+		self->_emulatorWindows = [NSMutableDictionary dictionary];
+		self->_windowLock = [[NSObject alloc] init];
     }
     
     return self;
 }
 
-- (void)dealloc
-{
-}
-
 #pragma mark - NSAppDelegate
 
-- (void)applicationWillFinishLaunching:(NSNotification *)notification
+- (void) applicationWillFinishLaunching:(NSNotification *) notification
 {
     // Initialize paths
-    self->appSupportPath = [[self appSupportURL] path];
-    self->romPath = [self->appSupportPath stringByAppendingPathComponent:@"roms"];
-    self->_nvramPath = [self->appSupportPath stringByAppendingPathComponent:@"nvram"];
-    self->_inputMapPath = [self->appSupportPath stringByAppendingPathComponent:@"input"];
+	NSFileManager* fm = [NSFileManager defaultManager];
+	NSURL *supportRootURL = [[fm URLsForDirectory:NSApplicationSupportDirectory
+										inDomains:NSUserDomainMask] lastObject];
+	
+	NSAssert(supportRootURL != nil, @"App support URL is null!");
+	
+	NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+	NSString *appName = [[bundlePath lastPathComponent] stringByDeletingPathExtension];
+	
+	self->_supportRootURL = [supportRootURL URLByAppendingPathComponent:appName];
+	
+    self->_romRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"roms"];
+	self->_inputMapRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"input"];
+	NSURL *nvramRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"nvram"];
+	
+    NSArray *pathsToCreate = @[ self->_supportRootURL,
+								self->_romRootURL,
+								nvramRootURL,
+								self->_inputMapRootURL];
     
-    NSArray *pathsToCreate = @[self->appSupportPath,
-                               self->romPath,
-                               self->_nvramPath,
-                               self->_inputMapPath];
-    
-    NSFileManager *fm = [NSFileManager defaultManager];
-    [pathsToCreate enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
+    [pathsToCreate enumerateObjectsUsingBlock:^(NSURL *root, NSUInteger idx, BOOL *stop) {
         NSError *error = NULL;
+		NSString *path = [root path];
         if (![fm fileExistsAtPath:path]) {
             [fm createDirectoryAtPath:path
           withIntermediateDirectories:YES
@@ -88,108 +98,74 @@ static FXAppDelegate *sharedInstance = nil;
                 NSLog(@"Error initializing path '%@': %@",
                       path, [error description]);
             }
-        }
+		}
     }];
-    
-    // One-time initialization of the emulation core
-    [FXEmulatorController initializeCore];
-    
-    // Initialize the launcher
-    self->launcher = [[FXLauncherController alloc] init];
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
+- (void) applicationDidFinishLaunching:(NSNotification *) aNotification
 {
 	[OEXPCCAgentConfiguration defaultConfiguration];
 	[OEXPCCAgent defaultAgent];
 	
-    [self->launcher showWindow:self];
+	[self showLauncher:nil];
 }
 
-- (void)applicationWillTerminate:(NSNotification *)notification
+- (void) applicationWillTerminate:(NSNotification *) notification
 {
-    [self shutDown];
-    
-    [FXEmulatorController cleanupCore];
-	
 	[[OEXPCCAgentConfiguration defaultConfiguration] tearDownAgent];
 }
 
 #pragma mark - Actions
 
-- (void)showLauncher:(id)sender
+- (void) showLauncher:(id) sender
 {
-    [[self->launcher window] makeKeyAndOrderFront:self];
+	@synchronized(self->_windowLock) {
+		if (self->_launcher == nil) {
+			self->_launcher = [[FXLauncherController alloc] init];
+		}
+	}
+	
+	[self->_launcher showWindow:self];
 }
 
-- (void)showPreferences:(id)sender
+- (void)showPreferences:(id) sender
 {
-    if (self->prefs == nil) {
-        self->prefs = [[FXPreferencesController alloc] init];
-        [self->prefs showWindow:self];
-    } else {
-        [[self->prefs window] makeKeyAndOrderFront:self];
-    }
+	@synchronized(self->_windowLock) {
+		if (self->_prefs == nil) {
+			self->_prefs = [[FXPreferencesController alloc] init];
+		}
+	}
+	
+	[self->_prefs showWindow:self];
 }
 
 #pragma mark - Public methods
 
-- (NSString *)ROMPath
+- (void) launch:(NSString *) archive
 {
-    return self->romPath;
-}
-
-- (FXEmulatorController *)emulator
-{
-    return self->emulator;
-}
-
-- (FXPreferencesController *)prefs
-{
-    return self->prefs;
-}
-
-- (void) launch:(FXROMSet *) romSet
-{
-	FXGameController *e = [[FXGameController alloc] initWithArchive:[romSet archive]];
-	[e showWindow:self];
+	FXGameController *e = nil;
+	@synchronized(self->_windowLock) {
+		e = [self->_emulatorWindows objectForKey:archive];
+		if (e == nil) {
+			e = [[FXGameController alloc] initWithArchive:archive];
+			[self->_emulatorWindows setObject:e
+									   forKey:archive];
+		}
+	}
 	
-	[self->_emulatorWindows addObject:e];
+	[e showWindow:self];
 }
 
-- (void) cleanupWindow:(FXGameController *) controller
+- (void) cleanupWindow:(NSString *) archive
 {
-	[self->_emulatorWindows removeObject:controller];
+	@synchronized(self->_emulatorWindows) {
+		[self->_emulatorWindows removeObjectForKey:archive];
+	}
 }
 
-+ (FXAppDelegate *)sharedInstance
++ (FXAppDelegate *) sharedInstance
 {
     return sharedInstance;
-}
-
-#pragma mark - Private methods
-
-- (void)shutDown
-{
-    @synchronized(self) {
-        [self->emulator close];
-    }
-}
-
-- (NSURL *)appSupportURL
-{
-    NSFileManager* fm = [NSFileManager defaultManager];
-    NSURL *appSupportUrl = [[fm URLsForDirectory:NSApplicationSupportDirectory
-                                       inDomains:NSUserDomainMask] lastObject];
-    
-    if (appSupportUrl == nil) {
-        return nil;
-    }
-    
-    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
-    NSString *appName = [[bundlePath lastPathComponent] stringByDeletingPathExtension];
-    
-    return [appSupportUrl URLByAppendingPathComponent:appName];
 }
 
 @end
