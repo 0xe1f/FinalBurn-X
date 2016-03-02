@@ -52,7 +52,7 @@
 		FE6843821C8411F600A859C0 /* FXROMSet.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6843811C8411F600A859C0 /* FXROMSet.m */; };
 		FE6843831C84135300A859C0 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
 		FE6843841C84135300A859C0 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F2194C31E90024716B /* unzip.c */; };
-		FE6843911C84240800A859C0 /* FXGame.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6843901C84240800A859C0 /* FXGame.m */; };
+		FE6843951C86C83700A859C0 /* FXInputMap.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6843941C86C83700A859C0 /* FXInputMap.m */; };
 		FE6D55241C803164001B1A7E /* FXGameController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6D55221C803164001B1A7E /* FXGameController.m */; };
 		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
 		FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
@@ -1868,8 +1868,8 @@
 		FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXManifestBuilder.mm; sourceTree = "<group>"; };
 		FE6843781C81864A00A859C0 /* FXManifestBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifestBuilder.h; sourceTree = "<group>"; };
 		FE6843811C8411F600A859C0 /* FXROMSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXROMSet.m; sourceTree = "<group>"; };
-		FE68438F1C84240800A859C0 /* FXGame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGame.h; sourceTree = "<group>"; };
-		FE6843901C84240800A859C0 /* FXGame.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGame.m; sourceTree = "<group>"; };
+		FE6843931C86C83700A859C0 /* FXInputMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputMap.h; sourceTree = "<group>"; };
+		FE6843941C86C83700A859C0 /* FXInputMap.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXInputMap.m; sourceTree = "<group>"; };
 		FE6D55221C803164001B1A7E /* FXGameController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameController.m; sourceTree = "<group>"; };
 		FE6D55231C803164001B1A7E /* FXGameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameController.h; sourceTree = "<group>"; };
 		FE6D55261C8032F6001B1A7E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Game.xib; sourceTree = "<group>"; };
@@ -3219,8 +3219,8 @@
 		FE68438E1C84240800A859C0 /* Objects */ = {
 			isa = PBXGroup;
 			children = (
-				FE68438F1C84240800A859C0 /* FXGame.h */,
-				FE6843901C84240800A859C0 /* FXGame.m */,
+				FE6843931C86C83700A859C0 /* FXInputMap.h */,
+				FE6843941C86C83700A859C0 /* FXInputMap.m */,
 			);
 			path = Objects;
 			sourceTree = "<group>";
@@ -3558,13 +3558,13 @@
 			files = (
 				FE3AEB951C861E0C00DA9DCC /* FXInputState.m in Sources */,
 				FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */,
+				FE6843951C86C83700A859C0 /* FXInputMap.m in Sources */,
 				FE6843841C84135300A859C0 /* unzip.c in Sources */,
 				FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */,
 				FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */,
 				FE50607A194BD4E6003A2BC7 /* gzwrite.c in Sources */,
 				FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */,
 				FE506073194BD4E6003A2BC7 /* adler32.c in Sources */,
-				FE6843911C84240800A859C0 /* FXGame.m in Sources */,
 				FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */,
 				FE23E4F41961D45D00429FCA /* FXROMAudit.m in Sources */,
 				FE506076194BD4E6003A2BC7 /* deflate.c in Sources */,

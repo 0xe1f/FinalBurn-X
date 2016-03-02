@@ -20,22 +20,59 @@
  **
  ******************************************************************************
  */
-#import "FXGame.h"
+#import "FXInputMap.h"
 
-@implementation FXGame
+@implementation FXInputMap
+{
+	// NOTE: this class assumes that virtualCode of 0 means the input is
+	// unmapped
+	NSUInteger _keyMap[256];
+}
 
-#pragma mark - NSCoding
+- (instancetype) init
+{
+	if ((self = [super init])) {
+		memset(self->_keyMap, 0, sizeof(self->_keyMap));
+	}
+	
+	return self;
+}
+
+- (void) clear
+{
+	memset(self->_keyMap, 0, sizeof(self->_keyMap));
+}
+
+- (void) mapKeyCode:(NSUInteger) keyCode
+	  toVirtualCode:(NSUInteger) inputCode
+{
+	if (keyCode < 256) {
+		self->_keyMap[keyCode] = inputCode;
+	}
+}
+
+- (NSUInteger) virtualCodeForKeyCode:(NSUInteger) keyCode
+{
+	if (keyCode < 256) {
+		return self->_keyMap[keyCode];
+	}
+	
+	return 0;
+}
+
+#pragma mark - NSSecureCoding
+
++ (BOOL) supportsSecureCoding
+{
+	return YES;
+}
 
 - (instancetype) initWithCoder:(NSCoder *) coder
 {
     if ((self = [super init]) != nil) {
-        self->_archive = [coder decodeObjectForKey:@"archive"];
-		self->_driver = [coder decodeIntegerForKey:@"driver"];
-		self->_width = [coder decodeIntegerForKey:@"width"];
-		self->_height = [coder decodeIntegerForKey:@"height"];
-		self->_system = [coder decodeObjectForKey:@"system"];
-		self->_title = [coder decodeObjectForKey:@"title"];
-		self->_parent = [coder decodeObjectForKey:@"parent"];
+		NSData *data = [coder decodeObjectOfClass:[NSData class]
+										   forKey:@"keyMap"];
+		[data getBytes:self->_keyMap];
     }
     
     return self;
@@ -43,13 +80,10 @@
 
 - (void) encodeWithCoder:(NSCoder *) coder
 {
-	[coder encodeObject:self->_archive forKey:@"archive"];
-	[coder encodeInteger:self->_driver forKey:@"driver"];
-	[coder encodeInteger:self->_width forKey:@"width"];
-	[coder encodeInteger:self->_height forKey:@"height"];
-	[coder encodeObject:self->_system forKey:@"system"];
-	[coder encodeObject:self->_title forKey:@"title"];
-	[coder encodeObject:self->_parent forKey:@"parent"];
+	NSData *data = [NSData dataWithBytes:self->_keyMap
+								  length:sizeof(self->_keyMap)];
+	[coder encodeObject:data
+				 forKey:@"keyMap"];
 }
 
 @end

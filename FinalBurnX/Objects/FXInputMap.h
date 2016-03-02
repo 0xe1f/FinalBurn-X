@@ -22,14 +22,11 @@
  */
 #import <Foundation/Foundation.h>
 
-@interface FXGame : NSObject<NSCoding>
+@interface FXInputMap : NSObject<NSSecureCoding>
 
-@property (nonatomic, copy) NSString *archive;
-@property (nonatomic, assign) NSInteger driver;
-@property (nonatomic, assign) NSInteger width;
-@property (nonatomic, assign) NSInteger height;
-@property (nonatomic, copy) NSString *system;
-@property (nonatomic, copy) NSString *title;
-@property (nonatomic, strong) FXGame *parent;
+- (void) clear;
+- (void) mapKeyCode:(NSUInteger) keyCode
+	  toVirtualCode:(NSUInteger) inputCode;
+- (NSUInteger) virtualCodeForKeyCode:(NSUInteger) keyCode;
 
 @end

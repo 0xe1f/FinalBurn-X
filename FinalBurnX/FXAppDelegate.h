@@ -36,6 +36,6 @@
 @property (nonatomic, readonly) NSURL *inputMapRootURL;
 @property (nonatomic, readonly) NSURL *romRootURL;
 
-@property (nonatomic, readonly) NSMutableDictionary *games;
+@property (nonatomic, readonly) NSDictionary *sets;
 
 @end

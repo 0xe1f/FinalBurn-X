@@ -28,16 +28,6 @@
 #import "FXLauncherController.h"
 #import "FXGameController.h"
 
-#import "FXGame.h"
-
-@interface FXAppDelegate ()
-
-- (void) readSetManifest;
-- (FXGame *) readGameWithArchive:(NSString *) archive
-					  dictionary:(NSDictionary *) values;
-
-@end
-
 @implementation FXAppDelegate
 {
 	FXLauncherController *_launcher;
@@ -65,7 +55,10 @@ static FXAppDelegate *sharedInstance = nil;
         sharedInstance = self;
 		self->_emulatorWindows = [NSMutableDictionary dictionary];
 		self->_windowLock = [[NSObject alloc] init];
-		self->_games = [NSMutableDictionary dictionary];
+		
+		NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
+																	   ofType:@"plist"];
+		self->_sets = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
     }
     
     return self;
@@ -111,8 +104,6 @@ static FXAppDelegate *sharedInstance = nil;
             }
 		}
     }];
-	
-	[self readSetManifest];
 }
 
 - (void) applicationDidFinishLaunching:(NSNotification *) aNotification
@@ -150,45 +141,6 @@ static FXAppDelegate *sharedInstance = nil;
 	}
 	
 	[self->_prefs showWindow:self];
-}
-
-#pragma mark - Private methods
-
-- (FXGame *) readGameWithArchive:(NSString *) archive
-					  dictionary:(NSDictionary *) values
-{
-	FXGame *game = [[FXGame alloc] init];
-	
-	[game setArchive:archive];
-	[game setDriver:[[values objectForKey:@"driver"] integerValue]];
-	[game setWidth:[[values objectForKey:@"width"] integerValue]];
-	[game setHeight:[[values objectForKey:@"height"] integerValue]];
-	[game setSystem:[values objectForKey:@"system"]];
-	[game setTitle:[values objectForKey:@"title"]];
-	
-	NSDictionary *subsets = [values objectForKey:@"subsets"];
-	[subsets enumerateKeysAndObjectsUsingBlock:^(NSString *sa, NSDictionary *sd, BOOL * _Nonnull stop) {
-		FXGame *sub = [self readGameWithArchive:sa
-									 dictionary:sd];
-		[sub setParent:game];
-	}];
-	
-	[self->_games setObject:game
-					 forKey:archive];
-	
-	return game;
-}
-
-- (void) readSetManifest
-{
-	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
-																   ofType:@"plist"];
-	NSDictionary *sets = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
-	
-	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
-		[self readGameWithArchive:archive
-					   dictionary:values];
-	}];
 }
 
 #pragma mark - Public methods

@@ -24,8 +24,8 @@
 
 #import "AKKeyboardManager.h"
 #import "FXAppDelegate.h"
-#import "FXGame.h"
 #import "FXInputState.h"
+#import "FXInputMap.h"
 
 @interface FXGameController ()
 
@@ -34,15 +34,17 @@
 - (void) windowKeyDidChange:(BOOL) isKey;
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate;
+- (void) autoMapInput;
 
 @end
 
 @implementation FXGameController
 {
 	NSString *_archive;
-	FXGame *_game;
+	NSDictionary *_driverInfo;
 	NSSize _screenSize;
 	FXInputState *_inputState;
+	FXInputMap *_inputMap;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -50,6 +52,7 @@
     if ((self = [super initWithWindowNibName:@"Game"])) {
 		self->_archive = archive;
 		self->_inputState = [[FXInputState alloc] init];
+		self->_inputMap = [[FXInputMap alloc] init];
     }
     
     return self;
@@ -57,13 +60,69 @@
 
 - (void) awakeFromNib
 {
-	self->_game = [[[FXAppDelegate sharedInstance] games] objectForKey:self->_archive];
-	self->_screenSize = NSMakeSize([self->_game width], [self->_game height]);
+	self->_driverInfo = [[[FXAppDelegate sharedInstance] sets] objectForKey:self->_archive];
+	self->_screenSize = NSMakeSize([[self->_driverInfo objectForKey:@"width"] intValue],
+								   [[self->_driverInfo objectForKey:@"height"] intValue]);
 	
-	[[self window] setTitle:[self->_game title]];
+	[[self window] setTitle:[self->_driverInfo objectForKey:@"title"]];
 	
 	[self->wrapper setUpWithArchive:self->_archive
 								uid:nil];
+	
+	[self autoMapInput];
+}
+
+- (void) autoMapInput
+{
+	// FIXME
+	NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^p(\\d) (.*?)( \\d+)?$"
+																		   options:NSRegularExpressionCaseInsensitive
+																			 error:NULL];
+	[[self->_driverInfo objectForKey:@"input"] enumerateKeysAndObjectsUsingBlock:^(NSString *code, NSDictionary *values, BOOL *stop) {
+		[regex enumerateMatchesInString:code
+								options:0
+								  range:NSMakeRange(0, [code length])
+							 usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
+								 NSUInteger player = [[code substringWithRange:[match rangeAtIndex:1]] integerValue];
+								 NSString *desc = [code substringWithRange:[match rangeAtIndex:2]];
+								 
+								 NSUInteger virtualCode = [[values objectForKey:@"code"] integerValue];
+								 if ([desc isEqualToString:@"coin"]) {
+									 [self->_inputMap mapKeyCode:AKKeyCode5 + (player - 1)
+												   toVirtualCode:virtualCode];
+								 } else if ([desc isEqualToString:@"start"]) {
+									 [self->_inputMap mapKeyCode:AKKeyCode1 + (player - 1)
+												   toVirtualCode:virtualCode];
+								 }
+								 
+								 if (player == 1) {
+									 if ([desc isEqualToString:@"left"]) {
+										 [self->_inputMap mapKeyCode:AKKeyCodeLeftArrow
+													   toVirtualCode:virtualCode];
+									 } else if ([desc isEqualToString:@"right"]) {
+										 [self->_inputMap mapKeyCode:AKKeyCodeRightArrow
+													   toVirtualCode:virtualCode];
+									 } else if ([desc isEqualToString:@"up"]) {
+										 [self->_inputMap mapKeyCode:AKKeyCodeUpArrow
+													   toVirtualCode:virtualCode];
+									 } else if ([desc isEqualToString:@"down"]) {
+										 [self->_inputMap mapKeyCode:AKKeyCodeDownArrow
+													   toVirtualCode:virtualCode];
+									 } else if ([desc isEqualToString:@"fire"]) {
+										 NSUInteger button = [[code substringWithRange:[match rangeAtIndex:3]] integerValue];
+										 NSUInteger key;
+										 if (button <= 3) {
+											 key = AKKeyCodeA + (button - 1);
+										 } else if (button <= 6) {
+											 key = AKKeyCodeZ + (button - 4);
+										 }
+										 
+										 [self->_inputMap mapKeyCode:key
+													   toVirtualCode:virtualCode];
+									 }
+								 }
+							 }];
+	}];
 }
 
 #pragma mark - NSWindowDelegate
@@ -136,48 +195,6 @@
 
 #pragma mark - AKKeyboardEventDelegate
 
-- (NSInteger) foo:(NSInteger) keyCode
-{
-	int from[] = {
-		AKKeyCode5,
-		AKKeyCode1,
-		AKKeyCodeUpArrow,
-		AKKeyCodeDownArrow,
-		AKKeyCodeLeftArrow,
-		AKKeyCodeRightArrow,
-		AKKeyCodeA,
-		AKKeyCodeS,
-		AKKeyCodeD,
-		AKKeyCodeZ,
-		AKKeyCodeX,
-		AKKeyCodeC,
-		-1
-	};
-	int to[] = {
-		1,
-		2,
-		3,
-		4,
-		5,
-		6,
-		7,
-		8,
-		9,
-		10,
-		11,
-		12,
-		-1
-	};
-	
-	for (int i = 0; from[i] != -1; i++) {
-		if (from[i] == keyCode) {
-			return to[i];
-		}
-	}
-	
-	return -1;
-}
-
 - (void) keyStateChanged:(AKKeyEventData *) event
 				  isDown:(BOOL) isDown
 {
@@ -191,9 +208,9 @@
 	
 	// Don't generate a KeyDown if Command is pressed
 	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
-		NSInteger fbk = [self foo:[event keyCode]];
-		if (fbk != -1) {
-			[self->_inputState setStateForCode:fbk
+		NSInteger virtualCode = [self->_inputMap virtualCodeForKeyCode:[event keyCode]];
+		if (virtualCode != 0) {
+			[self->_inputState setStateForCode:virtualCode
 									 isPressed:isDown];
 			[[self->wrapper remoteObjectProxy] updateInput:self->_inputState];
 		}
