@@ -26,41 +26,59 @@
 #include "burnint.h"
 #include "driverlist.h"
 
+#import "FXInputState.h"
 #import "FXEmulator.h"
 
 @implementation FXInput
+{
+	unsigned char _states[256];
+}
 
 #pragma mark - Init, dealloc
 
 - (instancetype) init
 {
     if ((self = [super init]) != nil) {
+		memset(self->_states, 0, sizeof(self->_states));
     }
     
     return self;
 }
 
-- (void)dealloc
-{
-    // Release all virtual keys
-    [self releaseAllKeys];
-}
-
 #pragma mark - Core callbacks
-
-- (BOOL) isInputActiveForCode:(int) inputCode
-{
-	return 0; //self->keyStates[keyCode];
-}
 
 - (void) initCore
 {
-	[self releaseAllKeys];
+	struct BurnInputInfo bii;
+	struct BurnDriver *driver = pDriver[nBurnDrvActive];
+	for (int i = 0; i < 0x1000; i++) {
+		if (driver->GetInputInfo(&bii, i)) {
+			break;
+		}
+		
+		if (bii.nType == BIT_DIGITAL) {
+			GameInp[i].nInput = GIT_SWITCH;
+			GameInp[i].Input.Switch.nCode = i + 1;
+		}
+	}
 }
 
-- (void)releaseAllKeys
+- (BOOL) isInputActiveForCode:(int) inputCode
 {
-    memset(self->keyStates, 0, sizeof(self->keyStates));
+	return self->_states[inputCode] != 0;
+}
+
+- (void) releaseAll
+{
+    memset(self->_states, 0, sizeof(self->_states));
+}
+
+#pragma mark - Public
+
+- (void) updateState:(FXInputState *) state
+{
+	[state copyToBuffer:self->_states
+			   maxBytes:sizeof(self->_states)];
 }
 
 @end
@@ -69,19 +87,7 @@
 
 static int cocoaInputInit()
 {
-    FXInput *input = [[FXEmulator sharedInstance] input];
-    [input initCore];
-    
-	return 0;
-}
-
-static int cocoaInputExit()
-{
-	return 0;
-}
-
-static int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
-{
+	[[[FXEmulator sharedInstance] input] initCore];
 	return 0;
 }
 
@@ -96,43 +102,16 @@ static int cocoaInputState(int nCode)
 	return [input isInputActiveForCode:nCode] == YES;
 }
 
-static int cocoaInputJoystickAxis(int i, int nAxis)
-{
-    return 0;
-}
-
-static int cocoaInputMouseAxis(int i, int nAxis)
-{
-	return 0;
-}
-
-static int cocoaInputFind(bool createBaseline)
-{
-	return -1;
-}
-
-static int cocoaInputGetControlName(int nCode, TCHAR* pszDeviceName, TCHAR* pszControlName)
-{
-	if (pszDeviceName) {
-		pszDeviceName[0] = _T('\0');
-	}
-	if (pszControlName) {
-		pszControlName[0] = _T('\0');
-	}
-    
-	return 0;
-}
-
 struct InputInOut InputInOutCocoa = {
     cocoaInputInit,
-    cocoaInputExit,
-    cocoaInputSetCooperativeLevel,
+    NULL,
+    NULL,
     cocoaInputStart,
     cocoaInputState,
-    cocoaInputJoystickAxis,
-    cocoaInputMouseAxis,
-    cocoaInputFind,
-    cocoaInputGetControlName,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
     NULL,
     _T("Cocoa Input"),
 };

@@ -22,13 +22,13 @@
  */
 #import <Foundation/Foundation.h>
 
-@class FXInputState;
+@interface FXInputState : NSObject<NSSecureCoding>
 
-@protocol FXEmulationCommunication <NSObject>
+- (void) setStateForCode:(NSUInteger) code
+			   isPressed:(BOOL) isPressed;
+- (void) releaseAll;
 
-- (void) updateInput:(FXInputState *) state;
-
-- (void) renderScreenWithHandler:(void(^)(NSData *bitmap, NSInteger frame)) handler;
-- (void) describeScreenWithHandler:(void(^)(BOOL isReady, int width, int height, BOOL isRotated, int bytesPerPixel)) handler;
+- (void) copyToBuffer:(void *) buffer
+			 maxBytes:(NSUInteger) maxBytes;
 
 @end

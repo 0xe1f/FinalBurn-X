@@ -51,6 +51,7 @@ static FXEmulator *sharedInstance = nil;
 	NSURL *_supportURL;
 	NSXPCListener *_listener;
 	NSXPCConnection *_mainAppConnection;
+	int64_t _frameIndex;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -62,6 +63,7 @@ static FXEmulator *sharedInstance = nil;
     if (self = [super init]) {
 		sharedInstance = self;
 		
+		self->_frameIndex = 0;
 		self->_archive = archive;
 		
 		[self setInput:[[FXInput alloc] init]];
@@ -69,7 +71,7 @@ static FXEmulator *sharedInstance = nil;
 		[self setVideo:[[FXVideo alloc] init]];
 		[self setRunLoop:[[FXRunLoop alloc] init]];
 		
-		[[self runLoop] setDelegate:self];
+		[self->_runLoop setDelegate:self];
     }
     
     return self;
@@ -196,6 +198,11 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 
 #pragma mark - FXEmulationCommunication
 
+- (void) updateInput:(FXInputState *) state
+{
+	[self->_input updateState:state];
+}
+
 - (void) describeScreenWithHandler:(void (^)(BOOL, int, int, BOOL, int)) handler
 {
 	handler([self->_video ready],
@@ -203,9 +210,10 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 			[self->_video isRotated], [self->_video bytesPerPixel]);
 }
 
-- (void) renderScreenWithHandler:(void (^)(NSData *)) handler
+- (void) renderScreenWithHandler:(void (^)(NSData *, NSInteger)) handler
 {
-	handler([self->_video screenBuffer]);
+	int64_t frame = OSAtomicIncrement64(&self->_frameIndex);
+	handler([self->_video screenBuffer], frame);
 }
 
 #pragma mark - Other XPC

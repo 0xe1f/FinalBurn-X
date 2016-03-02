@@ -22,8 +22,10 @@
  */
 #import "FXGameController.h"
 
+#import "AKKeyboardManager.h"
 #import "FXAppDelegate.h"
 #import "FXGame.h"
+#import "FXInputState.h"
 
 @interface FXGameController ()
 
@@ -40,12 +42,14 @@
 	NSString *_archive;
 	FXGame *_game;
 	NSSize _screenSize;
+	FXInputState *_inputState;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
 {
     if ((self = [super initWithWindowNibName:@"Game"])) {
 		self->_archive = archive;
+		self->_inputState = [[FXInputState alloc] init];
     }
     
     return self;
@@ -130,6 +134,72 @@
 	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
 }
 
+#pragma mark - AKKeyboardEventDelegate
+
+- (NSInteger) foo:(NSInteger) keyCode
+{
+	int from[] = {
+		AKKeyCode5,
+		AKKeyCode1,
+		AKKeyCodeUpArrow,
+		AKKeyCodeDownArrow,
+		AKKeyCodeLeftArrow,
+		AKKeyCodeRightArrow,
+		AKKeyCodeA,
+		AKKeyCodeS,
+		AKKeyCodeD,
+		AKKeyCodeZ,
+		AKKeyCodeX,
+		AKKeyCodeC,
+		-1
+	};
+	int to[] = {
+		1,
+		2,
+		3,
+		4,
+		5,
+		6,
+		7,
+		8,
+		9,
+		10,
+		11,
+		12,
+		-1
+	};
+	
+	for (int i = 0; from[i] != -1; i++) {
+		if (from[i] == keyCode) {
+			return to[i];
+		}
+	}
+	
+	return -1;
+}
+
+- (void) keyStateChanged:(AKKeyEventData *) event
+				  isDown:(BOOL) isDown
+{
+#ifdef DEBUG_KEY_STATE
+	if (isDown) {
+		NSLog(@"keyboardKeyDown: 0x%lx", [event keyCode]);
+	} else {
+		NSLog(@"keyboardKeyUp: 0x%lx", [event keyCode]);
+	}
+#endif
+	
+	// Don't generate a KeyDown if Command is pressed
+	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
+		NSInteger fbk = [self foo:[event keyCode]];
+		if (fbk != -1) {
+			[self->_inputState setStateForCode:fbk
+									 isPressed:isDown];
+			[[self->wrapper remoteObjectProxy] updateInput:self->_inputState];
+		}
+	}
+}
+
 #pragma mark - Actions
 
 - (void) resizeNormalSize:(id) sender
@@ -204,7 +274,23 @@
 
 - (void) windowKeyDidChange:(BOOL) isKey
 {
-//    [[self input] setFocus:isKey];
+	if (!isKey) {
+#ifdef DEBUG
+		NSLog(@"GameController/-Focus");
+#endif
+		// Emulator has lost focus - release all virtual keys
+		[self->_inputState releaseAll];
+		[[self->wrapper remoteObjectProxy] updateInput:self->_inputState];
+		
+		// Stop listening for key events
+		[[AKKeyboardManager sharedInstance] removeObserver:self];
+	} else {
+#ifdef DEBUG
+		NSLog(@"GameController/+Focus");
+#endif
+		// Start listening for key events
+		[[AKKeyboardManager sharedInstance] addObserver:self];
+	}
 }
 
 #pragma mark - NSUserInterfaceValidation

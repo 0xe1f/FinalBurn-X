@@ -22,11 +22,11 @@
  */
 #import <Foundation/Foundation.h>
 
+@class FXInputState;
+
 @interface FXInput : NSObject
-{
-    @private
-    BOOL keyStates[256];
-}
+
+- (void) updateState:(FXInputState *) state;
 
 @end
 

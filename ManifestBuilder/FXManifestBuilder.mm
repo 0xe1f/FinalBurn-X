@@ -30,9 +30,10 @@
 
 @interface FXManifestBuilder()
 
-- (NSString *) titleOfArchive:(int) index;
+- (NSString *) titleOfDriver:(int) index;
 - (NSDictionary *) romSets;
 - (NSDictionary *) componentsForSets:(NSDictionary *) sets;
+- (NSDictionary *) inputsForDriver:(int) driverId;
 
 @end
 
@@ -54,7 +55,7 @@
 	BurnLibExit();
 }
 
-- (NSString *) titleOfArchive:(int) index
+- (NSString *) titleOfDriver:(int) index
 {
 #ifdef wcslen
 #undef wcslen
@@ -97,15 +98,16 @@
 		}
 		
 		NSString *archive = [NSString stringWithCString:pDriver[index]->szShortName
-											   encoding:NSUTF8StringEncoding];
+											   encoding:NSASCIIStringEncoding];
 		
 		NSDictionary *set = @{
 							  @"driver": @(index),
-							  @"title": [self titleOfArchive:index],
+							  @"title": [self titleOfDriver:index],
 							  @"width": @(pDriver[index]->nWidth),
 							  @"height": @(pDriver[index]->nHeight),
 							  @"system": [NSString stringWithCString:pDriver[index]->szSystemA
-															encoding:NSUTF8StringEncoding],
+															encoding:NSASCIIStringEncoding],
+							  @"input": [self inputsForDriver:index],
 							  };
 
 		[indexMap setObject:@(index)
@@ -140,6 +142,29 @@
 	}];
 	
 	return dictionary;
+}
+
+- (NSDictionary *) inputsForDriver:(int) driverId
+{
+	NSMutableDictionary *inputs = [NSMutableDictionary dictionary];
+	struct BurnInputInfo bii;
+	for (int i = 0; i < 0x1000; i++) {
+		if (pDriver[driverId]->GetInputInfo(&bii, i)) {
+			break;
+		}
+		
+		if (bii.nType == BIT_DIGITAL) {
+			[inputs setObject:@{
+								@"code": @(i + 1),
+								@"desc": [NSString stringWithCString:bii.szName
+															encoding:NSASCIIStringEncoding],
+								}
+					   forKey:[NSString stringWithCString:bii.szInfo
+												 encoding:NSASCIIStringEncoding]];
+		}
+	}
+	
+	return inputs;
 }
 
 - (NSDictionary *) componentsForSets:(NSDictionary *) sets

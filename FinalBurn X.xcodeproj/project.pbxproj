@@ -26,6 +26,8 @@
 		FE23E4F41961D45D00429FCA /* FXROMAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F31961D45D00429FCA /* FXROMAudit.m */; };
 		FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F6196316B000429FCA /* FXLauncherController.m */; };
 		FE23E4FA1963171300429FCA /* Launcher.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE23E4F81963171300429FCA /* Launcher.xib */; };
+		FE3AEB951C861E0C00DA9DCC /* FXInputState.m in Sources */ = {isa = PBXBuildFile; fileRef = FE3AEB941C861E0C00DA9DCC /* FXInputState.m */; };
+		FE3AEB971C86377700DA9DCC /* FXInputState.m in Sources */ = {isa = PBXBuildFile; fileRef = FE3AEB941C861E0C00DA9DCC /* FXInputState.m */; };
 		FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE505FC5194BD4A3003A2BC7 /* license.rtf */; };
 		FE506073194BD4E6003A2BC7 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506045194BD4E6003A2BC7 /* adler32.c */; };
 		FE506074194BD4E6003A2BC7 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506046194BD4E6003A2BC7 /* compress.c */; };
@@ -1202,6 +1204,8 @@
 		FE23E4F5196316B000429FCA /* FXLauncherController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXLauncherController.h; sourceTree = "<group>"; };
 		FE23E4F6196316B000429FCA /* FXLauncherController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXLauncherController.m; sourceTree = "<group>"; };
 		FE23E4F91963171300429FCA /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Launcher.xib; sourceTree = "<group>"; };
+		FE3AEB931C861E0C00DA9DCC /* FXInputState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputState.h; sourceTree = "<group>"; };
+		FE3AEB941C861E0C00DA9DCC /* FXInputState.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXInputState.m; sourceTree = "<group>"; };
 		FE505A2B194BC531003A2BC7 /* bitswap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitswap.h; sourceTree = "<group>"; };
 		FE505A2C194BC531003A2BC7 /* burn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = burn.cpp; sourceTree = "<group>"; };
 		FE505A2D194BC531003A2BC7 /* burn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burn.h; sourceTree = "<group>"; };
@@ -3315,6 +3319,8 @@
 			isa = PBXGroup;
 			children = (
 				FEA0BB741C80CBAF00591D44 /* FXEmulationCommunication.h */,
+				FE3AEB931C861E0C00DA9DCC /* FXInputState.h */,
+				FE3AEB941C861E0C00DA9DCC /* FXInputState.m */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -3550,6 +3556,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE3AEB951C861E0C00DA9DCC /* FXInputState.m in Sources */,
 				FE9FA3FB195346F000F791EB /* AKKeyEventData.m in Sources */,
 				FE6843841C84135300A859C0 /* unzip.c in Sources */,
 				FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */,
@@ -3847,6 +3854,7 @@
 				FEA0B7561C7F8C3D00591D44 /* d_twin16.cpp in Sources */,
 				FEA0B8A61C7F8D5800591D44 /* pic16c5x.cpp in Sources */,
 				FEA0B7031C7F8BFF00591D44 /* qs.cpp in Sources */,
+				FE3AEB971C86377700DA9DCC /* FXInputState.m in Sources */,
 				FEA0B7521C7F8C3D00591D44 /* d_spy.cpp in Sources */,
 				FEA0B8D51C7F8D9100591D44 /* pngwtran.c in Sources */,
 				FEA0B7461C7F8C3D00591D44 /* d_gradius3.cpp in Sources */,

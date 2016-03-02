@@ -53,9 +53,9 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 	int _textureWidth;
 	int _textureHeight;
 	int _textureBytesPerPixel;
-	NSLock *_renderLock;
 	CVDisplayLinkRef _displayLink;
 	BOOL _texturesSet;
+	NSInteger _lastFrame;
 }
 
 #pragma mark - Initialize, Dealloc
@@ -70,9 +70,9 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 
 - (void) awakeFromNib
 {
+	self->_lastFrame = -1;
 	self->_buffer = NULL;
 	self->_texturesSet = NO;
-    self->_renderLock = [[NSLock alloc] init];
 }
 
 #pragma mark - Cocoa Callbacks
@@ -102,14 +102,10 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 	// Activate the display link
 	CVDisplayLinkStart(self->_displayLink);
 	
-	[self->_renderLock lock];
-	
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
     glGenTextures(1, &self->_screenTextureId);
-    
-    [self->_renderLock unlock];
 }
 
 - (void) drawRect:(NSRect) dirtyRect
@@ -125,8 +121,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 			}
 		}];
 	}
-	
-    [self->_renderLock lock];
 	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
@@ -164,13 +158,11 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     glDisable(GL_TEXTURE_2D);
     
     [nsContext flushBuffer];
-    
-    [self->_renderLock unlock];
 }
 
 - (void) updateScreenBuffer
 {
-	[[self->wrapper remoteObjectProxy] renderScreenWithHandler:^(NSData *bitmap) {
+	[[self->wrapper remoteObjectProxy] renderScreenWithHandler:^(NSData *bitmap, NSInteger frame) {
 		if (bitmap && self->_texturesSet) {
 			[bitmap getBytes:self->_buffer
 					  length:[bitmap length]];
@@ -180,16 +172,12 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 
 - (void) reshape
 {
-    [self->_renderLock lock];
-    
     [[self openGLContext] makeCurrentContext];
     [[self openGLContext] update];
     
     [self resetProjection];
     
     glClear(GL_COLOR_BUFFER_BIT);
-    
-    [self->_renderLock unlock];
 }
 
 - (void) prepareTextureOfWidth:(int) width
@@ -200,8 +188,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     NSLog(@"FXScreenView/initTexture (%ix%i,%i,%i)",
 		  width, height, rotated, bytesPerPixel);
     
-    [self->_renderLock lock];
-	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
@@ -230,8 +216,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     glDisable(GL_TEXTURE_2D);
     
     [self resetProjection];
-    
-    [self->_renderLock unlock];
 }
 
 #pragma mark - Private methods
