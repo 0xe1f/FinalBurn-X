@@ -61,13 +61,22 @@
 - (void) awakeFromNib
 {
 	self->_driverInfo = [[[FXAppDelegate sharedInstance] sets] objectForKey:self->_archive];
-	self->_screenSize = NSMakeSize([[self->_driverInfo objectForKey:@"width"] intValue],
-								   [[self->_driverInfo objectForKey:@"height"] intValue]);
+	
+	NSInteger screenWidth = [[self->_driverInfo objectForKey:@"width"] intValue];
+	NSInteger screenHeight = [[self->_driverInfo objectForKey:@"height"] intValue];
+	NSString *attrs = [self->_driverInfo objectForKey:@"attrs"];
+	
+	self->_screenSize = NSMakeSize(screenWidth, screenHeight);
 	
 	[[self window] setTitle:[self->_driverInfo objectForKey:@"title"]];
 	
 	[self->wrapper setUpWithArchive:self->_archive
 								uid:nil];
+	
+	[self->screen setScreenWidth:screenWidth];
+	[self->screen setScreenHeight:screenHeight];
+	[self->screen setScreenFlipped:[attrs containsString:@"flipped"]];
+	[self->screen setScreenRotated:[attrs containsString:@"rotated"]];
 	
 	[self autoMapInput];
 }

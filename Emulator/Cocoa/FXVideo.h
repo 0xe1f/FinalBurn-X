@@ -25,12 +25,6 @@
 @interface FXVideo : NSObject
 
 @property (nonatomic, readonly) BOOL ready;
-
-@property (nonatomic, readonly) BOOL isRotated;
-@property (nonatomic, readonly) int bufferWidth;
-@property (nonatomic, readonly) int bufferHeight;
-@property (nonatomic, readonly) int bytesPerPixel;
-
-- (NSData *) screenBuffer;
+@property (nonatomic, readonly) IOSurfaceID surfaceId;
 
 @end

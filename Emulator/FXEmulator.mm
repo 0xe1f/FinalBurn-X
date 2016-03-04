@@ -198,22 +198,20 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 
 #pragma mark - FXEmulationCommunication
 
-- (void) updateInput:(FXInputState *) state
+- (oneway void) updateInput:(FXInputState *) state
 {
 	[self->_input updateState:state];
 }
 
-- (void) describeScreenWithHandler:(void (^)(BOOL, int, int, BOOL, int)) handler
+- (void) describeScreenWithHandler:(void (^)(BOOL, NSInteger)) handler
 {
-	handler([self->_video ready],
-			[self->_video bufferWidth], [self->_video bufferHeight],
-			[self->_video isRotated], [self->_video bytesPerPixel]);
+	handler([self->_video ready], [self->_video surfaceId]);
 }
 
 - (void) renderScreenWithHandler:(void (^)(NSData *, NSInteger)) handler
 {
 	int64_t frame = OSAtomicIncrement64(&self->_frameIndex);
-	handler([self->_video screenBuffer], frame);
+	handler(nil, frame);
 }
 
 #pragma mark - Other XPC

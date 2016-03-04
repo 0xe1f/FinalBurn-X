@@ -31,4 +31,9 @@
 
 @property (nonatomic, readonly) NSSize screenSize;
 
+@property (nonatomic, assign) NSInteger screenWidth;
+@property (nonatomic, assign) NSInteger screenHeight;
+@property (nonatomic, assign) BOOL screenFlipped;
+@property (nonatomic, assign) BOOL screenRotated;
+
 @end

@@ -26,11 +26,20 @@
 
 #import "FXEmulator.h"
 
+@interface FXVideo ()
+
++ (int) powerOfTwoClosestTo:(int) number;
+- (void) cleanup;
+
+@end
+
 @implementation FXVideo
 {
 	unsigned char *_buffer;
 	int _bufferSize;
-	NSMutableData *_screenBuffer;
+	CVPixelBufferRef _pixelBuffer;
+	int _screenWidth;
+	int _screenHeight;
 }
 
 #pragma mark - Init and dealloc
@@ -38,9 +47,9 @@
 - (instancetype) init
 {
     if (self = [super init]) {
-		self->_screenBuffer = nil;
 		self->_ready = NO;
 		self->_buffer = NULL;
+		self->_pixelBuffer = NULL;
     }
 
     return self;
@@ -56,13 +65,10 @@
 - (BOOL) initCore
 {
     NSLog(@"video/init");
-    
-    int gameWidth;
-    int gameHeight;
+	
     int rotationMode = 0;
-    
-    BurnDrvGetVisibleSize(&gameWidth, &gameHeight);
-    
+    BurnDrvGetVisibleSize(&self->_screenWidth, &self->_screenHeight);
+	
     if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
         rotationMode |= 1;
     }
@@ -71,27 +77,25 @@
         rotationMode ^= 2;
     }
     
-    nVidImageWidth = gameWidth;
-    nVidImageHeight = gameHeight;
     nVidImageDepth = 24;
 	nVidImageBPP = 3;
+	
 	if (!rotationMode) {
-        nVidImagePitch = nVidImageWidth * nVidImageBPP;
+		nVidImageWidth = [FXVideo powerOfTwoClosestTo:self->_screenWidth];
+		nVidImageHeight = self->_screenHeight;
+		nVidImagePitch = nVidImageWidth * nVidImageBPP;
 	} else {
-        nVidImagePitch = nVidImageHeight * nVidImageBPP;
+		nVidImageWidth = self->_screenWidth;
+		nVidImageHeight = [FXVideo powerOfTwoClosestTo:self->_screenHeight];
+		nVidImagePitch = nVidImageHeight * nVidImageBPP;
 	}
-    
+	
 	SetBurnHighCol(nVidImageDepth);
 	
-    self->_bytesPerPixel = nVidImageBPP;
-    self->_bufferWidth = gameWidth;
-    self->_bufferHeight = gameHeight;
-	
-    self->_bufferSize = self->_bufferWidth * self->_bufferHeight * nVidImageBPP;
+    self->_bufferSize = nVidImageWidth * nVidImageHeight * nVidImageBPP;
     @synchronized(self) {
         free(self->_buffer);
         self->_buffer = (unsigned char *) malloc(self->_bufferSize);
-		self->_screenBuffer = [NSMutableData dataWithLength:self->_bufferSize];
     }
     
     if (self->_buffer == NULL) {
@@ -103,19 +107,23 @@
     pVidImage = self->_buffer;
     
     memset(self->_buffer, 0, self->_bufferSize);
-    
-    int textureWidth;
-    int textureHeight;
-    self->_isRotated = rotationMode & 1;
-    
-    if (!self->_isRotated) {
-        textureWidth = self->_bufferWidth;
-        textureHeight = self->_bufferHeight;
-    } else {
-        textureWidth = self->_bufferHeight;
-        textureHeight = self->_bufferWidth;
-    }
 	
+	NSDictionary *attrs = @{
+							(NSString *) kCVPixelBufferPixelFormatTypeKey: @(k24RGBPixelFormat),
+							(NSString *) kCVPixelBufferIOSurfacePropertiesKey: @{
+									(NSString *) kIOSurfaceIsGlobal: @(YES), // FIXME
+									},
+							(NSString *) kCVPixelBufferOpenGLCompatibilityKey: @(YES),
+							};
+	CVReturn rv = CVPixelBufferCreate(kCFAllocatorDefault, nVidImageWidth, nVidImageHeight,
+									  k24RGBPixelFormat, (__bridge CFDictionaryRef) attrs, &self->_pixelBuffer);
+	if (rv != kCVReturnSuccess) {
+		NSLog(@"FXVideo: CVPixelBufferCreate failed (got %i)", rv);
+		free(self->_buffer);
+		return NO;
+	}
+	
+	self->_surfaceId = IOSurfaceGetID(CVPixelBufferGetIOSurface(self->_pixelBuffer));
 	self->_ready = YES;
 	
     return YES;
@@ -126,7 +134,7 @@
 	if (pVidImage == NULL) {
 		return NO;
 	}
-    
+	
     if (redraw) {
         if (BurnDrvRedraw()) {
             BurnDrvFrame();
@@ -140,27 +148,31 @@
 
 - (BOOL) renderToSurface:(BOOL) validate
 {
-	[self->_screenBuffer replaceBytesInRange:NSMakeRange(0, self->_bufferSize)
-								   withBytes:self->_buffer];
+	CVPixelBufferLockBaseAddress(self->_pixelBuffer, 0);
+	void *ptr = CVPixelBufferGetBaseAddress(self->_pixelBuffer);
+	memcpy(ptr, self->_buffer, self->_bufferSize);
+	CVPixelBufferUnlockBaseAddress(self->_pixelBuffer, 0);
 	
     return YES;
 }
 
-#pragma mark - Etc
+#pragma mark - Private
+
++ (int) powerOfTwoClosestTo:(int) number
+{
+	int rv = 1;
+	while (rv < number) rv *= 2;
+	return rv;
+}
 
 - (void) cleanup
 {
     @synchronized(self) {
         free(self->_buffer);
         self->_buffer = NULL;
+		CVPixelBufferRelease(self->_pixelBuffer);
+		self->_pixelBuffer = NULL;
     }
-}
-
-#pragma mark - Public
-
-- (NSData *) screenBuffer
-{
-	return [self->_screenBuffer copy];
 }
 
 @end
@@ -210,5 +222,5 @@ struct VidOut VidOutCocoa = {
     cocoaVideoPaint,
     cocoaVideoScale,
     cocoaVideoGetSettings,
-    _T("Cocoa Video"),
+    "Cocoa Video",
 };

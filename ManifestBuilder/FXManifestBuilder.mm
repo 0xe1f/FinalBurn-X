@@ -79,8 +79,9 @@
 
 - (NSDictionary *) romSets
 {
-	NSMutableDictionary *indexMap = [NSMutableDictionary dictionary];
-	NSMutableDictionary *setMap = [NSMutableDictionary dictionary];
+	NSMutableDictionary *indexMap = [@{} mutableCopy];
+	NSMutableDictionary *setMap = [@{} mutableCopy];
+	NSMutableArray *attrs = [@[] mutableCopy];
 	
 	for (int index = 0; index < nBurnDrvCount; index++) {
 		UInt32 hardware = pDriver[index]->Hardware & HARDWARE_PUBLIC_MASK;
@@ -100,20 +101,33 @@
 		NSString *archive = [NSString stringWithCString:pDriver[index]->szShortName
 											   encoding:NSASCIIStringEncoding];
 		
-		NSDictionary *set = @{
-							  @"driver": @(index),
-							  @"title": [self titleOfDriver:index],
-							  @"width": @(pDriver[index]->nWidth),
-							  @"height": @(pDriver[index]->nHeight),
-							  @"system": [NSString stringWithCString:pDriver[index]->szSystemA
-															encoding:NSASCIIStringEncoding],
-							  @"input": [self inputsForDriver:index],
-							  };
-
+		NSMutableDictionary *set = [@{
+									  @"driver": @(index),
+									  @"title": [self titleOfDriver:index],
+									  @"width": @(pDriver[index]->nWidth),
+									  @"height": @(pDriver[index]->nHeight),
+									  @"system": [NSString stringWithCString:pDriver[index]->szSystemA
+																	encoding:NSASCIIStringEncoding],
+									  @"input": [self inputsForDriver:index],
+									  } mutableCopy];
+		
+		[attrs removeAllObjects];
+		if (pDriver[index]->Flags & BDF_ORIENTATION_VERTICAL) {
+			[attrs addObject:@"rotated"];
+		}
+		
+		if (pDriver[index]->Flags & BDF_ORIENTATION_FLIPPED) {
+			[attrs addObject:@"flipped"];
+		}
+		if ([attrs count] > 0) {
+			[set setObject:[attrs componentsJoinedByString:@","]
+					forKey:@"attrs"];
+		}
+		
 		[indexMap setObject:@(index)
 					 forKey:archive];
 
-		[setMap setObject:[set mutableCopy]
+		[setMap setObject:set
 				   forKey:archive];
 	}
 	

@@ -26,9 +26,7 @@
 
 @protocol FXEmulationCommunication <NSObject>
 
-- (void) updateInput:(FXInputState *) state;
-
-- (void) renderScreenWithHandler:(void(^)(NSData *bitmap, NSInteger frame)) handler;
-- (void) describeScreenWithHandler:(void(^)(BOOL isReady, int width, int height, BOOL isRotated, int bytesPerPixel)) handler;
+- (oneway void) updateInput:(FXInputState *) state;
+- (void) describeScreenWithHandler:(void(^)(BOOL isReady, NSInteger ioSurfaceId)) handler;
 
 @end

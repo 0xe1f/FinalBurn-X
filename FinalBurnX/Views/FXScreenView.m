@@ -34,28 +34,22 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 
 @interface FXScreenView ()
 
-- (void) prepareTextureOfWidth:(int) width
-					 height:(int) height
-				  isRotated:(BOOL) rotated
-			  bytesPerPixel:(int) bytesPerPixel;
+- (void) prepareIOSurfaceWithRef:(IOSurfaceRef) surfaceRef;
 - (void) resetProjection;
-+ (int) powerOfTwoClosestTo:(int) number;
 
 @end
 
 @implementation FXScreenView
 {
 	GLuint _screenTextureId;
-	unsigned char *_buffer;
-	int _imageWidth;
-	int _imageHeight;
-	BOOL _isRotated;
-	int _textureWidth;
-	int _textureHeight;
-	int _textureBytesPerPixel;
 	CVDisplayLinkRef _displayLink;
 	BOOL _texturesSet;
-	NSInteger _lastFrame;
+	IOSurfaceRef _surfaceRef;
+	GLsizei _textureWidth;
+	GLsizei _textureHeight;
+	GLint _bytesPerPixel;
+	void *_surfaceAddr;
+	NSInteger _texturePitch;
 }
 
 #pragma mark - Initialize, Dealloc
@@ -65,14 +59,17 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 	CVDisplayLinkRelease(self->_displayLink);
 	
     glDeleteTextures(1, &self->_screenTextureId);
-	free(self->_buffer);
+	
+	if (self->_surfaceRef) {
+		CFRelease(self->_surfaceRef);
+	}
 }
 
 - (void) awakeFromNib
 {
-	self->_lastFrame = -1;
-	self->_buffer = NULL;
+	self->_surfaceRef = NULL;
 	self->_texturesSet = NO;
+	self->_surfaceAddr = NULL;
 }
 
 #pragma mark - Cocoa Callbacks
@@ -111,63 +108,49 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 - (void) drawRect:(NSRect) dirtyRect
 {
 	if (!self->_texturesSet) {
-		[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(BOOL isReady, int width, int height, BOOL isRotated, int bytesPerPixel) {
+		[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(BOOL isReady, NSInteger surfaceId) {
 			if (isReady) {
-				[self prepareTextureOfWidth:width
-									 height:height
-								  isRotated:isRotated
-							  bytesPerPixel:bytesPerPixel];
+				[self prepareIOSurfaceWithRef:IOSurfaceLookup((IOSurfaceID) surfaceId)];
 				self->_texturesSet = YES;
 			}
 		}];
+		return;
 	}
 	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
     glClear(GL_COLOR_BUFFER_BIT);
-    
-    GLfloat coordX = (GLfloat) self->_imageWidth / self->_textureWidth;
-    GLfloat coordY = (GLfloat) self->_imageHeight / self->_textureHeight;
-    
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	
-	if (self->_buffer) {
-		for (int y = 0; y < self->_imageHeight; y++) {
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, self->_imageWidth, 1,
-							GL_BGR, GL_UNSIGNED_BYTE,
-							self->_buffer + y * self->_imageWidth * self->_textureBytesPerPixel);
-		}
+    GLfloat coordX = (GLfloat) self->_screenWidth / (GLfloat) self->_textureWidth;
+    GLfloat coordY = (GLfloat) self->_screenHeight / (GLfloat) self->_textureHeight;
+	
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	
+	void *addr = self->_surfaceAddr;
+	for (int y = 0; y < self->_screenHeight; y++, addr += self->_texturePitch) {
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, (GLsizei) self->_screenWidth, 1,
+						GL_BGR, GL_UNSIGNED_BYTE, addr);
 	}
 	
-    NSSize size = [self bounds].size;
-    CGFloat offset = 0;
-    
-    glBegin(GL_QUADS);
-    glTexCoord2f(0.0, 0.0);
-    glVertex3f(-offset, 0.0, 0.0);
-    glTexCoord2f(coordX, 0.0);
-    glVertex3f(size.width + offset, 0.0, 0.0);
-    glTexCoord2f(coordX, coordY);
-    glVertex3f(size.width + offset, size.height, 0.0);
-    glTexCoord2f(0.0, coordY);
-    glVertex3f(-offset, size.height, 0.0);
-    glEnd();
-    glDisable(GL_TEXTURE_2D);
-    
-    [nsContext flushBuffer];
-}
-
-- (void) updateScreenBuffer
-{
-	[[self->wrapper remoteObjectProxy] renderScreenWithHandler:^(NSData *bitmap, NSInteger frame) {
-		if (bitmap && self->_texturesSet) {
-			[bitmap getBytes:self->_buffer
-					  length:[bitmap length]];
-		}
-	}];
+	NSSize size = [self bounds].size;
+	CGFloat offset = 0;
+	
+	glBegin(GL_QUADS);
+	glTexCoord2f(0.0, 0.0);
+	glVertex3f(-offset, 0.0, 0.0);
+	glTexCoord2f(coordX, 0.0);
+	glVertex3f(size.width + offset, 0.0, 0.0);
+	glTexCoord2f(coordX, coordY);
+	glVertex3f(size.width + offset, size.height, 0.0);
+	glTexCoord2f(0.0, coordY);
+	glVertex3f(-offset, size.height, 0.0);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	
+	[nsContext flushBuffer];
 }
 
 - (void) reshape
@@ -180,42 +163,34 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-- (void) prepareTextureOfWidth:(int) width
-						height:(int) height
-					 isRotated:(BOOL) rotated
-				 bytesPerPixel:(int) bytesPerPixel
+- (void) prepareIOSurfaceWithRef:(IOSurfaceRef) surfaceRef;
 {
-    NSLog(@"FXScreenView/initTexture (%ix%i,%i,%i)",
-		  width, height, rotated, bytesPerPixel);
-    
-    NSOpenGLContext *nsContext = [self openGLContext];
-    [nsContext makeCurrentContext];
-    
-    self->_imageWidth = width;
-    self->_imageHeight = height;
-    self->_isRotated = rotated;
-    self->_textureWidth = [FXScreenView powerOfTwoClosestTo:self->_imageWidth];
-    self->_textureHeight = [FXScreenView powerOfTwoClosestTo:self->_imageHeight];
-    self->_textureBytesPerPixel = bytesPerPixel;
-    self->_screenSize = NSMakeSize((CGFloat) width, (CGFloat) height);
-	self->_buffer = malloc(width * height * bytesPerPixel);
-    
-    glEnable(GL_TEXTURE_2D);
-    
-    glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    
-    glTexImage2D(GL_TEXTURE_2D, 0, bytesPerPixel,
-                 self->_textureWidth, self->_textureHeight,
-                 0, GL_BGR, GL_UNSIGNED_BYTE, NULL);
-    
-    glDisable(GL_TEXTURE_2D);
-    
-    [self resetProjection];
+	self->_surfaceRef = surfaceRef;
+	self->_bytesPerPixel = (GLint) IOSurfaceGetBytesPerElement(self->_surfaceRef);
+	self->_textureWidth = (int) IOSurfaceGetWidth(self->_surfaceRef);
+	self->_textureHeight = (int) IOSurfaceGetHeight(self->_surfaceRef);
+	self->_surfaceAddr = IOSurfaceGetBaseAddress(self->_surfaceRef);
+	self->_texturePitch = self->_textureWidth * self->_bytesPerPixel;
+	
+	NSOpenGLContext *nsContext = [self openGLContext];
+	[nsContext makeCurrentContext];
+	
+	glEnable(GL_TEXTURE_2D);
+	
+	glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, self->_bytesPerPixel,
+				 self->_textureWidth, self->_textureHeight,
+				 0, GL_BGR, GL_UNSIGNED_BYTE, NULL);
+	
+	glDisable(GL_TEXTURE_2D);
+	
+	[self resetProjection];
 }
 
 #pragma mark - Private methods
@@ -228,7 +203,7 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     
-	if (!self->_isRotated) {
+	if (!self->_screenRotated) {
 	 	glOrtho(0, size.width, size.height, 0, -1, 1);
 	}
 	else
@@ -238,13 +213,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 	}
     
     glMatrixMode(GL_MODELVIEW);
-}
-
-+ (int) powerOfTwoClosestTo:(int)number
-{
-    int rv = 1;
-    while (rv < number) rv *= 2;
-    return rv;
 }
 
 @end
@@ -260,7 +228,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 {
 	@autoreleasepool {
 		FXScreenView *sv = (__bridge FXScreenView *) displayLinkContext;
-		[sv updateScreenBuffer];
 		[sv setNeedsDisplay:YES];
 	}
 	
