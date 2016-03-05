@@ -1,24 +1,19 @@
 FinalBurn X
 ===========
 
-![Screenshot](http://i.imgur.com/9pCL8PA.png "Parodius")
+![Screenshot](http://i.imgur.com/WpXkUlQ.png "Windows")
 
 FinalBurn X is a port of [FinalBurn Alpha][1] to OS X. The goal of FinalBurn X
 is the emulation of Capcom Systems I, II, III and SNK Neo Geo.
 
-The emulator is incomplete, but playable.
+This is an experimental branch that runs the emulators in a separate process
+from the UI (main) app. It uses the exceptionally clever
+[OpenEmuXPCCommunicator](https://github.com/OpenEmu/OpenEmuXPCCommunicator),
+written by the [OpenEmu](https://github.com/OpenEmu) team.
 
-(The screenshot doesn't belong to any of the four,
-[but I couldn't resist the reference](https://github.com/pokebyte/CocoaMSX/))
+The emulator is usable, but you have to use the stable binary (the alpha
+release) to add new sets.
 
-To Play
--------
-
-1. Launch the emulator
-2. Drop any ZIP files over the Launcher window. If the ROM set is supported,
-   FinalBurn X will import it automatically
-
-Note that to play Neo Geo games, the Neo Geo BIOS (`neogeo.zip`) is required.
 
 Controls
 --------
@@ -29,13 +24,7 @@ Capcom:
 respectively.
 
 Neo Geo:
-`1`,`5`,`Z`,`X`,`C`,`V` for `1P Start`,`1P Coin`,`A`,`B`,`C` and `D`,
+`1`,`5`,`A`,`S`,`D`,`Z` for `1P Start`,`1P Coin`,`A`,`B`,`C` and `D`,
 respectively.
-
-Limitations
------------
-
-* Only ZIP-compressed ROMs are currently supported
-* Controls are not yet configurable
 
 [1]: http://www.barryharris.me.uk/fba.php
