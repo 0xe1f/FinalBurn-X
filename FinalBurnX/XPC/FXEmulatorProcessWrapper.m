@@ -63,6 +63,8 @@
 		 [self->_processConnection resume];
 		 
 		 self->_remoteObjectProxy = [self->_processConnection remoteObjectProxy];
+		 
+		 [self->_delegate connectionDidEstablish:self];
 	 }];
 }
 

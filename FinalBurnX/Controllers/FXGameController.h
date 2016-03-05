@@ -25,7 +25,7 @@
 #import "FXEmulatorProcessWrapper.h"
 #import "FXScreenView.h"
 
-@interface FXGameController : NSWindowController<NSWindowDelegate>
+@interface FXGameController : NSWindowController<NSWindowDelegate, FXEmulatorEventDelegate>
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSProgressIndicator *spinner;

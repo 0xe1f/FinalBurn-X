@@ -41,6 +41,10 @@
                 <outlet property="delegate" destination="-2" id="otS-dg-Yrw"/>
             </connections>
         </window>
-        <customObject id="fC0-mF-6zl" customClass="FXEmulatorProcessWrapper"/>
+        <customObject id="fC0-mF-6zl" customClass="FXEmulatorProcessWrapper">
+            <connections>
+                <outlet property="delegate" destination="-2" id="SzE-c9-OCA"/>
+            </connections>
+        </customObject>
     </objects>
 </document>

@@ -24,11 +24,21 @@
 
 #import "FXEmulationCommunication.h"
 
+@class FXEmulatorProcessWrapper;
+
+@protocol FXEmulatorEventDelegate<NSObject>
+
+- (void) connectionDidEstablish:(FXEmulatorProcessWrapper *) wrapper;
+
+@end
+
 @interface FXEmulatorProcessWrapper : NSObject
 
 @property (nonatomic, readonly) NSString *archive;
 @property (nonatomic, readonly) NSString *uid;
 @property (nonatomic, readonly) id<FXEmulationCommunication> remoteObjectProxy;
+
+@property (nonatomic, weak) IBOutlet id<FXEmulatorEventDelegate> delegate;
 
 - (void) setUpWithArchive:(NSString *) archive
 					  uid:(NSString *) uid;

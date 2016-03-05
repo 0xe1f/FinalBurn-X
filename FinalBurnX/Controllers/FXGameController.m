@@ -204,6 +204,15 @@
 	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
 }
 
+#pragma mark - FXEmulatorEventDelegate
+
+- (void) connectionDidEstablish:(FXEmulatorProcessWrapper *) aWrapper
+{
+	if ([[self window] isKeyWindow]) {
+		[[aWrapper remoteObjectProxy] startTrackingInputWithMap:self->_inputMap];
+	}
+}
+
 #pragma mark - Actions
 
 - (void) resizeNormalSize:(id) sender
