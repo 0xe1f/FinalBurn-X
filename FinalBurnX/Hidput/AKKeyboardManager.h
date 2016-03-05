@@ -29,11 +29,11 @@
 
 #import "AKKeyEventData.h"
 
-@protocol AKKeyboardEventDelegate
+@protocol AKKeyboardEventDelegate<NSObject>
 
 @required
-- (void)keyStateChanged:(AKKeyEventData *)event
-                 isDown:(BOOL)isDown;
+- (void) keyStateChanged:(AKKeyEventData *) event
+				  isDown:(BOOL) isDown;
 
 @end
 

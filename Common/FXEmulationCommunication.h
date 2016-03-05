@@ -26,7 +26,9 @@
 
 @protocol FXEmulationCommunication <NSObject>
 
-- (oneway void) updateInput:(FXInputState *) state;
+- (void) releaseAllInput;
+- (void) updateInputStateForCode:(NSInteger) code
+						  isDown:(BOOL) isDown;
 - (void) describeScreenWithHandler:(void(^)(BOOL isReady, NSInteger ioSurfaceId)) handler;
 
 @end

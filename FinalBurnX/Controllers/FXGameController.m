@@ -24,7 +24,6 @@
 
 #import "AKKeyboardManager.h"
 #import "FXAppDelegate.h"
-#import "FXInputState.h"
 #import "FXInputMap.h"
 
 @interface FXGameController ()
@@ -43,7 +42,6 @@
 	NSString *_archive;
 	NSDictionary *_driverInfo;
 	NSSize _screenSize;
-	FXInputState *_inputState;
 	FXInputMap *_inputMap;
 }
 
@@ -51,7 +49,6 @@
 {
     if ((self = [super initWithWindowNibName:@"Game"])) {
 		self->_archive = archive;
-		self->_inputState = [[FXInputState alloc] init];
 		self->_inputMap = [[FXInputMap alloc] init];
     }
     
@@ -87,7 +84,15 @@
 	NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^p(\\d) (.*?)( \\d+)?$"
 																		   options:NSRegularExpressionCaseInsensitive
 																			 error:NULL];
+	
 	[[self->_driverInfo objectForKey:@"input"] enumerateKeysAndObjectsUsingBlock:^(NSString *code, NSDictionary *values, BOOL *stop) {
+		NSUInteger virtualCode = [[values objectForKey:@"code"] integerValue];
+		if ([code isEqualToString:@"diag"]) {
+			[self->_inputMap mapKeyCode:AKKeyCodeF2
+						  toVirtualCode:virtualCode];
+			return;
+		}
+		
 		[regex enumerateMatchesInString:code
 								options:0
 								  range:NSMakeRange(0, [code length])
@@ -95,16 +100,13 @@
 								 NSUInteger player = [[code substringWithRange:[match rangeAtIndex:1]] integerValue];
 								 NSString *desc = [code substringWithRange:[match rangeAtIndex:2]];
 								 
-								 NSUInteger virtualCode = [[values objectForKey:@"code"] integerValue];
 								 if ([desc isEqualToString:@"coin"]) {
 									 [self->_inputMap mapKeyCode:AKKeyCode5 + (player - 1)
 												   toVirtualCode:virtualCode];
 								 } else if ([desc isEqualToString:@"start"]) {
 									 [self->_inputMap mapKeyCode:AKKeyCode1 + (player - 1)
 												   toVirtualCode:virtualCode];
-								 }
-								 
-								 if (player == 1) {
+								 } else if (player == 1) {
 									 if ([desc isEqualToString:@"left"]) {
 										 [self->_inputMap mapKeyCode:AKKeyCodeLeftArrow
 													   toVirtualCode:virtualCode];
@@ -219,9 +221,8 @@
 	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
 		NSInteger virtualCode = [self->_inputMap virtualCodeForKeyCode:[event keyCode]];
 		if (virtualCode != 0) {
-			[self->_inputState setStateForCode:virtualCode
-									 isPressed:isDown];
-			[[self->wrapper remoteObjectProxy] updateInput:self->_inputState];
+			[[self->wrapper remoteObjectProxy] updateInputStateForCode:virtualCode
+																isDown:isDown];
 		}
 	}
 }
@@ -305,8 +306,7 @@
 		NSLog(@"GameController/-Focus");
 #endif
 		// Emulator has lost focus - release all virtual keys
-		[self->_inputState releaseAll];
-		[[self->wrapper remoteObjectProxy] updateInput:self->_inputState];
+		[[self->wrapper remoteObjectProxy] releaseAllInput];
 		
 		// Stop listening for key events
 		[[AKKeyboardManager sharedInstance] removeObserver:self];

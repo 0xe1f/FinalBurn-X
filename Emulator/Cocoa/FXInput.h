@@ -26,7 +26,9 @@
 
 @interface FXInput : NSObject
 
-- (void) updateState:(FXInputState *) state;
+- (void) releaseAll;
+- (void) updateInputStateForCode:(NSInteger) code
+						  isDown:(BOOL) isDown;
 
 @end
 

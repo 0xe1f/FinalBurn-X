@@ -26,7 +26,6 @@
 #include "burnint.h"
 #include "driverlist.h"
 
-#import "FXInputState.h"
 #import "FXEmulator.h"
 
 @implementation FXInput
@@ -68,17 +67,19 @@
 	return self->_states[inputCode] != 0;
 }
 
-- (void) releaseAll
-{
-    memset(self->_states, 0, sizeof(self->_states));
-}
-
 #pragma mark - Public
 
-- (void) updateState:(FXInputState *) state
+- (void) releaseAll
 {
-	[state copyToBuffer:self->_states
-			   maxBytes:sizeof(self->_states)];
+	memset(self->_states, 0, sizeof(self->_states));
+}
+
+- (void) updateInputStateForCode:(NSInteger) code
+						  isDown:(BOOL) isDown
+{
+	if (code >= 0 && code < 256) {
+		self->_states[code] = isDown;
+	}
 }
 
 @end

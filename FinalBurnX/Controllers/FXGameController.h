@@ -22,10 +22,9 @@
  */
 #import <Cocoa/Cocoa.h>
 
+#import "AKKeyboardManager.h"
 #import "FXEmulatorProcessWrapper.h"
 #import "FXScreenView.h"
-
-@protocol AKKeyboardEventDelegate;
 
 @interface FXGameController : NSWindowController<NSWindowDelegate, AKKeyboardEventDelegate>
 {

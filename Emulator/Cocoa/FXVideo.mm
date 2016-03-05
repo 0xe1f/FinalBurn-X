@@ -28,7 +28,6 @@
 
 @interface FXVideo ()
 
-+ (int) powerOfTwoClosestTo:(int) number;
 - (void) cleanup;
 
 @end
@@ -79,14 +78,12 @@
     
     nVidImageDepth = 24;
 	nVidImageBPP = 3;
+	nVidImageWidth = self->_screenWidth;
+	nVidImageHeight = self->_screenHeight;
 	
 	if (!rotationMode) {
-		nVidImageWidth = [FXVideo powerOfTwoClosestTo:self->_screenWidth];
-		nVidImageHeight = self->_screenHeight;
 		nVidImagePitch = nVidImageWidth * nVidImageBPP;
 	} else {
-		nVidImageWidth = self->_screenWidth;
-		nVidImageHeight = [FXVideo powerOfTwoClosestTo:self->_screenHeight];
 		nVidImagePitch = nVidImageHeight * nVidImageBPP;
 	}
 	
@@ -158,13 +155,6 @@
 
 #pragma mark - Private
 
-+ (int) powerOfTwoClosestTo:(int) number
-{
-	int rv = 1;
-	while (rv < number) rv *= 2;
-	return rv;
-}
-
 - (void) cleanup
 {
     @synchronized(self) {
@@ -205,22 +195,12 @@ static int cocoaVideoPaint(int validate)
     return [video renderToSurface:(validate & 2)] ? 0 : 1;
 }
 
-static int cocoaVideoScale(RECT* , int, int)
-{
-	return 0;
-}
-
-static int cocoaVideoGetSettings(InterfaceInfo *info)
-{
-	return 0;
-}
-
 struct VidOut VidOutCocoa = {
     cocoaVideoInit,
     cocoaVideoExit,
     cocoaVideoFrame,
     cocoaVideoPaint,
-    cocoaVideoScale,
-    cocoaVideoGetSettings,
+    NULL,
+    NULL,
     "Cocoa Video",
 };

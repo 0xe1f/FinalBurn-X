@@ -51,7 +51,6 @@ static FXEmulator *sharedInstance = nil;
 	NSURL *_supportURL;
 	NSXPCListener *_listener;
 	NSXPCConnection *_mainAppConnection;
-	int64_t _frameIndex;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -63,7 +62,6 @@ static FXEmulator *sharedInstance = nil;
     if (self = [super init]) {
 		sharedInstance = self;
 		
-		self->_frameIndex = 0;
 		self->_archive = archive;
 		
 		[self setInput:[[FXInput alloc] init]];
@@ -198,20 +196,21 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 
 #pragma mark - FXEmulationCommunication
 
-- (oneway void) updateInput:(FXInputState *) state
+- (void) releaseAllInput
 {
-	[self->_input updateState:state];
+	[self->_input releaseAll];
+}
+
+- (void) updateInputStateForCode:(NSInteger) code
+						  isDown:(BOOL) isDown
+{
+	[self->_input updateInputStateForCode:code
+								   isDown:isDown];
 }
 
 - (void) describeScreenWithHandler:(void (^)(BOOL, NSInteger)) handler
 {
 	handler([self->_video ready], [self->_video surfaceId]);
-}
-
-- (void) renderScreenWithHandler:(void (^)(NSData *, NSInteger)) handler
-{
-	int64_t frame = OSAtomicIncrement64(&self->_frameIndex);
-	handler(nil, frame);
 }
 
 #pragma mark - Other XPC

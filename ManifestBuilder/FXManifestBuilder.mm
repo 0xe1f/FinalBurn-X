@@ -61,8 +61,7 @@
 #undef wcslen
 #endif
 	NSString *title = nil;
-	const wchar_t *fullName = pDriver[index]->szFullNameW;
-
+//	const wchar_t *fullName = pDriver[index]->szFullNameW;
 //	if (fullName != NULL) {
 //		title = [[NSString alloc] initWithBytes:fullName
 //										 length:sizeof(wchar_t) * wcslen(fullName)
@@ -71,7 +70,7 @@
 	
 	if (title == nil) {
 		title = [NSString stringWithCString:pDriver[index]->szFullNameA
-								   encoding:NSUTF8StringEncoding];
+								   encoding:NSASCIIStringEncoding];
 	}
 	
 	return title;
@@ -137,7 +136,7 @@
 		
 		if (pDriver[driverIndex]->szParent != NULL) {
 			NSString *parentArchive = [NSString stringWithCString:pDriver[driverIndex]->szParent
-														 encoding:NSUTF8StringEncoding];
+														 encoding:NSASCIIStringEncoding];
 			NSMutableDictionary *parentSet = [setMap objectForKey:parentArchive];
 			
 			NSMutableDictionary *subsets = [parentSet objectForKey:@"subsets"];
@@ -228,7 +227,7 @@
 			}
 			
 			NSString *alias = [NSString stringWithCString:cAlias
-												 encoding:NSUTF8StringEncoding];
+												 encoding:NSASCIIStringEncoding];
 			
 			[aliases addObject:alias];
 		}
