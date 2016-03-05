@@ -22,11 +22,10 @@
  */
 #import <Cocoa/Cocoa.h>
 
-#import "AKKeyboardManager.h"
 #import "FXEmulatorProcessWrapper.h"
 #import "FXScreenView.h"
 
-@interface FXGameController : NSWindowController<NSWindowDelegate, AKKeyboardEventDelegate>
+@interface FXGameController : NSWindowController<NSWindowDelegate>
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSProgressIndicator *spinner;

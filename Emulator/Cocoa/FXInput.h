@@ -22,13 +22,14 @@
  */
 #import <Foundation/Foundation.h>
 
-@class FXInputState;
+#import "AKKeyboardManager.h"
 
-@interface FXInput : NSObject
+@class FXInputMap;
 
-- (void) releaseAll;
-- (void) updateInputStateForCode:(NSInteger) code
-						  isDown:(BOOL) isDown;
+@interface FXInput : NSObject<AKKeyboardEventDelegate>
+
+- (void) startTrackingInputWithMap:(FXInputMap *) map;
+- (void) stopTrackingInput;
 
 @end
 

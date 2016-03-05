@@ -38,16 +38,10 @@
 @end
 
 @interface AKKeyboardManager : NSObject
-{
-@private
-    IOHIDManagerRef keyboardHidManager;
-    NSMutableArray *observers;
-    NSObject *observerLock;
-}
 
-+ (AKKeyboardManager *)sharedInstance;
++ (AKKeyboardManager *) sharedInstance;
 
-- (void)addObserver:(id<AKKeyboardEventDelegate>)observer;
-- (void)removeObserver:(id<AKKeyboardEventDelegate>)observer;
+- (void) addObserver:(id<AKKeyboardEventDelegate>) observer;
+- (void) removeObserver:(id<AKKeyboardEventDelegate>) observer;
 
 @end

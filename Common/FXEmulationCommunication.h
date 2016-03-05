@@ -22,13 +22,13 @@
  */
 #import <Foundation/Foundation.h>
 
-@class FXInputState;
+@class FXInputMap;
 
 @protocol FXEmulationCommunication <NSObject>
 
-- (void) releaseAllInput;
-- (void) updateInputStateForCode:(NSInteger) code
-						  isDown:(BOOL) isDown;
+- (void) startTrackingInputWithMap:(FXInputMap *) map;
+- (void) stopTrackingInput;
+
 - (void) describeScreenWithHandler:(void(^)(BOOL isReady, NSInteger ioSurfaceId)) handler;
 
 @end

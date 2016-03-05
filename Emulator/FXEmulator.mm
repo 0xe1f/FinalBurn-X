@@ -31,6 +31,7 @@
 #import "FXAudio.h"
 #import "FXVideo.h"
 #import "FXRunLoop.h"
+#import "FXInputMap.h"
 
 #import "FXLoader.h" // FIXME
 
@@ -70,6 +71,8 @@ static FXEmulator *sharedInstance = nil;
 		[self setRunLoop:[[FXRunLoop alloc] init]];
 		
 		[self->_runLoop setDelegate:self];
+		
+		[AKKeyboardManager sharedInstance];
     }
     
     return self;
@@ -196,16 +199,14 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 
 #pragma mark - FXEmulationCommunication
 
-- (void) releaseAllInput
+- (void) startTrackingInputWithMap:(FXInputMap *) map
 {
-	[self->_input releaseAll];
+	[self->_input startTrackingInputWithMap:map];
 }
 
-- (void) updateInputStateForCode:(NSInteger) code
-						  isDown:(BOOL) isDown
+- (void) stopTrackingInput
 {
-	[self->_input updateInputStateForCode:code
-								   isDown:isDown];
+	[self->_input stopTrackingInput];
 }
 
 - (void) describeScreenWithHandler:(void (^)(BOOL, NSInteger)) handler

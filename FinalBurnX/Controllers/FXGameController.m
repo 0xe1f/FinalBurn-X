@@ -204,29 +204,6 @@
 	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
 }
 
-#pragma mark - AKKeyboardEventDelegate
-
-- (void) keyStateChanged:(AKKeyEventData *) event
-				  isDown:(BOOL) isDown
-{
-#ifdef DEBUG_KEY_STATE
-	if (isDown) {
-		NSLog(@"keyboardKeyDown: 0x%lx", [event keyCode]);
-	} else {
-		NSLog(@"keyboardKeyUp: 0x%lx", [event keyCode]);
-	}
-#endif
-	
-	// Don't generate a KeyDown if Command is pressed
-	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
-		NSInteger virtualCode = [self->_inputMap virtualCodeForKeyCode:[event keyCode]];
-		if (virtualCode != 0) {
-			[[self->wrapper remoteObjectProxy] updateInputStateForCode:virtualCode
-																isDown:isDown];
-		}
-	}
-}
-
 #pragma mark - Actions
 
 - (void) resizeNormalSize:(id) sender
@@ -302,20 +279,9 @@
 - (void) windowKeyDidChange:(BOOL) isKey
 {
 	if (!isKey) {
-#ifdef DEBUG
-		NSLog(@"GameController/-Focus");
-#endif
-		// Emulator has lost focus - release all virtual keys
-		[[self->wrapper remoteObjectProxy] releaseAllInput];
-		
-		// Stop listening for key events
-		[[AKKeyboardManager sharedInstance] removeObserver:self];
+		[[self->wrapper remoteObjectProxy] stopTrackingInput];
 	} else {
-#ifdef DEBUG
-		NSLog(@"GameController/+Focus");
-#endif
-		// Start listening for key events
-		[[AKKeyboardManager sharedInstance] addObserver:self];
+		[[self->wrapper remoteObjectProxy] startTrackingInputWithMap:self->_inputMap];
 	}
 }
 

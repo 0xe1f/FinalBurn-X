@@ -72,7 +72,8 @@
     if ((self = [super init]) != nil) {
 		NSData *data = [coder decodeObjectOfClass:[NSData class]
 										   forKey:@"keyMap"];
-		[data getBytes:self->_keyMap];
+		[data getBytes:self->_keyMap
+				length:sizeof(self->_keyMap)];
     }
     
     return self;

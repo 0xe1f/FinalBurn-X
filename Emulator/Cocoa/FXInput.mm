@@ -27,10 +27,18 @@
 #include "driverlist.h"
 
 #import "FXEmulator.h"
+#import "FXInputMap.h"
+
+@interface FXInput ()
+
+- (void) releaseAll;
+
+@end
 
 @implementation FXInput
 {
 	unsigned char _states[256];
+	FXInputMap *_map;
 }
 
 #pragma mark - Init, dealloc
@@ -67,19 +75,53 @@
 	return self->_states[inputCode] != 0;
 }
 
+#pragma mark - AKKeyboardEventDelegate
+
+- (void) keyStateChanged:(AKKeyEventData *) event
+				  isDown:(BOOL) isDown
+{
+#ifdef DEBUG_KEY_STATE
+	if (isDown) {
+		NSLog(@"keyboardKeyDown: 0x%lx", [event keyCode]);
+	} else {
+		NSLog(@"keyboardKeyUp: 0x%lx", [event keyCode]);
+	}
+#endif
+	
+	// Don't generate a KeyDown if Command is pressed
+	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
+		NSInteger virtualCode = [self->_map virtualCodeForKeyCode:[event keyCode]];
+		if (virtualCode > 0 && virtualCode < 256) {
+			self->_states[virtualCode] = isDown;
+		}
+	}
+}
+
 #pragma mark - Public
+
+- (void) startTrackingInputWithMap:(FXInputMap *) map
+{
+#ifdef DEBUG
+	NSLog(@"FXInput: startTracking");
+#endif
+	self->_map = map;
+	[[AKKeyboardManager sharedInstance] addObserver:self];
+}
+
+- (void) stopTrackingInput
+{
+#ifdef DEBUG
+	NSLog(@"FXInput: stopTracking");
+#endif
+	[[AKKeyboardManager sharedInstance] removeObserver:self];
+	[self releaseAll];
+}
+
+#pragma mark - Private
 
 - (void) releaseAll
 {
 	memset(self->_states, 0, sizeof(self->_states));
-}
-
-- (void) updateInputStateForCode:(NSInteger) code
-						  isDown:(BOOL) isDown
-{
-	if (code >= 0 && code < 256) {
-		self->_states[code] = isDown;
-	}
 }
 
 @end
@@ -100,7 +142,7 @@ static int cocoaInputStart()
 static int cocoaInputState(int nCode)
 {
 	FXInput *input = [[FXEmulator sharedInstance] input];
-	return [input isInputActiveForCode:nCode] == YES;
+	return [input isInputActiveForCode:nCode];
 }
 
 struct InputInOut InputInOutCocoa = {
