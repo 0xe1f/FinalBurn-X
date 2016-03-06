@@ -37,6 +37,7 @@
 	unsigned char *_buffer;
 	int _bufferSize;
 	CVPixelBufferRef _pixelBuffer;
+	IOSurfaceRef _surfaceRef;
 	int _screenWidth;
 	int _screenHeight;
 }
@@ -49,6 +50,7 @@
 		self->_ready = NO;
 		self->_buffer = NULL;
 		self->_pixelBuffer = NULL;
+		self->_surfaceRef = NULL;
     }
 
     return self;
@@ -120,7 +122,8 @@
 		return NO;
 	}
 	
-	self->_surfaceId = IOSurfaceGetID(CVPixelBufferGetIOSurface(self->_pixelBuffer));
+	self->_surfaceRef = CVPixelBufferGetIOSurface(self->_pixelBuffer);
+	self->_surfaceId = IOSurfaceGetID(self->_surfaceRef);
 	self->_ready = YES;
 	
     return YES;
@@ -145,10 +148,9 @@
 
 - (BOOL) renderToSurface:(BOOL) validate
 {
-	CVPixelBufferLockBaseAddress(self->_pixelBuffer, 0);
-	void *ptr = CVPixelBufferGetBaseAddress(self->_pixelBuffer);
-	memcpy(ptr, self->_buffer, self->_bufferSize);
-	CVPixelBufferUnlockBaseAddress(self->_pixelBuffer, 0);
+	IOSurfaceLock(self->_surfaceRef, 0, NULL);
+	memcpy(IOSurfaceGetBaseAddress(self->_surfaceRef), self->_buffer, self->_bufferSize);
+	IOSurfaceUnlock(self->_surfaceRef, 0, NULL);
 	
     return YES;
 }
