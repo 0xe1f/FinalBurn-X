@@ -34,9 +34,6 @@
 
 @interface FXRunLoop ()
 
-+ (BOOL)romInfoOfDriverIndex:(int)driverIndex
-                    romIndex:(int)romIndex
-                     romInfo:(struct BurnRomInfo *)romInfo;
 - (BOOL)initializeDriver:(NSError **)error;
 - (BOOL)cleanupDriver;
 
@@ -374,17 +371,6 @@ static int cocoaGetNextSound(int draw);
     return (UInt32)([[NSDate date] timeIntervalSince1970] * 1000.0);
 }
 
-+ (BOOL)romInfoOfDriverIndex:(int)driverIndex
-                    romIndex:(int)romIndex
-                     romInfo:(struct BurnRomInfo *)romInfo
-{
-    if (pDriver[driverIndex]->GetRomInfo(romInfo, romIndex)) {
-        return NO;
-    }
-    
-    return YES;
-}
-
 - (UInt32)loadROMOfDriver:(int)driverIndex
                     index:(int)romIndex
                intoBuffer:(void *)buffer
@@ -395,12 +381,10 @@ static int cocoaGetNextSound(int draw);
     }
     
     struct BurnRomInfo info;
-    if (![FXRunLoop romInfoOfDriverIndex:driverIndex
-                               romIndex:romIndex
-                                romInfo:&info]) {
-        return 1;
-    }
-    
+	if (pDriver[driverIndex]->GetRomInfo(&info, romIndex)) {
+		return 1;
+	}
+	
     FXROMAudit *romAudit = [[[self romSet] audit] findROMAuditByNeededCRC:info.nCrc];
     if (romAudit == nil || [romAudit statusCode] == FXROMAuditMissing) {
         return 1;
@@ -486,5 +470,5 @@ int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i)
     return [runLoop loadROMOfDriver:nBurnDrvActive
                               index:i
                          intoBuffer:Dest
-                       bufferLength:pnWrote];
+					   bufferLength:pnWrote];
 }

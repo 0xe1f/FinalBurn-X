@@ -31,27 +31,24 @@
 @interface FXManifestBuilder()
 
 - (NSString *) titleOfDriver:(int) index;
-- (NSDictionary *) romSets;
-- (NSDictionary *) componentsForSets:(NSDictionary *) sets;
 - (NSDictionary *) inputsForDriver:(int) driverId;
+- (NSDictionary *) componentsForDriver:(int) driverIndex
+							dictionary:(NSMutableDictionary *) dictionary;
 
 @end
 
 @implementation FXManifestBuilder
 
-- (void) writeManifests:(NSURL *) setPath
-		  componentPath:(NSURL *) componentPath
+- (instancetype)init
 {
-	BurnLibInit();
-	
-	NSDictionary *sets = [self romSets];
-	[sets writeToURL:setPath
-		  atomically:NO];
-	
-	NSDictionary *components = [self componentsForSets:sets];
-	[components writeToURL:componentPath
-				atomically:NO];
-	
+	if ((self = [super init])) {
+		BurnLibInit();
+	}
+	return self;
+}
+
+- (void) dealloc
+{
 	BurnLibExit();
 }
 
@@ -61,12 +58,12 @@
 #undef wcslen
 #endif
 	NSString *title = nil;
-//	const wchar_t *fullName = pDriver[index]->szFullNameW;
-//	if (fullName != NULL) {
-//		title = [[NSString alloc] initWithBytes:fullName
-//										 length:sizeof(wchar_t) * wcslen(fullName)
-//									   encoding:NSUTF8StringEncoding];
-//	}
+	const wchar_t *fullName = pDriver[index]->szFullNameW;
+	if (fullName != NULL) {
+		title = [[NSString alloc] initWithBytes:fullName
+										 length:sizeof(wchar_t) * wcslen(fullName)
+									   encoding:NSUTF32LittleEndianStringEncoding];
+	}
 	
 	if (title == nil) {
 		title = [NSString stringWithCString:pDriver[index]->szFullNameA
@@ -110,11 +107,16 @@
 									  @"input": [self inputsForDriver:index],
 									  } mutableCopy];
 		
+		if (pDriver[index]->szParent != NULL) {
+			[set setObject:[NSString stringWithCString:pDriver[index]->szParent
+											 encoding:NSASCIIStringEncoding]
+					forKey:@"parent"];
+		}
+		
 		[attrs removeAllObjects];
 		if (pDriver[index]->Flags & BDF_ORIENTATION_VERTICAL) {
 			[attrs addObject:@"rotated"];
 		}
-		
 		if (pDriver[index]->Flags & BDF_ORIENTATION_FLIPPED) {
 			[attrs addObject:@"flipped"];
 		}
@@ -130,31 +132,7 @@
 				   forKey:archive];
 	}
 	
-	NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-	[setMap enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *set, BOOL *stop) {
-		int driverIndex = [[indexMap objectForKey:archive] intValue];
-		
-		if (pDriver[driverIndex]->szParent != NULL) {
-			NSString *parentArchive = [NSString stringWithCString:pDriver[driverIndex]->szParent
-														 encoding:NSASCIIStringEncoding];
-			NSMutableDictionary *parentSet = [setMap objectForKey:parentArchive];
-			
-			NSMutableDictionary *subsets = [parentSet objectForKey:@"subsets"];
-			if (subsets == nil) {
-				subsets = [NSMutableDictionary dictionary];
-				[parentSet setObject:subsets
-							  forKey:@"subsets"];
-			}
-			
-			[subsets setObject:set
-						forKey:archive];
-		} else {
-			[dictionary setObject:set
-						   forKey:archive];
-		}
-	}];
-	
-	return dictionary;
+	return setMap;
 }
 
 - (NSDictionary *) inputsForDriver:(int) driverId
@@ -180,74 +158,89 @@
 	return inputs;
 }
 
-- (NSDictionary *) componentsForSets:(NSDictionary *) sets
+- (NSDictionary *) components
 {
-	NSMutableDictionary *components = [NSMutableDictionary dictionary];
+	NSDictionary *sets = [self romSets];
+	NSMutableDictionary *dict = [@{} mutableCopy];
 	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *info, BOOL * _Nonnull stop) {
-		NSNumber *driver = [info objectForKey:@"driver"];
-		[components setObject:[self componentsForDriver:[driver intValue]]
-					   forKey:[driver stringValue]];
+		NSDictionary *components = [self componentsForDriver:[[info objectForKey:@"driver"] intValue]
+												  dictionary:dict];
+		[self pruneCommonSubsetFilesIn:components];
+		[dict setObject:components
+				 forKey:archive];
 	}];
 	
-	return components;
+	return dict;
 }
 
-- (NSArray *) componentsForDriver:(int) driverId
+- (NSDictionary *) componentsForDriver:(int) driverIndex
+							dictionary:(NSMutableDictionary *) dictionary
 {
-	NSMutableArray *array = [NSMutableArray array];
+	NSMutableDictionary *outer = [@{} mutableCopy];
+	NSMutableDictionary *files = [@{} mutableCopy];
 	
-	NSArray *typeMasks = @[ @(BRF_ESS), @(BRF_BIOS), @(BRF_GRA), @(BRF_SND), @(BRF_PRG) ];
-	NSArray *typeDescs = @[ @"essential", @"bios", @"graphics", @"sound", @"program" ];
+	[outer setObject:files
+			  forKey:@"files"];
+	const char *parent = pDriver[driverIndex]->szParent;
+	if (parent) {
+		[outer setObject:[NSString stringWithCString:parent
+											encoding:NSASCIIStringEncoding]
+				  forKey:@"parent"];
+	}
 	
 	struct BurnRomInfo ri;
 	for (int i = 0; ; i++) {
-		if (pDriver[driverId]->GetRomInfo(&ri, i)) {
+		if (pDriver[driverIndex]->GetRomInfo(&ri, i)) {
 			break;
 		}
 		
 		if (ri.nType == 0) {
 			continue;
 		}
+		
+		char *cAlias = NULL;
+		if (pDriver[driverIndex]->GetRomName(&cAlias, i, 0)) {
+			continue;
+		}
+		
+		NSDictionary *romInfo = @{
+								  @"len": @(ri.nLen),
+								  @"crc": @(ri.nCrc),
+								  };
+		
+		[files setObject:romInfo
+				  forKey:[NSString stringWithCString:cAlias
+						   encoding:NSASCIIStringEncoding]];
+	}
+	
+	return outer;
+}
 
-		NSMutableString *types = [NSMutableString string];
-		[typeDescs enumerateObjectsUsingBlock:^(NSString *typeDesc, NSUInteger idx, BOOL * _Nonnull stop) {
-			if (ri.nType & (UINT32)[[typeMasks objectAtIndex:idx] unsignedIntegerValue]) {
-				if ([types length] > 0) {
-					[types appendString:@","];
-				}
-				[types appendString:typeDesc];
+- (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) outer
+{
+	[outer enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *set, BOOL * _Nonnull stop) {
+		NSString *parent = [set objectForKey:@"parent"];
+		if (!parent) {
+			return;
+		}
+		
+		NSDictionary *parentFiles = [[outer objectForKey:parent] objectForKey:@"files"];
+		NSMutableDictionary *subFiles = [set objectForKey:@"files"];
+		NSMutableDictionary *commonInParent = [@{} mutableCopy];
+		[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
+			if ([parentFiles objectForKey:fileName]) {
+				NSLog(@"removing %@", fileName);
+				[subFiles removeObjectForKey:fileName];
+				[commonInParent setObject:fileInfo
+								   forKey:fileName];
 			}
 		}];
 		
-		NSMutableArray *aliases = [NSMutableArray array];
-		for (int aliasIndex = 0; aliasIndex < 0x10000; aliasIndex++) {
-			char *cAlias = NULL;
-			if (pDriver[driverId]->GetRomName(&cAlias, i, aliasIndex)) {
-				break;
-			}
-			
-			NSString *alias = [NSString stringWithCString:cAlias
-												 encoding:NSASCIIStringEncoding];
-			
-			[aliases addObject:alias];
+		if ([commonInParent count] > 0) {
+			[outer setObject:commonInParent
+					  forKey:parent];
 		}
-		
-		NSMutableDictionary *romInfo = [@{
-										  @"name": [aliases firstObject],
-										  @"len": @(ri.nLen),
-										  @"crc": @(ri.nCrc),
-										  @"type": types,
-										  } mutableCopy];
-		
-		if ([aliases count] > 1) {
-			[romInfo setObject:[aliases subarrayWithRange:NSMakeRange(1, [aliases count] - 1)]
-						forKey:@"aliases"];
-		}
-		
-		[array addObject:romInfo];
-	}
-	
-	return array;
+	}];
 }
 
 @end

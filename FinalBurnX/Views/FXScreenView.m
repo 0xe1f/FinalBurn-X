@@ -116,7 +116,6 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     
     glClear(GL_COLOR_BUFFER_BIT);
 	
-
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
@@ -162,8 +161,9 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 	self->_surfaceRef = surfaceRef;
 	GLint bytesPerPixel = (GLint) IOSurfaceGetBytesPerElement(self->_surfaceRef);
 	GLint surfaceWidth = (GLint) IOSurfaceGetWidth(self->_surfaceRef);
+	GLint surfaceHeight = (GLint) IOSurfaceGetHeight(self->_surfaceRef);
 	GLsizei textureWidth = closestPowerOfTwo(surfaceWidth);
-	GLsizei textureHeight = closestPowerOfTwo((int) IOSurfaceGetHeight(self->_surfaceRef));
+	GLsizei textureHeight = closestPowerOfTwo(surfaceHeight);
 	
 	self->_surfacePitch = surfaceWidth * bytesPerPixel;
 	self->_texturePos = NSMakePoint((GLfloat) self->_screenWidth / (GLfloat) textureWidth,

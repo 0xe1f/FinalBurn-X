@@ -66,6 +66,8 @@
 	self->_screenSize = NSMakeSize(screenWidth, screenHeight);
 	
 	[[self window] setTitle:[self->_driverInfo objectForKey:@"title"]];
+	[self resizeFrame:[self preferredSizeOfScreenWithSize:self->_screenSize]
+			  animate:YES];
 	
 	[self->wrapper setUpWithArchive:self->_archive
 								uid:nil];

@@ -34,7 +34,6 @@
 	FXPreferencesController *_prefs;
 	
 	NSMutableDictionary *_emulatorWindows;
-	NSObject *_windowLock;
 }
 
 static FXAppDelegate *sharedInstance = nil;
@@ -53,12 +52,11 @@ static FXAppDelegate *sharedInstance = nil;
 {
     if (self = [super init]) {
         sharedInstance = self;
-		self->_emulatorWindows = [NSMutableDictionary dictionary];
-		self->_windowLock = [[NSObject alloc] init];
 		
-		NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
-																	   ofType:@"plist"];
-		self->_sets = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
+		self->_emulatorWindows = [NSMutableDictionary dictionary];
+		self->_sets = [NSMutableDictionary dictionary];
+		
+		[self loadSetData];
     }
     
     return self;
@@ -123,7 +121,7 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void) showLauncher:(id) sender
 {
-	@synchronized(self->_windowLock) {
+	@synchronized(self->_emulatorWindows) {
 		if (self->_launcher == nil) {
 			self->_launcher = [[FXLauncherController alloc] init];
 		}
@@ -134,7 +132,7 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void)showPreferences:(id) sender
 {
-	@synchronized(self->_windowLock) {
+	@synchronized(self->_emulatorWindows) {
 		if (self->_prefs == nil) {
 			self->_prefs = [[FXPreferencesController alloc] init];
 		}
@@ -147,8 +145,12 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void) launch:(NSString *) archive
 {
+	if ([self->_sets objectForKey:archive] == nil) {
+		return;
+	}
+	
 	FXGameController *e = nil;
-	@synchronized(self->_windowLock) {
+	@synchronized(self->_emulatorWindows) {
 		e = [self->_emulatorWindows objectForKey:archive];
 		if (e == nil) {
 			e = [[FXGameController alloc] initWithArchive:archive];
@@ -170,6 +172,15 @@ static FXAppDelegate *sharedInstance = nil;
 + (FXAppDelegate *) sharedInstance
 {
     return sharedInstance;
+}
+
+#pragma mark - Private
+
+- (void) loadSetData
+{
+	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
+																   ofType:@"plist"];
+	self->_sets = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
 }
 
 @end

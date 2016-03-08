@@ -3531,7 +3531,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/Components.plist\"";
+			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} -s > \"${TARGET_BUILD_DIR}/SetManifest.plist\"";
 		};
 		FE68437D1C81964400A859C0 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3544,7 +3544,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cp \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\ncp \"${TARGET_BUILD_DIR}/Components.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n";
+			shellScript = "cp \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

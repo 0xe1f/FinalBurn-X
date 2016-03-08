@@ -26,20 +26,25 @@
 
 int main(int argc, const char * argv[])
 {
-	if (argc < 3) {
-		fprintf(stderr, "Usage: %s <set_manifest_path> <component_manifest_path>\n", argv[0]);
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s [-s|-c]\n", argv[0]);
 		return 1;
 	}
 	
 	@autoreleasepool {
-		NSString *setPath = [NSString stringWithCString:argv[1]
-											   encoding:NSUTF8StringEncoding];
-		NSString *componentPath = [NSString stringWithCString:argv[2]
-													 encoding:NSUTF8StringEncoding];
-		
 		FXManifestBuilder *builder = [[FXManifestBuilder alloc] init];
-		[builder writeManifests:[NSURL fileURLWithPath:setPath]
-				  componentPath:[NSURL fileURLWithPath:componentPath]];
+		NSDictionary *data = nil;
+		if (strcmp(argv[1], "-s") == 0) {
+			data = [builder romSets];
+		} else if (strcmp(argv[1], "-c") == 0) {
+			data = [builder components];
+		} else {
+			fprintf(stderr, "Usage: %s [-s|-c]\n", argv[0]);
+			return 1;
+		}
+		
+		[data writeToFile:@"/dev/stdout"
+			   atomically:NO];
 	}
 	
     return 0;

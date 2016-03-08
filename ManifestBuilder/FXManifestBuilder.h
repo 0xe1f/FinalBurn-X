@@ -24,7 +24,7 @@
 
 @interface FXManifestBuilder : NSObject
 
-- (void) writeManifests:(NSURL *) setPath
-		  componentPath:(NSURL *) componentPath;
+- (NSDictionary *) romSets;
+- (NSDictionary *) components;
 
 @end
