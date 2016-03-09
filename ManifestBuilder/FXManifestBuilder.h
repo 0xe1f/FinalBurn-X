@@ -25,6 +25,5 @@
 @interface FXManifestBuilder : NSObject
 
 - (NSDictionary *) romSets;
-- (NSDictionary *) components;
 
 @end

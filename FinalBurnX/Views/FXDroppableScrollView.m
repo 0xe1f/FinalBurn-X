@@ -24,57 +24,57 @@
 
 @implementation FXDroppableScrollView
 
-- (id)initWithCoder:(NSCoder *)coder
+- (id) initWithCoder:(NSCoder *) coder
 {
-    if ((self = [super initWithCoder:coder]) != nil) {
-        [self registerForDraggedTypes:@[NSFilenamesPboardType]];
-    }
-    
-    return self;
+	if ((self = [super initWithCoder:coder]) != nil) {
+		[self registerForDraggedTypes:@[NSFilenamesPboardType]];
+	}
+	
+	return self;
 }
 
 #pragma mark - Drag & Drop
 
-- (BOOL)prepareForDragOperation:(id<NSDraggingInfo>)sender
+- (BOOL) prepareForDragOperation:(id<NSDraggingInfo>) sender
 {
-    NSPasteboard *pboard = [sender draggingPasteboard];
-    return [[pboard types] containsObject:NSFilenamesPboardType];
+	NSPasteboard *pboard = [sender draggingPasteboard];
+	return [[pboard types] containsObject:NSFilenamesPboardType];
 }
 
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender
 {
-    NSPasteboard *pboard = [sender draggingPasteboard];
-    NSArray *paths = [pboard propertyListForType:NSFilenamesPboardType];
-    
-    [[self scanner] importArchives:paths];
-    
-    return YES;
+	NSPasteboard *pboard = [sender draggingPasteboard];
+	NSArray *paths = [pboard propertyListForType:NSFilenamesPboardType];
+	
+	[[self dropDelegate] filesDidDrop:paths];
+	
+	return YES;
 }
 
-- (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
+- (NSDragOperation) draggingEntered:(id <NSDraggingInfo>) sender
 {
-    __block NSDragOperation dragOp = NSDragOperationNone;
-    
-    if ([sender draggingSourceOperationMask] & NSDragOperationCopy) {
-        NSPasteboard *pboard = [sender draggingPasteboard];
-        if ([[pboard types] containsObject:NSFilenamesPboardType]) {
-            NSArray *files = [pboard propertyListForType:NSFilenamesPboardType];
-            if ([files count] > 0) {
-                dragOp = NSDragOperationCopy;
-                [files enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
-                    if (![[self scanner] isArchiveSupported:path]) {
-                        dragOp = NSDragOperationNone;
-                        *stop = YES;
-                    }
-                }];
-            }
-        }
-    }
-    
-    return dragOp;
+	__block NSDragOperation dragOp = NSDragOperationNone;
+	
+	if ([sender draggingSourceOperationMask] & NSDragOperationCopy) {
+		NSPasteboard *pboard = [sender draggingPasteboard];
+		if ([[pboard types] containsObject:NSFilenamesPboardType]) {
+			NSArray *files = [pboard propertyListForType:NSFilenamesPboardType];
+			if ([files count] > 0) {
+				dragOp = NSDragOperationCopy;
+				[files enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
+					if (![[self dropDelegate] isFileSupported:path]) {
+						dragOp = NSDragOperationNone;
+						*stop = YES;
+					}
+				}];
+			}
+		}
+	}
+	
+	return dragOp;
 }
 
-- (void)draggingExited:(id <NSDraggingInfo>)sender
+- (void) draggingExited:(id <NSDraggingInfo>) sender
 {
 }
 

@@ -26,22 +26,9 @@
 
 int main(int argc, const char * argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s [-s|-c]\n", argv[0]);
-		return 1;
-	}
-	
 	@autoreleasepool {
 		FXManifestBuilder *builder = [[FXManifestBuilder alloc] init];
-		NSDictionary *data = nil;
-		if (strcmp(argv[1], "-s") == 0) {
-			data = [builder romSets];
-		} else if (strcmp(argv[1], "-c") == 0) {
-			data = [builder components];
-		} else {
-			fprintf(stderr, "Usage: %s [-s|-c]\n", argv[0]);
-			return 1;
-		}
+		NSDictionary *data = [builder romSets];
 		
 		[data writeToFile:@"/dev/stdout"
 			   atomically:NO];

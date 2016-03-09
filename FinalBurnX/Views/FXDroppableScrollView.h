@@ -22,16 +22,16 @@
  */
 #import <Cocoa/Cocoa.h>
 
-@protocol FXScannerDelegate
+@protocol FXDropDelegate
 
 @required
-- (BOOL)isArchiveSupported:(NSString *)path;
-- (void)importArchives:(NSArray *)paths;
+- (BOOL) isFileSupported:(NSString *) path;
+- (void) filesDidDrop:(NSArray *) paths;
 
 @end
 
 @interface FXDroppableScrollView : NSScrollView<NSDraggingDestination>
 
-@property (nonatomic, weak) IBOutlet id<FXScannerDelegate> scanner;
+@property (nonatomic, weak) IBOutlet id<FXDropDelegate> dropDelegate;
 
 @end

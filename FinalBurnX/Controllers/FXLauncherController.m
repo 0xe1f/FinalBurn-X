@@ -25,8 +25,6 @@
 #import "FXGameController.h"
 #import "FXAppDelegate.h"
 
-#import "FXROMSet.h"
-
 @interface FXLauncherController ()
 
 - (NSString *)auditCachePath;
@@ -118,51 +116,52 @@
 
 #pragma mark - FXScannerDelegate
 
-- (BOOL)isArchiveSupported:(NSString *)path
+- (BOOL) isFileSupported:(NSString *) path
 {
-    // Make sure it's a ZIP file
-    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
-        return NO;
-    }
-    
-    // Disallow importing from the library directory
-    NSString *parentPath = [path stringByDeletingLastPathComponent];
-    NSString *romPath = [[[FXAppDelegate sharedInstance] romRootURL] path];
-    
-    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
-        return NO;
-    }
-    
-    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
-    
-    // FIXME
-    if ([archive isEqualToString:@"neogeo"]) {
-        return YES;
-    }
-    
-    // Make sure it's one of the supported ROM sets
-    __block BOOL supported = NO;
-    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-        if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
-            supported = YES;
-            *stop = YES;
-        }
-    }];
-    
-    return supported;
+//    // Make sure it's a ZIP file
+//    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
+//        return NO;
+//    }
+//    
+//    // Disallow importing from the library directory
+//    NSString *parentPath = [path stringByDeletingLastPathComponent];
+//    NSString *romPath = [[[FXAppDelegate sharedInstance] romRootURL] path];
+//    
+//    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
+//        return NO;
+//    }
+//    
+//    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
+//    
+//    // FIXME
+//    if ([archive isEqualToString:@"neogeo"]) {
+//        return YES;
+//    }
+//    
+//    // Make sure it's one of the supported ROM sets
+//    __block BOOL supported = NO;
+//    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+//        if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
+//            supported = YES;
+//            *stop = YES;
+//        }
+//    }];
+//    
+//    return supported;
+	return NO;
 }
 
-- (void)importArchives:(NSArray *)paths
+- (void) filesDidDrop:(NSArray *)paths
 {
     [self importAsync:paths];
 }
 
 #pragma mark - KVO
 
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context
+- (void) observeValueForKeyPath:(NSString *) keyPath
+					   ofObject:(id) object
+						 change:(NSDictionary *) change
+						context:(void *) context
 {
     if (object == self->_importOpQueue && [keyPath isEqualToString:@"operationCount"]) {
         NSInteger newCount = [[change objectForKey:NSKeyValueChangeNewKey] intValue];
@@ -199,14 +198,14 @@
 
 #pragma mark - Actions
 
-- (void)launchGame:(id)sender
+- (void) launchGame:(id)sender
 {
-    FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
-	FXAppDelegate *app = [FXAppDelegate sharedInstance];
-	[app launch:[romSet archive]];
+//    FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
+//	FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//	[app launch:[romSet archive]];
 }
 
-- (void)cancelImport:(id)sender
+- (void) cancelImport:(id)sender
 {
     [self->importCancelButton setEnabled:NO];
     [self->importProgressLabel setStringValue:NSLocalizedString(@"Cancelling...", @"")];
@@ -371,40 +370,30 @@
 
 - (NSString *) auditCachePath
 {
-    FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    return [[[app supportRootURL] URLByAppendingPathComponent:@"audits.cache"] path];
+//    FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//    return [[[app supportRootURL] URLByAppendingPathComponent:@"audits.cache"] path];
+	return nil;
 }
 
-- (FXROMSet *) FIXMEsetFromArchive:(NSString *) archive
-						dictionary:(NSDictionary *) dictionary
-{
-	FXROMSet *set = [[FXROMSet alloc] init];
-	[set setArchive:archive];
-	[set setTitle:[dictionary objectForKey:@"title"]];
-	[set setScreenSize:NSMakeSize([[dictionary objectForKey:@"width"] intValue], [[dictionary objectForKey:@"height"] intValue])];
-	
-	return set;
-}
-
-- (void)identifyROMSets
+- (void) identifyROMSets
 {
 #ifdef DEBUG
     NSDate *started = [NSDate date];
     NSLog(@"Identifying sets...");
 #endif
     
-	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
-		FXROMSet *romSet = [self FIXMEsetFromArchive:archive
-										  dictionary:values];
-		[[values objectForKey:@"subsets"] enumerateKeysAndObjectsUsingBlock:^(NSString *subarchive, NSDictionary *subvalues, BOOL * _Nonnull stop) {
-			FXROMSet *subset = [self FIXMEsetFromArchive:subarchive
-											  dictionary:subvalues];
-			[subset setParentSet:romSet];
-			[[romSet subsets] addObject:subset];
-		}];
-		
-		[[self drivers] addObject:romSet];
-	}];
+//	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
+//		FXROMSet *romSet = [self FIXMEsetFromArchive:archive
+//										  dictionary:values];
+//		[[values objectForKey:@"subsets"] enumerateKeysAndObjectsUsingBlock:^(NSString *subarchive, NSDictionary *subvalues, BOOL * _Nonnull stop) {
+//			FXROMSet *subset = [self FIXMEsetFromArchive:subarchive
+//											  dictionary:subvalues];
+//			[subset setParentSet:romSet];
+//			[[romSet subsets] addObject:subset];
+//		}];
+//		
+//		[[self drivers] addObject:romSet];
+//	}];
 	
 #ifdef DEBUG
     NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
@@ -418,16 +407,16 @@
     NSLog(@"Updating audit data...");
 #endif
     
-    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-        FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
-        [romSet setAudit:audit];
-        
-        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
-            FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
-            [subset setAudit:subAudit];
-        }];
-    }];
-    
+//    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+//        FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
+//        [romSet setAudit:audit];
+//        
+//        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
+//            FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
+//            [subset setAudit:subAudit];
+//        }];
+//    }];
+	
 #ifdef DEBUG
     NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
 #endif

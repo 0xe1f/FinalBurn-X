@@ -22,39 +22,17 @@
 		FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB77319CFE14B0070325C /* Defaults.plist */; };
 		FE1FB77B19D13D0A0070325C /* AKKeyCaptureView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB77919D13D0A0070325C /* AKKeyCaptureView.m */; };
 		FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB77D19D13E550070325C /* AKKeyCaptureFieldCell.m */; };
-		FE23E4F11961D06B00429FCA /* FXDriverAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F01961D06B00429FCA /* FXDriverAudit.m */; };
-		FE23E4F41961D45D00429FCA /* FXROMAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F31961D45D00429FCA /* FXROMAudit.m */; };
 		FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F6196316B000429FCA /* FXLauncherController.m */; };
 		FE23E4FA1963171300429FCA /* Launcher.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE23E4F81963171300429FCA /* Launcher.xib */; };
 		FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE505FC5194BD4A3003A2BC7 /* license.rtf */; };
-		FE506073194BD4E6003A2BC7 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506045194BD4E6003A2BC7 /* adler32.c */; };
-		FE506074194BD4E6003A2BC7 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506046194BD4E6003A2BC7 /* compress.c */; };
-		FE506075194BD4E6003A2BC7 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506047194BD4E6003A2BC7 /* crc32.c */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings"; }; };
-		FE506076194BD4E6003A2BC7 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506049194BD4E6003A2BC7 /* deflate.c */; };
-		FE506077194BD4E6003A2BC7 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604B194BD4E6003A2BC7 /* gzclose.c */; };
-		FE506078194BD4E6003A2BC7 /* gzlib.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604D194BD4E6003A2BC7 /* gzlib.c */; };
-		FE506079194BD4E6003A2BC7 /* gzread.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604E194BD4E6003A2BC7 /* gzread.c */; settings = {COMPILER_FLAGS = " -Wno-shorten-64-to-32 -Wno-shorten-64-to-32"; }; };
-		FE50607A194BD4E6003A2BC7 /* gzwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604F194BD4E6003A2BC7 /* gzwrite.c */; settings = {COMPILER_FLAGS = " -Wno-shorten-64-to-32 -Wno-shorten-64-to-32"; }; };
-		FE50607B194BD4E6003A2BC7 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506050194BD4E6003A2BC7 /* infback.c */; };
-		FE50607C194BD4E6003A2BC7 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506051194BD4E6003A2BC7 /* inffast.c */; };
-		FE50607D194BD4E6003A2BC7 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506054194BD4E6003A2BC7 /* inflate.c */; };
-		FE50607E194BD4E6003A2BC7 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506056194BD4E6003A2BC7 /* inftrees.c */; };
-		FE50607F194BD4E6003A2BC7 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
-		FE506080194BD4E6003A2BC7 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
-		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
 		FE6843751C81848C00A859C0 /* stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE6843731C81847700A859C0 /* stubs.cpp */; };
 		FE6843761C81857300A859C0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FEF150941C8182C30030CB84 /* main.m */; };
 		FE6843791C81864A00A859C0 /* FXManifestBuilder.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */; };
-		FE6843821C8411F600A859C0 /* FXROMSet.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6843811C8411F600A859C0 /* FXROMSet.m */; };
-		FE6843831C84135300A859C0 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
-		FE6843841C84135300A859C0 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F2194C31E90024716B /* unzip.c */; };
 		FE6D55241C803164001B1A7E /* FXGameController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6D55221C803164001B1A7E /* FXGameController.m */; };
 		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
 		FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
-		FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZipArchive.m */; };
-		FE9FA40D195D349B00F791EB /* FXZipFile.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA40C195D349B00F791EB /* FXZipFile.m */; };
 		FEA0B6E01C7F8BCD00591D44 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B6DF1C7F8BCD00591D44 /* main.m */; };
 		FEA0B6E41C7F8BE700591D44 /* 8255ppi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3E194BC531003A2BC7 /* 8255ppi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
 		FEA0B6E51C7F8BE700591D44 /* 8257dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A40194BC531003A2BC7 /* 8257dma.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
@@ -1173,7 +1151,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		FE0230541951679000661A17 /* tchar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tchar.h; sourceTree = "<group>"; };
 		FE08934419475F9800F79190 /* FinalBurn X.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FinalBurn X.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE08934719475F9800F79190 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		FE08934A19475F9800F79190 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -1200,8 +1177,6 @@
 		FE1FB77A19D13D0A0070325C /* AKKeyCaptureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyCaptureView.h; sourceTree = "<group>"; };
 		FE1FB77C19D13E550070325C /* AKKeyCaptureFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyCaptureFieldCell.h; sourceTree = "<group>"; };
 		FE1FB77D19D13E550070325C /* AKKeyCaptureFieldCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyCaptureFieldCell.m; sourceTree = "<group>"; };
-		FE23E4F01961D06B00429FCA /* FXDriverAudit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDriverAudit.m; sourceTree = "<group>"; };
-		FE23E4F31961D45D00429FCA /* FXROMAudit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXROMAudit.m; sourceTree = "<group>"; };
 		FE23E4F5196316B000429FCA /* FXLauncherController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXLauncherController.h; sourceTree = "<group>"; };
 		FE23E4F6196316B000429FCA /* FXLauncherController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXLauncherController.m; sourceTree = "<group>"; };
 		FE23E4F91963171300429FCA /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Launcher.xib; sourceTree = "<group>"; };
@@ -1866,7 +1841,6 @@
 		FE6843731C81847700A859C0 /* stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stubs.cpp; sourceTree = "<group>"; };
 		FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXManifestBuilder.mm; sourceTree = "<group>"; };
 		FE6843781C81864A00A859C0 /* FXManifestBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifestBuilder.h; sourceTree = "<group>"; };
-		FE6843811C8411F600A859C0 /* FXROMSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXROMSet.m; sourceTree = "<group>"; };
 		FE6D55221C803164001B1A7E /* FXGameController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameController.m; sourceTree = "<group>"; };
 		FE6D55231C803164001B1A7E /* FXGameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameController.h; sourceTree = "<group>"; };
 		FE6D55261C8032F6001B1A7E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Game.xib; sourceTree = "<group>"; };
@@ -1904,10 +1878,6 @@
 		FE780120194C36510024716B /* lowpass2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowpass2.h; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
-		FE9FA405195BF00500F791EB /* FXZipArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipArchive.h; sourceTree = "<group>"; };
-		FE9FA406195BF00500F791EB /* FXZipArchive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipArchive.m; sourceTree = "<group>"; };
-		FE9FA40B195D349B00F791EB /* FXZipFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipFile.h; sourceTree = "<group>"; };
-		FE9FA40C195D349B00F791EB /* FXZipFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipFile.m; sourceTree = "<group>"; };
 		FEA0B6DD1C7F8BCD00591D44 /* Emulator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Emulator; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEA0B6DF1C7F8BCD00591D44 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		FEA0B8EF1C7F944200591D44 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
@@ -2868,7 +2838,6 @@
 			isa = PBXGroup;
 			children = (
 				FEE8E45D19CCF7D200B93643 /* minizip */,
-				FED10DC4194CD91700754BE0 /* cocoa */,
 				FE505E0F194BCCBE003A2BC7 /* burner.h */,
 				FE7800CA194C24CF0024716B /* gameinp.h */,
 				FE505E15194BCCBE003A2BC7 /* gami.cpp */,
@@ -3361,21 +3330,6 @@
 			path = Objects;
 			sourceTree = "<group>";
 		};
-		FED10DC4194CD91700754BE0 /* cocoa */ = {
-			isa = PBXGroup;
-			children = (
-				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
-				FE23E4F31961D45D00429FCA /* FXROMAudit.m */,
-				FE6843811C8411F600A859C0 /* FXROMSet.m */,
-				FE9FA405195BF00500F791EB /* FXZipArchive.h */,
-				FE9FA406195BF00500F791EB /* FXZipArchive.m */,
-				FE9FA40B195D349B00F791EB /* FXZipFile.h */,
-				FE9FA40C195D349B00F791EB /* FXZipFile.m */,
-				FE0230541951679000661A17 /* tchar.h */,
-			);
-			path = cocoa;
-			sourceTree = "<group>";
-		};
 		FEE8E45D19CCF7D200B93643 /* minizip */ = {
 			isa = PBXGroup;
 			children = (
@@ -3531,7 +3485,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} -s > \"${TARGET_BUILD_DIR}/SetManifest.plist\"";
+			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} -s > \"${TARGET_BUILD_DIR}/SetManifest.plist\"\n";
 		};
 		FE68437D1C81964400A859C0 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3553,42 +3507,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE6843841C84135300A859C0 /* unzip.c in Sources */,
-				FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */,
 				FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */,
-				FE50607A194BD4E6003A2BC7 /* gzwrite.c in Sources */,
 				FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */,
-				FE506073194BD4E6003A2BC7 /* adler32.c in Sources */,
 				FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */,
 				FED0B61A1C8AE45700DD4EC3 /* AKKeyEventData.m in Sources */,
-				FE23E4F41961D45D00429FCA /* FXROMAudit.m in Sources */,
-				FE506076194BD4E6003A2BC7 /* deflate.c in Sources */,
-				FE50607B194BD4E6003A2BC7 /* infback.c in Sources */,
-				FE9FA40D195D349B00F791EB /* FXZipFile.m in Sources */,
 				FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */,
 				FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */,
-				FE506082194BD4E6003A2BC7 /* zutil.c in Sources */,
 				FED0B6191C8AE45700DD4EC3 /* AKKeyboardManager.m in Sources */,
 				FE6D55241C803164001B1A7E /* FXGameController.m in Sources */,
-				FE506074194BD4E6003A2BC7 /* compress.c in Sources */,
-				FE506075194BD4E6003A2BC7 /* crc32.c in Sources */,
-				FE506079194BD4E6003A2BC7 /* gzread.c in Sources */,
-				FE50607F194BD4E6003A2BC7 /* trees.c in Sources */,
-				FE6843821C8411F600A859C0 /* FXROMSet.m in Sources */,
 				FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */,
 				FED0B61E1C8AE4A900DD4EC3 /* FXInputMap.m in Sources */,
-				FE506078194BD4E6003A2BC7 /* gzlib.c in Sources */,
 				FE1FB76C19CFD71C0070325C /* FXPreferencesController.m in Sources */,
-				FE50607C194BD4E6003A2BC7 /* inffast.c in Sources */,
 				FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */,
-				FE50607E194BD4E6003A2BC7 /* inftrees.c in Sources */,
-				FE23E4F11961D06B00429FCA /* FXDriverAudit.m in Sources */,
 				FE08935419475F9800F79190 /* main.m in Sources */,
-				FE506080194BD4E6003A2BC7 /* uncompr.c in Sources */,
 				FE1FB77B19D13D0A0070325C /* AKKeyCaptureView.m in Sources */,
-				FE50607D194BD4E6003A2BC7 /* inflate.c in Sources */,
-				FE6843831C84135300A859C0 /* ioapi.c in Sources */,
-				FE506077194BD4E6003A2BC7 /* gzclose.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

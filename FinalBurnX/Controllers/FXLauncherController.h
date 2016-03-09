@@ -24,7 +24,7 @@
 
 #import "FXDroppableScrollView.h"
 
-@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXScannerDelegate>
+@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXDropDelegate>
 {
     IBOutlet NSPanel *importProgressPanel;
     IBOutlet NSProgressIndicator *importProgressBar;

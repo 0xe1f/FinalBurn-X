@@ -32,8 +32,8 @@
 
 - (NSString *) titleOfDriver:(int) index;
 - (NSDictionary *) inputsForDriver:(int) driverId;
-- (NSDictionary *) componentsForDriver:(int) driverIndex
-							dictionary:(NSMutableDictionary *) dictionary;
+- (NSMutableDictionary *) componentsForDriver:(int) driverIndex;
+- (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) outer;
 
 @end
 
@@ -75,7 +75,6 @@
 
 - (NSDictionary *) romSets
 {
-	NSMutableDictionary *indexMap = [@{} mutableCopy];
 	NSMutableDictionary *setMap = [@{} mutableCopy];
 	NSMutableArray *attrs = [@[] mutableCopy];
 	
@@ -125,12 +124,14 @@
 					forKey:@"attrs"];
 		}
 		
-		[indexMap setObject:@(index)
-					 forKey:archive];
-
+		NSMutableDictionary *components = [self componentsForDriver:index];
+		[set addEntriesFromDictionary:components];
+		
 		[setMap setObject:set
 				   forKey:archive];
 	}
+	
+	[self pruneCommonSubsetFilesIn:setMap];
 	
 	return setMap;
 }
@@ -158,35 +159,13 @@
 	return inputs;
 }
 
-- (NSDictionary *) components
-{
-	NSDictionary *sets = [self romSets];
-	NSMutableDictionary *dict = [@{} mutableCopy];
-	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *info, BOOL * _Nonnull stop) {
-		NSDictionary *components = [self componentsForDriver:[[info objectForKey:@"driver"] intValue]
-												  dictionary:dict];
-		[self pruneCommonSubsetFilesIn:components];
-		[dict setObject:components
-				 forKey:archive];
-	}];
-	
-	return dict;
-}
-
-- (NSDictionary *) componentsForDriver:(int) driverIndex
-							dictionary:(NSMutableDictionary *) dictionary
+- (NSMutableDictionary *) componentsForDriver:(int) driverIndex
 {
 	NSMutableDictionary *outer = [@{} mutableCopy];
 	NSMutableDictionary *files = [@{} mutableCopy];
 	
-	[outer setObject:files
+	[outer setObject:[@{ @"local": files } mutableCopy]
 			  forKey:@"files"];
-	const char *parent = pDriver[driverIndex]->szParent;
-	if (parent) {
-		[outer setObject:[NSString stringWithCString:parent
-											encoding:NSASCIIStringEncoding]
-				  forKey:@"parent"];
-	}
 	
 	struct BurnRomInfo ri;
 	for (int i = 0; ; i++) {
@@ -216,29 +195,28 @@
 	return outer;
 }
 
-- (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) outer
+- (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) sets
 {
-	[outer enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *set, BOOL * _Nonnull stop) {
+	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSMutableDictionary *set, BOOL * _Nonnull stop) {
 		NSString *parent = [set objectForKey:@"parent"];
 		if (!parent) {
 			return;
 		}
 		
-		NSDictionary *parentFiles = [[outer objectForKey:parent] objectForKey:@"files"];
-		NSMutableDictionary *subFiles = [set objectForKey:@"files"];
-		NSMutableDictionary *commonInParent = [@{} mutableCopy];
+		NSDictionary *parentFiles = [[[sets objectForKey:parent] objectForKey:@"files"] objectForKey:@"local"];
+		NSMutableDictionary *subFiles = [[set objectForKey:@"files"] objectForKey:@"local"];
+		
+		NSMutableArray *commonInParent = [@[] mutableCopy];
 		[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
 			if ([parentFiles objectForKey:fileName]) {
-				NSLog(@"removing %@", fileName);
 				[subFiles removeObjectForKey:fileName];
-				[commonInParent setObject:fileInfo
-								   forKey:fileName];
+				[commonInParent addObject:fileName];
 			}
 		}];
 		
 		if ([commonInParent count] > 0) {
-			[outer setObject:commonInParent
-					  forKey:parent];
+			[[set objectForKey:@"files"] setObject:commonInParent
+											forKey:@"super"];
 		}
 	}];
 }
