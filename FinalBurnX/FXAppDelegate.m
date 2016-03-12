@@ -28,6 +28,9 @@
 #import "FXLauncherController.h"
 #import "FXGameController.h"
 
+NSString *const kFXNotificationCache = @"cache";
+NSString *const FXNotificationCacheChanged = @"org.akop.finalburnx.CacheChange";
+
 @implementation FXAppDelegate
 {
 	FXLauncherController *_launcher;
@@ -54,9 +57,7 @@ static FXAppDelegate *sharedInstance = nil;
         sharedInstance = self;
 		
 		self->_emulatorWindows = [NSMutableDictionary dictionary];
-		self->_sets = [NSMutableDictionary dictionary];
-		
-		[self loadSetData];
+		self->_setManifest = [NSMutableDictionary dictionary];
     }
     
     return self;
@@ -80,6 +81,7 @@ static FXAppDelegate *sharedInstance = nil;
 	
     self->_romRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"roms"];
 	self->_inputMapRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"input"];
+	self->_auditCachePath = [[self->_supportRootURL URLByAppendingPathComponent:@"audit.cache"] path];
 	NSURL *nvramRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"nvram"];
 	
     NSArray *pathsToCreate = @[ self->_supportRootURL,
@@ -102,6 +104,14 @@ static FXAppDelegate *sharedInstance = nil;
             }
 		}
     }];
+	
+	// Load set manifest
+	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
+																   ofType:@"plist"];
+	self->_setManifest = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
+	
+	[self->_scanner setRootPath:[self->_romRootURL path]];
+	[self->_scanner setSets:self->_setManifest];
 }
 
 - (void) applicationDidFinishLaunching:(NSNotification *) aNotification
@@ -115,6 +125,25 @@ static FXAppDelegate *sharedInstance = nil;
 - (void) applicationWillTerminate:(NSNotification *) notification
 {
 	[[OEXPCCAgentConfiguration defaultConfiguration] tearDownAgent];
+	[self->_scanner stopAll];
+}
+
+#pragma mark - FXScannerDelegate
+
+- (void) scanDidComplete:(NSDictionary *) result
+{
+	BOOL wroteCache = [result writeToFile:self->_auditCachePath
+							   atomically:YES];
+	if (wroteCache) {
+		[[NSNotificationCenter defaultCenter] postNotificationName:FXNotificationCacheChanged
+															object:self
+														  userInfo:@{ kFXNotificationCache: result }];
+	}
+}
+
+- (void) scanDidFail:(NSError *) error
+{
+	NSLog(@"FIXME: %@", [error description]);
 }
 
 #pragma mark - Actions
@@ -145,7 +174,7 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void) launch:(NSString *) archive
 {
-	if ([self->_sets objectForKey:archive] == nil) {
+	if ([self->_setManifest objectForKey:archive] == nil) {
 		return;
 	}
 	
@@ -172,15 +201,6 @@ static FXAppDelegate *sharedInstance = nil;
 + (FXAppDelegate *) sharedInstance
 {
     return sharedInstance;
-}
-
-#pragma mark - Private
-
-- (void) loadSetData
-{
-	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
-																   ofType:@"plist"];
-	self->_sets = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
 }
 
 @end

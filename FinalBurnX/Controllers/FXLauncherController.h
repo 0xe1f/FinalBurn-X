@@ -31,14 +31,13 @@
     IBOutlet NSButton *importCancelButton;
     IBOutlet NSTextField *importProgressLabel;
     
-    IBOutlet NSTreeController *driversTreeController;
-    IBOutlet NSOutlineView *driversOutlineView;
+    IBOutlet NSTreeController *setTreeController;
+    IBOutlet NSOutlineView *setOutlineView;
+	
+	NSMutableArray<NSDictionary *> *sets;
 }
 
 - (IBAction) launchGame:(id) sender;
-- (IBAction) cancelImport:(id) sender;
 - (IBAction) rescanROMs:(id) sender;
-
-@property (nonatomic, strong) NSMutableArray *drivers;
 
 @end

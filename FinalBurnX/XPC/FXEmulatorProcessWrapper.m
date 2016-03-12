@@ -46,13 +46,11 @@
 	OEXPCCAgentConfiguration *configuration = [OEXPCCAgentConfiguration defaultConfiguration];
 	
 	self->_processTask = [[NSTask alloc] init];
-	[self->_processTask setLaunchPath:[[NSBundle mainBundle] pathForResource:@"Emulator"
-																	  ofType:nil]];
+	[self->_processTask setLaunchPath:[[NSBundle mainBundle] pathForAuxiliaryExecutable:@"Emulator"]];
 	[self->_processTask setArguments:@[
 									   [configuration agentServiceNameProcessArgument],
 									   [configuration processIdentifierArgumentForIdentifier:self->_uid],
-									   self->_archive
-									   ]];
+									   self->_archive ]];
 	[_processTask launch];
 	
 	[[OEXPCCAgent defaultAgent] retrieveListenerEndpointForIdentifier:self->_uid

@@ -25,401 +25,193 @@
 #import "FXGameController.h"
 #import "FXAppDelegate.h"
 
+#import "FXScanner.h"
+
 @interface FXLauncherController ()
 
-- (NSString *)auditCachePath;
-- (void)identifyROMSets;
-- (void)updateAudits:(NSDictionary *)audits;
-- (void)importAsync:(NSArray *)paths;
-//- (void)auditAsync;
+- (void) auditCacheDidChange:(NSNotification *) notification;
+
+- (void) readSetManifest;
+- (void) resetAuditCache:(NSDictionary *) cache;
 
 @end
 
 @implementation FXLauncherController
 {
-	NSOperationQueue *_importOpQueue;
-	BOOL _rescanROMsAtStartup;
-	NSDictionary *_setManifest;
+	NSMutableDictionary<NSString *, NSMutableDictionary *> *_setMap;
 }
 
-- (id)init
+- (id) init
 {
     if ((self = [super initWithWindowNibName:@"Launcher"])) {
-        self->_importOpQueue = [[NSOperationQueue alloc] init];
-        [self->_importOpQueue setMaxConcurrentOperationCount:1];
-		
-        [self setDrivers:[NSMutableArray array]];
+		self->sets = [NSMutableArray array];
+		self->_setMap = [NSMutableDictionary dictionary];
     }
     
     return self;
 }
 
-- (void)awakeFromNib
+- (void) dealloc
 {
-	// Read the set manifest
-	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
-																   ofType:@"plist"];
-	self->_setManifest = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
+	[[NSNotificationCenter defaultCenter] removeObserver:self
+													name:FXNotificationCacheChanged
+												  object:nil];
+}
+
+- (void) awakeFromNib
+{
+	FXAppDelegate *app = [FXAppDelegate sharedInstance];
 	
-    [self identifyROMSets];
-	self->_rescanROMsAtStartup = NO;
+#if DEBUG
+	NSDate *started = [NSDate date];
+#endif
+	[self readSetManifest];
 	
-    NSDictionary *audits;
-    
-    // Load the audit data from cache, if available
-    NSString *auditCachePath = [self auditCachePath];
-    NSFileManager *fm = [NSFileManager defaultManager];
-    
-    if ([fm fileExistsAtPath:auditCachePath isDirectory:nil]) {
-        if ((audits = [NSKeyedUnarchiver unarchiveObjectWithFile:auditCachePath]) == nil) {
-            NSLog(@"Error reading audit cache");
-        }
-    }
-    
-    if (audits == nil) {
-        // Nothing in cache, or error loading. Rescan whenever possible
-        self->_rescanROMsAtStartup = YES;
-    }
-    
-    // Update ROM sets with audit data
-    [self updateAudits:audits];
-    
-    [self->driversTreeController rearrangeObjects];
+	NSDictionary *cache = [NSDictionary dictionaryWithContentsOfFile:[app auditCachePath]];
+	if (cache) {
+		[self resetAuditCache:cache];
+	}
+#ifdef DEBUG
+	NSLog(@"Completed set init (%.04fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
+	
+    [self->setTreeController rearrangeObjects];
     
     [self->importProgressBar startAnimation:self];
     [self->importProgressBar setMaxValue:0];
     [self->importProgressBar setDoubleValue:0];
-    
-    // Observe the import queue to be notified when tasks are available/done
-    [self->_importOpQueue addObserver:self
-						   forKeyPath:@"operationCount"
-							  options:NSKeyValueObservingOptionNew
-							  context:NULL];
+	
+	[[NSNotificationCenter defaultCenter] addObserver:self
+											 selector:@selector(auditCacheDidChange:)
+												 name:FXNotificationCacheChanged
+											   object:nil];
 }
 
 #pragma mark - NSWindowDelegate
 
-- (void)windowDidLoad
+- (void) windowWillLoad
 {
-    if (self->_rescanROMsAtStartup) {
-		// FIXME
-//        [self auditAsync];
-        self->_rescanROMsAtStartup = NO;
-    }
-}
-
-- (void)windowWillClose:(NSNotification *)notification
-{
-    [self->_importOpQueue cancelAllOperations];
-    [self->_importOpQueue waitUntilAllOperationsAreFinished];
 }
 
 #pragma mark - FXScannerDelegate
 
 - (BOOL) isFileSupported:(NSString *) path
 {
-//    // Make sure it's a ZIP file
-//    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
-//        return NO;
-//    }
-//    
-//    // Disallow importing from the library directory
-//    NSString *parentPath = [path stringByDeletingLastPathComponent];
-//    NSString *romPath = [[[FXAppDelegate sharedInstance] romRootURL] path];
-//    
-//    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
-//        return NO;
-//    }
-//    
-//    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
-//    
-//    // FIXME
-//    if ([archive isEqualToString:@"neogeo"]) {
-//        return YES;
-//    }
-//    
-//    // Make sure it's one of the supported ROM sets
-//    __block BOOL supported = NO;
-//    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-//        if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
-//            supported = YES;
-//            *stop = YES;
-//        }
-//    }];
-//    
-//    return supported;
-	return NO;
-}
-
-- (void) filesDidDrop:(NSArray *)paths
-{
-    [self importAsync:paths];
-}
-
-#pragma mark - KVO
-
-- (void) observeValueForKeyPath:(NSString *) keyPath
-					   ofObject:(id) object
-						 change:(NSDictionary *) change
-						context:(void *) context
-{
-    if (object == self->_importOpQueue && [keyPath isEqualToString:@"operationCount"]) {
-        NSInteger newCount = [[change objectForKey:NSKeyValueChangeNewKey] intValue];
-        
-        void(^block)(void) = ^{
-            if (newCount == 0) {
-                // Reset panel's properties
-                [self->importProgressBar setMaxValue:0];
-                [self->importProgressBar setDoubleValue:0];
-                
-                // Hide the panel
-                [NSApp endSheet:self->importProgressPanel];
-            } else if (![self->importProgressPanel isVisible]) {
-                // Show the import progress panel
-                [NSApp beginSheet:self->importProgressPanel
-                   modalForWindow:[self window]
-                    modalDelegate:self
-                   didEndSelector:@selector(didEndSheet:returnCode:contextInfo:)
-                      contextInfo:nil];
-            }
-        };
-        
-        // TODO
-        if (dispatch_get_current_queue() == dispatch_get_main_queue())
-        {
-            block();
-        }
-        else
-        {
-            [[NSOperationQueue mainQueue] addOperationWithBlock:block];
-        }
+    // Make sure it's a ZIP file
+    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
+        return NO;
     }
+	
+	FXAppDelegate *app = [FXAppDelegate sharedInstance];
+	
+    // Disallow importing from the library directory
+    NSString *parentPath = [path stringByDeletingLastPathComponent];
+    NSString *romPath = [[app romRootURL] path];
+    
+    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
+        return NO;
+    }
+	
+	// Is it one of the supported archives?
+    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
+	return [[app setManifest] objectForKey:archive] != nil;
+}
+
+- (void) filesDidDrop:(NSArray *) paths
+{
+	NSLog(@"FIXME: %@", paths);
 }
 
 #pragma mark - Actions
 
-- (void) launchGame:(id)sender
+- (void) launchGame:(id) sender
 {
-//    FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
-//	FXAppDelegate *app = [FXAppDelegate sharedInstance];
-//	[app launch:[romSet archive]];
-}
-
-- (void) cancelImport:(id)sender
-{
-    [self->importCancelButton setEnabled:NO];
-    [self->importProgressLabel setStringValue:NSLocalizedString(@"Cancelling...", @"")];
-    [self->_importOpQueue cancelAllOperations];
+	NSDictionary *set = [[self->setTreeController selectedObjects] lastObject];
+	
+	FXAppDelegate *app = [FXAppDelegate sharedInstance];
+	[app launch:[set objectForKey:@"archive"]];
 }
 
 - (void) rescanROMs:(id) sender
 {
-	// FIXME
-	NSLog(@"FIXME");
-//    [self auditAsync];
+	[[[FXAppDelegate sharedInstance] scanner] start];
 }
 
 #pragma mark - Callbacks
 
-- (void)didEndSheet:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
+- (void) didEndSheet:(NSWindow *) sheet
+		  returnCode:(NSInteger) returnCode
+		 contextInfo:(void *) contextInfo
 {
     [sheet orderOut:self];
 }
 
+#pragma mark - Notifications
+
+- (void) auditCacheDidChange:(NSNotification *) notification
+{
+#if DEBUG
+	NSDate *started = [NSDate date];
+#endif
+	[self resetAuditCache:[[notification userInfo] objectForKey:kFXNotificationCache]];
+#ifdef DEBUG
+	NSLog(@"Reset audit cache (%.04fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
+}
+
 #pragma mark - Private methods
 
-- (void) importAsync:(NSArray *) paths
+- (void) readSetManifest
 {
-	// FIXME
-	NSLog(@"FIXME");
-//    double maxValue = [self->importProgressBar maxValue] + [paths count];
-//    [self->importProgressBar setMaxValue:maxValue];
-//    
-//    [paths enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
-//        NSOperation *importOp = [NSBlockOperation blockOperationWithBlock:^{
-//            NSString *filename = [path lastPathComponent];
-//            NSString *label = [NSString stringWithFormat:NSLocalizedString(@"Importing %@...", @""),
-//                               [filename stringByDeletingPathExtension]];
-//            
-//            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-//                // Update the label
-//                [self->importProgressLabel setStringValue:label];
-//                // Enable the cancel button
-//                [self->importCancelButton setEnabled:YES];
-//            }];
-//            
-//            NSURL *dstPath = [[[FXAppDelegate sharedInstance] romRootURL] URLByAppendingPathComponent:filename];
-//            NSLog(@"Importing %@ as %@", filename, dstPath);
-//            
-//            // FIXME
-//            NSError *error = nil;
-//            [[NSFileManager defaultManager] copyItemAtPath:path
-//                                                    toPath:[dstPath path]
-//                                                     error:&error];
-//            
-//            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-//                // Update the progress bar
-//                [self->importProgressBar incrementBy:1.0];
-//            }];
-//        }];
-//        
-//        [self->_importOpQueue addOperation:importOp];
-//    }];
-//    
-//    if ([paths count] > 0) {
-//        [self auditAsync];
-//    }
+	@synchronized(self->sets) {
+		[self->sets removeAllObjects];
+		[self->_setMap removeAllObjects];
+		
+		// Initialize set map
+		FXAppDelegate *app = [FXAppDelegate sharedInstance];
+		[[app setManifest] enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
+			NSMutableDictionary *set = [ @{ @"archive": archive,
+											@"title": [values objectForKey:@"title"],
+											@"status": @(FXSetStatusIncomplete),
+											@"system": [values objectForKey:@"system"],
+											@"subsets": [NSMutableArray array] } mutableCopy];
+			
+			[self->_setMap setObject:set
+							  forKey:archive];
+		}];
+		
+		// Initialize set list
+		[self->_setMap enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSMutableDictionary *set, BOOL * _Nonnull stop) {
+			NSString *parent = [[[app setManifest] objectForKey:archive] objectForKey:@"parent"];
+			NSMutableArray *root;
+			if (parent) {
+				root = [[self->_setMap objectForKey:parent] objectForKey:@"subsets"];
+			} else {
+				root = self->sets;
+			}
+			
+			[root addObject:set];
+		}];
+	}
 }
 
-//- (void)auditAsync
-//{
-//    [self->importProgressBar setMaxValue:[self->importProgressBar maxValue] + 1];
-//    
-//    NSBlockOperation* auditOp = [[NSBlockOperation alloc] init];
-//    
-//    // Make a weak reference to avoid a retain cycle
-//    // http://stackoverflow.com/questions/8113268/how-to-cancel-nsblockoperation
-//    __weak NSBlockOperation* weakOp = auditOp;
-//    
-//    [auditOp addExecutionBlock:^{
-//#ifdef DEBUG
-//        NSDate *started = [NSDate date];
-//        NSLog(@"Auditing sets...");
-//#endif
-//        
-//        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-//            // Update the label
-//            [self->importProgressLabel setStringValue:NSLocalizedString(@"Scanning...", @"")];
-//            // Enable the cancel button
-//            [self->importCancelButton setEnabled:YES];
-//        }];
-//        
-//        NSMutableDictionary *audits = [NSMutableDictionary dictionary];
-//		
-//        // Determine the increment amount (not including subsets)
-//        double incrementAmount = 1.0 / [[self drivers] count];
-//        
-//        // Begin the audit
-//        [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-//            NSError *parentError = nil;
-//            FXDriverAudit *parentDriverAudit = [loader auditSet:romSet
-//                                                          error:&parentError];
-//            
-//            if (parentError == nil) {
-//                [audits setObject:parentDriverAudit forKey:[romSet archive]];
-//            } else {
-//                NSLog(@"Error scanning archive %@: %@",
-//                      [romSet archive], [parentError description]);
-//            }
-//            
-//            if ([weakOp isCancelled]) {
-//                *stop = YES;
-//                return;
-//            }
-//            
-//            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-//                // Update the label
-//                [self->importProgressBar incrementBy:incrementAmount];
-//            }];
-//            
-//            [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
-//                if ([weakOp isCancelled]) {
-//                    *stop = YES;
-//                    return;
-//                }
-//                
-//                // Go through the children as well
-//                NSError *childError = NULL;
-//                FXDriverAudit *childDriverAudit = [loader auditSet:subset
-//                                                             error:&childError];
-//                
-//                if (childError == nil) {
-//                    [audits setObject:childDriverAudit forKey:[subset archive]];
-//                } else {
-//                    NSLog(@"Error scanning archive %@: %@",
-//                          [subset archive], [childError description]);
-//                }
-//            }];
-//        }];
-//        
-//        if ([weakOp isCancelled]) {
-//            return;
-//        }
-//        
-//        // Save the audit data to cache file
-//        NSString *auditCachePath = [self auditCachePath];
-//#ifdef DEBUG
-//        NSLog(@"Writing audit data to %@", auditCachePath);
-//#endif
-//        if (![NSKeyedArchiver archiveRootObject:audits
-//                                         toFile:auditCachePath]) {
-//            NSLog(@"Error writing to audit cache");
-//        }
-//        
-//        // Update audits
-//        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-//            [self updateAudits:audits];
-//        }];
-//#ifdef DEBUG
-//        NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
-//#endif
-//    }];
-//    
-//    [self->_importOpQueue addOperation:auditOp];
-//}
-
-- (NSString *) auditCachePath
+- (void) resetAuditCache:(NSDictionary *) cache
 {
-//    FXAppDelegate *app = [FXAppDelegate sharedInstance];
-//    return [[[app supportRootURL] URLByAppendingPathComponent:@"audits.cache"] path];
-	return nil;
-}
-
-- (void) identifyROMSets
-{
-#ifdef DEBUG
-    NSDate *started = [NSDate date];
-    NSLog(@"Identifying sets...");
-#endif
-    
-//	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
-//		FXROMSet *romSet = [self FIXMEsetFromArchive:archive
-//										  dictionary:values];
-//		[[values objectForKey:@"subsets"] enumerateKeysAndObjectsUsingBlock:^(NSString *subarchive, NSDictionary *subvalues, BOOL * _Nonnull stop) {
-//			FXROMSet *subset = [self FIXMEsetFromArchive:subarchive
-//											  dictionary:subvalues];
-//			[subset setParentSet:romSet];
-//			[[romSet subsets] addObject:subset];
-//		}];
-//		
-//		[[self drivers] addObject:romSet];
-//	}];
+	NSMutableSet<NSString *> *unprocessed = [NSMutableSet setWithArray:[self->_setMap allKeys]];
+	// Process all sets in cache
+	[cache enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
+		NSMutableDictionary *set = [self->_setMap objectForKey:archive];
+		[set setObject:[values objectForKey:kFXSetStatus]
+				forKey:@"status"];
+		[unprocessed removeObject:archive];
+	}];
 	
-#ifdef DEBUG
-    NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
-#endif
-}
-
-- (void)updateAudits:(NSDictionary *)audits
-{
-#ifdef DEBUG
-    NSDate *started = [NSDate date];
-    NSLog(@"Updating audit data...");
-#endif
-    
-//    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-//        FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
-//        [romSet setAudit:audit];
-//        
-//        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
-//            FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
-//            [subset setAudit:subAudit];
-//        }];
-//    }];
-	
-#ifdef DEBUG
-    NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
-#endif
+	// Invalidate the rest
+	[unprocessed enumerateObjectsUsingBlock:^(NSString *archive, BOOL * _Nonnull stop) {
+		NSMutableDictionary *set = [self->_setMap objectForKey:archive];
+		[set setObject:@(FXSetStatusIncomplete)
+				forKey:@"status"];
+	}];
 }
 
 @end

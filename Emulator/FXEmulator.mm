@@ -26,16 +26,20 @@
 #import "FXEmulationCommunication.h"
 
 #include "burner.h"
+#include "driverlist.h"
+#include "burnint.h"
 
 #import "FXInput.h"
 #import "FXAudio.h"
 #import "FXVideo.h"
 #import "FXRunLoop.h"
-#import "FXInputMap.h"
 
-#import "FXLoader.h" // FIXME
+#import "FXInputMap.h"
+#import "FXZipArchive.h"
 
 static FXEmulator *sharedInstance = nil;
+
+static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 
 @interface FXEmulator ()
 
@@ -45,13 +49,19 @@ static FXEmulator *sharedInstance = nil;
 - (void) initPaths;
 - (BOOL) start;
 
+- (UInt32) loadROMIndex:(int) romIndex
+			 intoBuffer:(void *) buffer
+		   bufferLength:(INT32 *) length;
+
 @end
 
 @implementation FXEmulator
 {
-	NSURL *_supportURL;
+	NSString *_supportPath;
 	NSXPCListener *_listener;
 	NSXPCConnection *_mainAppConnection;
+	NSDictionary *_setAudit;
+	NSMutableDictionary<NSString *, FXZipArchive *> *_fileCache;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -65,12 +75,13 @@ static FXEmulator *sharedInstance = nil;
 		
 		self->_archive = archive;
 		
-		[self setInput:[[FXInput alloc] init]];
-		[self setAudio:[[FXAudio alloc] init]];
-		[self setVideo:[[FXVideo alloc] init]];
-		[self setRunLoop:[[FXRunLoop alloc] init]];
+		self->_input = [[FXInput alloc] init];
+		self->_audio = [[FXAudio alloc] init];
+		self->_video = [[FXVideo alloc] init];
+		self->_runLoop = [[FXRunLoop alloc] init];
 		
 		[self->_runLoop setDelegate:self];
+		self->_fileCache = [NSMutableDictionary dictionary];
 		
 		[AKKeyboardManager sharedInstance];
     }
@@ -107,63 +118,74 @@ static FXEmulator *sharedInstance = nil;
 - (void) initPaths
 {
 	NSFileManager* fm = [NSFileManager defaultManager];
-	NSURL *appSupportUrl = [[fm URLsForDirectory:NSApplicationSupportDirectory
-									   inDomains:NSUserDomainMask] lastObject];
+	NSString *appSupportRoot = [[[fm URLsForDirectory:NSApplicationSupportDirectory
+											inDomains:NSUserDomainMask] lastObject] path];
 	
-	NSAssert(appSupportUrl != nil, @"App Support URL is null");
+	NSAssert(appSupportRoot != nil, @"App Support URL is null");
 	
-	self->_supportURL = [appSupportUrl URLByAppendingPathComponent:@"FinalBurn X"];
-	
-	[self setRomPath:[self->_supportURL URLByAppendingPathComponent:@"roms"]];
+	self->_supportPath = [appSupportRoot stringByAppendingPathComponent:@"FinalBurn X"];
+	self->_romPath = [self->_supportPath stringByAppendingPathComponent:@"roms"];
 }
 
 - (BOOL) start
 {
-	FXLoader *loader = [[FXLoader alloc] init];
-	NSArray *array = [loader romSets];
+#if DEBUG
+	NSDate *started = [NSDate date];
+#endif
+	NSString *auditCachePath = [self->_supportPath stringByAppendingPathComponent:@"audit.cache"];
+	NSDictionary *auditData = [NSDictionary dictionaryWithContentsOfFile:auditCachePath];
+#ifdef DEBUG
+	NSLog(@"Loaded audit cache (%.04fs)", [[NSDate date] timeIntervalSinceDate:started]);
+#endif
 	
-	__block FXROMSet *selected = nil;
-	[array enumerateObjectsUsingBlock:^(FXROMSet *rs, NSUInteger idx, BOOL * _Nonnull stop) {
-		if ([[rs archive] isEqualToString:self->_archive]) {
-			selected = rs;
-			*stop = YES;
-		}
-	}];
-	
-	if (!selected) {
-		NSLog(@"Archive %@ not found", self->_archive);
+	if (!auditData) {
+		NSLog(@"Error reading audit cache");
 		return NO;
 	}
 	
-	NSString *auditCachePath = [[self->_supportURL URLByAppendingPathComponent:@"audits.cache"] path];
-	NSFileManager *fm = [NSFileManager defaultManager];
-	
-	NSDictionary *audits;
-	if ([fm fileExistsAtPath:auditCachePath
-				 isDirectory:nil]) {
-		if ((audits = [NSKeyedUnarchiver unarchiveObjectWithFile:auditCachePath]) == nil) {
-			NSLog(@"Error reading audit cache");
-			return NO;
-		}
-	} else {
-		NSLog(@"No audit file found");
+	self->_setAudit = [auditData objectForKey:self->_archive];
+	if (!self->_setAudit || [self->_setAudit objectForKey:@"status"] == 0) {
+		NSLog(@"Set %@ is incomplete or unplayable", self->_archive);
 		return NO;
 	}
-
-	[array enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-		FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
-		[romSet setAudit:audit];
-		
-		[[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
-			FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
-			[subset setAudit:subAudit];
-		}];
-	}];
 	
-	[[self runLoop] setRomSet:selected];
-	[[self runLoop] start];
+	nBurnDrvActive = -1;
+	const char *cArchive = [self->_archive cStringUsingEncoding:NSASCIIStringEncoding];
+	for (int i = 0; i < nBurnDrvCount; i++) {
+		if (strcasecmp(pDriver[i]->szShortName, cArchive) == 0) {
+			nBurnDrvActive = i;
+			nBurnDrvSelect[0] = i;
+			break;
+		}
+	}
+	
+	if (nBurnDrvActive == -1) {
+		NSLog(@"Driver index not found");
+		return NO;
+	}
+	
+	BurnExtLoadRom = cocoaLoadROMCallback;
+	
+	[self->_runLoop start];
 	
 	return YES;
+}
+
+#pragma mark - FXRunLoopDelegate
+
+- (void) loadingDidStart
+{
+#if DEBUG
+	NSLog(@"Emulator/loadingDidStart");
+#endif
+}
+
+- (void) loadingDidEnd
+{
+#if DEBUG
+	NSLog(@"Emulator/loadingDidEnd");
+#endif
+	[self->_fileCache removeAllObjects];
 }
 
 #pragma mark - NSApplicationDelegate
@@ -181,7 +203,7 @@ static FXEmulator *sharedInstance = nil;
 
 - (void) applicationWillTerminate:(NSNotification *) notification
 {
-	[[self runLoop] cancel];
+	[self->_runLoop cancel];
 }
 
 #pragma mark - NSXPCListenerDelegate
@@ -214,6 +236,11 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 	handler([self->_video ready], [self->_video surfaceId]);
 }
 
+- (void) shutDown
+{
+	[[NSApplication sharedApplication] terminate:self];
+}
+
 #pragma mark - Other XPC
 
 - (void) resumeConnection
@@ -231,4 +258,83 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 	}];
 }
 
+#pragma mark - Private
+
+- (UInt32) loadROMIndex:(int) romIndex
+			 intoBuffer:(void *) buffer
+		   bufferLength:(INT32 *) length
+{
+	struct BurnRomInfo info;
+	if (pDriver[nBurnDrvActive]->GetRomInfo(&info, romIndex)) {
+		return 1;
+	}
+	
+	char *cAlias = NULL;
+	if (pDriver[nBurnDrvActive]->GetRomName(&cAlias, romIndex, 0) != 0) {
+		return 1;
+	}
+	
+	NSString *filename = [NSString stringWithCString:cAlias
+											encoding:NSASCIIStringEncoding];
+	
+	NSString *location = [[[self->_setAudit objectForKey:@"files"] objectForKey:filename] objectForKey:@"location"];
+	if (!location) {
+		return 1;
+	}
+	
+	FXZipArchive *archive = [self->_fileCache objectForKey:location];
+	if (!archive) {
+		NSError *error = nil;
+		archive = [[FXZipArchive alloc] initWithPath:[self->_romPath stringByAppendingPathComponent:location]
+											   error:&error];
+		if (error) {
+			NSLog(@"Error reading %@: %@", location, [error description]);
+			return 1;
+		}
+		
+		[self->_fileCache setObject:archive
+							 forKey:location];
+	}
+	
+	FXZipFile *file = [archive findFileNamed:filename
+							  matchExactPath:NO];
+	if (!file) {
+		NSLog(@"File %@ not found in %@", filename, location);
+		return 1;
+	}
+	
+	NSError *error = nil;
+	NSData *content = [file readContentWithError:&error];
+	if (error) {
+		NSLog(@"Error reading %@ in %@: %@",
+			  filename, location, [error description]);
+		return 1;
+	}
+	
+	[content getBytes:buffer
+			   length:info.nLen];
+	
+	if (length) {
+		*length = info.nLen;
+	}
+	
+#ifdef DEBUG
+	NSLog(@"Read %@ (%@kB) from %@", filename,
+		  [@(info.nLen / 1024) descriptionWithLocale:[NSLocale currentLocale]],
+		  location);
+#endif
+	
+	return 0;
+}
+
 @end
+
+#pragma mark - FB Callbacks
+
+static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i)
+{
+	FXEmulator *e = [FXEmulator sharedInstance];
+	return [e loadROMIndex:i
+				intoBuffer:Dest
+			  bufferLength:pnWrote];
+}

@@ -22,24 +22,38 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXDriverAudit.h"
+#include "unzip.h"
 
-@interface FXROMSet : NSObject
-{
-}
+@interface FXZipFile : NSObject
 
-- (instancetype)initWithArchive:(NSString *)archive;
+@property (nonatomic, copy) NSString *filename;
+@property (nonatomic, assign) UInt32 crc;
+@property (nonatomic, assign) NSUInteger length;
 
-+ (int)driverIndexOfArchive:(NSString *)archive;
-
-@property (nonatomic, copy) NSString *archive;
-@property (nonatomic, copy) NSString *title;
-@property (nonatomic, assign) NSSize screenSize;
-@property (nonatomic, assign) NSUInteger hardware;
-
-@property (nonatomic, weak) FXROMSet *parentSet;
-@property (nonatomic, strong) NSMutableArray *subsets;
-
-@property (nonatomic, strong) FXDriverAudit *audit;
+- (NSData *) readContentWithError:(NSError *__autoreleasing *) error;
 
 @end
+
+@interface FXZipArchive : NSObject
+
+@property (nonatomic, readonly) NSString *path;
+
+- (instancetype) initWithPath:(NSString *) path
+						error:(NSError **) error;
+
+- (NSArray<FXZipFile *> *) files;
+- (NSUInteger) fileCount;
+- (FXZipFile *) findFileWithCRC:(NSUInteger) crc;
+- (FXZipFile *) findFileNamed:(NSString *) filename
+			   matchExactPath:(BOOL) exactPath;
+- (FXZipFile *) findFileNamedAnyOf:(NSArray *) filenames
+					matchExactPath:(BOOL) exactPath;
+
+@end
+
+enum {
+	FXErrorLoadingArchive        = -100,
+	FXErrorNavigatingArchive     = -101,
+	FXErrorOpeningCompressedFile = -102,
+	FXErrorReadingCompressedFile = -103,
+};

@@ -27,12 +27,31 @@
 		FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE505FC5194BD4A3003A2BC7 /* license.rtf */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
-		FE6843751C81848C00A859C0 /* stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE6843731C81847700A859C0 /* stubs.cpp */; };
-		FE6843761C81857300A859C0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FEF150941C8182C30030CB84 /* main.m */; };
-		FE6843791C81864A00A859C0 /* FXManifestBuilder.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */; };
 		FE6D55241C803164001B1A7E /* FXGameController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE6D55221C803164001B1A7E /* FXGameController.m */; };
 		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
-		FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
+		FE6F48721C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; };
+		FE6F48731C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; };
+		FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FE6F48771C93E9F90045784D /* Emulator in CopyFiles */ = {isa = PBXBuildFile; fileRef = FEA0B6DD1C7F8BCD00591D44 /* Emulator */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		FE6F487B1C93EF280045784D /* FXManifestBuilder.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE6F48791C93EF280045784D /* FXManifestBuilder.mm */; };
+		FE8F66981C90CAF500A3A84A /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
+		FE8F66991C90CAF500A3A84A /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F2194C31E90024716B /* unzip.c */; settings = {COMPILER_FLAGS = "-Wno-parentheses-equality"; }; };
+		FE8F669A1C90CE2400A3A84A /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506045194BD4E6003A2BC7 /* adler32.c */; };
+		FE8F669B1C90CE2400A3A84A /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506046194BD4E6003A2BC7 /* compress.c */; };
+		FE8F669C1C90CE2400A3A84A /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506047194BD4E6003A2BC7 /* crc32.c */; };
+		FE8F669D1C90CE2400A3A84A /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506049194BD4E6003A2BC7 /* deflate.c */; };
+		FE8F669E1C90CE2400A3A84A /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604B194BD4E6003A2BC7 /* gzclose.c */; };
+		FE8F669F1C90CE2400A3A84A /* gzlib.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604D194BD4E6003A2BC7 /* gzlib.c */; };
+		FE8F66A01C90CE2400A3A84A /* gzread.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604E194BD4E6003A2BC7 /* gzread.c */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
+		FE8F66A11C90CE2400A3A84A /* gzwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604F194BD4E6003A2BC7 /* gzwrite.c */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
+		FE8F66A21C90CE2400A3A84A /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506050194BD4E6003A2BC7 /* infback.c */; };
+		FE8F66A31C90CE2400A3A84A /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506051194BD4E6003A2BC7 /* inffast.c */; };
+		FE8F66A41C90CE2400A3A84A /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506054194BD4E6003A2BC7 /* inflate.c */; };
+		FE8F66A51C90CE2400A3A84A /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506056194BD4E6003A2BC7 /* inftrees.c */; };
+		FE8F66A61C90CE2400A3A84A /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
+		FE8F66A71C90CE2400A3A84A /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
+		FE8F66A81C90CE2400A3A84A /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
+		FE8F66B41C90E1A400A3A84A /* FXScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = FE8F66B21C90DF4000A3A84A /* FXScanner.m */; };
 		FEA0B6E01C7F8BCD00591D44 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B6DF1C7F8BCD00591D44 /* main.m */; };
 		FEA0B6E41C7F8BE700591D44 /* 8255ppi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3E194BC531003A2BC7 /* 8255ppi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
 		FEA0B6E51C7F8BE700591D44 /* 8257dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A40194BC531003A2BC7 /* 8257dma.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
@@ -555,10 +574,7 @@
 		FEA0B8EA1C7F8DEA00591D44 /* statec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E4B194BCCBE003A2BC7 /* statec.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
 		FEA0B8EB1C7F8DEA00591D44 /* zipfn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E85194BCCBE003A2BC7 /* zipfn.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
 		FEA0B9141C7F944200591D44 /* FXAudioEngine.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B8F31C7F944200591D44 /* FXAudioEngine.m */; };
-		FEA0B9171C7F944200591D44 /* FXDriverAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B8F91C7F944200591D44 /* FXDriverAudit.m */; };
 		FEA0B91C1C7F944200591D44 /* FXROMAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9031C7F944200591D44 /* FXROMAudit.m */; };
-		FEA0B91D1C7F944200591D44 /* FXROMSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9051C7F944200591D44 /* FXROMSet.mm */; };
-		FEA0B9201C7F944200591D44 /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B90B1C7F944200591D44 /* FXZipArchive.m */; };
 		FEA0B9221C7F944200591D44 /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B90E1C7F944200591D44 /* misc.cpp */; };
 		FEA0B9231C7F944200591D44 /* tchar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B90F1C7F944200591D44 /* tchar.cpp */; };
 		FEA0B9241C7F944200591D44 /* inpdipsw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9111C7F944200591D44 /* inpdipsw.cpp */; };
@@ -567,11 +583,8 @@
 		FEA0B92A1C7F988F00591D44 /* FXEmulator.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9291C7F988F00591D44 /* FXEmulator.mm */; };
 		FEA0B92D1C7F9DE300591D44 /* FXAudio.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B8F11C7F944200591D44 /* FXAudio.mm */; };
 		FEA0B9301C7F9F1900591D44 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B92F1C7F9F1900591D44 /* FXInput.mm */; };
-		FEA0B9311C7FA5E400591D44 /* FXLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9011C7F944200591D44 /* FXLoader.mm */; };
 		FEA0B9321C7FAD7500591D44 /* FXRunLoop.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9071C7F944200591D44 /* FXRunLoop.mm */; };
 		FEA0BB761C80E35900591D44 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
-		FEA0BB771C80E7A400591D44 /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */; };
-		FEA0BB781C80EEEF00591D44 /* Emulator in Resources */ = {isa = PBXBuildFile; fileRef = FEA0B6DD1C7F8BCD00591D44 /* Emulator */; };
 		FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0BB7D1C80F01F00591D44 /* FXEmulatorProcessWrapper.m */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FECDF58619BA8366008F7B63 /* Localizable.strings */; };
@@ -586,540 +599,11 @@
 		FED4361619E60D0F00315655 /* toolbar-dipswitch.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361219E60D0F00315655 /* toolbar-dipswitch.png */; };
 		FED4361719E60D0F00315655 /* toolbar-joypad@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
-		FEF1509B1C8182CD0030CB84 /* xbr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC2534A194CA1CF0039D85F /* xbr.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF1509C1C8182CD0030CB84 /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25357194CA3BF0039D85F /* epx.cpp */; };
-		FEF1509D1C8182CD0030CB84 /* d_rohga.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9D194BC531003A2BC7 /* d_rohga.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1509F1C8182CD0030CB84 /* d_deniam.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B59194BC532003A2BC7 /* d_deniam.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150A01C8182CD0030CB84 /* namco_snd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C38194BC532003A2BC7 /* namco_snd.cpp */; };
-		FEF150A11C8182CD0030CB84 /* cps_mem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5A194BC531003A2BC7 /* cps_mem.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150A21C8182CD0030CB84 /* d_taitoz.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC6194BC532003A2BC7 /* d_taitoz.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150A31C8182CD0030CB84 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506051194BD4E6003A2BC7 /* inffast.c */; };
-		FEF150A41C8182CD0030CB84 /* d_galaxian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA6194BC531003A2BC7 /* d_galaxian.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150A51C8182CD0030CB84 /* d_unico.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B85194BC532003A2BC7 /* d_unico.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150A61C8182CD0030CB84 /* slapstic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A4A194BC531003A2BC7 /* slapstic.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150A71C8182CD0030CB84 /* burn_led.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A30194BC531003A2BC7 /* burn_led.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150A81C8182CD0030CB84 /* gal_gfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA8194BC531003A2BC7 /* gal_gfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-conditional-uninitialized"; }; };
-		FEF150A91C8182CD0030CB84 /* m6805.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F26194BCDD1003A2BC7 /* m6805.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150AA1C8182CD0030CB84 /* d_xmen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD2194BC531003A2BC7 /* d_xmen.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150AB1C8182CD0030CB84 /* d_fixeight.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE4194BC532003A2BC7 /* d_fixeight.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150AC1C8182CD0030CB84 /* d_sys16b.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B98194BC532003A2BC7 /* d_sys16b.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150AD1C8182CD0030CB84 /* d_m92.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB1194BC531003A2BC7 /* d_m92.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150AE1C8182CD0030CB84 /* segapcm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C41194BC532003A2BC7 /* segapcm.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150AF1C8182CD0030CB84 /* d_jack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B18194BC531003A2BC7 /* d_jack.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150B01C8182CD0030CB84 /* z80.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F5C194BCDD1003A2BC7 /* z80.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-unused-const-variable -Wno-unused-variable -Wno-ignored-attributes"; }; };
-		FEF150B11C8182CD0030CB84 /* tc0100scn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD0194BC532003A2BC7 /* tc0100scn.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150B21C8182CD0030CB84 /* aud_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011E194C36510024716B /* aud_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150B31C8182CD0030CB84 /* toaplan1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BFF194BC532003A2BC7 /* toaplan1.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF150B41C8182CD0030CB84 /* d_powerins.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B77194BC532003A2BC7 /* d_powerins.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150B51C8182CD0030CB84 /* d_minivdr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBD194BC532003A2BC7 /* d_minivdr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150B61C8182CD0030CB84 /* d_drtomy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5C194BC532003A2BC7 /* d_drtomy.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150B71C8182CD0030CB84 /* tc0110pcr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD1194BC532003A2BC7 /* tc0110pcr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150B81C8182CD0030CB84 /* d_kbash2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE8194BC532003A2BC7 /* d_kbash2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150B91C8182CD0030CB84 /* tc0360pri.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD7194BC532003A2BC7 /* tc0360pri.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150BA1C8182CD0030CB84 /* cps_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5D194BC531003A2BC7 /* cps_run.cpp */; };
-		FEF150BB1C8182CD0030CB84 /* sms.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA9194BC532003A2BC7 /* sms.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32 -Wno-sizeof-pointer-memaccess"; }; };
-		FEF150BC1C8182CD0030CB84 /* d_contra.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABB194BC531003A2BC7 /* d_contra.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150BD1C8182CD0030CB84 /* d_skyfox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B33194BC531003A2BC7 /* d_skyfox.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150BE1C8182CD0030CB84 /* d_aztarac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B02194BC531003A2BC7 /* d_aztarac.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150BF1C8182CD0030CB84 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506049194BD4E6003A2BC7 /* deflate.c */; };
-		FEF150C01C8182CD0030CB84 /* d_ladybug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1B194BC531003A2BC7 /* d_ladybug.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150C11C8182CD0030CB84 /* es5506.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C1E194BC532003A2BC7 /* es5506.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150C21C8182CD0030CB84 /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
-		FEF150C31C8182CD0030CB84 /* d_f1gp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5F194BC532003A2BC7 /* d_f1gp.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150C41C8182CD0030CB84 /* d_dodonpachi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7A194BC531003A2BC7 /* d_dodonpachi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150C51C8182CD0030CB84 /* d_mahoudai.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE9194BC532003A2BC7 /* d_mahoudai.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150C61C8182CD0030CB84 /* d_blockhl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB9194BC531003A2BC7 /* d_blockhl.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150C71C8182CD0030CB84 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604B194BD4E6003A2BC7 /* gzclose.c */; };
-		FEF150C81C8182CD0030CB84 /* cave.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A72194BC531003A2BC7 /* cave.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150C91C8182CD0030CB84 /* burn_sound.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A33194BC531003A2BC7 /* burn_sound.cpp */; };
-		FEF150CA1C8182CD0030CB84 /* gal_sound.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AAA194BC531003A2BC7 /* gal_sound.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150CB1C8182CD0030CB84 /* 8257dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A40194BC531003A2BC7 /* 8257dma.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150CC1C8182CD0030CB84 /* burn_ym3812.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C16194BC532003A2BC7 /* burn_ym3812.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150CD1C8182CD0030CB84 /* d_tnzs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC7194BC532003A2BC7 /* d_tnzs.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150CF1C8182CD0030CB84 /* d_dec0.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A96194BC531003A2BC7 /* d_dec0.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150D01C8182CD0030CB84 /* d_flstory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBB194BC532003A2BC7 /* d_flstory.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150D11C8182CD0030CB84 /* d_atetris.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B01194BC531003A2BC7 /* d_atetris.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150D21C8182CD0030CB84 /* d_chaknpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB9194BC532003A2BC7 /* d_chaknpop.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF150D31C8182CD0030CB84 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506056194BD4E6003A2BC7 /* inftrees.c */; };
-		FEF150D41C8182CD0030CB84 /* k054000.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ADB194BC531003A2BC7 /* k054000.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150D51C8182CD0030CB84 /* d_pass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B74194BC532003A2BC7 /* d_pass.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150D61C8182CD0030CB84 /* pngget.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506031194BD4E6003A2BC7 /* pngget.c */; };
-		FEF150D71C8182CD0030CB84 /* cps_pal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5C194BC531003A2BC7 /* cps_pal.cpp */; };
-		FEF150D81C8182CD0030CB84 /* d_karnov.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9A194BC531003A2BC7 /* d_karnov.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150D91C8182CD0030CB84 /* d_exedexes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0F194BC531003A2BC7 /* d_exedexes.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150DA1C8182CD0030CB84 /* d_arabian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AFF194BC531003A2BC7 /* d_arabian.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150DB1C8182CD0030CB84 /* d_korokoro.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A81194BC531003A2BC7 /* d_korokoro.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150DC1C8182CD0030CB84 /* d_gotcha.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B67194BC532003A2BC7 /* d_gotcha.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150DD1C8182CD0030CB84 /* d_hotdogst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A80194BC531003A2BC7 /* d_hotdogst.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF150DE1C8182CD0030CB84 /* cps2_crpt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A57194BC531003A2BC7 /* cps2_crpt.cpp */; };
-		FEF150DF1C8182CD0030CB84 /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150E01C8182CD0030CB84 /* pngwio.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50603E194BD4E6003A2BC7 /* pngwio.c */; };
-		FEF150E11C8182CD0030CB84 /* d_gumbo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B68194BC532003A2BC7 /* d_gumbo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150E21C8182CD0030CB84 /* hq2xs_16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25355194CA3760039D85F /* hq2xs_16.cpp */; };
-		FEF150E31C8182CD0030CB84 /* ps_m.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6B194BC531003A2BC7 /* ps_m.cpp */; };
-		FEF150E41C8182CD0030CB84 /* d_funkybee.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B10194BC531003A2BC7 /* d_funkybee.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150E51C8182CD0030CB84 /* tc0280grd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD6194BC532003A2BC7 /* tc0280grd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150E61C8182CD0030CB84 /* d_cybertnk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0A194BC531003A2BC7 /* d_cybertnk.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150E71C8182CD0030CB84 /* d_shippumd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BEE194BC532003A2BC7 /* d_shippumd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150E81C8182CD0030CB84 /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150E91C8182CD0030CB84 /* d_suprnova.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B81194BC532003A2BC7 /* d_suprnova.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF150EA1C8182CD0030CB84 /* k051649.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C2E194BC532003A2BC7 /* k051649.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150EB1C8182CD0030CB84 /* d_ddragon3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B58194BC532003A2BC7 /* d_ddragon3.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150EC1C8182CD0030CB84 /* tnzs_prot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BDB194BC532003A2BC7 /* tnzs_prot.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150ED1C8182CD0030CB84 /* d_commando.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B09194BC531003A2BC7 /* d_commando.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150EE1C8182CD0030CB84 /* d_wwfwfest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B88194BC532003A2BC7 /* d_wwfwfest.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150EF1C8182CD0030CB84 /* d_rpunch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B30194BC531003A2BC7 /* d_rpunch.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F01C8182CD0030CB84 /* d_taitomisc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC4194BC532003A2BC7 /* d_taitomisc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F11C8182CD0030CB84 /* aud_dsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011C194C36510024716B /* aud_dsp.cpp */; };
-		FEF150F31C8182CD0030CB84 /* d_vaportra.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA2194BC531003A2BC7 /* d_vaportra.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F41C8182CD0030CB84 /* snes_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB0194BC532003A2BC7 /* snes_main.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF150F51C8182CD0030CB84 /* fd1094.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B9D194BC532003A2BC7 /* fd1094.cpp */; };
-		FEF150F61C8182CD0030CB84 /* d_hyperpac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B69194BC532003A2BC7 /* d_hyperpac.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F71C8182CD0030CB84 /* pgm_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF8194BC531003A2BC7 /* pgm_run.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F81C8182CD0030CB84 /* d_dotrikun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B92194BC532003A2BC7 /* d_dotrikun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150F91C8182CD0030CB84 /* d_nmg5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B71194BC532003A2BC7 /* d_nmg5.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150FA1C8182CD0030CB84 /* d_cps1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A66194BC531003A2BC7 /* d_cps1.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150FB1C8182CD0030CB84 /* d_sidepckt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9E194BC531003A2BC7 /* d_sidepckt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150FC1C8182CD0030CB84 /* fm.c in Sources */ = {isa = PBXBuildFile; fileRef = FE78010A194C33790024716B /* fm.c */; settings = {COMPILER_FLAGS = "-Wno-unused-value -Wno-unused-value"; }; };
-		FEF150FD1C8182CD0030CB84 /* k051733.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD4194BC531003A2BC7 /* k051733.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF150FE1C8182CD0030CB84 /* d_aquarium.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B52194BC532003A2BC7 /* d_aquarium.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF150FF1C8182CD0030CB84 /* d_taotaido.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B82194BC532003A2BC7 /* d_taotaido.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151001C8182CD0030CB84 /* d_feversos.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7D194BC531003A2BC7 /* d_feversos.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151011C8182CD0030CB84 /* kabuki.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A69194BC531003A2BC7 /* kabuki.cpp */; };
-		FEF151021C8182CD0030CB84 /* d_mole.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B22194BC531003A2BC7 /* d_mole.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151031C8182CD0030CB84 /* d_funybubl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B61194BC532003A2BC7 /* d_funybubl.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151041C8182CD0030CB84 /* fd1089.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B9C194BC532003A2BC7 /* fd1089.cpp */; };
-		FEF151051C8182CD0030CB84 /* d_dec8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A97194BC531003A2BC7 /* d_dec8.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151061C8182CD0030CB84 /* vid_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25318194C410B0039D85F /* vid_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF151071C8182CD0030CB84 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506045194BD4E6003A2BC7 /* adler32.c */; };
-		FEF151081C8182CD0030CB84 /* m68000_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F20194BCDD1003A2BC7 /* m68000_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151091C8182CD0030CB84 /* tc0640fio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BDA194BC532003A2BC7 /* tc0640fio.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1510A1C8182CD0030CB84 /* seibusnd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A46194BC531003A2BC7 /* seibusnd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1510B1C8182CD0030CB84 /* snes_spc700.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB2194BC532003A2BC7 /* snes_spc700.cpp */; };
-		FEF1510C1C8182CD0030CB84 /* d_epos.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0E194BC531003A2BC7 /* d_epos.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1510D1C8182CD0030CB84 /* mc8123.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA1194BC532003A2BC7 /* mc8123.cpp */; };
-		FEF1510E1C8182CD0030CB84 /* d_funkyjet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A99194BC531003A2BC7 /* d_funkyjet.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1510F1C8182CD0030CB84 /* d_esd16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5E194BC532003A2BC7 /* d_esd16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151101C8182CD0030CB84 /* d_vendetta.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD1194BC531003A2BC7 /* d_vendetta.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151111C8182CD0030CB84 /* d_speedspn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7F194BC532003A2BC7 /* d_speedspn.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151131C8182CD0030CB84 /* d_lkage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBC194BC532003A2BC7 /* d_lkage.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151141C8182CD0030CB84 /* d_playmark.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B76194BC532003A2BC7 /* d_playmark.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151151C8182CD0030CB84 /* d_suna16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B80194BC532003A2BC7 /* d_suna16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151161C8182CD0030CB84 /* d_xbrd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B9A194BC532003A2BC7 /* d_xbrd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-unreachable-code"; }; };
-		FEF151171C8182CD0030CB84 /* m68kopnz.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800FF194C32600024716B /* m68kopnz.c */; };
-		FEF151181C8182CD0030CB84 /* d_bublbobl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB8194BC532003A2BC7 /* d_bublbobl.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151191C8182CD0030CB84 /* d_pce.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AEF194BC531003A2BC7 /* d_pce.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-invalid-source-encoding"; }; };
-		FEF1511A1C8182CD0030CB84 /* k051316.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD3194BC531003A2BC7 /* k051316.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1511B1C8182CD0030CB84 /* d_taitob.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC2194BC532003A2BC7 /* d_taitob.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1511C1C8182CD0030CB84 /* toa_gp9001.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BFA194BC532003A2BC7 /* toa_gp9001.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1511D1C8182CD0030CB84 /* sf2mdt_snd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A70194BC531003A2BC7 /* sf2mdt_snd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1511E1C8182CD0030CB84 /* toaplan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BFD194BC532003A2BC7 /* toaplan.cpp */; };
-		FEF1511F1C8182CD0030CB84 /* d_vimana.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF5194BC532003A2BC7 /* d_vimana.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151201C8182CD0030CB84 /* d_dkong.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0C194BC531003A2BC7 /* d_dkong.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-invalid-source-encoding"; }; };
-		FEF151211C8182CD0030CB84 /* burn_ym2610.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C10194BC532003A2BC7 /* burn_ym2610.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151221C8182CD0030CB84 /* d_kbash.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE7194BC532003A2BC7 /* d_kbash.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151231C8182CD0030CB84 /* d_ginganin.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B13194BC531003A2BC7 /* d_ginganin.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151241C8182CD0030CB84 /* ps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6A194BC531003A2BC7 /* ps.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151251C8182CD0030CB84 /* d_quizo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2C194BC531003A2BC7 /* d_quizo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151261C8182CD0030CB84 /* d_cbuster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A92194BC531003A2BC7 /* d_cbuster.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151271C8182CD0030CB84 /* d_gaia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7E194BC531003A2BC7 /* d_gaia.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151281C8182CD0030CB84 /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F9194C32600024716B /* m68kcpu.c */; settings = {COMPILER_FLAGS = "-Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF151291C8182CD0030CB84 /* arm_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EF2194BCDD1003A2BC7 /* arm_intf.cpp */; };
-		FEF1512A1C8182CD0030CB84 /* iremga20.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C2A194BC532003A2BC7 /* iremga20.cpp */; };
-		FEF1512B1C8182CD0030CB84 /* d_bloodbro.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B54194BC532003A2BC7 /* d_bloodbro.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1512C1C8182CD0030CB84 /* d_pkunwar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2A194BC531003A2BC7 /* d_pkunwar.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1512D1C8182CD0030CB84 /* d_renegade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2E194BC531003A2BC7 /* d_renegade.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1512E1C8182CD0030CB84 /* k053251.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD9194BC531003A2BC7 /* k053251.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1512F1C8182CD0030CB84 /* d_gunsmoke.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B15194BC531003A2BC7 /* d_gunsmoke.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151301C8182CD0030CB84 /* konamiic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ADC194BC531003A2BC7 /* konamiic.cpp */; };
-		FEF151311C8182CD0030CB84 /* inpdipsw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9111C7F944200591D44 /* inpdipsw.cpp */; };
-		FEF151321C8182CD0030CB84 /* tc0150rod.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD3194BC532003A2BC7 /* tc0150rod.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151331C8182CD0030CB84 /* d_tigerheli.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF1194BC532003A2BC7 /* d_tigerheli.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151341C8182CD0030CB84 /* pngread.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506037194BD4E6003A2BC7 /* pngread.c */; };
-		FEF151351C8182CD0030CB84 /* d_pwrinst2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A84194BC531003A2BC7 /* d_pwrinst2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151361C8182CD0030CB84 /* d_demonwld.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE2194BC532003A2BC7 /* d_demonwld.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151371C8182CD0030CB84 /* d_ultraman.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD0194BC531003A2BC7 /* d_ultraman.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151381C8182CD0030CB84 /* toa_extratext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF8194BC532003A2BC7 /* toa_extratext.cpp */; };
-		FEF151391C8182CD0030CB84 /* d_seta2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7B194BC532003A2BC7 /* d_seta2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1513A1C8182CD0030CB84 /* d_othunder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBE194BC532003A2BC7 /* d_othunder.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF1513B1C8182CD0030CB84 /* d_pacman.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B29194BC531003A2BC7 /* d_pacman.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1513D1C8182CD0030CB84 /* d_news.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B70194BC532003A2BC7 /* d_news.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1513E1C8182CD0030CB84 /* d_cninja.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A93194BC531003A2BC7 /* d_cninja.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151401C8182CD0030CB84 /* load.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C02194BC532003A2BC7 /* load.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151411C8182CD0030CB84 /* taito.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BCA194BC532003A2BC7 /* taito.cpp */; };
-		FEF151421C8182CD0030CB84 /* d_shadfrce.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7C194BC532003A2BC7 /* d_shadfrce.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151431C8182CD0030CB84 /* cps3run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A8A194BC531003A2BC7 /* cps3run.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-ignored-attributes"; }; };
-		FEF151441C8182CD0030CB84 /* d_midas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6E194BC532003A2BC7 /* d_midas.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151451C8182CD0030CB84 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
-		FEF151461C8182CD0030CB84 /* pandora.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A44194BC531003A2BC7 /* pandora.cpp */; };
-		FEF151471C8182CD0030CB84 /* ay8910.c in Sources */ = {isa = PBXBuildFile; fileRef = FE505FA4194BD255003A2BC7 /* ay8910.c */; settings = {COMPILER_FLAGS = "-Wno-conditional-uninitialized"; }; };
-		FEF151481C8182CD0030CB84 /* ymf278b.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780116194C33AD0024716B /* ymf278b.c */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32 -Wno-unused-value -Wno-unused-value"; }; };
-		FEF151491C8182CD0030CB84 /* gzwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604F194BD4E6003A2BC7 /* gzwrite.c */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1514A1C8182CD0030CB84 /* d_megadrive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ADF194BC531003A2BC7 /* d_megadrive.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-invalid-source-encoding"; }; };
-		FEF1514B1C8182CD0030CB84 /* d_sys18.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B99194BC532003A2BC7 /* d_sys18.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1514C1C8182CD0030CB84 /* d_parodius.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC6194BC531003A2BC7 /* d_parodius.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1514D1C8182CD0030CB84 /* d_gberet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABD194BC531003A2BC7 /* d_gberet.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1514E1C8182CD0030CB84 /* d_darkseal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A94194BC531003A2BC7 /* d_darkseal.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1514F1C8182CD0030CB84 /* d_blueprnt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B07194BC531003A2BC7 /* d_blueprnt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151501C8182CD0030CB84 /* sys16_gfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA5194BC532003A2BC7 /* sys16_gfx.cpp */; };
-		FEF151511C8182CD0030CB84 /* d_jchan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6A194BC532003A2BC7 /* d_jchan.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151521C8182CD0030CB84 /* cchip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB4194BC532003A2BC7 /* cchip.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151531C8182CD0030CB84 /* sh2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F59194BCDD1003A2BC7 /* sh2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-function"; }; };
-		FEF151541C8182CD0030CB84 /* d_vfive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF4194BC532003A2BC7 /* d_vfive.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151551C8182CD0030CB84 /* cpsr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A60194BC531003A2BC7 /* cpsr.cpp */; };
-		FEF151561C8182CD0030CB84 /* d_nmk16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B72194BC532003A2BC7 /* d_nmk16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151571C8182CD0030CB84 /* msm6295.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C36194BC532003A2BC7 /* msm6295.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151581C8182CD0030CB84 /* d_vigilant.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB2194BC531003A2BC7 /* d_vigilant.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151591C8182CD0030CB84 /* d_raiden.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B79194BC532003A2BC7 /* d_raiden.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1515A1C8182CD0030CB84 /* pc090oj.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC9194BC532003A2BC7 /* pc090oj.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1515B1C8182CD0030CB84 /* pngrio.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506038194BD4E6003A2BC7 /* pngrio.c */; };
-		FEF1515C1C8182CD0030CB84 /* d_blktiger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B05194BC531003A2BC7 /* d_blktiger.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1515D1C8182CD0030CB84 /* d_wc90.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3F194BC531003A2BC7 /* d_wc90.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1515E1C8182CD0030CB84 /* upd7759.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C45194BC532003A2BC7 /* upd7759.cpp */; };
-		FEF1515F1C8182CD0030CB84 /* burn_ymf278b.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C18194BC532003A2BC7 /* burn_ymf278b.cpp */; };
-		FEF151601C8182CD0030CB84 /* sys16_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA6194BC532003A2BC7 /* sys16_run.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-function"; }; };
-		FEF151611C8182CD0030CB84 /* d_lwings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1C194BC531003A2BC7 /* d_lwings.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151621C8182CD0030CB84 /* d_pac2650.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B27194BC531003A2BC7 /* d_pac2650.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151631C8182CD0030CB84 /* d_metmqstr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A83194BC531003A2BC7 /* d_metmqstr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF151641C8182CD0030CB84 /* psikyo_tile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B4B194BC532003A2BC7 /* psikyo_tile.cpp */; };
-		FEF151651C8182CD0030CB84 /* d_lordgun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6C194BC532003A2BC7 /* d_lordgun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151661C8182CD0030CB84 /* i8039.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F03194BCDD1003A2BC7 /* i8039.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-ignored-attributes"; }; };
-		FEF151671C8182CD0030CB84 /* cps_config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A58194BC531003A2BC7 /* cps_config.cpp */; };
-		FEF151681C8182CD0030CB84 /* d_bbakraid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE1194BC532003A2BC7 /* d_bbakraid.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151691C8182CD0030CB84 /* d_mazinger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A82194BC531003A2BC7 /* d_mazinger.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1516A1C8182CD0030CB84 /* d_terracre.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3A194BC531003A2BC7 /* d_terracre.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1516B1C8182CD0030CB84 /* pngwutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506041194BD4E6003A2BC7 /* pngwutil.c */; };
-		FEF1516C1C8182CD0030CB84 /* zipfn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E85194BCCBE003A2BC7 /* zipfn.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1516D1C8182CD0030CB84 /* lowpass2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011F194C36510024716B /* lowpass2.cpp */; };
-		FEF1516E1C8182CD0030CB84 /* hd6309_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F00194BCDD1003A2BC7 /* hd6309_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1516F1C8182CD0030CB84 /* d_samesame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BED194BC532003A2BC7 /* d_samesame.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151701C8182CD0030CB84 /* m6809.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F2D194BCDD1003A2BC7 /* m6809.cpp */; };
-		FEF151711C8182CD0030CB84 /* d_angelkds.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B90194BC532003A2BC7 /* d_angelkds.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151721C8182CD0030CB84 /* burn_ym2203.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C0A194BC532003A2BC7 /* burn_ym2203.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151731C8182CD0030CB84 /* cpst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A62194BC531003A2BC7 /* cpst.cpp */; };
-		FEF151741C8182CD0030CB84 /* d_sys16a.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B97194BC532003A2BC7 /* d_sys16a.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151751C8182CD0030CB84 /* d_aliens.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB8194BC531003A2BC7 /* d_aliens.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151761C8182CD0030CB84 /* pngwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50603F194BD4E6003A2BC7 /* pngwrite.c */; };
-		FEF151771C8182CD0030CB84 /* cave_palette.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A74194BC531003A2BC7 /* cave_palette.cpp */; };
-		FEF151781C8182CD0030CB84 /* d_zerozone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B8B194BC532003A2BC7 /* d_zerozone.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1517A1C8182CD0030CB84 /* h6280.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EF5194BCDD1003A2BC7 /* h6280.cpp */; };
-		FEF1517B1C8182CD0030CB84 /* d_1943.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AFC194BC531003A2BC7 /* d_1943.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1517C1C8182CD0030CB84 /* d_tjumpman.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A86194BC531003A2BC7 /* d_tjumpman.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unused-function"; }; };
-		FEF1517D1C8182CD0030CB84 /* d_bionicc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B04194BC531003A2BC7 /* d_bionicc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1517E1C8182CD0030CB84 /* gzlib.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604D194BD4E6003A2BC7 /* gzlib.c */; };
-		FEF1517F1C8182CD0030CB84 /* gami.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E15194BCCBE003A2BC7 /* gami.cpp */; };
-		FEF151801C8182CD0030CB84 /* 8255ppi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3E194BC531003A2BC7 /* 8255ppi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151811C8182CD0030CB84 /* d_mcatadv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6D194BC532003A2BC7 /* d_mcatadv.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151821C8182CD0030CB84 /* d_wwfsstar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B41194BC531003A2BC7 /* d_wwfsstar.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151831C8182CD0030CB84 /* pce.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF0194BC531003A2BC7 /* pce.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151851C8182CD0030CB84 /* d_thunderx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACD194BC531003A2BC7 /* d_thunderx.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151861C8182CD0030CB84 /* gal_stars.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AAB194BC531003A2BC7 /* gal_stars.cpp */; };
-		FEF151871C8182CD0030CB84 /* d_uopoko.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A87194BC531003A2BC7 /* d_uopoko.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151881C8182CD0030CB84 /* tc0220ioc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD5194BC532003A2BC7 /* tc0220ioc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151891C8182CD0030CB84 /* toa_bcu2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF7194BC532003A2BC7 /* toa_bcu2.cpp */; };
-		FEF1518A1C8182CD0030CB84 /* d_tecmosys.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B83194BC532003A2BC7 /* d_tecmosys.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1518B1C8182CD0030CB84 /* d_pirates.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B75194BC532003A2BC7 /* d_pirates.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1518C1C8182CD0030CB84 /* d_guwange.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7F194BC531003A2BC7 /* d_guwange.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1518D1C8182CD0030CB84 /* nec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F3F194BCDD1003A2BC7 /* nec.cpp */; };
-		FEF1518E1C8182CD0030CB84 /* d_mystston.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B26194BC531003A2BC7 /* d_mystston.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1518F1C8182CD0030CB84 /* d_simpl156.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9F194BC531003A2BC7 /* d_simpl156.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF151901C8182CD0030CB84 /* s2650.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F54194BCDD1003A2BC7 /* s2650.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151911C8182CD0030CB84 /* d_gbusters.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABE194BC531003A2BC7 /* d_gbusters.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151921C8182CD0030CB84 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506047194BD4E6003A2BC7 /* crc32.c */; };
-		FEF151931C8182CD0030CB84 /* d_momoko.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B23194BC531003A2BC7 /* d_momoko.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151941C8182CD0030CB84 /* d_solomon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B36194BC531003A2BC7 /* d_solomon.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151951C8182CD0030CB84 /* d_dassault.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A95194BC531003A2BC7 /* d_dassault.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151961C8182CD0030CB84 /* d_twin16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACF194BC531003A2BC7 /* d_twin16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151971C8182CD0030CB84 /* pic16c5x.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F4F194BCDD1003A2BC7 /* pic16c5x.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151981C8182CD0030CB84 /* qs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6D194BC531003A2BC7 /* qs.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF151991C8182CD0030CB84 /* d_spy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACB194BC531003A2BC7 /* d_spy.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1519A1C8182CD0030CB84 /* pngwtran.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506040194BD4E6003A2BC7 /* pngwtran.c */; };
-		FEF1519B1C8182CD0030CB84 /* d_gradius3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABF194BC531003A2BC7 /* d_gradius3.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1519C1C8182CD0030CB84 /* d_fstarfrc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B60194BC532003A2BC7 /* d_fstarfrc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1519D1C8182CD0030CB84 /* d_outzone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BEA194BC532003A2BC7 /* d_outzone.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1519E1C8182CD0030CB84 /* arm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EEA194BCDD1003A2BC7 /* arm.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1519F1C8182CD0030CB84 /* d_gyruss.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC0194BC531003A2BC7 /* d_gyruss.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151A01C8182CD0030CB84 /* d_retofinv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBF194BC532003A2BC7 /* d_retofinv.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151A11C8182CD0030CB84 /* d_battleg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE0194BC532003A2BC7 /* d_battleg.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151A21C8182CD0030CB84 /* d_crshrace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B56194BC532003A2BC7 /* d_crshrace.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151A31C8182CD0030CB84 /* d_dcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B57194BC532003A2BC7 /* d_dcon.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151A41C8182CD0030CB84 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506046194BD4E6003A2BC7 /* compress.c */; };
-		FEF151A51C8182CD0030CB84 /* ym2413.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780112194C33AD0024716B /* ym2413.c */; settings = {COMPILER_FLAGS = "-Wno-unused-value -Wno-unused-value"; }; };
-		FEF151A61C8182CD0030CB84 /* saa1099.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C3D194BC532003A2BC7 /* saa1099.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151A71C8182CD0030CB84 /* x1010.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C47194BC532003A2BC7 /* x1010.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-deprecated-register"; }; };
-		FEF151A81C8182CD0030CB84 /* d_hangon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B93194BC532003A2BC7 /* d_hangon.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151A91C8182CD0030CB84 /* d_tecmo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B39194BC531003A2BC7 /* d_tecmo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151AA1C8182CD0030CB84 /* m6502.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F0E194BCDD1003A2BC7 /* m6502.cpp */; };
-		FEF151AB1C8182CD0030CB84 /* d_kangaroo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B19194BC531003A2BC7 /* d_kangaroo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151AC1C8182CD0030CB84 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
-		FEF151AD1C8182CD0030CB84 /* d_backfire.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A90194BC531003A2BC7 /* d_backfire.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF151AE1C8182CD0030CB84 /* burn_ym3526.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C14194BC532003A2BC7 /* burn_ym3526.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151AF1C8182CD0030CB84 /* m6805_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F28194BCDD1003A2BC7 /* m6805_intf.cpp */; };
-		FEF151B01C8182CD0030CB84 /* d_ambush.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AFE194BC531003A2BC7 /* d_ambush.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151B11C8182CD0030CB84 /* cps_obj.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5B194BC531003A2BC7 /* cps_obj.cpp */; };
-		FEF151B21C8182CD0030CB84 /* samples.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C3F194BC532003A2BC7 /* samples.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-format-security"; }; };
-		FEF151B41C8182CD0030CB84 /* qs_c.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6E194BC531003A2BC7 /* qs_c.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151B51C8182CD0030CB84 /* k051960.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD5194BC531003A2BC7 /* k051960.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151B61C8182CD0030CB84 /* png.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50602C194BD4E6003A2BC7 /* png.c */; };
-		FEF151B71C8182CD0030CB84 /* d_galspnbl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B66194BC532003A2BC7 /* d_galspnbl.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151B81C8182CD0030CB84 /* d_gng.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B14194BC531003A2BC7 /* d_gng.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151B91C8182CD0030CB84 /* neocdlist.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B9121C7F944200591D44 /* neocdlist.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151BA1C8182CD0030CB84 /* d_surpratk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACC194BC531003A2BC7 /* d_surpratk.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151BB1C8182CD0030CB84 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506050194BD4E6003A2BC7 /* infback.c */; };
-		FEF151BC1C8182CD0030CB84 /* m68kopdm.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800FE194C32600024716B /* m68kopdm.c */; };
-		FEF151BD1C8182CD0030CB84 /* d_m90.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB0194BC531003A2BC7 /* d_m90.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151BE1C8182CD0030CB84 /* tc0510nio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD9194BC532003A2BC7 /* tc0510nio.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151BF1C8182CD0030CB84 /* cps_scr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5F194BC531003A2BC7 /* cps_scr.cpp */; };
-		FEF151C01C8182CD0030CB84 /* d_psikyo4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B44194BC531003A2BC7 /* d_psikyo4.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151C11C8182CD0030CB84 /* neo_palette.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE5194BC531003A2BC7 /* neo_palette.cpp */; };
-		FEF151C21C8182CD0030CB84 /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B90E1C7F944200591D44 /* misc.cpp */; };
-		FEF151C31C8182CD0030CB84 /* d_mogura.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC5194BC531003A2BC7 /* d_mogura.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151C41C8182CD0030CB84 /* hq2xs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25350194CA28F0039D85F /* hq2xs.cpp */; };
-		FEF151C51C8182CD0030CB84 /* d_pipibibs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BEB194BC532003A2BC7 /* d_pipibibs.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151C61C8182CD0030CB84 /* burn_ym2151.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C08194BC532003A2BC7 /* burn_ym2151.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151C71C8182CD0030CB84 /* cps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A55194BC531003A2BC7 /* cps.cpp */; };
-		FEF151C81C8182CD0030CB84 /* vid_softfx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25319194C410B0039D85F /* vid_softfx.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151C91C8182CD0030CB84 /* k053936.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ADA194BC531003A2BC7 /* k053936.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151CA1C8182CD0030CB84 /* d_ohmygod.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B73194BC532003A2BC7 /* d_ohmygod.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151CB1C8182CD0030CB84 /* d_mrflea.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B25194BC531003A2BC7 /* d_mrflea.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151CC1C8182CD0030CB84 /* pic16c5x_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F51194BCDD1003A2BC7 /* pic16c5x_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151CD1C8182CD0030CB84 /* d_blmbycar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B53194BC532003A2BC7 /* d_blmbycar.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151CE1C8182CD0030CB84 /* d_mugsmash.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6F194BC532003A2BC7 /* d_mugsmash.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151CF1C8182CD0030CB84 /* d_mrdo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B24194BC531003A2BC7 /* d_mrdo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151D01C8182CD0030CB84 /* psikyosh_render.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B4C194BC532003A2BC7 /* psikyosh_render.cpp */; };
-		FEF151D11C8182CD0030CB84 /* cps_rw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A5E194BC531003A2BC7 /* cps_rw.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32 -Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF151D21C8182CD0030CB84 /* d_simpsons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACA194BC531003A2BC7 /* d_simpsons.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151D31C8182CD0030CB84 /* d_tmnt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ACE194BC531003A2BC7 /* d_tmnt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151D41C8182CD0030CB84 /* d_parent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A8D194BC531003A2BC7 /* d_parent.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151D51C8182CD0030CB84 /* burn_ym2413.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C0C194BC532003A2BC7 /* burn_ym2413.cpp */; };
-		FEF151D61C8182CD0030CB84 /* d_rollerg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC8194BC531003A2BC7 /* d_rollerg.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151D71C8182CD0030CB84 /* d_kontest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC3194BC531003A2BC7 /* d_kontest.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151D81C8182CD0030CB84 /* d_1945kiii.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B4F194BC532003A2BC7 /* d_1945kiii.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151D91C8182CD0030CB84 /* d_meijinsn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B20194BC531003A2BC7 /* d_meijinsn.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151DA1C8182CD0030CB84 /* state.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E4A194BCCBE003A2BC7 /* state.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF151DB1C8182CD0030CB84 /* arm7_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EF0194BCDD1003A2BC7 /* arm7_intf.cpp */; };
-		FEF151DC1C8182CD0030CB84 /* snes_65816.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BAE194BC532003A2BC7 /* snes_65816.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-function"; }; };
-		FEF151DD1C8182CD0030CB84 /* d_crimfght.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABC194BC531003A2BC7 /* d_crimfght.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151DE1C8182CD0030CB84 /* burn_vector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A37194BC531003A2BC7 /* burn_vector.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151DF1C8182CD0030CB84 /* ps_z.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6C194BC531003A2BC7 /* ps_z.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151E01C8182CD0030CB84 /* tiles_generic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C55194BC532003A2BC7 /* tiles_generic.cpp */; };
-		FEF151E11C8182CD0030CB84 /* hiscore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C00194BC532003A2BC7 /* hiscore.cpp */; };
-		FEF151E21C8182CD0030CB84 /* d_1942.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AFB194BC531003A2BC7 /* d_1942.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151E31C8182CD0030CB84 /* fcrash_snd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A68194BC531003A2BC7 /* fcrash_snd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151E41C8182CD0030CB84 /* pngset.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50603B194BD4E6003A2BC7 /* pngset.c */; };
-		FEF151E51C8182CD0030CB84 /* neo_text.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE9194BC531003A2BC7 /* neo_text.cpp */; };
-		FEF151E61C8182CD0030CB84 /* vdc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A50194BC531003A2BC7 /* vdc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151E71C8182CD0030CB84 /* d_blockout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B06194BC531003A2BC7 /* d_blockout.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151E81C8182CD0030CB84 /* z80daisy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F5E194BCDD1003A2BC7 /* z80daisy.cpp */; };
-		FEF151E91C8182CD0030CB84 /* pgm_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF6194BC531003A2BC7 /* pgm_draw.cpp */; };
-		FEF151EA1C8182CD0030CB84 /* psikyo_palette.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B47194BC532003A2BC7 /* psikyo_palette.cpp */; };
-		FEF151EB1C8182CD0030CB84 /* m68kopac.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800FD194C32600024716B /* m68kopac.c */; };
-		FEF151EC1C8182CD0030CB84 /* v3021.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A4E194BC531003A2BC7 /* v3021.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151ED1C8182CD0030CB84 /* d_dynduke.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0D194BC531003A2BC7 /* d_dynduke.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151EE1C8182CD0030CB84 /* d_sf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B32194BC531003A2BC7 /* d_sf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151EF1C8182CD0030CB84 /* tc0480scp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD8194BC532003A2BC7 /* tc0480scp.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151F01C8182CD0030CB84 /* tc0180vcu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD4194BC532003A2BC7 /* tc0180vcu.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151F11C8182CD0030CB84 /* d_bottom9.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505ABA194BC531003A2BC7 /* d_bottom9.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151F21C8182CD0030CB84 /* d_arkanoid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB5194BC532003A2BC7 /* d_arkanoid.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151F31C8182CD0030CB84 /* d_psikyo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B43194BC531003A2BC7 /* d_psikyo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151F41C8182CD0030CB84 /* d_cps2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A67194BC531003A2BC7 /* d_cps2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151F51C8182CD0030CB84 /* d_marineb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1E194BC531003A2BC7 /* d_marineb.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151F61C8182CD0030CB84 /* d_neogeo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE3194BC531003A2BC7 /* d_neogeo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151F71C8182CD0030CB84 /* k052109.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD6194BC531003A2BC7 /* k052109.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151F81C8182CD0030CB84 /* d_sonson.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B37194BC531003A2BC7 /* d_sonson.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151F91C8182CD0030CB84 /* d_zerowing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF6194BC532003A2BC7 /* d_zerowing.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151FA1C8182CD0030CB84 /* d_cps3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A8C194BC531003A2BC7 /* d_cps3.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-ignored-attributes"; }; };
-		FEF151FB1C8182CD0030CB84 /* ym2151.c in Sources */ = {isa = PBXBuildFile; fileRef = FE78010E194C33790024716B /* ym2151.c */; settings = {COMPILER_FLAGS = "-Wno-unused-value -Wno-unused-value"; }; };
-		FEF151FC1C8182CD0030CB84 /* d_egghunt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5D194BC532003A2BC7 /* d_egghunt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF151FD1C8182CD0030CB84 /* d_snes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BAC194BC532003A2BC7 /* d_snes.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151FE1C8182CD0030CB84 /* k054539.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C32194BC532003A2BC7 /* k054539.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF151FF1C8182CD0030CB84 /* d_toki.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3C194BC531003A2BC7 /* d_toki.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152001C8182CD0030CB84 /* d_higemaru.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B16194BC531003A2BC7 /* d_higemaru.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152011C8182CD0030CB84 /* burn_ym2612.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C12194BC532003A2BC7 /* burn_ym2612.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152021C8182CD0030CB84 /* msm5205.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C34194BC532003A2BC7 /* msm5205.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152031C8182CD0030CB84 /* neogeo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AEC194BC531003A2BC7 /* neogeo.cpp */; };
-		FEF152041C8182CD0030CB84 /* d_vulgus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3D194BC531003A2BC7 /* d_vulgus.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152051C8182CD0030CB84 /* d_kaneko16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B6B194BC532003A2BC7 /* d_kaneko16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152061C8182CD0030CB84 /* d_snk68.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B35194BC531003A2BC7 /* d_snk68.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152071C8182CD0030CB84 /* misc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25359194CA41B0039D85F /* misc.cpp */; };
-		FEF152081C8182CD0030CB84 /* d_skykid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B34194BC531003A2BC7 /* d_skykid.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152091C8182CD0030CB84 /* neo_decrypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE4194BC531003A2BC7 /* neo_decrypt.cpp */; };
-		FEF1520A1C8182CD0030CB84 /* gzread.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50604E194BD4E6003A2BC7 /* gzread.c */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1520B1C8182CD0030CB84 /* snes_ppu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB1194BC532003A2BC7 /* snes_ppu.cpp */; };
-		FEF1520C1C8182CD0030CB84 /* d_crospang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B55194BC532003A2BC7 /* d_crospang.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1520D1C8182CD0030CB84 /* flt_rc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C22194BC532003A2BC7 /* flt_rc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1520E1C8182CD0030CB84 /* statec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505E4B194BCCBE003A2BC7 /* statec.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1520F1C8182CD0030CB84 /* d_taitox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC5194BC532003A2BC7 /* d_taitox.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152101C8182CD0030CB84 /* ddt3x.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25353194CA32D0039D85F /* ddt3x.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-register"; }; };
-		FEF152111C8182CD0030CB84 /* ctv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A63194BC531003A2BC7 /* ctv.cpp */; };
-		FEF152121C8182CD0030CB84 /* timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C57194BC532003A2BC7 /* timer.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152131C8182CD0030CB84 /* sys16_fd1094.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA4194BC532003A2BC7 /* sys16_fd1094.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152141C8182CD0030CB84 /* d_pushman.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B78194BC532003A2BC7 /* d_pushman.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152151C8182CD0030CB84 /* d_lemmings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9B194BC531003A2BC7 /* d_lemmings.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152161C8182CD0030CB84 /* nec_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F4C194BCDD1003A2BC7 /* nec_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152171C8182CD0030CB84 /* d_madgear.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1D194BC531003A2BC7 /* d_madgear.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152181C8182CD0030CB84 /* d_ajax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB7194BC531003A2BC7 /* d_ajax.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1521A1C8182CD0030CB84 /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1521B1C8182CD0030CB84 /* gal_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA9194BC531003A2BC7 /* gal_run.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1521C1C8182CD0030CB84 /* timekpr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A4C194BC531003A2BC7 /* timekpr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1521D1C8182CD0030CB84 /* sn76496.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C43194BC532003A2BC7 /* sn76496.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1521E1C8182CD0030CB84 /* d_galpanic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B65194BC532003A2BC7 /* d_galpanic.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1521F1C8182CD0030CB84 /* d_outrun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B94194BC532003A2BC7 /* d_outrun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152201C8182CD0030CB84 /* d_silkroad.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7D194BC532003A2BC7 /* d_silkroad.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152211C8182CD0030CB84 /* vid_support.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC2531B194C410B0039D85F /* vid_support.cpp */; };
-		FEF152221C8182CD0030CB84 /* d_donpachi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7B194BC531003A2BC7 /* d_donpachi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152231C8182CD0030CB84 /* d_hcastle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC1194BC531003A2BC7 /* d_hcastle.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152241C8182CD0030CB84 /* d_psikyosh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B45194BC531003A2BC7 /* d_psikyosh.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152251C8182CD0030CB84 /* d_wallc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3E194BC531003A2BC7 /* d_wallc.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152271C8182CD0030CB84 /* konami.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F06194BCDD1003A2BC7 /* konami.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152281C8182CD0030CB84 /* d_diverboy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5A194BC532003A2BC7 /* d_diverboy.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152291C8182CD0030CB84 /* d_suprloco.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B95194BC532003A2BC7 /* d_suprloco.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1522A1C8182CD0030CB84 /* hd6309.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EFE194BCDD1003A2BC7 /* hd6309.cpp */; settings = {COMPILER_FLAGS = "-Wno-absolute-value"; }; };
-		FEF1522B1C8182CD0030CB84 /* d_mitchell.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B21194BC531003A2BC7 /* d_mitchell.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1522C1C8182CD0030CB84 /* genesis_vid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B9F194BC532003A2BC7 /* genesis_vid.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1522D1C8182CD0030CB84 /* d_fuukifg3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B62194BC532003A2BC7 /* d_fuukifg3.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1522E1C8182CD0030CB84 /* d_gaelco.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B63194BC532003A2BC7 /* d_gaelco.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1522F1C8182CD0030CB84 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = FE7800F2194C31E90024716B /* unzip.c */; settings = {COMPILER_FLAGS = "-Wno-parentheses-equality"; }; };
-		FEF152301C8182CD0030CB84 /* d_yunsun16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B8A194BC532003A2BC7 /* d_yunsun16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152311C8182CD0030CB84 /* d_aerofgt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B50194BC532003A2BC7 /* d_aerofgt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152321C8182CD0030CB84 /* m6800.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F1D194BCDD1003A2BC7 /* m6800.cpp */; settings = {COMPILER_FLAGS = "-Wno-unused-const-variable -Wno-unused-variable"; }; };
-		FEF152331C8182CD0030CB84 /* pc080sn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC8194BC532003A2BC7 /* pc080sn.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152341C8182CD0030CB84 /* d_sailormn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A85194BC531003A2BC7 /* d_sailormn.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152351C8182CD0030CB84 /* eeprom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A42194BC531003A2BC7 /* eeprom.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152361C8182CD0030CB84 /* k007232.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C2C194BC532003A2BC7 /* k007232.cpp */; };
-		FEF152371C8182CD0030CB84 /* arm7.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EEC194BCDD1003A2BC7 /* arm7.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152381C8182CD0030CB84 /* d_pacland.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B28194BC531003A2BC7 /* d_pacland.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152391C8182CD0030CB84 /* burn_sound_c.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A36194BC531003A2BC7 /* burn_sound_c.cpp */; };
-		FEF1523A1C8182CD0030CB84 /* d_slapshot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC0194BC532003A2BC7 /* d_slapshot.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1523B1C8182CD0030CB84 /* d_truxton2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF3194BC532003A2BC7 /* d_truxton2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1523C1C8182CD0030CB84 /* d_hexion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC2194BC531003A2BC7 /* d_hexion.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1523D1C8182CD0030CB84 /* neo_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE6194BC531003A2BC7 /* neo_run.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1523E1C8182CD0030CB84 /* pngrutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50603A194BD4E6003A2BC7 /* pngrutil.c */; };
-		FEF1523F1C8182CD0030CB84 /* pngerror.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506030194BD4E6003A2BC7 /* pngerror.c */; };
-		FEF152401C8182CD0030CB84 /* d_sys1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B96194BC532003A2BC7 /* d_sys1.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152411C8182CD0030CB84 /* taito_ic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BCC194BC532003A2BC7 /* taito_ic.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152421C8182CD0030CB84 /* d_gaiden.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B64194BC532003A2BC7 /* d_gaiden.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152431C8182CD0030CB84 /* burn_memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A32194BC531003A2BC7 /* burn_memory.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152441C8182CD0030CB84 /* d_dogyuun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE3194BC532003A2BC7 /* d_dogyuun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152451C8182CD0030CB84 /* toa_palette.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BFC194BC532003A2BC7 /* toa_palette.cpp */; settings = {COMPILER_FLAGS = "-Wno-uninitialized"; }; };
-		FEF152461C8182CD0030CB84 /* taito_m68705.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BCE194BC532003A2BC7 /* taito_m68705.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152471C8182CD0030CB84 /* m68kops.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780100194C32600024716B /* m68kops.c */; };
-		FEF152481C8182CD0030CB84 /* d_taitof2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC3194BC532003A2BC7 /* d_taitof2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152491C8182CD0030CB84 /* d_armedf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B00194BC531003A2BC7 /* d_armedf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1524A1C8182CD0030CB84 /* cheat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3A194BC531003A2BC7 /* cheat.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1524B1C8182CD0030CB84 /* irem_cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB3194BC531003A2BC7 /* irem_cpu.cpp */; };
-		FEF1524C1C8182CD0030CB84 /* pgm_prot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF7194BC531003A2BC7 /* pgm_prot.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-uninitialized"; }; };
-		FEF1524D1C8182CD0030CB84 /* d_seta.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7A194BC532003A2BC7 /* d_seta.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1524E1C8182CD0030CB84 /* d_ghox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE5194BC532003A2BC7 /* d_ghox.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1524F1C8182CD0030CB84 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
-		FEF152501C8182CD0030CB84 /* c6280.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C1A194BC532003A2BC7 /* c6280.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152511C8182CD0030CB84 /* d_scregg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B31194BC531003A2BC7 /* d_scregg.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152521C8182CD0030CB84 /* d_sms.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BA8194BC532003A2BC7 /* d_sms.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152531C8182CD0030CB84 /* d_superchs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BC1194BC532003A2BC7 /* d_superchs.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152541C8182CD0030CB84 /* d_tumblep.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA1194BC531003A2BC7 /* d_tumblep.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152551C8182CD0030CB84 /* cave_tile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A78194BC531003A2BC7 /* cave_tile.cpp */; };
-		FEF152571C8182CD0030CB84 /* ymdeltat.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780114194C33AD0024716B /* ymdeltat.c */; settings = {COMPILER_FLAGS = "-Wno-unused-value -Wno-unused-value"; }; };
-		FEF152581C8182CD0030CB84 /* d_m62.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AAD194BC531003A2BC7 /* d_m62.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152591C8182CD0030CB84 /* d_supbtime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA0194BC531003A2BC7 /* d_supbtime.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1525A1C8182CD0030CB84 /* d_esprade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A7C194BC531003A2BC7 /* d_esprade.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1525B1C8182CD0030CB84 /* m6809_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F2F194BCDD1003A2BC7 /* m6809_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1525C1C8182CD0030CB84 /* rf5c68.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C3B194BC532003A2BC7 /* rf5c68.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1525D1C8182CD0030CB84 /* d_m72.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AAF194BC531003A2BC7 /* d_m72.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1525E1C8182CD0030CB84 /* nmk004.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B8D194BC532003A2BC7 /* nmk004.cpp */; };
-		FEF1525F1C8182CD0030CB84 /* d_m63.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AAE194BC531003A2BC7 /* d_m63.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152601C8182CD0030CB84 /* d_galaga.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B11194BC531003A2BC7 /* d_galaga.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152611C8182CD0030CB84 /* deco16ic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AA3194BC531003A2BC7 /* deco16ic.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152621C8182CD0030CB84 /* s2650_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F56194BCDD1003A2BC7 /* s2650_intf.cpp */; };
-		FEF152631C8182CD0030CB84 /* d_baraduke.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B03194BC531003A2BC7 /* d_baraduke.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152641C8182CD0030CB84 /* megadrive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE0194BC531003A2BC7 /* megadrive.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152651C8182CD0030CB84 /* z80_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F60194BCDD1003A2BC7 /* z80_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152661C8182CD0030CB84 /* d_4enraya.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AFD194BC531003A2BC7 /* d_4enraya.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152671C8182CD0030CB84 /* d_pgm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF3194BC531003A2BC7 /* d_pgm.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152681C8182CD0030CB84 /* tc0140syt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BD2194BC532003A2BC7 /* tc0140syt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152691C8182CD0030CB84 /* neo_sprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AE7194BC531003A2BC7 /* neo_sprite.cpp */; };
-		FEF1526A1C8182CD0030CB84 /* d_pktgaldx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A9C194BC531003A2BC7 /* d_pktgaldx.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1526B1C8182CD0030CB84 /* d_mainevt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC4194BC531003A2BC7 /* d_mainevt.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF1526C1C8182CD0030CB84 /* cps3snd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A8B194BC531003A2BC7 /* cps3snd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-ignored-attributes"; }; };
-		FEF1526D1C8182CD0030CB84 /* d_silvmil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B7E194BC532003A2BC7 /* d_silvmil.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1526E1C8182CD0030CB84 /* cpsrd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A61194BC531003A2BC7 /* cpsrd.cpp */; };
-		FEF1526F1C8182CD0030CB84 /* d_xorworld.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B89194BC532003A2BC7 /* d_xorworld.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152701C8182CD0030CB84 /* dac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C1C194BC532003A2BC7 /* dac.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-unsequenced"; }; };
-		FEF152711C8182CD0030CB84 /* d_scotrsht.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC9194BC531003A2BC7 /* d_scotrsht.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152721C8182CD0030CB84 /* d_welltris.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B87194BC532003A2BC7 /* d_welltris.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152731C8182CD0030CB84 /* d_gauntlet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B12194BC531003A2BC7 /* d_gauntlet.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-unreachable-code"; }; };
-		FEF152741C8182CD0030CB84 /* cps_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A59194BC531003A2BC7 /* cps_draw.cpp */; };
-		FEF152751C8182CD0030CB84 /* d_actfancr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A8F194BC531003A2BC7 /* d_actfancr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32 -Wno-uninitialized -Wno-unreachable-code"; }; };
-		FEF152761C8182CD0030CB84 /* d_route16.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2F194BC531003A2BC7 /* d_route16.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152771C8182CD0030CB84 /* d_tigeroad.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B3B194BC531003A2BC7 /* d_tigeroad.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152781C8182CD0030CB84 /* cave_sprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A75194BC531003A2BC7 /* cave_sprite.cpp */; };
-		FEF152791C8182CD0030CB84 /* konami_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F0A194BCDD1003A2BC7 /* konami_intf.cpp */; };
-		FEF1527A1C8182CD0030CB84 /* d_srumbler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B38194BC531003A2BC7 /* d_srumbler.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1527B1C8182CD0030CB84 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
-		FEF1527C1C8182CD0030CB84 /* tchar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B90F1C7F944200591D44 /* tchar.cpp */; };
-		FEF1527D1C8182CD0030CB84 /* d_snowbro2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BEF194BC532003A2BC7 /* d_snowbro2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1527E1C8182CD0030CB84 /* pgm_crypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AF5194BC531003A2BC7 /* pgm_crypt.cpp */; };
-		FEF1527F1C8182CD0030CB84 /* d_asuka.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB7194BC532003A2BC7 /* d_asuka.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152801C8182CD0030CB84 /* d_pooyan.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AC7194BC531003A2BC7 /* d_pooyan.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152811C8182CD0030CB84 /* k053247.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD8194BC531003A2BC7 /* k053247.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152821C8182CD0030CB84 /* d_bankp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B91194BC532003A2BC7 /* d_bankp.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152831C8182CD0030CB84 /* d_drgnmst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B5B194BC532003A2BC7 /* d_drgnmst.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152841C8182CD0030CB84 /* k053245.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AD7194BC531003A2BC7 /* k053245.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152851C8182CD0030CB84 /* d_ybrd.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B9B194BC532003A2BC7 /* d_ybrd.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152861C8182CD0030CB84 /* burn_y8950.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C06194BC532003A2BC7 /* burn_y8950.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152871C8182CD0030CB84 /* burn_ym2608.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C0E194BC532003A2BC7 /* burn_ym2608.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152881C8182CD0030CB84 /* v25.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F47194BCDD1003A2BC7 /* v25.cpp */; };
-		FEF152891C8182CD0030CB84 /* d_kyugo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1A194BC531003A2BC7 /* d_kyugo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1528A1C8182CD0030CB84 /* ymz280b.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C51194BC532003A2BC7 /* ymz280b.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1528B1C8182CD0030CB84 /* k053260.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C30194BC532003A2BC7 /* k053260.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1528C1C8182CD0030CB84 /* debug_track.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3C194BC531003A2BC7 /* debug_track.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF1528D1C8182CD0030CB84 /* d_ashnojoe.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BB6194BC532003A2BC7 /* d_ashnojoe.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1528E1C8182CD0030CB84 /* fmopl.c in Sources */ = {isa = PBXBuildFile; fileRef = FE78010C194C33790024716B /* fmopl.c */; settings = {COMPILER_FLAGS = "-Wno-unused-value -Wno-unused-value"; }; };
-		FEF1528F1C8182CD0030CB84 /* d_batsugun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BDF194BC532003A2BC7 /* d_batsugun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152901C8182CD0030CB84 /* pngrtran.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506039194BD4E6003A2BC7 /* pngrtran.c */; };
-		FEF152911C8182CD0030CB84 /* qs_z.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A6F194BC531003A2BC7 /* qs_z.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152921C8182CD0030CB84 /* pngpread.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506035194BD4E6003A2BC7 /* pngpread.c */; };
-		FEF152931C8182CD0030CB84 /* d_boogwing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A91194BC531003A2BC7 /* d_boogwing.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152941C8182CD0030CB84 /* d_bombjack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B08194BC531003A2BC7 /* d_bombjack.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152951C8182CD0030CB84 /* d_tekipaki.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF0194BC532003A2BC7 /* d_tekipaki.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152961C8182CD0030CB84 /* psikyo_sprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B49194BC532003A2BC7 /* psikyo_sprite.cpp */; };
-		FEF152971C8182CD0030CB84 /* burn_gun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2E194BC531003A2BC7 /* burn_gun.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152981C8182CD0030CB84 /* neo_upd4990a.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AEB194BC531003A2BC7 /* neo_upd4990a.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152991C8182CD0030CB84 /* d_88games.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505AB6194BC531003A2BC7 /* d_88games.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1529A1C8182CD0030CB84 /* d_rallyx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2D194BC531003A2BC7 /* d_rallyx.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1529B1C8182CD0030CB84 /* d_batrider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BDE194BC532003A2BC7 /* d_batrider.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1529C1C8182CD0030CB84 /* d_rallybik.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BEC194BC532003A2BC7 /* d_rallybik.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1529D1C8182CD0030CB84 /* burn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2C194BC531003A2BC7 /* burn.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF1529E1C8182CD0030CB84 /* d_ikki.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B17194BC531003A2BC7 /* d_ikki.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF1529F1C8182CD0030CB84 /* sknsspr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A48194BC531003A2BC7 /* sknsspr.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
-		FEF152A01C8182CD0030CB84 /* pngmem.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506034194BD4E6003A2BC7 /* pngmem.c */; };
-		FEF152A11C8182CD0030CB84 /* d_airbustr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B51194BC532003A2BC7 /* d_airbustr.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A21C8182CD0030CB84 /* snes_io.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BAF194BC532003A2BC7 /* snes_io.cpp */; };
-		FEF152A31C8182CD0030CB84 /* ics2115.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C28194BC532003A2BC7 /* ics2115.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152A41C8182CD0030CB84 /* d_vmetal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B86194BC532003A2BC7 /* d_vmetal.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A51C8182CD0030CB84 /* d_tumbleb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B84194BC532003A2BC7 /* d_tumbleb.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A61C8182CD0030CB84 /* d_prehisle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B2B194BC531003A2BC7 /* d_prehisle.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A71C8182CD0030CB84 /* d_darius2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BBA194BC532003A2BC7 /* d_darius2.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A81C8182CD0030CB84 /* d_wc90b.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B40194BC531003A2BC7 /* d_wc90b.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152A91C8182CD0030CB84 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506054194BD4E6003A2BC7 /* inflate.c */; };
-		FEF152AA1C8182CD0030CB84 /* d_ddragon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B0B194BC531003A2BC7 /* d_ddragon.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152AB1C8182CD0030CB84 /* pngtrans.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50603D194BD4E6003A2BC7 /* pngtrans.c */; };
-		FEF152AC1C8182CD0030CB84 /* d_markham.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505B1F194BC531003A2BC7 /* d_markham.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152AD1C8182CD0030CB84 /* m6800_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F22194BCDD1003A2BC7 /* m6800_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
-		FEF152AE1C8182CD0030CB84 /* d_truxton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BF2194BC532003A2BC7 /* d_truxton.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152AF1C8182CD0030CB84 /* d_hellfire.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505BE6194BC532003A2BC7 /* d_hellfire.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152B01C8182CD0030CB84 /* d_dietgogo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A98194BC531003A2BC7 /* d_dietgogo.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings -Wno-shorten-64-to-32"; }; };
-		FEF152B11C8182CD0030CB84 /* h6280_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505EF9194BCDD1003A2BC7 /* h6280_intf.cpp */; };
-		FEF152B21C8182CD0030CB84 /* m6502_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505F18194BCDD1003A2BC7 /* m6502_intf.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
+		FEFF877B1C93A92400ECA1BF /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFF877A1C93A92400ECA1BF /* FXZipArchive.m */; };
+		FEFF877C1C93A92700ECA1BF /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFF877A1C93A92400ECA1BF /* FXZipArchive.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		FE68437B1C8195CE00A859C0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = FE08933C19475F9800F79190 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = FEF150991C8182CD0030CB84;
-			remoteInfo = ManifestBuilder;
-		};
 		FEA0BB791C80EF4B00591D44 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FE08933C19475F9800F79190 /* Project object */;
@@ -1130,16 +614,27 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		FEA0B6DB1C7F8BCD00591D44 /* CopyFiles */ = {
+		FE6F48741C93E8D30045784D /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			dstPath = "";
+			dstSubfolderSpec = 10;
 			files = (
+				FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FEF152B61C8182CD0030CB84 /* CopyFiles */ = {
+		FE6F48761C93E9E50045784D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				FE6F48771C93E9F90045784D /* Emulator in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FEA0B6DB1C7F8BCD00591D44 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -1838,13 +1333,12 @@
 		FE5FD7D8196896C300BD1386 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		FE5FD7DB1968F68500BD1386 /* FXAuditStatusAsNSImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAuditStatusAsNSImage.h; sourceTree = "<group>"; };
 		FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAuditStatusAsNSImage.m; sourceTree = "<group>"; };
-		FE6843731C81847700A859C0 /* stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stubs.cpp; sourceTree = "<group>"; };
-		FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXManifestBuilder.mm; sourceTree = "<group>"; };
-		FE6843781C81864A00A859C0 /* FXManifestBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifestBuilder.h; sourceTree = "<group>"; };
 		FE6D55221C803164001B1A7E /* FXGameController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameController.m; sourceTree = "<group>"; };
 		FE6D55231C803164001B1A7E /* FXGameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameController.h; sourceTree = "<group>"; };
 		FE6D55261C8032F6001B1A7E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Game.xib; sourceTree = "<group>"; };
-		FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenEmuXPCCommunicator.framework; path = "../../Library/Developer/Xcode/DerivedData/FinalBurnX-bekkzkpyfeoywecsdtnphpfehgjt/Build/Products/Debug/OpenEmuXPCCommunicator.framework"; sourceTree = "<group>"; };
+		FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenEmuXPCCommunicator.framework; sourceTree = "<group>"; };
+		FE6F48781C93EF280045784D /* FXManifestBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifestBuilder.h; sourceTree = "<group>"; };
+		FE6F48791C93EF280045784D /* FXManifestBuilder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXManifestBuilder.mm; sourceTree = "<group>"; };
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
@@ -1878,6 +1372,8 @@
 		FE780120194C36510024716B /* lowpass2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowpass2.h; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
+		FE8F66B11C90DF4000A3A84A /* FXScanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScanner.h; sourceTree = "<group>"; };
+		FE8F66B21C90DF4000A3A84A /* FXScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXScanner.m; sourceTree = "<group>"; };
 		FEA0B6DD1C7F8BCD00591D44 /* Emulator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Emulator; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEA0B6DF1C7F8BCD00591D44 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		FEA0B8EF1C7F944200591D44 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
@@ -1885,18 +1381,10 @@
 		FEA0B8F11C7F944200591D44 /* FXAudio.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXAudio.mm; sourceTree = "<group>"; };
 		FEA0B8F21C7F944200591D44 /* FXAudioEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAudioEngine.h; sourceTree = "<group>"; };
 		FEA0B8F31C7F944200591D44 /* FXAudioEngine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAudioEngine.m; sourceTree = "<group>"; };
-		FEA0B8F81C7F944200591D44 /* FXDriverAudit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDriverAudit.h; sourceTree = "<group>"; };
-		FEA0B8F91C7F944200591D44 /* FXDriverAudit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDriverAudit.m; sourceTree = "<group>"; };
-		FEA0B9001C7F944200591D44 /* FXLoader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXLoader.h; sourceTree = "<group>"; };
-		FEA0B9011C7F944200591D44 /* FXLoader.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXLoader.mm; sourceTree = "<group>"; };
 		FEA0B9021C7F944200591D44 /* FXROMAudit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXROMAudit.h; sourceTree = "<group>"; };
 		FEA0B9031C7F944200591D44 /* FXROMAudit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXROMAudit.m; sourceTree = "<group>"; };
-		FEA0B9041C7F944200591D44 /* FXROMSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXROMSet.h; sourceTree = "<group>"; };
-		FEA0B9051C7F944200591D44 /* FXROMSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXROMSet.mm; sourceTree = "<group>"; };
 		FEA0B9061C7F944200591D44 /* FXRunLoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXRunLoop.h; sourceTree = "<group>"; };
 		FEA0B9071C7F944200591D44 /* FXRunLoop.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXRunLoop.mm; sourceTree = "<group>"; };
-		FEA0B90A1C7F944200591D44 /* FXZipArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipArchive.h; sourceTree = "<group>"; };
-		FEA0B90B1C7F944200591D44 /* FXZipArchive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipArchive.m; sourceTree = "<group>"; };
 		FEA0B90E1C7F944200591D44 /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
 		FEA0B90F1C7F944200591D44 /* tchar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tchar.cpp; sourceTree = "<group>"; };
 		FEA0B9101C7F944200591D44 /* tchar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tchar.h; sourceTree = "<group>"; };
@@ -1942,8 +1430,8 @@
 		FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-joypad@3x.png"; sourceTree = "<group>"; };
 		FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDroppableScrollView.h; sourceTree = "<group>"; };
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
-		FEF150941C8182C30030CB84 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		FEF152BA1C8182CD0030CB84 /* ManifestBuilder */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ManifestBuilder; sourceTree = BUILT_PRODUCTS_DIR; };
+		FEFF87791C93A92400ECA1BF /* FXZipArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipArchive.h; sourceTree = "<group>"; };
+		FEFF877A1C93A92400ECA1BF /* FXZipArchive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipArchive.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1951,9 +1439,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE6D55291C803537001B1A7E /* OpenEmuXPCCommunicator.framework in Frameworks */,
 				FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */,
 				FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */,
+				FE6F48721C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1961,15 +1449,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FEA0BB771C80E7A400591D44 /* OpenEmuXPCCommunicator.framework in Frameworks */,
+				FE6F48731C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */,
 				FEA0BB761C80E35900591D44 /* Cocoa.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		FEF152B31C8182CD0030CB84 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1983,7 +1464,6 @@
 				FE505956194BC41E003A2BC7 /* Core */,
 				FEA0B6DE1C7F8BCD00591D44 /* Emulator */,
 				FE08934D19475F9800F79190 /* FinalBurnX */,
-				FEF150931C8182C30030CB84 /* ManifestBuilder */,
 				FE0DC79E1950AC61004A03A3 /* Resources */,
 				FE5FD7D71968962E00BD1386 /* Documentation */,
 				FE08934619475F9800F79190 /* Frameworks */,
@@ -1996,7 +1476,6 @@
 			children = (
 				FE08934419475F9800F79190 /* FinalBurn X.app */,
 				FEA0B6DD1C7F8BCD00591D44 /* Emulator */,
-				FEF152BA1C8182CD0030CB84 /* ManifestBuilder */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2004,7 +1483,7 @@
 		FE08934619475F9800F79190 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				FE6D55281C803537001B1A7E /* OpenEmuXPCCommunicator.framework */,
+				FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */,
 				FE08A07E1949651D00F79190 /* OpenGL.framework */,
 				FE08934719475F9800F79190 /* Cocoa.framework */,
 				FE08934919475F9800F79190 /* Other Frameworks */,
@@ -2025,6 +1504,7 @@
 		FE08934D19475F9800F79190 /* FinalBurnX */ = {
 			isa = PBXGroup;
 			children = (
+				FE8F66941C90AE3F00A3A84A /* Utilities */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
 				FEA0BB7B1C80F00600591D44 /* XPC */,
 				FE5FD7DA1968F61400BD1386 /* ValueTransformers */,
@@ -3217,12 +2697,23 @@
 			path = audio;
 			sourceTree = "<group>";
 		};
+		FE8F66941C90AE3F00A3A84A /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				FE8F66B11C90DF4000A3A84A /* FXScanner.h */,
+				FE8F66B21C90DF4000A3A84A /* FXScanner.m */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
 		FEA0B6DE1C7F8BCD00591D44 /* Emulator */ = {
 			isa = PBXGroup;
 			children = (
 				FEA0B8EE1C7F941200591D44 /* Cocoa */,
 				FEA0B92C1C7F98D900591D44 /* FXEmulator.h */,
 				FEA0B9291C7F988F00591D44 /* FXEmulator.mm */,
+				FE6F48781C93EF280045784D /* FXManifestBuilder.h */,
+				FE6F48791C93EF280045784D /* FXManifestBuilder.mm */,
 				FEA0B6DF1C7F8BCD00591D44 /* main.m */,
 			);
 			path = Emulator;
@@ -3236,22 +2727,14 @@
 				FEA0B8F11C7F944200591D44 /* FXAudio.mm */,
 				FEA0B8F21C7F944200591D44 /* FXAudioEngine.h */,
 				FEA0B8F31C7F944200591D44 /* FXAudioEngine.m */,
-				FEA0B8F81C7F944200591D44 /* FXDriverAudit.h */,
-				FEA0B8F91C7F944200591D44 /* FXDriverAudit.m */,
 				FEA0B92E1C7F9F1900591D44 /* FXInput.h */,
 				FEA0B92F1C7F9F1900591D44 /* FXInput.mm */,
-				FEA0B9001C7F944200591D44 /* FXLoader.h */,
-				FEA0B9011C7F944200591D44 /* FXLoader.mm */,
 				FEA0B9021C7F944200591D44 /* FXROMAudit.h */,
 				FEA0B9031C7F944200591D44 /* FXROMAudit.m */,
-				FEA0B9041C7F944200591D44 /* FXROMSet.h */,
-				FEA0B9051C7F944200591D44 /* FXROMSet.mm */,
 				FEA0B9061C7F944200591D44 /* FXRunLoop.h */,
 				FEA0B9071C7F944200591D44 /* FXRunLoop.mm */,
 				FEA0B9261C7F977D00591D44 /* FXVideo.h */,
 				FEA0B9271C7F977D00591D44 /* FXVideo.mm */,
-				FEA0B90A1C7F944200591D44 /* FXZipArchive.h */,
-				FEA0B90B1C7F944200591D44 /* FXZipArchive.m */,
 				FEA0B90E1C7F944200591D44 /* misc.cpp */,
 				FEA0B90F1C7F944200591D44 /* tchar.cpp */,
 				FEA0B9101C7F944200591D44 /* tchar.h */,
@@ -3267,6 +2750,7 @@
 				FEA0BB741C80CBAF00591D44 /* FXEmulationCommunication.h */,
 				FED0B6141C8AE45700DD4EC3 /* Input */,
 				FED0B61B1C8AE4A900DD4EC3 /* Objects */,
+				FEFF87781C93A8BA00ECA1BF /* Utilities */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -3341,15 +2825,13 @@
 			name = minizip;
 			sourceTree = "<group>";
 		};
-		FEF150931C8182C30030CB84 /* ManifestBuilder */ = {
+		FEFF87781C93A8BA00ECA1BF /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
-				FE6843781C81864A00A859C0 /* FXManifestBuilder.h */,
-				FE6843771C81864A00A859C0 /* FXManifestBuilder.mm */,
-				FE6843731C81847700A859C0 /* stubs.cpp */,
-				FEF150941C8182C30030CB84 /* main.m */,
+				FEFF87791C93A92400ECA1BF /* FXZipArchive.h */,
+				FEFF877A1C93A92400ECA1BF /* FXZipArchive.m */,
 			);
-			path = ManifestBuilder;
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -3362,12 +2844,13 @@
 				FE08934019475F9800F79190 /* Sources */,
 				FE08934119475F9800F79190 /* Frameworks */,
 				FE08934219475F9800F79190 /* Resources */,
+				FE6F48741C93E8D30045784D /* CopyFiles */,
+				FE6F48761C93E9E50045784D /* CopyFiles */,
 				FE68437D1C81964400A859C0 /* ShellScript */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				FE68437C1C8195CE00A859C0 /* PBXTargetDependency */,
 				FEA0BB7A1C80EF4B00591D44 /* PBXTargetDependency */,
 			);
 			name = "FinalBurn X";
@@ -3390,24 +2873,6 @@
 			name = Emulator;
 			productName = Emoolyator;
 			productReference = FEA0B6DD1C7F8BCD00591D44 /* Emulator */;
-			productType = "com.apple.product-type.tool";
-		};
-		FEF150991C8182CD0030CB84 /* ManifestBuilder */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FEF152B71C8182CD0030CB84 /* Build configuration list for PBXNativeTarget "ManifestBuilder" */;
-			buildPhases = (
-				FEF1509A1C8182CD0030CB84 /* Sources */,
-				FEF152B31C8182CD0030CB84 /* Frameworks */,
-				FEF152B61C8182CD0030CB84 /* CopyFiles */,
-				FE68437A1C8193DE00A859C0 /* ShellScript */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ManifestBuilder;
-			productName = Emoolyator;
-			productReference = FEF152BA1C8182CD0030CB84 /* ManifestBuilder */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -3440,7 +2905,6 @@
 			targets = (
 				FE08934319475F9800F79190 /* FinalBurn X */,
 				FEA0B6DC1C7F8BCD00591D44 /* Emulator */,
-				FEF150991C8182CD0030CB84 /* ManifestBuilder */,
 			);
 		};
 /* End PBXProject section */
@@ -3450,7 +2914,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FEA0BB781C80EEEF00591D44 /* Emulator in Resources */,
 				FE08935219475F9800F79190 /* InfoPlist.strings in Resources */,
 				FE1FB77119CFD9330070325C /* toolbar-joypad.png in Resources */,
 				FED4361519E60D0F00315655 /* toolbar-dipswitch@2x.png in Resources */,
@@ -3474,19 +2937,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		FE68437A1C8193DE00A859C0 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "${TARGET_BUILD_DIR}/${EXECUTABLE_NAME} -s > \"${TARGET_BUILD_DIR}/SetManifest.plist\"\n";
-		};
 		FE68437D1C81964400A859C0 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -3498,7 +2948,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cp \"${TARGET_BUILD_DIR}/SetManifest.plist\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n";
+			shellScript = "\"${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/Emulator\" -s > \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SetManifest.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -3507,20 +2957,39 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE8F66A21C90CE2400A3A84A /* infback.c in Sources */,
+				FE8F66A51C90CE2400A3A84A /* inftrees.c in Sources */,
 				FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */,
+				FE8F66A61C90CE2400A3A84A /* trees.c in Sources */,
 				FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */,
 				FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */,
 				FED0B61A1C8AE45700DD4EC3 /* AKKeyEventData.m in Sources */,
+				FE8F669E1C90CE2400A3A84A /* gzclose.c in Sources */,
+				FE8F66B41C90E1A400A3A84A /* FXScanner.m in Sources */,
 				FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */,
+				FE8F66A71C90CE2400A3A84A /* uncompr.c in Sources */,
+				FE8F669B1C90CE2400A3A84A /* compress.c in Sources */,
 				FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */,
 				FED0B6191C8AE45700DD4EC3 /* AKKeyboardManager.m in Sources */,
 				FE6D55241C803164001B1A7E /* FXGameController.m in Sources */,
+				FEFF877B1C93A92400ECA1BF /* FXZipArchive.m in Sources */,
 				FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */,
+				FE8F66A81C90CE2400A3A84A /* zutil.c in Sources */,
+				FE8F66981C90CAF500A3A84A /* ioapi.c in Sources */,
+				FE8F669A1C90CE2400A3A84A /* adler32.c in Sources */,
+				FE8F66A01C90CE2400A3A84A /* gzread.c in Sources */,
+				FE8F669F1C90CE2400A3A84A /* gzlib.c in Sources */,
+				FE8F66A31C90CE2400A3A84A /* inffast.c in Sources */,
+				FE8F669C1C90CE2400A3A84A /* crc32.c in Sources */,
+				FE8F66991C90CAF500A3A84A /* unzip.c in Sources */,
 				FED0B61E1C8AE4A900DD4EC3 /* FXInputMap.m in Sources */,
+				FE8F66A41C90CE2400A3A84A /* inflate.c in Sources */,
+				FE8F669D1C90CE2400A3A84A /* deflate.c in Sources */,
 				FE1FB76C19CFD71C0070325C /* FXPreferencesController.m in Sources */,
 				FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */,
 				FE08935419475F9800F79190 /* main.m in Sources */,
 				FE1FB77B19D13D0A0070325C /* AKKeyCaptureView.m in Sources */,
+				FE8F66A11C90CE2400A3A84A /* gzwrite.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3616,7 +3085,6 @@
 				FEA0B7AA1C7F8C6600591D44 /* d_rpunch.cpp in Sources */,
 				FEA0B82C1C7F8CA900591D44 /* d_taitomisc.cpp in Sources */,
 				FEA0B8D91C7F8DC100591D44 /* aud_dsp.cpp in Sources */,
-				FEA0B9201C7F944200591D44 /* FXZipArchive.m in Sources */,
 				FEA0B72F1C7F8C2500591D44 /* d_vaportra.cpp in Sources */,
 				FEA0B8191C7F8C9C00591D44 /* snes_main.cpp in Sources */,
 				FEA0B80E1C7F8C8B00591D44 /* fd1094.cpp in Sources */,
@@ -3648,7 +3116,6 @@
 				FEA0B7D21C7F8C7D00591D44 /* d_esd16.cpp in Sources */,
 				FEA0B7581C7F8C3D00591D44 /* d_vendetta.cpp in Sources */,
 				FEA0B7F31C7F8C7D00591D44 /* d_speedspn.cpp in Sources */,
-				FEA0B9311C7FA5E400591D44 /* FXLoader.mm in Sources */,
 				FEA0B8241C7F8CA900591D44 /* d_lkage.cpp in Sources */,
 				FEA0B7EA1C7F8C7D00591D44 /* d_playmark.cpp in Sources */,
 				FEA0B7F41C7F8C7D00591D44 /* d_suna16.cpp in Sources */,
@@ -3800,6 +3267,7 @@
 				FEA0B8821C7F8CFB00591D44 /* x1010.cpp in Sources */,
 				FEA0B8041C7F8C8B00591D44 /* d_hangon.cpp in Sources */,
 				FEA0B7B31C7F8C6600591D44 /* d_tecmo.cpp in Sources */,
+				FEFF877C1C93A92700ECA1BF /* FXZipArchive.m in Sources */,
 				FEA0B89B1C7F8D5800591D44 /* m6502.cpp in Sources */,
 				FEA0B7931C7F8C6600591D44 /* d_kangaroo.cpp in Sources */,
 				FEA0B8C61C7F8D8100591D44 /* uncompr.c in Sources */,
@@ -3926,7 +3394,6 @@
 				FEA0B7481C7F8C3D00591D44 /* d_hcastle.cpp in Sources */,
 				FEA0B7BE1C7F8C7200591D44 /* d_psikyosh.cpp in Sources */,
 				FEA0B7B81C7F8C6600591D44 /* d_wallc.cpp in Sources */,
-				FEA0B91D1C7F944200591D44 /* FXROMSet.mm in Sources */,
 				FEA0B89A1C7F8D5800591D44 /* konami.cpp in Sources */,
 				FEA0B7CE1C7F8C7D00591D44 /* d_diverboy.cpp in Sources */,
 				FEA0B8061C7F8C8B00591D44 /* d_suprloco.cpp in Sources */,
@@ -3974,11 +3441,11 @@
 				FEA0B8291C7F8CA900591D44 /* d_superchs.cpp in Sources */,
 				FEA0B72E1C7F8C2500591D44 /* d_tumblep.cpp in Sources */,
 				FEA0B70A1C7F8C1300591D44 /* cave_tile.cpp in Sources */,
-				FEA0B9171C7F944200591D44 /* FXDriverAudit.m in Sources */,
 				FEA0B8851C7F8CFB00591D44 /* ymdeltat.c in Sources */,
 				FEA0B7361C7F8C3400591D44 /* d_m62.cpp in Sources */,
 				FEA0B72D1C7F8C2500591D44 /* d_supbtime.cpp in Sources */,
 				FEA0B70D1C7F8C1300591D44 /* d_esprade.cpp in Sources */,
+				FE6F487B1C93EF280045784D /* FXManifestBuilder.mm in Sources */,
 				FEA0B8B41C7F8D6800591D44 /* m6809_intf.cpp in Sources */,
 				FEA0B87C1C7F8CFB00591D44 /* rf5c68.cpp in Sources */,
 				FEA0B7381C7F8C3400591D44 /* d_m72.cpp in Sources */,
@@ -4070,548 +3537,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FEF1509A1C8182CD0030CB84 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				FEF1509B1C8182CD0030CB84 /* xbr.cpp in Sources */,
-				FEF1509C1C8182CD0030CB84 /* epx.cpp in Sources */,
-				FEF1509D1C8182CD0030CB84 /* d_rohga.cpp in Sources */,
-				FEF1509F1C8182CD0030CB84 /* d_deniam.cpp in Sources */,
-				FEF150A01C8182CD0030CB84 /* namco_snd.cpp in Sources */,
-				FEF150A11C8182CD0030CB84 /* cps_mem.cpp in Sources */,
-				FEF150A21C8182CD0030CB84 /* d_taitoz.cpp in Sources */,
-				FEF150A31C8182CD0030CB84 /* inffast.c in Sources */,
-				FEF150A41C8182CD0030CB84 /* d_galaxian.cpp in Sources */,
-				FEF150A51C8182CD0030CB84 /* d_unico.cpp in Sources */,
-				FEF150A61C8182CD0030CB84 /* slapstic.cpp in Sources */,
-				FEF150A71C8182CD0030CB84 /* burn_led.cpp in Sources */,
-				FEF150A81C8182CD0030CB84 /* gal_gfx.cpp in Sources */,
-				FEF150A91C8182CD0030CB84 /* m6805.cpp in Sources */,
-				FEF150AA1C8182CD0030CB84 /* d_xmen.cpp in Sources */,
-				FEF150AB1C8182CD0030CB84 /* d_fixeight.cpp in Sources */,
-				FEF150AC1C8182CD0030CB84 /* d_sys16b.cpp in Sources */,
-				FEF150AD1C8182CD0030CB84 /* d_m92.cpp in Sources */,
-				FEF150AE1C8182CD0030CB84 /* segapcm.cpp in Sources */,
-				FEF150AF1C8182CD0030CB84 /* d_jack.cpp in Sources */,
-				FEF150B01C8182CD0030CB84 /* z80.cpp in Sources */,
-				FEF150B11C8182CD0030CB84 /* tc0100scn.cpp in Sources */,
-				FEF150B21C8182CD0030CB84 /* aud_interface.cpp in Sources */,
-				FEF150B31C8182CD0030CB84 /* toaplan1.cpp in Sources */,
-				FEF150B41C8182CD0030CB84 /* d_powerins.cpp in Sources */,
-				FEF150B51C8182CD0030CB84 /* d_minivdr.cpp in Sources */,
-				FEF150B61C8182CD0030CB84 /* d_drtomy.cpp in Sources */,
-				FEF150B71C8182CD0030CB84 /* tc0110pcr.cpp in Sources */,
-				FEF150B81C8182CD0030CB84 /* d_kbash2.cpp in Sources */,
-				FEF150B91C8182CD0030CB84 /* tc0360pri.cpp in Sources */,
-				FEF150BA1C8182CD0030CB84 /* cps_run.cpp in Sources */,
-				FEF150BB1C8182CD0030CB84 /* sms.cpp in Sources */,
-				FEF150BC1C8182CD0030CB84 /* d_contra.cpp in Sources */,
-				FEF150BD1C8182CD0030CB84 /* d_skyfox.cpp in Sources */,
-				FEF150BE1C8182CD0030CB84 /* d_aztarac.cpp in Sources */,
-				FEF150BF1C8182CD0030CB84 /* deflate.c in Sources */,
-				FEF150C01C8182CD0030CB84 /* d_ladybug.cpp in Sources */,
-				FEF150C11C8182CD0030CB84 /* es5506.cpp in Sources */,
-				FEF150C21C8182CD0030CB84 /* interface.cpp in Sources */,
-				FEF150C31C8182CD0030CB84 /* d_f1gp.cpp in Sources */,
-				FEF150C41C8182CD0030CB84 /* d_dodonpachi.cpp in Sources */,
-				FEF150C51C8182CD0030CB84 /* d_mahoudai.cpp in Sources */,
-				FEF150C61C8182CD0030CB84 /* d_blockhl.cpp in Sources */,
-				FEF150C71C8182CD0030CB84 /* gzclose.c in Sources */,
-				FEF150C81C8182CD0030CB84 /* cave.cpp in Sources */,
-				FEF150C91C8182CD0030CB84 /* burn_sound.cpp in Sources */,
-				FEF150CA1C8182CD0030CB84 /* gal_sound.cpp in Sources */,
-				FEF150CB1C8182CD0030CB84 /* 8257dma.cpp in Sources */,
-				FEF150CC1C8182CD0030CB84 /* burn_ym3812.cpp in Sources */,
-				FEF150CD1C8182CD0030CB84 /* d_tnzs.cpp in Sources */,
-				FEF150CF1C8182CD0030CB84 /* d_dec0.cpp in Sources */,
-				FEF150D01C8182CD0030CB84 /* d_flstory.cpp in Sources */,
-				FEF150D11C8182CD0030CB84 /* d_atetris.cpp in Sources */,
-				FEF150D21C8182CD0030CB84 /* d_chaknpop.cpp in Sources */,
-				FEF150D31C8182CD0030CB84 /* inftrees.c in Sources */,
-				FEF150D41C8182CD0030CB84 /* k054000.cpp in Sources */,
-				FEF150D51C8182CD0030CB84 /* d_pass.cpp in Sources */,
-				FEF150D61C8182CD0030CB84 /* pngget.c in Sources */,
-				FEF150D71C8182CD0030CB84 /* cps_pal.cpp in Sources */,
-				FEF150D81C8182CD0030CB84 /* d_karnov.cpp in Sources */,
-				FEF150D91C8182CD0030CB84 /* d_exedexes.cpp in Sources */,
-				FEF150DA1C8182CD0030CB84 /* d_arabian.cpp in Sources */,
-				FEF150DB1C8182CD0030CB84 /* d_korokoro.cpp in Sources */,
-				FEF150DC1C8182CD0030CB84 /* d_gotcha.cpp in Sources */,
-				FEF150DD1C8182CD0030CB84 /* d_hotdogst.cpp in Sources */,
-				FEF150DE1C8182CD0030CB84 /* cps2_crpt.cpp in Sources */,
-				FEF150DF1C8182CD0030CB84 /* es8712.cpp in Sources */,
-				FEF150E01C8182CD0030CB84 /* pngwio.c in Sources */,
-				FEF150E11C8182CD0030CB84 /* d_gumbo.cpp in Sources */,
-				FEF150E21C8182CD0030CB84 /* hq2xs_16.cpp in Sources */,
-				FEF150E31C8182CD0030CB84 /* ps_m.cpp in Sources */,
-				FEF150E41C8182CD0030CB84 /* d_funkybee.cpp in Sources */,
-				FEF150E51C8182CD0030CB84 /* tc0280grd.cpp in Sources */,
-				FEF150E61C8182CD0030CB84 /* d_cybertnk.cpp in Sources */,
-				FEF150E71C8182CD0030CB84 /* d_shippumd.cpp in Sources */,
-				FEF150E81C8182CD0030CB84 /* cd_interface.cpp in Sources */,
-				FEF150E91C8182CD0030CB84 /* d_suprnova.cpp in Sources */,
-				FEF150EA1C8182CD0030CB84 /* k051649.cpp in Sources */,
-				FEF150EB1C8182CD0030CB84 /* d_ddragon3.cpp in Sources */,
-				FEF150EC1C8182CD0030CB84 /* tnzs_prot.cpp in Sources */,
-				FEF150ED1C8182CD0030CB84 /* d_commando.cpp in Sources */,
-				FEF150EE1C8182CD0030CB84 /* d_wwfwfest.cpp in Sources */,
-				FEF150EF1C8182CD0030CB84 /* d_rpunch.cpp in Sources */,
-				FEF150F01C8182CD0030CB84 /* d_taitomisc.cpp in Sources */,
-				FEF150F11C8182CD0030CB84 /* aud_dsp.cpp in Sources */,
-				FEF150F31C8182CD0030CB84 /* d_vaportra.cpp in Sources */,
-				FE6843761C81857300A859C0 /* main.m in Sources */,
-				FEF150F41C8182CD0030CB84 /* snes_main.cpp in Sources */,
-				FEF150F51C8182CD0030CB84 /* fd1094.cpp in Sources */,
-				FEF150F61C8182CD0030CB84 /* d_hyperpac.cpp in Sources */,
-				FEF150F71C8182CD0030CB84 /* pgm_run.cpp in Sources */,
-				FEF150F81C8182CD0030CB84 /* d_dotrikun.cpp in Sources */,
-				FEF150F91C8182CD0030CB84 /* d_nmg5.cpp in Sources */,
-				FEF150FA1C8182CD0030CB84 /* d_cps1.cpp in Sources */,
-				FEF150FB1C8182CD0030CB84 /* d_sidepckt.cpp in Sources */,
-				FEF150FC1C8182CD0030CB84 /* fm.c in Sources */,
-				FEF150FD1C8182CD0030CB84 /* k051733.cpp in Sources */,
-				FEF150FE1C8182CD0030CB84 /* d_aquarium.cpp in Sources */,
-				FEF150FF1C8182CD0030CB84 /* d_taotaido.cpp in Sources */,
-				FEF151001C8182CD0030CB84 /* d_feversos.cpp in Sources */,
-				FEF151011C8182CD0030CB84 /* kabuki.cpp in Sources */,
-				FEF151021C8182CD0030CB84 /* d_mole.cpp in Sources */,
-				FEF151031C8182CD0030CB84 /* d_funybubl.cpp in Sources */,
-				FEF151041C8182CD0030CB84 /* fd1089.cpp in Sources */,
-				FEF151051C8182CD0030CB84 /* d_dec8.cpp in Sources */,
-				FEF151061C8182CD0030CB84 /* vid_interface.cpp in Sources */,
-				FEF151071C8182CD0030CB84 /* adler32.c in Sources */,
-				FEF151081C8182CD0030CB84 /* m68000_intf.cpp in Sources */,
-				FEF151091C8182CD0030CB84 /* tc0640fio.cpp in Sources */,
-				FEF1510A1C8182CD0030CB84 /* seibusnd.cpp in Sources */,
-				FEF1510B1C8182CD0030CB84 /* snes_spc700.cpp in Sources */,
-				FEF1510C1C8182CD0030CB84 /* d_epos.cpp in Sources */,
-				FEF1510D1C8182CD0030CB84 /* mc8123.cpp in Sources */,
-				FEF1510E1C8182CD0030CB84 /* d_funkyjet.cpp in Sources */,
-				FEF1510F1C8182CD0030CB84 /* d_esd16.cpp in Sources */,
-				FEF151101C8182CD0030CB84 /* d_vendetta.cpp in Sources */,
-				FEF151111C8182CD0030CB84 /* d_speedspn.cpp in Sources */,
-				FEF151131C8182CD0030CB84 /* d_lkage.cpp in Sources */,
-				FEF151141C8182CD0030CB84 /* d_playmark.cpp in Sources */,
-				FEF151151C8182CD0030CB84 /* d_suna16.cpp in Sources */,
-				FEF151161C8182CD0030CB84 /* d_xbrd.cpp in Sources */,
-				FEF151171C8182CD0030CB84 /* m68kopnz.c in Sources */,
-				FEF151181C8182CD0030CB84 /* d_bublbobl.cpp in Sources */,
-				FEF151191C8182CD0030CB84 /* d_pce.cpp in Sources */,
-				FEF1511A1C8182CD0030CB84 /* k051316.cpp in Sources */,
-				FEF1511B1C8182CD0030CB84 /* d_taitob.cpp in Sources */,
-				FEF1511C1C8182CD0030CB84 /* toa_gp9001.cpp in Sources */,
-				FEF1511D1C8182CD0030CB84 /* sf2mdt_snd.cpp in Sources */,
-				FEF1511E1C8182CD0030CB84 /* toaplan.cpp in Sources */,
-				FEF1511F1C8182CD0030CB84 /* d_vimana.cpp in Sources */,
-				FEF151201C8182CD0030CB84 /* d_dkong.cpp in Sources */,
-				FEF151211C8182CD0030CB84 /* burn_ym2610.cpp in Sources */,
-				FEF151221C8182CD0030CB84 /* d_kbash.cpp in Sources */,
-				FEF151231C8182CD0030CB84 /* d_ginganin.cpp in Sources */,
-				FEF151241C8182CD0030CB84 /* ps.cpp in Sources */,
-				FEF151251C8182CD0030CB84 /* d_quizo.cpp in Sources */,
-				FEF151261C8182CD0030CB84 /* d_cbuster.cpp in Sources */,
-				FEF151271C8182CD0030CB84 /* d_gaia.cpp in Sources */,
-				FEF151281C8182CD0030CB84 /* m68kcpu.c in Sources */,
-				FEF151291C8182CD0030CB84 /* arm_intf.cpp in Sources */,
-				FEF1512A1C8182CD0030CB84 /* iremga20.cpp in Sources */,
-				FEF1512B1C8182CD0030CB84 /* d_bloodbro.cpp in Sources */,
-				FEF1512C1C8182CD0030CB84 /* d_pkunwar.cpp in Sources */,
-				FEF1512D1C8182CD0030CB84 /* d_renegade.cpp in Sources */,
-				FEF1512E1C8182CD0030CB84 /* k053251.cpp in Sources */,
-				FEF1512F1C8182CD0030CB84 /* d_gunsmoke.cpp in Sources */,
-				FEF151301C8182CD0030CB84 /* konamiic.cpp in Sources */,
-				FEF151311C8182CD0030CB84 /* inpdipsw.cpp in Sources */,
-				FEF151321C8182CD0030CB84 /* tc0150rod.cpp in Sources */,
-				FEF151331C8182CD0030CB84 /* d_tigerheli.cpp in Sources */,
-				FEF151341C8182CD0030CB84 /* pngread.c in Sources */,
-				FEF151351C8182CD0030CB84 /* d_pwrinst2.cpp in Sources */,
-				FEF151361C8182CD0030CB84 /* d_demonwld.cpp in Sources */,
-				FEF151371C8182CD0030CB84 /* d_ultraman.cpp in Sources */,
-				FEF151381C8182CD0030CB84 /* toa_extratext.cpp in Sources */,
-				FEF151391C8182CD0030CB84 /* d_seta2.cpp in Sources */,
-				FEF1513A1C8182CD0030CB84 /* d_othunder.cpp in Sources */,
-				FEF1513B1C8182CD0030CB84 /* d_pacman.cpp in Sources */,
-				FEF1513D1C8182CD0030CB84 /* d_news.cpp in Sources */,
-				FEF1513E1C8182CD0030CB84 /* d_cninja.cpp in Sources */,
-				FEF151401C8182CD0030CB84 /* load.cpp in Sources */,
-				FEF151411C8182CD0030CB84 /* taito.cpp in Sources */,
-				FEF151421C8182CD0030CB84 /* d_shadfrce.cpp in Sources */,
-				FEF151431C8182CD0030CB84 /* cps3run.cpp in Sources */,
-				FEF151441C8182CD0030CB84 /* d_midas.cpp in Sources */,
-				FEF151451C8182CD0030CB84 /* ioapi.c in Sources */,
-				FEF151461C8182CD0030CB84 /* pandora.cpp in Sources */,
-				FEF151471C8182CD0030CB84 /* ay8910.c in Sources */,
-				FEF151481C8182CD0030CB84 /* ymf278b.c in Sources */,
-				FEF151491C8182CD0030CB84 /* gzwrite.c in Sources */,
-				FEF1514A1C8182CD0030CB84 /* d_megadrive.cpp in Sources */,
-				FEF1514B1C8182CD0030CB84 /* d_sys18.cpp in Sources */,
-				FEF1514C1C8182CD0030CB84 /* d_parodius.cpp in Sources */,
-				FEF1514D1C8182CD0030CB84 /* d_gberet.cpp in Sources */,
-				FEF1514E1C8182CD0030CB84 /* d_darkseal.cpp in Sources */,
-				FEF1514F1C8182CD0030CB84 /* d_blueprnt.cpp in Sources */,
-				FEF151501C8182CD0030CB84 /* sys16_gfx.cpp in Sources */,
-				FEF151511C8182CD0030CB84 /* d_jchan.cpp in Sources */,
-				FEF151521C8182CD0030CB84 /* cchip.cpp in Sources */,
-				FEF151531C8182CD0030CB84 /* sh2.cpp in Sources */,
-				FEF151541C8182CD0030CB84 /* d_vfive.cpp in Sources */,
-				FEF151551C8182CD0030CB84 /* cpsr.cpp in Sources */,
-				FEF151561C8182CD0030CB84 /* d_nmk16.cpp in Sources */,
-				FEF151571C8182CD0030CB84 /* msm6295.cpp in Sources */,
-				FEF151581C8182CD0030CB84 /* d_vigilant.cpp in Sources */,
-				FEF151591C8182CD0030CB84 /* d_raiden.cpp in Sources */,
-				FEF1515A1C8182CD0030CB84 /* pc090oj.cpp in Sources */,
-				FEF1515B1C8182CD0030CB84 /* pngrio.c in Sources */,
-				FEF1515C1C8182CD0030CB84 /* d_blktiger.cpp in Sources */,
-				FEF1515D1C8182CD0030CB84 /* d_wc90.cpp in Sources */,
-				FEF1515E1C8182CD0030CB84 /* upd7759.cpp in Sources */,
-				FEF1515F1C8182CD0030CB84 /* burn_ymf278b.cpp in Sources */,
-				FEF151601C8182CD0030CB84 /* sys16_run.cpp in Sources */,
-				FE6843751C81848C00A859C0 /* stubs.cpp in Sources */,
-				FEF151611C8182CD0030CB84 /* d_lwings.cpp in Sources */,
-				FEF151621C8182CD0030CB84 /* d_pac2650.cpp in Sources */,
-				FEF151631C8182CD0030CB84 /* d_metmqstr.cpp in Sources */,
-				FEF151641C8182CD0030CB84 /* psikyo_tile.cpp in Sources */,
-				FEF151651C8182CD0030CB84 /* d_lordgun.cpp in Sources */,
-				FEF151661C8182CD0030CB84 /* i8039.cpp in Sources */,
-				FEF151671C8182CD0030CB84 /* cps_config.cpp in Sources */,
-				FEF151681C8182CD0030CB84 /* d_bbakraid.cpp in Sources */,
-				FEF151691C8182CD0030CB84 /* d_mazinger.cpp in Sources */,
-				FEF1516A1C8182CD0030CB84 /* d_terracre.cpp in Sources */,
-				FEF1516B1C8182CD0030CB84 /* pngwutil.c in Sources */,
-				FEF1516C1C8182CD0030CB84 /* zipfn.cpp in Sources */,
-				FEF1516D1C8182CD0030CB84 /* lowpass2.cpp in Sources */,
-				FEF1516E1C8182CD0030CB84 /* hd6309_intf.cpp in Sources */,
-				FEF1516F1C8182CD0030CB84 /* d_samesame.cpp in Sources */,
-				FEF151701C8182CD0030CB84 /* m6809.cpp in Sources */,
-				FEF151711C8182CD0030CB84 /* d_angelkds.cpp in Sources */,
-				FEF151721C8182CD0030CB84 /* burn_ym2203.cpp in Sources */,
-				FEF151731C8182CD0030CB84 /* cpst.cpp in Sources */,
-				FEF151741C8182CD0030CB84 /* d_sys16a.cpp in Sources */,
-				FEF151751C8182CD0030CB84 /* d_aliens.cpp in Sources */,
-				FEF151761C8182CD0030CB84 /* pngwrite.c in Sources */,
-				FEF151771C8182CD0030CB84 /* cave_palette.cpp in Sources */,
-				FEF151781C8182CD0030CB84 /* d_zerozone.cpp in Sources */,
-				FEF1517A1C8182CD0030CB84 /* h6280.cpp in Sources */,
-				FEF1517B1C8182CD0030CB84 /* d_1943.cpp in Sources */,
-				FEF1517C1C8182CD0030CB84 /* d_tjumpman.cpp in Sources */,
-				FEF1517D1C8182CD0030CB84 /* d_bionicc.cpp in Sources */,
-				FEF1517E1C8182CD0030CB84 /* gzlib.c in Sources */,
-				FEF1517F1C8182CD0030CB84 /* gami.cpp in Sources */,
-				FEF151801C8182CD0030CB84 /* 8255ppi.cpp in Sources */,
-				FEF151811C8182CD0030CB84 /* d_mcatadv.cpp in Sources */,
-				FEF151821C8182CD0030CB84 /* d_wwfsstar.cpp in Sources */,
-				FEF151831C8182CD0030CB84 /* pce.cpp in Sources */,
-				FEF151851C8182CD0030CB84 /* d_thunderx.cpp in Sources */,
-				FEF151861C8182CD0030CB84 /* gal_stars.cpp in Sources */,
-				FEF151871C8182CD0030CB84 /* d_uopoko.cpp in Sources */,
-				FEF151881C8182CD0030CB84 /* tc0220ioc.cpp in Sources */,
-				FEF151891C8182CD0030CB84 /* toa_bcu2.cpp in Sources */,
-				FEF1518A1C8182CD0030CB84 /* d_tecmosys.cpp in Sources */,
-				FEF1518B1C8182CD0030CB84 /* d_pirates.cpp in Sources */,
-				FEF1518C1C8182CD0030CB84 /* d_guwange.cpp in Sources */,
-				FEF1518D1C8182CD0030CB84 /* nec.cpp in Sources */,
-				FEF1518E1C8182CD0030CB84 /* d_mystston.cpp in Sources */,
-				FEF1518F1C8182CD0030CB84 /* d_simpl156.cpp in Sources */,
-				FEF151901C8182CD0030CB84 /* s2650.cpp in Sources */,
-				FEF151911C8182CD0030CB84 /* d_gbusters.cpp in Sources */,
-				FEF151921C8182CD0030CB84 /* crc32.c in Sources */,
-				FEF151931C8182CD0030CB84 /* d_momoko.cpp in Sources */,
-				FEF151941C8182CD0030CB84 /* d_solomon.cpp in Sources */,
-				FEF151951C8182CD0030CB84 /* d_dassault.cpp in Sources */,
-				FEF151961C8182CD0030CB84 /* d_twin16.cpp in Sources */,
-				FEF151971C8182CD0030CB84 /* pic16c5x.cpp in Sources */,
-				FEF151981C8182CD0030CB84 /* qs.cpp in Sources */,
-				FEF151991C8182CD0030CB84 /* d_spy.cpp in Sources */,
-				FEF1519A1C8182CD0030CB84 /* pngwtran.c in Sources */,
-				FEF1519B1C8182CD0030CB84 /* d_gradius3.cpp in Sources */,
-				FEF1519C1C8182CD0030CB84 /* d_fstarfrc.cpp in Sources */,
-				FEF1519D1C8182CD0030CB84 /* d_outzone.cpp in Sources */,
-				FEF1519E1C8182CD0030CB84 /* arm.cpp in Sources */,
-				FEF1519F1C8182CD0030CB84 /* d_gyruss.cpp in Sources */,
-				FEF151A01C8182CD0030CB84 /* d_retofinv.cpp in Sources */,
-				FEF151A11C8182CD0030CB84 /* d_battleg.cpp in Sources */,
-				FEF151A21C8182CD0030CB84 /* d_crshrace.cpp in Sources */,
-				FEF151A31C8182CD0030CB84 /* d_dcon.cpp in Sources */,
-				FEF151A41C8182CD0030CB84 /* compress.c in Sources */,
-				FEF151A51C8182CD0030CB84 /* ym2413.c in Sources */,
-				FEF151A61C8182CD0030CB84 /* saa1099.cpp in Sources */,
-				FEF151A71C8182CD0030CB84 /* x1010.cpp in Sources */,
-				FEF151A81C8182CD0030CB84 /* d_hangon.cpp in Sources */,
-				FEF151A91C8182CD0030CB84 /* d_tecmo.cpp in Sources */,
-				FEF151AA1C8182CD0030CB84 /* m6502.cpp in Sources */,
-				FEF151AB1C8182CD0030CB84 /* d_kangaroo.cpp in Sources */,
-				FEF151AC1C8182CD0030CB84 /* uncompr.c in Sources */,
-				FEF151AD1C8182CD0030CB84 /* d_backfire.cpp in Sources */,
-				FEF151AE1C8182CD0030CB84 /* burn_ym3526.cpp in Sources */,
-				FEF151AF1C8182CD0030CB84 /* m6805_intf.cpp in Sources */,
-				FEF151B01C8182CD0030CB84 /* d_ambush.cpp in Sources */,
-				FEF151B11C8182CD0030CB84 /* cps_obj.cpp in Sources */,
-				FEF151B21C8182CD0030CB84 /* samples.cpp in Sources */,
-				FEF151B41C8182CD0030CB84 /* qs_c.cpp in Sources */,
-				FEF151B51C8182CD0030CB84 /* k051960.cpp in Sources */,
-				FEF151B61C8182CD0030CB84 /* png.c in Sources */,
-				FEF151B71C8182CD0030CB84 /* d_galspnbl.cpp in Sources */,
-				FEF151B81C8182CD0030CB84 /* d_gng.cpp in Sources */,
-				FEF151B91C8182CD0030CB84 /* neocdlist.cpp in Sources */,
-				FEF151BA1C8182CD0030CB84 /* d_surpratk.cpp in Sources */,
-				FEF151BB1C8182CD0030CB84 /* infback.c in Sources */,
-				FEF151BC1C8182CD0030CB84 /* m68kopdm.c in Sources */,
-				FEF151BD1C8182CD0030CB84 /* d_m90.cpp in Sources */,
-				FEF151BE1C8182CD0030CB84 /* tc0510nio.cpp in Sources */,
-				FEF151BF1C8182CD0030CB84 /* cps_scr.cpp in Sources */,
-				FEF151C01C8182CD0030CB84 /* d_psikyo4.cpp in Sources */,
-				FEF151C11C8182CD0030CB84 /* neo_palette.cpp in Sources */,
-				FEF151C21C8182CD0030CB84 /* misc.cpp in Sources */,
-				FEF151C31C8182CD0030CB84 /* d_mogura.cpp in Sources */,
-				FEF151C41C8182CD0030CB84 /* hq2xs.cpp in Sources */,
-				FEF151C51C8182CD0030CB84 /* d_pipibibs.cpp in Sources */,
-				FEF151C61C8182CD0030CB84 /* burn_ym2151.cpp in Sources */,
-				FEF151C71C8182CD0030CB84 /* cps.cpp in Sources */,
-				FEF151C81C8182CD0030CB84 /* vid_softfx.cpp in Sources */,
-				FEF151C91C8182CD0030CB84 /* k053936.cpp in Sources */,
-				FEF151CA1C8182CD0030CB84 /* d_ohmygod.cpp in Sources */,
-				FEF151CB1C8182CD0030CB84 /* d_mrflea.cpp in Sources */,
-				FEF151CC1C8182CD0030CB84 /* pic16c5x_intf.cpp in Sources */,
-				FEF151CD1C8182CD0030CB84 /* d_blmbycar.cpp in Sources */,
-				FEF151CE1C8182CD0030CB84 /* d_mugsmash.cpp in Sources */,
-				FEF151CF1C8182CD0030CB84 /* d_mrdo.cpp in Sources */,
-				FEF151D01C8182CD0030CB84 /* psikyosh_render.cpp in Sources */,
-				FEF151D11C8182CD0030CB84 /* cps_rw.cpp in Sources */,
-				FEF151D21C8182CD0030CB84 /* d_simpsons.cpp in Sources */,
-				FEF151D31C8182CD0030CB84 /* d_tmnt.cpp in Sources */,
-				FEF151D41C8182CD0030CB84 /* d_parent.cpp in Sources */,
-				FEF151D51C8182CD0030CB84 /* burn_ym2413.cpp in Sources */,
-				FEF151D61C8182CD0030CB84 /* d_rollerg.cpp in Sources */,
-				FEF151D71C8182CD0030CB84 /* d_kontest.cpp in Sources */,
-				FEF151D81C8182CD0030CB84 /* d_1945kiii.cpp in Sources */,
-				FEF151D91C8182CD0030CB84 /* d_meijinsn.cpp in Sources */,
-				FEF151DA1C8182CD0030CB84 /* state.cpp in Sources */,
-				FEF151DB1C8182CD0030CB84 /* arm7_intf.cpp in Sources */,
-				FEF151DC1C8182CD0030CB84 /* snes_65816.cpp in Sources */,
-				FEF151DD1C8182CD0030CB84 /* d_crimfght.cpp in Sources */,
-				FEF151DE1C8182CD0030CB84 /* burn_vector.cpp in Sources */,
-				FEF151DF1C8182CD0030CB84 /* ps_z.cpp in Sources */,
-				FEF151E01C8182CD0030CB84 /* tiles_generic.cpp in Sources */,
-				FEF151E11C8182CD0030CB84 /* hiscore.cpp in Sources */,
-				FEF151E21C8182CD0030CB84 /* d_1942.cpp in Sources */,
-				FEF151E31C8182CD0030CB84 /* fcrash_snd.cpp in Sources */,
-				FEF151E41C8182CD0030CB84 /* pngset.c in Sources */,
-				FEF151E51C8182CD0030CB84 /* neo_text.cpp in Sources */,
-				FEF151E61C8182CD0030CB84 /* vdc.cpp in Sources */,
-				FEF151E71C8182CD0030CB84 /* d_blockout.cpp in Sources */,
-				FEF151E81C8182CD0030CB84 /* z80daisy.cpp in Sources */,
-				FEF151E91C8182CD0030CB84 /* pgm_draw.cpp in Sources */,
-				FEF151EA1C8182CD0030CB84 /* psikyo_palette.cpp in Sources */,
-				FEF151EB1C8182CD0030CB84 /* m68kopac.c in Sources */,
-				FEF151EC1C8182CD0030CB84 /* v3021.cpp in Sources */,
-				FEF151ED1C8182CD0030CB84 /* d_dynduke.cpp in Sources */,
-				FEF151EE1C8182CD0030CB84 /* d_sf.cpp in Sources */,
-				FEF151EF1C8182CD0030CB84 /* tc0480scp.cpp in Sources */,
-				FEF151F01C8182CD0030CB84 /* tc0180vcu.cpp in Sources */,
-				FEF151F11C8182CD0030CB84 /* d_bottom9.cpp in Sources */,
-				FEF151F21C8182CD0030CB84 /* d_arkanoid.cpp in Sources */,
-				FEF151F31C8182CD0030CB84 /* d_psikyo.cpp in Sources */,
-				FEF151F41C8182CD0030CB84 /* d_cps2.cpp in Sources */,
-				FEF151F51C8182CD0030CB84 /* d_marineb.cpp in Sources */,
-				FEF151F61C8182CD0030CB84 /* d_neogeo.cpp in Sources */,
-				FEF151F71C8182CD0030CB84 /* k052109.cpp in Sources */,
-				FEF151F81C8182CD0030CB84 /* d_sonson.cpp in Sources */,
-				FEF151F91C8182CD0030CB84 /* d_zerowing.cpp in Sources */,
-				FEF151FA1C8182CD0030CB84 /* d_cps3.cpp in Sources */,
-				FEF151FB1C8182CD0030CB84 /* ym2151.c in Sources */,
-				FEF151FC1C8182CD0030CB84 /* d_egghunt.cpp in Sources */,
-				FEF151FD1C8182CD0030CB84 /* d_snes.cpp in Sources */,
-				FEF151FE1C8182CD0030CB84 /* k054539.cpp in Sources */,
-				FEF151FF1C8182CD0030CB84 /* d_toki.cpp in Sources */,
-				FEF152001C8182CD0030CB84 /* d_higemaru.cpp in Sources */,
-				FEF152011C8182CD0030CB84 /* burn_ym2612.cpp in Sources */,
-				FEF152021C8182CD0030CB84 /* msm5205.cpp in Sources */,
-				FEF152031C8182CD0030CB84 /* neogeo.cpp in Sources */,
-				FEF152041C8182CD0030CB84 /* d_vulgus.cpp in Sources */,
-				FEF152051C8182CD0030CB84 /* d_kaneko16.cpp in Sources */,
-				FEF152061C8182CD0030CB84 /* d_snk68.cpp in Sources */,
-				FEF152071C8182CD0030CB84 /* misc.cpp in Sources */,
-				FEF152081C8182CD0030CB84 /* d_skykid.cpp in Sources */,
-				FEF152091C8182CD0030CB84 /* neo_decrypt.cpp in Sources */,
-				FEF1520A1C8182CD0030CB84 /* gzread.c in Sources */,
-				FEF1520B1C8182CD0030CB84 /* snes_ppu.cpp in Sources */,
-				FEF1520C1C8182CD0030CB84 /* d_crospang.cpp in Sources */,
-				FEF1520D1C8182CD0030CB84 /* flt_rc.cpp in Sources */,
-				FEF1520E1C8182CD0030CB84 /* statec.cpp in Sources */,
-				FEF1520F1C8182CD0030CB84 /* d_taitox.cpp in Sources */,
-				FEF152101C8182CD0030CB84 /* ddt3x.cpp in Sources */,
-				FEF152111C8182CD0030CB84 /* ctv.cpp in Sources */,
-				FEF152121C8182CD0030CB84 /* timer.cpp in Sources */,
-				FEF152131C8182CD0030CB84 /* sys16_fd1094.cpp in Sources */,
-				FEF152141C8182CD0030CB84 /* d_pushman.cpp in Sources */,
-				FEF152151C8182CD0030CB84 /* d_lemmings.cpp in Sources */,
-				FEF152161C8182CD0030CB84 /* nec_intf.cpp in Sources */,
-				FEF152171C8182CD0030CB84 /* d_madgear.cpp in Sources */,
-				FEF152181C8182CD0030CB84 /* d_ajax.cpp in Sources */,
-				FEF1521A1C8182CD0030CB84 /* inp_interface.cpp in Sources */,
-				FEF1521B1C8182CD0030CB84 /* gal_run.cpp in Sources */,
-				FEF1521C1C8182CD0030CB84 /* timekpr.cpp in Sources */,
-				FEF1521D1C8182CD0030CB84 /* sn76496.cpp in Sources */,
-				FEF1521E1C8182CD0030CB84 /* d_galpanic.cpp in Sources */,
-				FEF1521F1C8182CD0030CB84 /* d_outrun.cpp in Sources */,
-				FEF152201C8182CD0030CB84 /* d_silkroad.cpp in Sources */,
-				FEF152211C8182CD0030CB84 /* vid_support.cpp in Sources */,
-				FEF152221C8182CD0030CB84 /* d_donpachi.cpp in Sources */,
-				FEF152231C8182CD0030CB84 /* d_hcastle.cpp in Sources */,
-				FEF152241C8182CD0030CB84 /* d_psikyosh.cpp in Sources */,
-				FEF152251C8182CD0030CB84 /* d_wallc.cpp in Sources */,
-				FEF152271C8182CD0030CB84 /* konami.cpp in Sources */,
-				FEF152281C8182CD0030CB84 /* d_diverboy.cpp in Sources */,
-				FEF152291C8182CD0030CB84 /* d_suprloco.cpp in Sources */,
-				FEF1522A1C8182CD0030CB84 /* hd6309.cpp in Sources */,
-				FEF1522B1C8182CD0030CB84 /* d_mitchell.cpp in Sources */,
-				FEF1522C1C8182CD0030CB84 /* genesis_vid.cpp in Sources */,
-				FEF1522D1C8182CD0030CB84 /* d_fuukifg3.cpp in Sources */,
-				FEF1522E1C8182CD0030CB84 /* d_gaelco.cpp in Sources */,
-				FEF1522F1C8182CD0030CB84 /* unzip.c in Sources */,
-				FEF152301C8182CD0030CB84 /* d_yunsun16.cpp in Sources */,
-				FEF152311C8182CD0030CB84 /* d_aerofgt.cpp in Sources */,
-				FEF152321C8182CD0030CB84 /* m6800.cpp in Sources */,
-				FEF152331C8182CD0030CB84 /* pc080sn.cpp in Sources */,
-				FEF152341C8182CD0030CB84 /* d_sailormn.cpp in Sources */,
-				FEF152351C8182CD0030CB84 /* eeprom.cpp in Sources */,
-				FEF152361C8182CD0030CB84 /* k007232.cpp in Sources */,
-				FEF152371C8182CD0030CB84 /* arm7.cpp in Sources */,
-				FEF152381C8182CD0030CB84 /* d_pacland.cpp in Sources */,
-				FEF152391C8182CD0030CB84 /* burn_sound_c.cpp in Sources */,
-				FEF1523A1C8182CD0030CB84 /* d_slapshot.cpp in Sources */,
-				FEF1523B1C8182CD0030CB84 /* d_truxton2.cpp in Sources */,
-				FEF1523C1C8182CD0030CB84 /* d_hexion.cpp in Sources */,
-				FEF1523D1C8182CD0030CB84 /* neo_run.cpp in Sources */,
-				FEF1523E1C8182CD0030CB84 /* pngrutil.c in Sources */,
-				FEF1523F1C8182CD0030CB84 /* pngerror.c in Sources */,
-				FEF152401C8182CD0030CB84 /* d_sys1.cpp in Sources */,
-				FEF152411C8182CD0030CB84 /* taito_ic.cpp in Sources */,
-				FEF152421C8182CD0030CB84 /* d_gaiden.cpp in Sources */,
-				FEF152431C8182CD0030CB84 /* burn_memory.cpp in Sources */,
-				FEF152441C8182CD0030CB84 /* d_dogyuun.cpp in Sources */,
-				FEF152451C8182CD0030CB84 /* toa_palette.cpp in Sources */,
-				FEF152461C8182CD0030CB84 /* taito_m68705.cpp in Sources */,
-				FEF152471C8182CD0030CB84 /* m68kops.c in Sources */,
-				FEF152481C8182CD0030CB84 /* d_taitof2.cpp in Sources */,
-				FEF152491C8182CD0030CB84 /* d_armedf.cpp in Sources */,
-				FEF1524A1C8182CD0030CB84 /* cheat.cpp in Sources */,
-				FEF1524B1C8182CD0030CB84 /* irem_cpu.cpp in Sources */,
-				FEF1524C1C8182CD0030CB84 /* pgm_prot.cpp in Sources */,
-				FEF1524D1C8182CD0030CB84 /* d_seta.cpp in Sources */,
-				FEF1524E1C8182CD0030CB84 /* d_ghox.cpp in Sources */,
-				FEF1524F1C8182CD0030CB84 /* trees.c in Sources */,
-				FEF152501C8182CD0030CB84 /* c6280.cpp in Sources */,
-				FEF152511C8182CD0030CB84 /* d_scregg.cpp in Sources */,
-				FEF152521C8182CD0030CB84 /* d_sms.cpp in Sources */,
-				FEF152531C8182CD0030CB84 /* d_superchs.cpp in Sources */,
-				FEF152541C8182CD0030CB84 /* d_tumblep.cpp in Sources */,
-				FEF152551C8182CD0030CB84 /* cave_tile.cpp in Sources */,
-				FEF152571C8182CD0030CB84 /* ymdeltat.c in Sources */,
-				FEF152581C8182CD0030CB84 /* d_m62.cpp in Sources */,
-				FEF152591C8182CD0030CB84 /* d_supbtime.cpp in Sources */,
-				FEF1525A1C8182CD0030CB84 /* d_esprade.cpp in Sources */,
-				FEF1525B1C8182CD0030CB84 /* m6809_intf.cpp in Sources */,
-				FEF1525C1C8182CD0030CB84 /* rf5c68.cpp in Sources */,
-				FEF1525D1C8182CD0030CB84 /* d_m72.cpp in Sources */,
-				FEF1525E1C8182CD0030CB84 /* nmk004.cpp in Sources */,
-				FEF1525F1C8182CD0030CB84 /* d_m63.cpp in Sources */,
-				FEF152601C8182CD0030CB84 /* d_galaga.cpp in Sources */,
-				FEF152611C8182CD0030CB84 /* deco16ic.cpp in Sources */,
-				FEF152621C8182CD0030CB84 /* s2650_intf.cpp in Sources */,
-				FEF152631C8182CD0030CB84 /* d_baraduke.cpp in Sources */,
-				FEF152641C8182CD0030CB84 /* megadrive.cpp in Sources */,
-				FEF152651C8182CD0030CB84 /* z80_intf.cpp in Sources */,
-				FEF152661C8182CD0030CB84 /* d_4enraya.cpp in Sources */,
-				FEF152671C8182CD0030CB84 /* d_pgm.cpp in Sources */,
-				FEF152681C8182CD0030CB84 /* tc0140syt.cpp in Sources */,
-				FEF152691C8182CD0030CB84 /* neo_sprite.cpp in Sources */,
-				FEF1526A1C8182CD0030CB84 /* d_pktgaldx.cpp in Sources */,
-				FEF1526B1C8182CD0030CB84 /* d_mainevt.cpp in Sources */,
-				FEF1526C1C8182CD0030CB84 /* cps3snd.cpp in Sources */,
-				FEF1526D1C8182CD0030CB84 /* d_silvmil.cpp in Sources */,
-				FEF1526E1C8182CD0030CB84 /* cpsrd.cpp in Sources */,
-				FEF1526F1C8182CD0030CB84 /* d_xorworld.cpp in Sources */,
-				FEF152701C8182CD0030CB84 /* dac.cpp in Sources */,
-				FEF152711C8182CD0030CB84 /* d_scotrsht.cpp in Sources */,
-				FEF152721C8182CD0030CB84 /* d_welltris.cpp in Sources */,
-				FEF152731C8182CD0030CB84 /* d_gauntlet.cpp in Sources */,
-				FEF152741C8182CD0030CB84 /* cps_draw.cpp in Sources */,
-				FEF152751C8182CD0030CB84 /* d_actfancr.cpp in Sources */,
-				FEF152761C8182CD0030CB84 /* d_route16.cpp in Sources */,
-				FEF152771C8182CD0030CB84 /* d_tigeroad.cpp in Sources */,
-				FEF152781C8182CD0030CB84 /* cave_sprite.cpp in Sources */,
-				FEF152791C8182CD0030CB84 /* konami_intf.cpp in Sources */,
-				FEF1527A1C8182CD0030CB84 /* d_srumbler.cpp in Sources */,
-				FEF1527B1C8182CD0030CB84 /* zutil.c in Sources */,
-				FEF1527C1C8182CD0030CB84 /* tchar.cpp in Sources */,
-				FEF1527D1C8182CD0030CB84 /* d_snowbro2.cpp in Sources */,
-				FEF1527E1C8182CD0030CB84 /* pgm_crypt.cpp in Sources */,
-				FEF1527F1C8182CD0030CB84 /* d_asuka.cpp in Sources */,
-				FEF152801C8182CD0030CB84 /* d_pooyan.cpp in Sources */,
-				FEF152811C8182CD0030CB84 /* k053247.cpp in Sources */,
-				FEF152821C8182CD0030CB84 /* d_bankp.cpp in Sources */,
-				FEF152831C8182CD0030CB84 /* d_drgnmst.cpp in Sources */,
-				FEF152841C8182CD0030CB84 /* k053245.cpp in Sources */,
-				FEF152851C8182CD0030CB84 /* d_ybrd.cpp in Sources */,
-				FEF152861C8182CD0030CB84 /* burn_y8950.cpp in Sources */,
-				FEF152871C8182CD0030CB84 /* burn_ym2608.cpp in Sources */,
-				FEF152881C8182CD0030CB84 /* v25.cpp in Sources */,
-				FEF152891C8182CD0030CB84 /* d_kyugo.cpp in Sources */,
-				FEF1528A1C8182CD0030CB84 /* ymz280b.cpp in Sources */,
-				FEF1528B1C8182CD0030CB84 /* k053260.cpp in Sources */,
-				FEF1528C1C8182CD0030CB84 /* debug_track.cpp in Sources */,
-				FEF1528D1C8182CD0030CB84 /* d_ashnojoe.cpp in Sources */,
-				FEF1528E1C8182CD0030CB84 /* fmopl.c in Sources */,
-				FEF1528F1C8182CD0030CB84 /* d_batsugun.cpp in Sources */,
-				FEF152901C8182CD0030CB84 /* pngrtran.c in Sources */,
-				FEF152911C8182CD0030CB84 /* qs_z.cpp in Sources */,
-				FEF152921C8182CD0030CB84 /* pngpread.c in Sources */,
-				FEF152931C8182CD0030CB84 /* d_boogwing.cpp in Sources */,
-				FEF152941C8182CD0030CB84 /* d_bombjack.cpp in Sources */,
-				FEF152951C8182CD0030CB84 /* d_tekipaki.cpp in Sources */,
-				FEF152961C8182CD0030CB84 /* psikyo_sprite.cpp in Sources */,
-				FEF152971C8182CD0030CB84 /* burn_gun.cpp in Sources */,
-				FEF152981C8182CD0030CB84 /* neo_upd4990a.cpp in Sources */,
-				FEF152991C8182CD0030CB84 /* d_88games.cpp in Sources */,
-				FEF1529A1C8182CD0030CB84 /* d_rallyx.cpp in Sources */,
-				FEF1529B1C8182CD0030CB84 /* d_batrider.cpp in Sources */,
-				FEF1529C1C8182CD0030CB84 /* d_rallybik.cpp in Sources */,
-				FEF1529D1C8182CD0030CB84 /* burn.cpp in Sources */,
-				FEF1529E1C8182CD0030CB84 /* d_ikki.cpp in Sources */,
-				FEF1529F1C8182CD0030CB84 /* sknsspr.cpp in Sources */,
-				FEF152A01C8182CD0030CB84 /* pngmem.c in Sources */,
-				FEF152A11C8182CD0030CB84 /* d_airbustr.cpp in Sources */,
-				FEF152A21C8182CD0030CB84 /* snes_io.cpp in Sources */,
-				FEF152A31C8182CD0030CB84 /* ics2115.cpp in Sources */,
-				FEF152A41C8182CD0030CB84 /* d_vmetal.cpp in Sources */,
-				FEF152A51C8182CD0030CB84 /* d_tumbleb.cpp in Sources */,
-				FEF152A61C8182CD0030CB84 /* d_prehisle.cpp in Sources */,
-				FEF152A71C8182CD0030CB84 /* d_darius2.cpp in Sources */,
-				FEF152A81C8182CD0030CB84 /* d_wc90b.cpp in Sources */,
-				FEF152A91C8182CD0030CB84 /* inflate.c in Sources */,
-				FEF152AA1C8182CD0030CB84 /* d_ddragon.cpp in Sources */,
-				FEF152AB1C8182CD0030CB84 /* pngtrans.c in Sources */,
-				FEF152AC1C8182CD0030CB84 /* d_markham.cpp in Sources */,
-				FE6843791C81864A00A859C0 /* FXManifestBuilder.mm in Sources */,
-				FEF152AD1C8182CD0030CB84 /* m6800_intf.cpp in Sources */,
-				FEF152AE1C8182CD0030CB84 /* d_truxton.cpp in Sources */,
-				FEF152AF1C8182CD0030CB84 /* d_hellfire.cpp in Sources */,
-				FEF152B01C8182CD0030CB84 /* d_dietgogo.cpp in Sources */,
-				FEF152B11C8182CD0030CB84 /* h6280_intf.cpp in Sources */,
-				FEF152B21C8182CD0030CB84 /* m6502_intf.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		FE68437C1C8195CE00A859C0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = FEF150991C8182CD0030CB84 /* ManifestBuilder */;
-			targetProxy = FE68437B1C8195CE00A859C0 /* PBXContainerItemProxy */;
-		};
 		FEA0BB7A1C80EF4B00591D44 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = FEA0B6DC1C7F8BCD00591D44 /* Emulator */;
@@ -4783,6 +3711,7 @@
 					"$(inherited)",
 					"$(USER_LIBRARY_DIR)/Frameworks",
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurn X-Prefix.pch";
@@ -4791,6 +3720,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurn X-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
@@ -4815,6 +3745,7 @@
 					"$(inherited)",
 					"$(USER_LIBRARY_DIR)/Frameworks",
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurn X-Prefix.pch";
@@ -4823,6 +3754,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurn X-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
@@ -4845,7 +3777,10 @@
 				CODE_SIGN_IDENTITY = "-";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -4860,37 +3795,10 @@
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
-				GCC_NO_COMMON_BLOCKS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Release;
-		};
-		FEF152B81C8182CD0030CB84 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CODE_SIGN_IDENTITY = "-";
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
-				GCC_NO_COMMON_BLOCKS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_ENABLE_DEBUG_INFO = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-			};
-			name = Debug;
-		};
-		FEF152B91C8182CD0030CB84 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CODE_SIGN_IDENTITY = "-";
-				COPY_PHASE_STRIP = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -4924,15 +3832,6 @@
 			buildConfigurations = (
 				FEA0B6E11C7F8BCD00591D44 /* Debug */,
 				FEA0B6E21C7F8BCD00591D44 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		FEF152B71C8182CD0030CB84 /* Build configuration list for PBXNativeTarget "ManifestBuilder" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FEF152B81C8182CD0030CB84 /* Debug */,
-				FEF152B91C8182CD0030CB84 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

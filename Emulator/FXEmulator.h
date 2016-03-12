@@ -32,14 +32,13 @@
 
 @interface FXEmulator : NSObject<NSApplicationDelegate, NSXPCListenerDelegate, FXEmulationCommunication, FXRunLoopDelegate>
 
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXVideo *video;
-@property (nonatomic, strong) FXRunLoop *runLoop;
+@property (nonatomic, readonly) FXInput *input;
+@property (nonatomic, readonly) FXAudio *audio;
+@property (nonatomic, readonly) FXVideo *video;
+@property (nonatomic, readonly) FXRunLoop *runLoop;
 
 @property (nonatomic, readonly) NSString *archive;
-
-@property (nonatomic, strong) NSURL *romPath;
+@property (nonatomic, readonly) NSString *romPath;
 
 + (FXEmulator *) sharedInstance;
 

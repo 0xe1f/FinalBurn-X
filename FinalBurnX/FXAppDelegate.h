@@ -22,7 +22,12 @@
  */
 #import <Cocoa/Cocoa.h>
 
-@interface FXAppDelegate : NSObject <NSApplicationDelegate>
+#import "FXScanner.h"
+
+extern NSString *const kFXNotificationCache;
+extern NSString *const FXNotificationCacheChanged;
+
+@interface FXAppDelegate : NSObject <NSApplicationDelegate, FXScannerDelegate>
 
 + (FXAppDelegate *) sharedInstance;
 
@@ -32,10 +37,13 @@
 - (IBAction) showLauncher:(id) sender;
 - (IBAction) showPreferences:(id) sender;
 
+@property (nonatomic, strong) IBOutlet FXScanner *scanner;
+
 @property (nonatomic, readonly) NSURL *supportRootURL;
 @property (nonatomic, readonly) NSURL *inputMapRootURL;
 @property (nonatomic, readonly) NSURL *romRootURL;
+@property (nonatomic, readonly) NSString *auditCachePath;
 
-@property (nonatomic, readonly) NSDictionary *sets;
+@property (nonatomic, readonly) NSDictionary *setManifest;
 
 @end

@@ -22,56 +22,28 @@
  */
 #import "FXAuditStatusAsNSImage.h"
 
-#import "FXDriverAudit.h"
-
-static NSMutableDictionary *icons;
+#import "FXScanner.h"
 
 @implementation FXAuditStatusAsNSImage
 
-+ (void)initialize
-{
-    icons = [[NSMutableDictionary alloc] init];
-}
-
-+ (Class)transformedValueClass
++ (Class) transformedValueClass
 {
     return [NSImage class];
 }
 
-+ (BOOL)allowsReverseTransformation
++ (BOOL) allowsReverseTransformation
 {
     return NO;
 }
 
-- (NSImage *)imageNamed:(NSString *)name
-{
-    // Keep each image in a local cache
-    NSImage *image = [icons objectForKey:name];
-    if (image == nil) {
-        image = [NSImage imageNamed:name];
-        [icons setObject:image
-                  forKey:name];
-    }
-    
-    return image;
-}
-
-- (id)transformedValue:(id)value
+- (id) transformedValue:(id) value
 {
     switch ([value integerValue]) {
-        case FXROMAuditOK:
-        case FXDriverComplete:
-            return [self imageNamed:@"NSStatusAvailable"];
-        case FXDriverPartial:
-            return [self imageNamed:@"NSStatusPartiallyAvailable"];
-        case FXROMAuditMissing:
-        case FXDriverMissing:
-            return [self imageNamed:@"NSStatusNone"];
-        default:
-        case FXROMAuditBadCRC:
-        case FXROMAuditBadLength:
-        case FXDriverUnplayable:
-            return [self imageNamed:@"NSStatusUnavailable"];
+		case FXSetStatusComplete:
+			return [NSImage imageNamed:@"NSStatusAvailable"];
+		case FXSetStatusIncomplete:
+		default:
+            return [NSImage imageNamed:@"NSStatusNone"];
     }
 }
 

@@ -22,13 +22,7 @@
  */
 #import "FXRunLoop.h"
 
-#import "FXLoader.h"
-#import "FXROMSet.h"
-#import "FXZipArchive.h"
-
 #include "burner.h"
-#include "burnint.h"
-#include "driverlist.h"
 
 #import "FXEmulator.h"
 
@@ -46,23 +40,24 @@
 - (void)loadNVRAM;
 - (void)saveNVRAM;
 
-- (UInt32)loadROMOfDriver:(int)driverId
-                    index:(int)romIndex
-               intoBuffer:(void *)buffer
-             bufferLength:(int *)length;
-
 @end
 
 static int cocoaGetNextSound(int draw);
 
 @implementation FXRunLoop
+{
+	UInt32 lastTick;
+	int fraction;
+	BOOL previouslyDrawn;
+	BOOL previouslyPaused;
+	BOOL soundBufferCleared;
+}
 
 #pragma mark - init
 
 - (instancetype) init
 {
     if (self = [super init]) {
-		self->zipArchiveDictionary = [NSMutableDictionary dictionary];
     }
     
     return self;
@@ -70,13 +65,11 @@ static int cocoaGetNextSound(int draw);
 
 - (void) dealloc
 {
-    // This should close any open files
-    [self->zipArchiveDictionary removeAllObjects];
 }
 
 #pragma mark - Methods
 
-- (void)reset
+- (void) reset
 {
     // Reset the speed throttling code
     self->lastTick = 0;
@@ -89,22 +82,13 @@ static int cocoaGetNextSound(int draw);
 
 #pragma mark - Driver init
 
-- (BOOL)initializeDriver:(NSError **)error
+- (BOOL) initializeDriver:(NSError **) error
 {
-    int driverIndex = [FXROMSet driverIndexOfArchive:[[self romSet] archive]];
-    
-    nBurnDrvActive = driverIndex;
-    nBurnDrvSelect[0] = driverIndex;
-    
     GameInpInit();
 	InputInit();
     
 	bBurnUseASMCPUEmulation = 0;
  	bCheatsAllowed = false;
-    
-#ifdef DEBUG
-    NSLog(@"Initializing driver...");
-#endif
     
 	AudSoundInit();
     
@@ -112,17 +96,10 @@ static int cocoaGetNextSound(int draw);
     
 	InputMake(true);
     
-    BurnExtLoadRom = cocoaLoadROMCallback;
-    
     id<FXRunLoopDelegate> delegate = [self delegate];
     if ([delegate respondsToSelector:@selector(loadingDidStart)]) {
         [delegate loadingDidStart];
     }
-    
-#ifdef DEBUG
-    NSDate *started = [NSDate date];
-    NSLog(@"runLoop/loadingDidStart");
-#endif
     
     BOOL initializationFailed = NO;
 	if (BurnDrvInit()) {
@@ -139,14 +116,6 @@ static int cocoaGetNextSound(int draw);
     if ([delegate respondsToSelector:@selector(loadingDidEnd)]) {
         [delegate loadingDidEnd];
     }
-    
-    // Close any open archives
-    [zipArchiveDictionary removeAllObjects];
-    
-#ifdef DEBUG
-    NSLog(@"runLoop/loadingDidEnd (%.02fs)",
-          [[NSDate date] timeIntervalSinceDate:started]);
-#endif
     
     if (initializationFailed) {
         return NO;
@@ -371,75 +340,6 @@ static int cocoaGetNextSound(int draw);
     return (UInt32)([[NSDate date] timeIntervalSince1970] * 1000.0);
 }
 
-- (UInt32)loadROMOfDriver:(int)driverIndex
-                    index:(int)romIndex
-               intoBuffer:(void *)buffer
-             bufferLength:(int *)length
-{
-    if (driverIndex < 0 || driverIndex >= nBurnDrvCount) {
-        return 1;
-    }
-    
-    struct BurnRomInfo info;
-	if (pDriver[driverIndex]->GetRomInfo(&info, romIndex)) {
-		return 1;
-	}
-	
-    FXROMAudit *romAudit = [[[self romSet] audit] findROMAuditByNeededCRC:info.nCrc];
-    if (romAudit == nil || [romAudit statusCode] == FXROMAuditMissing) {
-        return 1;
-    }
-    
-    NSString *path = [romAudit containerPath];
-    NSUInteger uncompressedLength = [romAudit lengthFound];
-    NSUInteger foundCRC = [romAudit CRCFound];
-    
-    NSError *error = nil;
-    
-    FXZipArchive *archive = [zipArchiveDictionary objectForKey:path];
-    if (archive == nil) {
-        FXZipArchive *openArchive = [[FXZipArchive alloc] initWithPath:path
-                                                                 error:&error];
-        
-        if (error != nil) {
-            return 1;
-        }
-        
-        // Cache the archive for duration of the loading process
-        archive = openArchive;
-        [zipArchiveDictionary setObject:archive
-                                 forKey:path];
-    }
-    
-    UInt32 bytesRead = [archive readFileWithCRC:foundCRC
-                                     intoBuffer:buffer
-                                   bufferLength:uncompressedLength
-                                          error:&error];
-    
-    if (error != nil) {
-        if (bytesRead > -1) {
-            if (length != NULL) {
-                *length = bytesRead;
-            }
-            
-            return 2;
-        }
-        
-        return 1;
-    }
-    
-    if (length != NULL) {
-        *length = bytesRead;
-    }
-    
-#ifdef DEBUG
-    NSLog(@"%d/%d found in %@, read %d bytes",
-          driverIndex, romIndex, path, bytesRead);
-#endif
-    
-    return 0;
-}
-
 @end
 
 #pragma mark - Core callbacks
@@ -462,13 +362,4 @@ static int cocoaGetNextSound(int draw)
     [runLoop runFrame:draw pause:NO];
     
 	return 0;
-}
-
-int cocoaLoadROMCallback(unsigned char *Dest, int *pnWrote, int i)
-{
-    FXRunLoop *runLoop = [[FXEmulator sharedInstance] runLoop];
-    return [runLoop loadROMOfDriver:nBurnDrvActive
-                              index:i
-                         intoBuffer:Dest
-					   bufferLength:pnWrote];
 }

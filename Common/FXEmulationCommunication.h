@@ -31,4 +31,6 @@
 
 - (void) describeScreenWithHandler:(void(^)(BOOL isReady, NSInteger ioSurfaceId)) handler;
 
+- (void) shutDown;
+
 @end
