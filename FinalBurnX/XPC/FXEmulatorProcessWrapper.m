@@ -27,10 +27,21 @@
 
 #import "FXEmulationCommunication.h"
 
+@interface FXEmulatorProcessWrapper()
+
+- (void) taskDidTerminate:(NSNotification *) notification;
+
+@end
+
 @implementation FXEmulatorProcessWrapper
 {
 	NSTask *_processTask;
 	NSXPCConnection *_processConnection;
+}
+
+- (void) dealloc
+{
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void) setUpWithArchive:(NSString *) archive
@@ -45,14 +56,25 @@
 	
 	OEXPCCAgentConfiguration *configuration = [OEXPCCAgentConfiguration defaultConfiguration];
 	
+	// Set up task
 	self->_processTask = [[NSTask alloc] init];
-	[self->_processTask setLaunchPath:[[NSBundle mainBundle] pathForAuxiliaryExecutable:@"Emulator"]];
+	[self->_processTask setLaunchPath:[[NSBundle mainBundle] pathForResource:@"Emulator"
+																	  ofType:nil]];
 	[self->_processTask setArguments:@[
 									   [configuration agentServiceNameProcessArgument],
 									   [configuration processIdentifierArgumentForIdentifier:self->_uid],
 									   self->_archive ]];
+	
+	// Start observing task notifications
+	[[NSNotificationCenter defaultCenter] addObserver:self
+											 selector:@selector(taskDidTerminate:)
+												 name:NSTaskDidTerminateNotification
+											   object:self->_processTask];
+	
+	// Launch
 	[_processTask launch];
 	
+	// Handle XPC stuff
 	[[OEXPCCAgent defaultAgent] retrieveListenerEndpointForIdentifier:self->_uid
 													completionHandler:^(NSXPCListenerEndpoint *endpoint)
 	 {
@@ -69,6 +91,18 @@
 - (void) terminate
 {
 	[self->_processTask terminate];
+}
+
+- (BOOL) isRunning
+{
+	return self->_processTask != nil && [self->_processTask isRunning];
+}
+
+#pragma mark - Notifications
+
+- (void) taskDidTerminate:(NSNotification *) notification
+{
+	[self->_delegate taskDidTerminate:self];
 }
 
 @end

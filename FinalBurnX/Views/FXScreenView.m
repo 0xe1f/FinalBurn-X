@@ -73,7 +73,7 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
 {
     [super prepareOpenGL];
 	
-    NSLog(@"FXScreenView/prepareOpenGL");
+    NSLog(@"ScreenView/prepareOpenGL");
     
 	// Synchronize buffer swaps with vertical refresh rate
 	GLint swapInt = 1;
@@ -100,48 +100,46 @@ static CVReturn ScreenRenderCallback(CVDisplayLinkRef displayLink,
     glGenTextures(1, &self->_screenTextureId);
 }
 
+- (void) setUpIOSurface:(IOSurfaceID) surfaceID
+{
+	[self prepareIOSurfaceWithRef:IOSurfaceLookup(surfaceID)];
+}
+
 - (void) drawRect:(NSRect) dirtyRect
 {
-	if (!self->_surfaceRef) {
-		[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(BOOL isReady, NSInteger surfaceId) {
-			if (isReady) {
-				[self prepareIOSurfaceWithRef:IOSurfaceLookup((IOSurfaceID) surfaceId)];
-			}
-		}];
-		return;
-	}
-	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
     glClear(GL_COLOR_BUFFER_BIT);
 	
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	
-	IOSurfaceLock(self->_surfaceRef, kIOSurfaceLockReadOnly, NULL);
-	void *addr = IOSurfaceGetBaseAddress(self->_surfaceRef);
-	for (int y = 0; y < self->_screenHeight; y++, addr += self->_surfacePitch) {
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, (GLsizei) self->_screenWidth, 1,
-						GL_BGR, GL_UNSIGNED_BYTE, addr);
+	if (self->_surfaceRef) {
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, self->_screenTextureId);
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		
+		IOSurfaceLock(self->_surfaceRef, kIOSurfaceLockReadOnly, NULL);
+		void *addr = IOSurfaceGetBaseAddress(self->_surfaceRef);
+		for (int y = 0; y < self->_screenHeight; y++, addr += self->_surfacePitch) {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, (GLsizei) self->_screenWidth, 1,
+							GL_BGR, GL_UNSIGNED_BYTE, addr);
+		}
+		IOSurfaceUnlock(self->_surfaceRef, kIOSurfaceLockReadOnly, NULL);
+		
+		NSSize size = [self bounds].size;
+		CGFloat offset = 0;
+		
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0, 0.0);
+		glVertex3f(-offset, 0.0, 0.0);
+		glTexCoord2f(self->_texturePos.x, 0.0);
+		glVertex3f(size.width + offset, 0.0, 0.0);
+		glTexCoord2f(self->_texturePos.x, self->_texturePos.y);
+		glVertex3f(size.width + offset, size.height, 0.0);
+		glTexCoord2f(0.0, self->_texturePos.y);
+		glVertex3f(-offset, size.height, 0.0);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
 	}
-	IOSurfaceUnlock(self->_surfaceRef, kIOSurfaceLockReadOnly, NULL);
-	
-	NSSize size = [self bounds].size;
-	CGFloat offset = 0;
-	
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0, 0.0);
-	glVertex3f(-offset, 0.0, 0.0);
-	glTexCoord2f(self->_texturePos.x, 0.0);
-	glVertex3f(size.width + offset, 0.0, 0.0);
-	glTexCoord2f(self->_texturePos.x, self->_texturePos.y);
-	glVertex3f(size.width + offset, size.height, 0.0);
-	glTexCoord2f(0.0, self->_texturePos.y);
-	glVertex3f(-offset, size.height, 0.0);
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
 	
 	[nsContext flushBuffer];
 }

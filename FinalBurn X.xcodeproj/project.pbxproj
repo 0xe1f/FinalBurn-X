@@ -15,6 +15,8 @@
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
 		FE0DC79719509F51004A03A3 /* FXScreenView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* FXScreenView.m */; };
+		FE18ADCE1C989257008DD964 /* FXEmulationState.m in Sources */ = {isa = PBXBuildFile; fileRef = FE18ADCD1C989257008DD964 /* FXEmulationState.m */; };
+		FE18ADCF1C9893EE008DD964 /* FXEmulationState.m in Sources */ = {isa = PBXBuildFile; fileRef = FE18ADCD1C989257008DD964 /* FXEmulationState.m */; };
 		FE1FB76919CFD6770070325C /* Preferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76719CFD6770070325C /* Preferences.xib */; };
 		FE1FB76C19CFD71C0070325C /* FXPreferencesController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB76B19CFD71C0070325C /* FXPreferencesController.m */; };
 		FE1FB77119CFD9330070325C /* toolbar-joypad.png in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76F19CFD9330070325C /* toolbar-joypad.png */; };
@@ -628,7 +630,7 @@
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 6;
+			dstSubfolderSpec = 7;
 			files = (
 				FE6F48771C93E9F90045784D /* Emulator in CopyFiles */,
 			);
@@ -662,6 +664,8 @@
 		FE08A07E1949651D00F79190 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		FE0DC79519509F50004A03A3 /* FXScreenView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXScreenView.m; sourceTree = "<group>"; };
 		FE0DC79619509F51004A03A3 /* FXScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScreenView.h; sourceTree = "<group>"; };
+		FE18ADCC1C989257008DD964 /* FXEmulationState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulationState.h; sourceTree = "<group>"; };
+		FE18ADCD1C989257008DD964 /* FXEmulationState.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXEmulationState.m; sourceTree = "<group>"; };
 		FE1FB76819CFD6770070325C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Preferences.xib; sourceTree = "<group>"; };
 		FE1FB76A19CFD71C0070325C /* FXPreferencesController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXPreferencesController.h; sourceTree = "<group>"; };
 		FE1FB76B19CFD71C0070325C /* FXPreferencesController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXPreferencesController.m; sourceTree = "<group>"; };
@@ -2808,6 +2812,8 @@
 		FED0B61B1C8AE4A900DD4EC3 /* Objects */ = {
 			isa = PBXGroup;
 			children = (
+				FE18ADCC1C989257008DD964 /* FXEmulationState.h */,
+				FE18ADCD1C989257008DD964 /* FXEmulationState.m */,
 				FED0B61C1C8AE4A900DD4EC3 /* FXInputMap.h */,
 				FED0B61D1C8AE4A900DD4EC3 /* FXInputMap.m */,
 			);
@@ -2948,7 +2954,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/Emulator\" -s > \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SetManifest.plist\"\n";
+			shellScript = "\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Emulator\" -s > \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SetManifest.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2977,6 +2983,7 @@
 				FE8F66A81C90CE2400A3A84A /* zutil.c in Sources */,
 				FE8F66981C90CAF500A3A84A /* ioapi.c in Sources */,
 				FE8F669A1C90CE2400A3A84A /* adler32.c in Sources */,
+				FE18ADCE1C989257008DD964 /* FXEmulationState.m in Sources */,
 				FE8F66A01C90CE2400A3A84A /* gzread.c in Sources */,
 				FE8F669F1C90CE2400A3A84A /* gzlib.c in Sources */,
 				FE8F66A31C90CE2400A3A84A /* inffast.c in Sources */,
@@ -3027,6 +3034,7 @@
 				FEA0B8251C7F8CA900591D44 /* d_minivdr.cpp in Sources */,
 				FEA0B7D01C7F8C7D00591D44 /* d_drtomy.cpp in Sources */,
 				FEA0B8361C7F8CA900591D44 /* tc0110pcr.cpp in Sources */,
+				FE18ADCF1C9893EE008DD964 /* FXEmulationState.m in Sources */,
 				FEA0B84B1C7F8CBA00591D44 /* d_kbash2.cpp in Sources */,
 				FEA0B83C1C7F8CA900591D44 /* tc0360pri.cpp in Sources */,
 				FEA0B6F51C7F8BFF00591D44 /* cps_run.cpp in Sources */,

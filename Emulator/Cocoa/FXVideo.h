@@ -24,7 +24,6 @@
 
 @interface FXVideo : NSObject
 
-@property (nonatomic, readonly) BOOL ready;
 @property (nonatomic, readonly) IOSurfaceID surfaceId;
 
 @end

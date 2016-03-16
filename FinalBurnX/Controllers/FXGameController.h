@@ -28,7 +28,8 @@
 @interface FXGameController : NSWindowController<NSWindowDelegate, FXEmulatorEventDelegate>
 {
     IBOutlet FXScreenView *screen;
-    IBOutlet NSProgressIndicator *spinner;
+    IBOutlet NSView *tbAccView;
+	IBOutlet NSProgressIndicator *tbAccSpinner;
 	IBOutlet FXEmulatorProcessWrapper *wrapper;
 }
 

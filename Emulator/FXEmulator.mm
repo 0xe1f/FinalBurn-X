@@ -36,6 +36,7 @@
 
 #import "FXInputMap.h"
 #import "FXZipArchive.h"
+#import "FXEmulationState.h"
 
 static FXEmulator *sharedInstance = nil;
 
@@ -53,10 +54,13 @@ static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 			 intoBuffer:(void *) buffer
 		   bufferLength:(INT32 *) length;
 
+- (FXEmulationState *) currentState;
+
 @end
 
 @implementation FXEmulator
 {
+	BOOL _loadComplete;
 	NSString *_supportPath;
 	NSXPCListener *_listener;
 	NSXPCConnection *_mainAppConnection;
@@ -114,6 +118,15 @@ static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 }
 
 #pragma mark - Private
+
+- (FXEmulationState *) currentState
+{
+	FXEmulationState *current = [[FXEmulationState alloc] init];
+	[current setIsRunning:self->_loadComplete];
+	[current setIsPaused:[self->_runLoop isPaused]];
+	
+	return current;
+}
 
 - (void) initPaths
 {
@@ -186,6 +199,7 @@ static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 	NSLog(@"Emulator/loadingDidEnd");
 #endif
 	[self->_fileCache removeAllObjects];
+	self->_loadComplete = YES;
 }
 
 #pragma mark - NSApplicationDelegate
@@ -198,12 +212,16 @@ static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 
 - (void) applicationDidFinishLaunching:(NSNotification *) notification
 {
-	[self start];
+	if (![self start]) {
+		[[NSApplication sharedApplication] terminate:self];
+	}
 }
 
 - (void) applicationWillTerminate:(NSNotification *) notification
 {
-	[self->_runLoop cancel];
+	if ([self->_runLoop isExecuting]) {
+		[self->_runLoop cancel];
+	}
 }
 
 #pragma mark - NSXPCListenerDelegate
@@ -221,6 +239,29 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 
 #pragma mark - FXEmulationCommunication
 
+- (void) updateStateWithHandler:(void(^)(FXEmulationState *current)) handler
+{
+	handler([self currentState]);
+}
+
+- (void) setPaused:(BOOL) paused
+	   withHandler:(void (^)(FXEmulationState *)) handler
+{
+	[self->_runLoop setPaused:paused];
+	handler([self currentState]);
+}
+
+- (void) resetEmulationWithHandler:(void(^)(FXEmulationState *current)) handler
+{
+	[self->_input reset];
+	handler([self currentState]);
+}
+
+- (void) enterDiagnostics
+{
+	[self->_input startDiagnostics];
+}
+
 - (void) startTrackingInputWithMap:(FXInputMap *) map
 {
 	[self->_input startTrackingInputWithMap:map];
@@ -231,9 +272,9 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 	[self->_input stopTrackingInput];
 }
 
-- (void) describeScreenWithHandler:(void (^)(BOOL, NSInteger)) handler
+- (void) describeScreenWithHandler:(void (^)(NSInteger)) handler
 {
-	handler([self->_video ready], [self->_video surfaceId]);
+	handler([self->_video surfaceId]);
 }
 
 - (void) shutDown

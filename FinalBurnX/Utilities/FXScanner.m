@@ -190,13 +190,27 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		NSDictionary *parentSet = [sm objectForKey:[values objectForKey:@"parent"]];
 		if (parentSet) {
 			NSDictionary *parentFiles = [[parentSet objectForKey:@"files"] objectForKey:@"local"];
-			[[[values objectForKey:@"files"] objectForKey:@"super"] enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL * _Nonnull stop) {
+			[[[values objectForKey:@"files"] objectForKey:@"parent"] enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL * _Nonnull stop) {
 				if ([self isCancelled]) {
 					*stop = YES;
 					return;
 				}
 				[[set files] setObject:[[FXSetItem alloc] initWithFilename:filename]
 								forKey:[[parentFiles objectForKey:filename] objectForKey:@"crc"]];
+			}];
+		}
+		
+		// Add files that are part of the bios set
+		NSDictionary *biosSet = [sm objectForKey:[values objectForKey:@"bios"]];
+		if (biosSet) {
+			NSDictionary *biosFiles = [[biosSet objectForKey:@"files"] objectForKey:@"local"];
+			[[[values objectForKey:@"files"] objectForKey:@"bios"] enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL * _Nonnull stop) {
+				if ([self isCancelled]) {
+					*stop = YES;
+					return;
+				}
+				[[set files] setObject:[[FXSetItem alloc] initWithFilename:filename]
+								forKey:[[biosFiles objectForKey:filename] objectForKey:@"crc"]];
 			}];
 		}
 		

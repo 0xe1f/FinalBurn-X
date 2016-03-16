@@ -37,6 +37,10 @@
 
 @implementation FXInput
 {
+	BOOL _isResetting;
+	BOOL _isStartingDiag;
+	NSInteger _resetSwitch;
+	NSInteger _diagSwitch;
 	unsigned char _states[256];
 	FXInputMap *_map;
 }
@@ -66,12 +70,28 @@
 		if (bii.nType == BIT_DIGITAL) {
 			GameInp[i].nInput = GIT_SWITCH;
 			GameInp[i].Input.Switch.nCode = i + 1;
+			
+			if (strcmp(bii.szInfo, "reset") == 0) {
+				self->_resetSwitch = GameInp[i].Input.Switch.nCode;
+			} else if (strcmp(bii.szInfo, "diag") == 0) {
+				self->_diagSwitch = GameInp[i].Input.Switch.nCode;
+			}
 		}
 	}
 }
 
 - (BOOL) isInputActiveForCode:(int) inputCode
 {
+	if (self->_isResetting && inputCode == self->_resetSwitch) {
+		NSLog(@"Resetting...");
+		self->_isResetting = NO;
+		return YES;
+	} else if (self->_isStartingDiag && inputCode == self->_diagSwitch) {
+		NSLog(@"Entering diagnostics...");
+		self->_isStartingDiag = NO;
+		return YES;
+	}
+	
 	return self->_states[inputCode] != 0;
 }
 
@@ -99,10 +119,20 @@
 
 #pragma mark - Public
 
+- (void) startDiagnostics
+{
+	self->_isStartingDiag = YES;
+}
+
+- (void) reset
+{
+	self->_isResetting = YES;
+}
+
 - (void) startTrackingInputWithMap:(FXInputMap *) map
 {
 #ifdef DEBUG
-	NSLog(@"FXInput: startTracking");
+	NSLog(@"input/startTracking");
 #endif
 	self->_map = map;
 	[[AKKeyboardManager sharedInstance] addObserver:self];
@@ -111,7 +141,7 @@
 - (void) stopTrackingInput
 {
 #ifdef DEBUG
-	NSLog(@"FXInput: stopTracking");
+	NSLog(@"input/stopTracking");
 #endif
 	[[AKKeyboardManager sharedInstance] removeObserver:self];
 	[self releaseAll];

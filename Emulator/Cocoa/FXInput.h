@@ -28,6 +28,9 @@
 
 @interface FXInput : NSObject<AKKeyboardEventDelegate>
 
+- (void) reset;
+- (void) startDiagnostics;
+
 - (void) startTrackingInputWithMap:(FXInputMap *) map;
 - (void) stopTrackingInput;
 

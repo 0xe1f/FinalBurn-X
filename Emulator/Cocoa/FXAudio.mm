@@ -55,8 +55,6 @@ static int cocoaGetNextSoundFiller(int draw);
 
 - (BOOL) initCore
 {
-    NSLog(@"audio/init");
-    
     int sampleRate = 44100;
     
     self->audioCallback = NULL;
@@ -91,6 +89,8 @@ static int cocoaGetNextSoundFiller(int draw);
     
     [[self audioEngine] setDelegate:self];
     
+	NSLog(@"audio/init done");
+	
     return YES;
 }
 

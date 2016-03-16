@@ -23,13 +23,20 @@
 #import <Foundation/Foundation.h>
 
 @class FXInputMap;
+@class FXEmulationState;
 
 @protocol FXEmulationCommunication <NSObject>
 
+- (void) updateStateWithHandler:(void(^)(FXEmulationState *current)) handler;
+- (void) describeScreenWithHandler:(void(^)(NSInteger ioSurfaceId)) handler;
+
+- (void) setPaused:(BOOL) paused
+	   withHandler:(void(^)(FXEmulationState *current)) handler;
+- (void) resetEmulationWithHandler:(void(^)(FXEmulationState *current)) handler;
+- (void) enterDiagnostics;
+
 - (void) startTrackingInputWithMap:(FXInputMap *) map;
 - (void) stopTrackingInput;
-
-- (void) describeScreenWithHandler:(void(^)(BOOL isReady, NSInteger ioSurfaceId)) handler;
 
 - (void) shutDown;
 

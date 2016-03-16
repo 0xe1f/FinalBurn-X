@@ -47,7 +47,6 @@
 - (instancetype) init
 {
     if (self = [super init]) {
-		self->_ready = NO;
 		self->_buffer = NULL;
 		self->_pixelBuffer = NULL;
 		self->_surfaceRef = NULL;
@@ -65,8 +64,6 @@
 
 - (BOOL) initCore
 {
-    NSLog(@"video/init");
-	
     int rotationMode = 0;
     BurnDrvGetVisibleSize(&self->_screenWidth, &self->_screenHeight);
 	
@@ -124,7 +121,8 @@
 	
 	self->_surfaceRef = CVPixelBufferGetIOSurface(self->_pixelBuffer);
 	self->_surfaceId = IOSurfaceGetID(self->_surfaceRef);
-	self->_ready = YES;
+	
+	NSLog(@"video/init done");
 	
     return YES;
 }

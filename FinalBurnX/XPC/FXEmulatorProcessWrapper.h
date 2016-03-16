@@ -29,6 +29,7 @@
 @protocol FXEmulatorEventDelegate<NSObject>
 
 - (void) connectionDidEstablish:(FXEmulatorProcessWrapper *) wrapper;
+- (void) taskDidTerminate:(FXEmulatorProcessWrapper *) wrapper;
 
 @end
 
@@ -43,5 +44,6 @@
 - (void) setUpWithArchive:(NSString *) archive
 					  uid:(NSString *) uid;
 - (void) terminate;
+- (BOOL) isRunning;
 
 @end

@@ -20,17 +20,13 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
-@interface FXScreenView : NSOpenGLView
+@interface FXEmulationState : NSObject<NSSecureCoding>
 
-@property (nonatomic, readonly) NSSize screenSize;
+@property (nonatomic, assign) BOOL isPaused;
+@property (nonatomic, assign) BOOL isRunning;
 
-@property (nonatomic, assign) NSInteger screenWidth;
-@property (nonatomic, assign) NSInteger screenHeight;
-@property (nonatomic, assign) BOOL screenFlipped;
-@property (nonatomic, assign) BOOL screenRotated;
-
-- (void) setUpIOSurface:(IOSurfaceID) surfaceID;
+- (void) updateUsingState:(FXEmulationState *) state;
 
 @end

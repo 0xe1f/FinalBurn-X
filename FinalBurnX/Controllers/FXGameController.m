@@ -25,6 +25,7 @@
 #import "AKKeyboardManager.h"
 #import "FXAppDelegate.h"
 #import "FXInputMap.h"
+#import "FXEmulationState.h"
 
 @interface FXGameController ()
 
@@ -33,6 +34,7 @@
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate;
 - (void) autoMapInput;
+- (void) statusUpdate:(id) sender;
 
 @end
 
@@ -42,6 +44,10 @@
 	NSDictionary *_driverInfo;
 	NSSize _screenSize;
 	FXInputMap *_inputMap;
+	FXEmulationState *_state;
+	NSTimer *_statusTimer;
+	NSTitlebarAccessoryViewController *_tbAcc;
+	BOOL _pausedOnUnfocus;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -49,6 +55,12 @@
     if ((self = [super initWithWindowNibName:@"Game"])) {
 		self->_archive = archive;
 		self->_inputMap = [[FXInputMap alloc] init];
+		self->_state = [[FXEmulationState alloc] init];
+		self->_statusTimer = [NSTimer timerWithTimeInterval:0.5
+													 target:self
+												   selector:@selector(statusUpdate:)
+												   userInfo:nil
+													repeats:YES];
     }
     
     return self;
@@ -58,25 +70,53 @@
 {
 	self->_driverInfo = [[[FXAppDelegate sharedInstance] setManifest] objectForKey:self->_archive];
 	
-	NSInteger screenWidth = [[self->_driverInfo objectForKey:@"width"] intValue];
-	NSInteger screenHeight = [[self->_driverInfo objectForKey:@"height"] intValue];
 	NSString *attrs = [self->_driverInfo objectForKey:@"attrs"];
 	
-	self->_screenSize = NSMakeSize(screenWidth, screenHeight);
-	
+	// Set title and size
 	[[self window] setTitle:[self->_driverInfo objectForKey:@"title"]];
+	
+	NSInteger screenWidth = [[self->_driverInfo objectForKey:@"width"] intValue];
+	NSInteger screenHeight = [[self->_driverInfo objectForKey:@"height"] intValue];
+	self->_screenSize = NSMakeSize(screenWidth, screenHeight);
 	[self resizeFrame:[self preferredSizeOfScreenWithSize:self->_screenSize]
 			  animate:YES];
 	
+	// Initialize process wrapper
 	[self->wrapper setUpWithArchive:self->_archive
 								uid:nil];
 	
+	// Initialize screen
 	[self->screen setScreenWidth:screenWidth];
 	[self->screen setScreenHeight:screenHeight];
 	[self->screen setScreenFlipped:[attrs containsString:@"flipped"]];
 	[self->screen setScreenRotated:[attrs containsString:@"rotated"]];
 	
+	// FIXME: set up a basic mapping
 	[self autoMapInput];
+	
+	// Set up title bar spinner
+	[self->tbAccSpinner startAnimation:self];
+	self->_tbAcc = [[NSTitlebarAccessoryViewController alloc] init];
+	[self->_tbAcc setView:self->tbAccView];
+	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
+	[[self window] addTitlebarAccessoryViewController:self->_tbAcc];
+	
+	// Start observing state
+	[self->_state addObserver:self
+				   forKeyPath:@"isRunning"
+					  options:0
+					  context:NULL];
+	
+	// Start the "status update" timer, which will notify us when emulation
+	// begins
+	[[NSRunLoop currentRunLoop] addTimer:self->_statusTimer
+								 forMode:NSDefaultRunLoopMode];
+}
+
+- (void) dealloc
+{
+	[self->_state removeObserver:self
+					  forKeyPath:@"isRunning"];
 }
 
 #pragma mark - NSWindowDelegate
@@ -84,11 +124,28 @@
 - (void) windowDidBecomeKey:(NSNotification *) notification
 {
 	[[self->wrapper remoteObjectProxy] startTrackingInputWithMap:self->_inputMap];
+	
+	if (self->_pausedOnUnfocus) {
+		[[self->wrapper remoteObjectProxy] setPaused:NO
+										 withHandler:^(FXEmulationState *current) {
+											 [self->_state updateUsingState:current];
+										 }];
+	}
 }
 
 - (void) windowDidResignKey:(NSNotification *) notification
 {
 	[[self->wrapper remoteObjectProxy] stopTrackingInput];
+	
+	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"pauseOnUnfocus"]) {
+		[[self->wrapper remoteObjectProxy] setPaused:YES
+										 withHandler:^(FXEmulationState *current) {
+											 [self->_state updateUsingState:current];
+											 if ([current isPaused]) {
+												 self->_pausedOnUnfocus = YES;
+											 }
+										 }];
+	}
 }
 
 - (void) keyDown:(NSEvent *) theEvent
@@ -142,10 +199,20 @@
 
 - (void) windowWillClose:(NSNotification *) notification
 {
-	[[self->wrapper remoteObjectProxy] shutDown];
-	[self->wrapper terminate];
+	[self->_statusTimer invalidate];
 	
+	[self->wrapper terminate];
 	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
+}
+
+- (BOOL) windowShouldClose:(id) sender
+{
+	if ([self->wrapper isRunning]) {
+		[[self->wrapper remoteObjectProxy] shutDown];
+		return NO;
+	}
+	
+	return YES;
 }
 
 #pragma mark - FXEmulatorEventDelegate
@@ -155,6 +222,11 @@
 	if ([[self window] isKeyWindow]) {
 		[[aWrapper remoteObjectProxy] startTrackingInputWithMap:self->_inputMap];
 	}
+}
+
+- (void) taskDidTerminate:(FXEmulatorProcessWrapper *) wrapper
+{
+	[[self window] close];
 }
 
 #pragma mark - Actions
@@ -171,40 +243,78 @@
 
 - (void) pauseGameplay:(id) sender
 {
-	NSLog(@"FIXME: pauseGameplay");
-//    [[self runLoop] setPaused:![[self runLoop] isPaused]];
+	[[self->wrapper remoteObjectProxy] setPaused:![self->_state isPaused]
+									 withHandler:^(FXEmulationState *current) {
+										 [self->_state updateUsingState:current];
+									 }];
 }
 
 - (void) resetEmulation:(id) sender
 {
-	NSLog(@"FIXME: resetEmulation");
-//    [[self input] setResetPressed:YES];
+	[[self->wrapper remoteObjectProxy] resetEmulationWithHandler:^(FXEmulationState *current) {
+		[self->_state updateUsingState:current];
+	}];
 }
 
 - (void) toggleTestMode:(id) sender
 {
-	NSLog(@"FIXME: toggleTestMode");
-//    [[self input] setTestPressed:YES];
+	[[self->wrapper remoteObjectProxy] enterDiagnostics];
+}
+
+- (void) statusUpdate:(id) sender
+{
+	[[self->wrapper remoteObjectProxy] updateStateWithHandler:^(FXEmulationState *current) {
+		[self->_state updateUsingState:current];
+		if ([self->_state isRunning]) {
+			// Stop the timer
+			[self->_statusTimer invalidate];
+			// Initialize the graphics rendering
+			[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(NSInteger ioSurfaceId) {
+				[self->screen setUpIOSurface:(IOSurfaceID) ioSurfaceId];
+				NSLog(@"GameController: surface initialized");
+			}];
+		}
+	}];
 }
 
 #pragma mark - NSUserInterfaceValidation
 
 - (BOOL) validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>) item
 {
-	NSMenuItem *menuItem = (NSMenuItem*)item;
+	NSMenuItem *menuItem = (NSMenuItem*) item;
 	
 	if ([item action] == @selector(pauseGameplay:))
 	{
-		//        if (![[self runLoop] isPaused]) {
-		//            [menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
-		//        } else {
-		//            [menuItem setTitle:NSLocalizedString(@"Resume", @"Gameplay")];
-		//        }
+		if (![self->_state isPaused]) {
+			[menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
+		} else {
+			[menuItem setTitle:NSLocalizedString(@"Resume", @"Gameplay")];
+		}
 		
 		return YES;
 	}
 	
 	return [menuItem isEnabled];
+}
+
+#pragma mark - KVO
+
+- (void) observeValueForKeyPath:(NSString *) keyPath
+					   ofObject:(id) object
+						 change:(NSDictionary *) change
+						context:(void *) context
+{
+	if (object == self->_state) {
+		if ([keyPath isEqualToString:@"isRunning"] && [self->_state isRunning]) {
+			NSLog(@"isRunning change");
+			// Emulation started, so remove the spinner
+			dispatch_async(dispatch_get_main_queue(), ^{
+				// FIXME: crashes here, because there's no accessory at index 0!
+				[self->_tbAcc removeFromParentViewController];
+				self->_tbAcc = nil;
+			});
+		}
+	}
 }
 
 #pragma mark - Private methods
@@ -222,8 +332,8 @@
 {
 	NSString *screenSizeString = NSStringFromSize(screenSize);
 	NSString *preferredSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:[@"preferredSize-" stringByAppendingString:screenSizeString]];
-
-	if (preferredSizeString != nil) {
+	
+	if (preferredSizeString) {
 		return NSSizeFromString(preferredSizeString);
 	} else {
 		// Default size is double the size of screen

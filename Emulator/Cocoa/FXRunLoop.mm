@@ -302,7 +302,7 @@ static int cocoaGetNextSound(int draw);
     [self cleanupDriver];
 }
 
-- (void)cancel
+- (void) cancel
 {
     [super cancel];
     

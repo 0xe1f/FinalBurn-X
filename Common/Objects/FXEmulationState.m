@@ -20,17 +20,43 @@
  **
  ******************************************************************************
  */
-#import <Cocoa/Cocoa.h>
+#import "FXEmulationState.h"
 
-@interface FXScreenView : NSOpenGLView
+@implementation FXEmulationState
 
-@property (nonatomic, readonly) NSSize screenSize;
+- (void) updateUsingState:(FXEmulationState *) state
+{
+	if (state->_isPaused != self->_isPaused) {
+		[self setIsPaused:state->_isPaused];
+	}
+	if (state->_isRunning != self->_isRunning) {
+		[self setIsRunning:state->_isRunning];
+	}
+}
 
-@property (nonatomic, assign) NSInteger screenWidth;
-@property (nonatomic, assign) NSInteger screenHeight;
-@property (nonatomic, assign) BOOL screenFlipped;
-@property (nonatomic, assign) BOOL screenRotated;
+#pragma mark - NSSecureCoding
 
-- (void) setUpIOSurface:(IOSurfaceID) surfaceID;
++ (BOOL) supportsSecureCoding
+{
+	return YES;
+}
+
+- (instancetype) initWithCoder:(NSCoder *) coder
+{
+    if ((self = [super init]) != nil) {
+		self->_isPaused = [coder decodeBoolForKey:@"paused"];
+		self->_isRunning = [coder decodeBoolForKey:@"running"];
+    }
+    
+    return self;
+}
+
+- (void) encodeWithCoder:(NSCoder *) coder
+{
+	[coder encodeBool:self->_isPaused
+			   forKey:@"paused"];
+	[coder encodeBool:self->_isRunning
+			   forKey:@"running"];
+}
 
 @end

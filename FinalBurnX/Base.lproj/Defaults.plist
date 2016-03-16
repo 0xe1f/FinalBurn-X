@@ -4,5 +4,7 @@
 <dict>
 	<key>selectedPreferencesTab</key>
 	<string>general</string>
+	<key>pauseOnUnfocus</key>
+	<true/>
 </dict>
 </plist>

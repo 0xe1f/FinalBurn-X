@@ -88,7 +88,8 @@
 			(hardware != HARDWARE_CAPCOM_CPS3) &&
 			(hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
 			//            (hardware != HARDWARE_PREFIX_KONAMI) &&
-			(hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE))) {
+			(hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE)) &&
+			(strcmp(pDriver[index]->szShortName, "neogeo")) != 0) /* FIXME */ {
 			// Don't care
 			continue;
 		}
@@ -106,7 +107,12 @@
 									  @"input": [self inputsForDriver:index],
 									  } mutableCopy];
 		
-		if (pDriver[index]->szParent != NULL) {
+		if (pDriver[index]->szBoardROM) {
+			[set setObject:[NSString stringWithCString:pDriver[index]->szBoardROM
+											  encoding:NSASCIIStringEncoding]
+					forKey:@"bios"];
+		}
+		if (pDriver[index]->szParent) {
 			[set setObject:[NSString stringWithCString:pDriver[index]->szParent
 											 encoding:NSASCIIStringEncoding]
 					forKey:@"parent"];
@@ -198,25 +204,41 @@
 - (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) sets
 {
 	[sets enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSMutableDictionary *set, BOOL * _Nonnull stop) {
-		NSString *parent = [set objectForKey:@"parent"];
-		if (!parent) {
-			return;
-		}
-		
-		NSDictionary *parentFiles = [[[sets objectForKey:parent] objectForKey:@"files"] objectForKey:@"local"];
 		NSMutableDictionary *subFiles = [[set objectForKey:@"files"] objectForKey:@"local"];
 		
-		NSMutableArray *commonInParent = [@[] mutableCopy];
-		[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
-			if ([parentFiles objectForKey:fileName]) {
-				[subFiles removeObjectForKey:fileName];
-				[commonInParent addObject:fileName];
+		NSString *bios = [set objectForKey:@"bios"];
+		if (bios) {
+			NSDictionary *biosFiles = [[[sets objectForKey:bios] objectForKey:@"files"] objectForKey:@"local"];
+			
+			NSMutableArray *commonInParent = [@[] mutableCopy];
+			[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
+				if ([biosFiles objectForKey:fileName]) {
+					[subFiles removeObjectForKey:fileName];
+					[commonInParent addObject:fileName];
+				}
+			}];
+			
+			if ([commonInParent count] > 0) {
+				[[set objectForKey:@"files"] setObject:commonInParent
+												forKey:@"bios"];
 			}
-		}];
+		}
 		
-		if ([commonInParent count] > 0) {
-			[[set objectForKey:@"files"] setObject:commonInParent
-											forKey:@"super"];
+		NSString *parent = [set objectForKey:@"parent"];
+		if (parent) {
+			NSDictionary *parentFiles = [[[sets objectForKey:parent] objectForKey:@"files"] objectForKey:@"local"];
+			NSMutableArray *commonInParent = [@[] mutableCopy];
+			[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
+				if ([parentFiles objectForKey:fileName]) {
+					[subFiles removeObjectForKey:fileName];
+					[commonInParent addObject:fileName];
+				}
+			}];
+			
+			if ([commonInParent count] > 0) {
+				[[set objectForKey:@"files"] setObject:commonInParent
+												forKey:@"parent"];
+			}
 		}
 	}];
 }

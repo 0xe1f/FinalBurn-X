@@ -8,7 +8,8 @@
         <customObject id="-2" userLabel="File's Owner" customClass="FXGameController">
             <connections>
                 <outlet property="screen" destination="FwQ-py-ONg" id="nhn-zz-X4W"/>
-                <outlet property="spinner" destination="nZ7-2Z-3Um" id="D3f-Fd-ixe"/>
+                <outlet property="tbAccSpinner" destination="Zw9-xu-NpB" id="l54-GP-6x9"/>
+                <outlet property="tbAccView" destination="l8W-oO-Vzm" id="QHs-Lj-tcL"/>
                 <outlet property="window" destination="tM2-tC-AiI" id="mVc-HX-Hya"/>
                 <outlet property="wrapper" destination="fC0-mF-6zl" id="iZu-5l-DQc"/>
             </connections>
@@ -24,16 +25,9 @@
                 <rect key="frame" x="0.0" y="0.0" width="833" height="553"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <progressIndicator horizontalHuggingPriority="750" verticalHuggingPriority="750" maxValue="100" displayedWhenStopped="NO" bezeled="NO" indeterminate="YES" style="spinning" id="nZ7-2Z-3Um">
-                        <rect key="frame" x="400" y="260" width="32" height="32"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
-                    </progressIndicator>
                     <openGLView colorSize="5bit_RGB_8bit_Alpha" depthSize="32bit" rendererType="accelerated" useAuxiliaryDepthBufferStencil="NO" useDoubleBufferingEnabled="YES" allowOffline="YES" useRecovery="YES" id="FwQ-py-ONg" customClass="FXScreenView">
                         <rect key="frame" x="0.0" y="0.0" width="833" height="553"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <connections>
-                            <outlet property="wrapper" destination="fC0-mF-6zl" id="Hxc-Ps-Man"/>
-                        </connections>
                     </openGLView>
                 </subviews>
             </view>
@@ -46,5 +40,16 @@
                 <outlet property="delegate" destination="-2" id="SzE-c9-OCA"/>
             </connections>
         </customObject>
+        <customView id="l8W-oO-Vzm" userLabel="TitleBar Accessory View">
+            <rect key="frame" x="0.0" y="0.0" width="24" height="16"/>
+            <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+            <subviews>
+                <progressIndicator wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" maxValue="100" displayedWhenStopped="NO" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" id="Zw9-xu-NpB">
+                    <rect key="frame" x="0.0" y="0.0" width="16" height="16"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+                </progressIndicator>
+            </subviews>
+            <point key="canvasLocation" x="351" y="837"/>
+        </customView>
     </objects>
 </document>
