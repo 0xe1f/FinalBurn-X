@@ -320,6 +320,7 @@ shouldAcceptNewConnection:(NSXPCConnection *) newConnection
 	
 	NSString *location = [[[self->_setAudit objectForKey:@"files"] objectForKey:filename] objectForKey:@"location"];
 	if (!location) {
+		NSLog(@"Not found: %@", filename);
 		return 1;
 	}
 	

@@ -34,6 +34,7 @@
 - (NSDictionary *) inputsForDriver:(int) driverId;
 - (NSMutableDictionary *) componentsForDriver:(int) driverIndex;
 - (void) pruneCommonSubsetFilesIn:(NSMutableDictionary *) outer;
+- (BOOL) isSupportingDriver:(NSInteger) index;
 
 @end
 
@@ -73,39 +74,58 @@
 	return title;
 }
 
+- (BOOL) isSupportingDriver:(NSInteger) index
+{
+	BOOL supported = NO;
+	UInt32 hardware = pDriver[index]->Hardware & HARDWARE_PUBLIC_MASK;
+	switch (hardware) {
+		case HARDWARE_CAPCOM_CPS1:
+		case HARDWARE_CAPCOM_CPS1_GENERIC:
+		case HARDWARE_CAPCOM_CPS1_QSOUND:
+		case HARDWARE_CAPCOM_CPS2:
+		case HARDWARE_CAPCOM_CPS2_SIMM:
+		case HARDWARE_CAPCOM_CPS3:
+		case HARDWARE_CAPCOM_CPS3_NO_CD:
+			// Capcom
+			supported = YES;
+			break;
+		case HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE:
+			// Basic Neo-Geo
+			supported = YES;
+			break;
+		case HARDWARE_SNK_NEOGEO:
+			// Supported if it's the Neo-Geo BIOS
+			supported = (pDriver[index]->Flags & BDF_BOARDROM) != 0;
+			break;
+		default:
+			// Unsupported
+			break;
+	}
+	
+	return supported;
+}
+
 - (NSDictionary *) romSets
 {
-	NSMutableDictionary *setMap = [@{} mutableCopy];
-	NSMutableArray *attrs = [@[] mutableCopy];
+	NSMutableDictionary *setMap = [NSMutableDictionary dictionary];
+	NSMutableArray *attrs = [NSMutableArray array];
 	
 	for (int index = 0; index < nBurnDrvCount; index++) {
-		UInt32 hardware = pDriver[index]->Hardware & HARDWARE_PUBLIC_MASK;
-		if ((hardware != HARDWARE_CAPCOM_CPS1) &&
-			(hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
-			(hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
-			(hardware != HARDWARE_CAPCOM_CPS2) &&
-			(hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
-			(hardware != HARDWARE_CAPCOM_CPS3) &&
-			(hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
-			//            (hardware != HARDWARE_PREFIX_KONAMI) &&
-			(hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE)) &&
-			(strcmp(pDriver[index]->szShortName, "neogeo")) != 0) /* FIXME */ {
-			// Don't care
+		if (![self isSupportingDriver:index]) {
 			continue;
 		}
 		
 		NSString *archive = [NSString stringWithCString:pDriver[index]->szShortName
 											   encoding:NSASCIIStringEncoding];
 		
-		NSMutableDictionary *set = [@{
-									  @"driver": @(index),
-									  @"title": [self titleOfDriver:index],
-									  @"width": @(pDriver[index]->nWidth),
-									  @"height": @(pDriver[index]->nHeight),
-									  @"system": [NSString stringWithCString:pDriver[index]->szSystemA
-																	encoding:NSASCIIStringEncoding],
-									  @"input": [self inputsForDriver:index],
-									  } mutableCopy];
+		NSMutableDictionary *set = [@{ @"driver": @(index),
+									   @"title": [self titleOfDriver:index],
+									   @"width": @(pDriver[index]->nWidth),
+									   @"height": @(pDriver[index]->nHeight),
+									   @"system": [NSString stringWithCString:pDriver[index]->szSystemA
+																	 encoding:NSASCIIStringEncoding],
+									   @"input": [self inputsForDriver:index],
+									   } mutableCopy];
 		
 		if (pDriver[index]->szBoardROM) {
 			[set setObject:[NSString stringWithCString:pDriver[index]->szBoardROM
@@ -124,6 +144,9 @@
 		}
 		if (pDriver[index]->Flags & BDF_ORIENTATION_FLIPPED) {
 			[attrs addObject:@"flipped"];
+		}
+		if ((pDriver[index]->Flags & BDF_GAME_WORKING) != BDF_GAME_WORKING) {
+			[attrs addObject:@"unplayable"];
 		}
 		if ([attrs count] > 0) {
 			[set setObject:[attrs componentsJoinedByString:@","]
@@ -152,11 +175,9 @@
 		}
 		
 		if (bii.nType == BIT_DIGITAL) {
-			[inputs setObject:@{
-								@"code": @(i + 1),
-								@"desc": [NSString stringWithCString:bii.szName
-															encoding:NSASCIIStringEncoding],
-								}
+			[inputs setObject:@{ @"code": @(i + 1),
+								 @"desc": [NSString stringWithCString:bii.szName
+															encoding:NSASCIIStringEncoding] }
 					   forKey:[NSString stringWithCString:bii.szInfo
 												 encoding:NSASCIIStringEncoding]];
 		}
@@ -167,8 +188,8 @@
 
 - (NSMutableDictionary *) componentsForDriver:(int) driverIndex
 {
-	NSMutableDictionary *outer = [@{} mutableCopy];
-	NSMutableDictionary *files = [@{} mutableCopy];
+	NSMutableDictionary *outer = [NSMutableDictionary dictionary];
+	NSMutableDictionary *files = [NSMutableDictionary dictionary];
 	
 	[outer setObject:[@{ @"local": files } mutableCopy]
 			  forKey:@"files"];
@@ -188,10 +209,13 @@
 			continue;
 		}
 		
-		NSDictionary *romInfo = @{
-								  @"len": @(ri.nLen),
-								  @"crc": @(ri.nCrc),
-								  };
+		NSMutableDictionary *romInfo = [@{ @"len": @(ri.nLen),
+										   @"crc": @(ri.nCrc) } mutableCopy];
+		
+		if (ri.nType & BRF_OPT) {
+			[romInfo setObject:@"optional"
+						forKey:@"attrs"];
+		}
 		
 		[files setObject:romInfo
 				  forKey:[NSString stringWithCString:cAlias
@@ -210,7 +234,7 @@
 		if (bios) {
 			NSDictionary *biosFiles = [[[sets objectForKey:bios] objectForKey:@"files"] objectForKey:@"local"];
 			
-			NSMutableArray *commonInParent = [@[] mutableCopy];
+			NSMutableArray *commonInParent = [NSMutableArray array];
 			[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
 				if ([biosFiles objectForKey:fileName]) {
 					[subFiles removeObjectForKey:fileName];
@@ -227,7 +251,7 @@
 		NSString *parent = [set objectForKey:@"parent"];
 		if (parent) {
 			NSDictionary *parentFiles = [[[sets objectForKey:parent] objectForKey:@"files"] objectForKey:@"local"];
-			NSMutableArray *commonInParent = [@[] mutableCopy];
+			NSMutableArray *commonInParent = [NSMutableArray array];
 			[[subFiles copy] enumerateKeysAndObjectsUsingBlock:^(NSString *fileName, NSDictionary *fileInfo, BOOL * _Nonnull stop) {
 				if ([parentFiles objectForKey:fileName]) {
 					[subFiles removeObjectForKey:fileName];

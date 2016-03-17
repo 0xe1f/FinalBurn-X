@@ -34,6 +34,9 @@
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate;
 - (void) autoMapInput;
+- (void) setupIOSurface;
+
+// Actions
 - (void) statusUpdate:(id) sender;
 
 @end
@@ -269,15 +272,20 @@
 			// Stop the timer
 			[self->_statusTimer invalidate];
 			// Initialize the graphics rendering
-			[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(NSInteger ioSurfaceId) {
-				[self->screen setUpIOSurface:(IOSurfaceID) ioSurfaceId];
-				NSLog(@"GameController: surface initialized");
-			}];
+			[self setupIOSurface];
 		}
 	}];
 }
 
 #pragma mark - NSUserInterfaceValidation
+
+- (void) setupIOSurface
+{
+	[[self->wrapper remoteObjectProxy] describeScreenWithHandler:^(NSInteger ioSurfaceId) {
+		[self->screen setUpIOSurface:(IOSurfaceID) ioSurfaceId];
+		NSLog(@"GameController: surface initialized");
+	}];
+}
 
 - (BOOL) validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>) item
 {
@@ -306,10 +314,8 @@
 {
 	if (object == self->_state) {
 		if ([keyPath isEqualToString:@"isRunning"] && [self->_state isRunning]) {
-			NSLog(@"isRunning change");
 			// Emulation started, so remove the spinner
 			dispatch_async(dispatch_get_main_queue(), ^{
-				// FIXME: crashes here, because there's no accessory at index 0!
 				[self->_tbAcc removeFromParentViewController];
 				self->_tbAcc = nil;
 			});

@@ -26,6 +26,7 @@
 #import "FXAppDelegate.h"
 
 #import "FXScanner.h"
+#import "FXImporter.h"
 
 @interface FXLauncherController ()
 
@@ -93,33 +94,34 @@
 {
 }
 
-#pragma mark - FXScannerDelegate
+#pragma mark - FXDropDelegate
 
 - (BOOL) isFileSupported:(NSString *) path
 {
-    // Make sure it's a ZIP file
-    if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
-        return NO;
-    }
-	
 	FXAppDelegate *app = [FXAppDelegate sharedInstance];
 	
     // Disallow importing from the library directory
-    NSString *parentPath = [path stringByDeletingLastPathComponent];
     NSString *romPath = [[app romRootURL] path];
-    
-    if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
+	// FIXME: what if the FS is case-sensitive?
+    if ([[path stringByDeletingLastPathComponent] caseInsensitiveCompare:romPath] == NSOrderedSame) {
         return NO;
     }
 	
-	// Is it one of the supported archives?
-    NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
-	return [[app setManifest] objectForKey:archive] != nil;
+	// See if the importer can handle it
+	return [FXImporter canImportPath:path
+						 setManifest:[app setManifest]];
 }
 
 - (void) filesDidDrop:(NSArray *) paths
 {
-	NSLog(@"FIXME: %@", paths);
+	FXImporter *importer = [[FXImporter alloc] init];
+	
+	[importer setSetManifest:[[FXAppDelegate sharedInstance] setManifest]];
+	[importer setSetPath:[[[FXAppDelegate sharedInstance] romRootURL] path]];
+	[importer setImportPaths:paths];
+	
+	// FIXME
+	[[NSOperationQueue mainQueue] addOperation:importer];
 }
 
 #pragma mark - Actions
@@ -170,6 +172,11 @@
 		// Initialize set map
 		FXAppDelegate *app = [FXAppDelegate sharedInstance];
 		[[app setManifest] enumerateKeysAndObjectsUsingBlock:^(NSString *archive, NSDictionary *values, BOOL * _Nonnull stop) {
+			if ([[values objectForKey:@"attrs"] containsString:@"unplayable"]) {
+				// Don't list unplayable items (e.g. Neo-Geo BIOS set)
+				return;
+			}
+			
 			NSMutableDictionary *set = [ @{ @"archive": archive,
 											@"title": [values objectForKey:@"title"],
 											@"status": @(FXSetStatusIncomplete),

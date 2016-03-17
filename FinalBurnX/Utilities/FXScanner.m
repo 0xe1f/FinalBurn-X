@@ -34,6 +34,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 
 @interface FXSetItem : NSObject
 
+@property (nonatomic, assign) BOOL isRequired;
 @property (nonatomic, strong) NSString *filename;
 @property (nonatomic, strong) NSString *location;
 @property (nonatomic, assign) NSInteger status;
@@ -64,6 +65,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 @property (nonatomic, strong) NSString *archive;
 @property (nonatomic, readonly) NSMutableArray<FXSet *> *children;
 @property (nonatomic, weak) FXSet *parent;
+@property (nonatomic, weak) FXSet *bios;
 @property (nonatomic, readonly) NSMutableDictionary<NSNumber *, FXSetItem *> *files;
 @property (nonatomic, assign) NSInteger missingFileCount;
 
@@ -76,7 +78,6 @@ NSString *const kFXErrorMessage = @"errorMessage";
 - (instancetype) initWithArchive:(NSString *) archive
 {
 	if (self = [super init]) {
-		self->_parent = nil;
 		self->_archive = archive;
 		self->_children = [NSMutableArray array];
 		self->_files = [NSMutableDictionary dictionary];
@@ -172,6 +173,8 @@ NSString *const kFXErrorMessage = @"errorMessage";
 			return;
 		}
 		
+		__block int requiredCount = 0;
+		
 		FXSet *set = [[FXSet alloc] initWithArchive:archiveName];
 		[self->_results setObject:set
 						   forKey:archiveName];
@@ -182,7 +185,14 @@ NSString *const kFXErrorMessage = @"errorMessage";
 				*stop = YES;
 				return;
 			}
-			[[set files] setObject:[[FXSetItem alloc] initWithFilename:filename]
+			
+			FXSetItem *item = [[FXSetItem alloc] initWithFilename:filename];
+			if (![[fileValues objectForKey:@"attrs"] containsString:@"optional"]) {
+				requiredCount++;
+				[item setIsRequired:YES];
+			}
+			
+			[[set files] setObject:item
 							forKey:[fileValues objectForKey:@"crc"]];
 		}];
 		
@@ -195,8 +205,16 @@ NSString *const kFXErrorMessage = @"errorMessage";
 					*stop = YES;
 					return;
 				}
-				[[set files] setObject:[[FXSetItem alloc] initWithFilename:filename]
-								forKey:[[parentFiles objectForKey:filename] objectForKey:@"crc"]];
+				
+				FXSetItem *item = [[FXSetItem alloc] initWithFilename:filename];
+				NSDictionary *parentFile = [parentFiles objectForKey:filename];
+				if (![[parentFile objectForKey:@"attrs"] containsString:@"optional"]) {
+					requiredCount++;
+					[item setIsRequired:YES];
+				}
+				
+				[[set files] setObject:item
+								forKey:[parentFile objectForKey:@"crc"]];
 			}];
 		}
 		
@@ -209,13 +227,21 @@ NSString *const kFXErrorMessage = @"errorMessage";
 					*stop = YES;
 					return;
 				}
-				[[set files] setObject:[[FXSetItem alloc] initWithFilename:filename]
-								forKey:[[biosFiles objectForKey:filename] objectForKey:@"crc"]];
+				
+				FXSetItem *item = [[FXSetItem alloc] initWithFilename:filename];
+				NSDictionary *biosFile = [biosFiles objectForKey:filename];
+				if (![[biosFile objectForKey:@"attrs"] containsString:@"optional"]) {
+					requiredCount++;
+					[item setIsRequired:YES];
+				}
+				
+				[[set files] setObject:item
+								forKey:[biosFile objectForKey:@"crc"]];
 			}];
 		}
 		
 		// Initialize missing file count
-		[set setMissingFileCount:[[set files] count]];
+		[set setMissingFileCount:requiredCount];
 	}];
 	
 	// Initialize hierarchy
@@ -230,6 +256,11 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		if (parent) {
 			[set setParent:parent];
 			[[parent children] addObject:set];
+		}
+		FXSet *bios = [self->_results objectForKey:[values objectForKey:@"bios"]];
+		if (bios) {
+			[set setBios:bios];
+			[[bios children] addObject:set];
 		}
 	}];
 	
@@ -270,7 +301,9 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		
 		FXSetItem *item = [[set files] objectForKey:@([file crc])];
 		if (item && ![item location]) {
-			[set setMissingFileCount:[set missingFileCount] - 1];
+			if ([item isRequired]) {
+				[set setMissingFileCount:[set missingFileCount] - 1];
+			}
 			[item setLocation:archiveFilename];
 			[item setStatus:FXFileStatusValid];
 		}
@@ -282,7 +315,9 @@ NSString *const kFXErrorMessage = @"errorMessage";
 			
 			FXSetItem *subitem = [[subset files] objectForKey:@([file crc])];
 			if (subitem && ![subitem location]) {
-				[subset setMissingFileCount:[subset missingFileCount] - 1];
+				if ([subitem isRequired]) {
+					[subset setMissingFileCount:[subset missingFileCount] - 1];
+				}
 				[subitem setLocation:archiveFilename];
 				[subitem setStatus:FXFileStatusValid];
 			}
