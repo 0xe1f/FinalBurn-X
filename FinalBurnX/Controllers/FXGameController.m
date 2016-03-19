@@ -29,12 +29,12 @@
 
 @interface FXGameController ()
 
-- (NSSize) preferredSizeOfScreenWithSize:(NSSize) screenSize;
 - (void) scaleScreen:(CGFloat) factor;
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate;
 - (void) autoMapInput;
 - (void) setupIOSurface;
+- (void) displayMessage:(NSString *) message;
 
 // Actions
 - (void) statusUpdate:(id) sender;
@@ -44,6 +44,7 @@
 @implementation FXGameController
 {
 	NSString *_archive;
+	NSString *_preferredSizePref;
 	NSDictionary *_driverInfo;
 	NSSize _screenSize;
 	FXInputMap *_inputMap;
@@ -51,6 +52,7 @@
 	NSTimer *_statusTimer;
 	NSTitlebarAccessoryViewController *_tbAcc;
 	BOOL _pausedOnUnfocus;
+	BOOL _shuttingDown;
 }
 
 - (instancetype) initWithArchive:(NSString *) archive
@@ -81,8 +83,21 @@
 	NSInteger screenWidth = [[self->_driverInfo objectForKey:@"width"] intValue];
 	NSInteger screenHeight = [[self->_driverInfo objectForKey:@"height"] intValue];
 	self->_screenSize = NSMakeSize(screenWidth, screenHeight);
-	[self resizeFrame:[self preferredSizeOfScreenWithSize:self->_screenSize]
-			  animate:YES];
+	self->_preferredSizePref = [NSString stringWithFormat:@"preferredWindowSize(%i,%i)",
+								(int) screenWidth, (int) screenHeight];
+	
+	// Resize the window to preferred size
+	NSString *preferredSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:self->_preferredSizePref];
+	NSSize preferredSize;
+	if (preferredSizeString) {
+		preferredSize = NSSizeFromString(preferredSizeString);
+	} else {
+		// Default size is double the size of screen
+		preferredSize = NSMakeSize(self->_screenSize.width * 2, self->_screenSize.height * 2);
+	}
+	
+	[self resizeFrame:preferredSize
+			  animate:NO];
 	
 	// Initialize process wrapper
 	[self->wrapper setUpWithArchive:self->_archive
@@ -98,7 +113,8 @@
 	[self autoMapInput];
 	
 	// Set up title bar spinner
-	[self->tbAccSpinner startAnimation:self];
+	[[[self->tbAccView subviews] firstObject] startAnimation:self];
+	// Initialize title bar controller
 	self->_tbAcc = [[NSTitlebarAccessoryViewController alloc] init];
 	[self->_tbAcc setView:self->tbAccView];
 	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
@@ -128,7 +144,7 @@
 {
 	[[self->wrapper remoteObjectProxy] startTrackingInputWithMap:self->_inputMap];
 	
-	if (self->_pausedOnUnfocus) {
+	if (self->_pausedOnUnfocus && [self->_state isPaused]) {
 		[[self->wrapper remoteObjectProxy] setPaused:NO
 										 withHandler:^(FXEmulationState *current) {
 											 [self->_state updateUsingState:current];
@@ -140,13 +156,12 @@
 {
 	[[self->wrapper remoteObjectProxy] stopTrackingInput];
 	
-	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"pauseOnUnfocus"]) {
+	BOOL pauseOnUnfocus = [[NSUserDefaults standardUserDefaults] boolForKey:@"pauseOnUnfocus"];
+	if (pauseOnUnfocus && ![self->_state isPaused]) {
 		[[self->wrapper remoteObjectProxy] setPaused:YES
 										 withHandler:^(FXEmulationState *current) {
 											 [self->_state updateUsingState:current];
-											 if ([current isPaused]) {
-												 self->_pausedOnUnfocus = YES;
-											 }
+											 self->_pausedOnUnfocus = [current isPaused];
 										 }];
 	}
 }
@@ -160,9 +175,11 @@
 					 toSize:(NSSize)frameSize
 {
 	if (self->_screenSize.width != 0 && self->_screenSize.height != 0) {
+		NSView *contentView = [[self window] contentView];
+		
 		NSRect windowFrame = [[self window] frame];
-		NSRect viewRect = [self->screen convertRect:[self->screen bounds]
-											 toView: nil];
+		NSRect viewRect = [contentView convertRect:[contentView bounds]
+											toView:nil];
 		NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
 		
 		CGFloat screenRatio = self->_screenSize.width / self->_screenSize.height;
@@ -188,11 +205,8 @@
 		NSRect windowFrame = [[self window] frame];
 		NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
 		
-		NSString *screenSizeString = NSStringFromSize(self->_screenSize);
-		NSString *actualSizeString = NSStringFromSize(contentRect.size);
-		
-		[[NSUserDefaults standardUserDefaults] setObject:actualSizeString
-												  forKey:[@"preferredSize-" stringByAppendingString:screenSizeString]];
+		[[NSUserDefaults standardUserDefaults] setObject:NSStringFromSize(contentRect.size)
+												  forKey:self->_preferredSizePref];
 		
 		NSLog(@"FXEmulatorController/windowDidResize: (screen: {%.00f,%.00f}; view: {%.00f,%.00f})",
 			  self->_screenSize.width, self->_screenSize.height,
@@ -204,12 +218,16 @@
 {
 	[self->_statusTimer invalidate];
 	
+	self->_shuttingDown = YES;
 	[self->wrapper terminate];
+	
 	[[FXAppDelegate sharedInstance] cleanupWindow:self->_archive];
 }
 
 - (BOOL) windowShouldClose:(id) sender
 {
+	self->_shuttingDown = YES;
+	
 	if ([self->wrapper isRunning]) {
 		[[self->wrapper remoteObjectProxy] shutDown];
 		return NO;
@@ -229,7 +247,18 @@
 
 - (void) taskDidTerminate:(FXEmulatorProcessWrapper *) wrapper
 {
-	[[self window] close];
+	[self->_statusTimer invalidate];
+	[self->_tbAcc removeFromParentViewController];
+	self->_tbAcc = nil;
+	
+	if (!self->_shuttingDown) {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[self displayMessage:NSLocalizedString(@"The emulator shut down unexpectedly. Game may be unsupported or unplayable.",
+												   @"Error message")];
+		});
+	} else {
+		[[self window] close];
+	}
 }
 
 #pragma mark - Actions
@@ -246,6 +275,7 @@
 
 - (void) pauseGameplay:(id) sender
 {
+	self->_pausedOnUnfocus = NO;
 	[[self->wrapper remoteObjectProxy] setPaused:![self->_state isPaused]
 									 withHandler:^(FXEmulationState *current) {
 										 [self->_state updateUsingState:current];
@@ -334,25 +364,12 @@
 	}
 }
 
-- (NSSize) preferredSizeOfScreenWithSize:(NSSize) screenSize
-{
-	NSString *screenSizeString = NSStringFromSize(screenSize);
-	NSString *preferredSizeString = [[NSUserDefaults standardUserDefaults] objectForKey:[@"preferredSize-" stringByAppendingString:screenSizeString]];
-	
-	if (preferredSizeString) {
-		return NSSizeFromString(preferredSizeString);
-	} else {
-		// Default size is double the size of screen
-		return NSMakeSize(screenSize.width * 2, screenSize.height * 2);
-	}
-}
-
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate
 {
     NSRect windowRect = [[self window] frame];
     NSSize windowSize = windowRect.size;
-    NSSize glViewSize = [self->screen frame].size;
+    NSSize glViewSize = [[[self window] contentView] bounds].size;
     
     CGFloat newWidth = newSize.width + (windowSize.width - glViewSize.width);
     CGFloat newHeight = newSize.height + (windowSize.height - glViewSize.height);
@@ -363,6 +380,34 @@
     [[self window] setFrame:newRect
                     display:YES
                     animate:animate];
+}
+
+- (void) displayMessage:(NSString *) message
+{
+	@synchronized(self->messagePane) {
+		NSTextField *label = [[self->messagePane subviews] firstObject];
+		if (!self->screen) {
+			// Screen has already been removed - just update the message
+			[label setStringValue:message];
+		} else {
+			// Remove screen and replace it with the message pane
+			[self->messagePane setFrame:[self->screen frame]];
+			[self->messagePane setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+			
+			[label setFrame:[self->messagePane bounds]];
+			[label setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+			[label setStringValue:message];
+			
+			NSView *contentView = [[self window] contentView];
+			[contentView setWantsLayer:YES];
+			[[contentView animator] replaceSubview:self->screen
+											  with:self->messagePane];
+			
+			[[self->messagePane layer] setBackgroundColor:[[NSColor blackColor] CGColor]];
+			
+			self->screen = nil;
+		}
+	}
 }
 
 - (void) autoMapInput

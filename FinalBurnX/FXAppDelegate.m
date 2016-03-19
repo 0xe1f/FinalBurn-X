@@ -35,7 +35,7 @@ NSString *const FXNotificationCacheChanged = @"org.akop.finalburnx.CacheChange";
 {
 	FXLauncherController *_launcher;
 	FXPreferencesController *_prefs;
-	
+	NSOperationQueue *_scanQueue;
 	NSMutableDictionary *_emulatorWindows;
 }
 
@@ -58,6 +58,7 @@ static FXAppDelegate *sharedInstance = nil;
 		
 		self->_emulatorWindows = [NSMutableDictionary dictionary];
 		self->_setManifest = [NSMutableDictionary dictionary];
+		self->_scanQueue = [[NSOperationQueue alloc] init];
     }
     
     return self;
@@ -81,7 +82,7 @@ static FXAppDelegate *sharedInstance = nil;
 	
     self->_romRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"roms"];
 	self->_inputMapRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"input"];
-	self->_auditCachePath = [[self->_supportRootURL URLByAppendingPathComponent:@"audit.cache"] path];
+	self->_auditCachePath = [[self->_supportRootURL URLByAppendingPathComponent:@"cache.plist"] path];
 	NSURL *nvramRootURL = [self->_supportRootURL URLByAppendingPathComponent:@"nvram"];
 	
     NSArray *pathsToCreate = @[ self->_supportRootURL,
@@ -109,9 +110,6 @@ static FXAppDelegate *sharedInstance = nil;
 	NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"SetManifest"
 																   ofType:@"plist"];
 	self->_setManifest = [NSDictionary dictionaryWithContentsOfFile:bundleResourcePath];
-	
-	[self->_scanner setRootPath:[self->_romRootURL path]];
-	[self->_scanner setSets:self->_setManifest];
 }
 
 - (void) applicationDidFinishLaunching:(NSNotification *) aNotification
@@ -125,7 +123,9 @@ static FXAppDelegate *sharedInstance = nil;
 - (void) applicationWillTerminate:(NSNotification *) notification
 {
 	[[OEXPCCAgentConfiguration defaultConfiguration] tearDownAgent];
-	[self->_scanner stopAll];
+	
+	[self->_scanQueue cancelAllOperations];
+	[self->_scanQueue waitUntilAllOperationsAreFinished];
 }
 
 #pragma mark - FXScannerDelegate
@@ -171,6 +171,20 @@ static FXAppDelegate *sharedInstance = nil;
 }
 
 #pragma mark - Public methods
+
+- (void) scan
+{
+	@synchronized(self->_scanQueue) {
+		if ([self->_scanQueue operationCount] == 0) {
+			FXScanOperation *scanOp = [[FXScanOperation alloc] init];
+			[scanOp setRootPath:[self->_romRootURL path]];
+			[scanOp setSetManifest:self->_setManifest];
+			[scanOp setDelegate:self];
+			
+			[self->_scanQueue addOperation:scanOp];
+		}
+	}
+}
 
 - (void) launch:(NSString *) archive
 {

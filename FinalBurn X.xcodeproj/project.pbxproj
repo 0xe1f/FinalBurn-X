@@ -27,7 +27,7 @@
 		FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F6196316B000429FCA /* FXLauncherController.m */; };
 		FE23E4FA1963171300429FCA /* Launcher.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE23E4F81963171300429FCA /* Launcher.xib */; };
 		FE4E21961C99D96E003F3700 /* NSString+FXAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = FE4E21951C99D96E003F3700 /* NSString+FXAdditions.m */; };
-		FE4E21991C9A3638003F3700 /* FXImporter.m in Sources */ = {isa = PBXBuildFile; fileRef = FE4E21971C9A3638003F3700 /* FXImporter.m */; };
+		FE4E21991C9A3638003F3700 /* FXImportOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = FE4E21971C9A3638003F3700 /* FXImportOperation.m */; };
 		FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE505FC5194BD4A3003A2BC7 /* license.rtf */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
@@ -55,7 +55,7 @@
 		FE8F66A61C90CE2400A3A84A /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
 		FE8F66A71C90CE2400A3A84A /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
 		FE8F66A81C90CE2400A3A84A /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
-		FE8F66B41C90E1A400A3A84A /* FXScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = FE8F66B21C90DF4000A3A84A /* FXScanner.m */; };
+		FE8F66B41C90E1A400A3A84A /* FXScanOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = FE8F66B21C90DF4000A3A84A /* FXScanOperation.m */; };
 		FEA0B6E01C7F8BCD00591D44 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0B6DF1C7F8BCD00591D44 /* main.m */; };
 		FEA0B6E41C7F8BE700591D44 /* 8255ppi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A3E194BC531003A2BC7 /* 8255ppi.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
 		FEA0B6E51C7F8BE700591D44 /* 8257dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A40194BC531003A2BC7 /* 8257dma.cpp */; settings = {COMPILER_FLAGS = "-Wno-writable-strings"; }; };
@@ -592,6 +592,7 @@
 		FEA0BB7E1C80F01F00591D44 /* FXEmulatorProcessWrapper.m in Sources */ = {isa = PBXBuildFile; fileRef = FEA0BB7D1C80F01F00591D44 /* FXEmulatorProcessWrapper.m */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = FECDF58619BA8366008F7B63 /* Localizable.strings */; };
+		FECF0D4D1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FECF0D4C1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.m */; };
 		FED0B6191C8AE45700DD4EC3 /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FED0B6161C8AE45700DD4EC3 /* AKKeyboardManager.m */; };
 		FED0B61A1C8AE45700DD4EC3 /* AKKeyEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FED0B6181C8AE45700DD4EC3 /* AKKeyEventData.m */; };
 		FED0B61E1C8AE4A900DD4EC3 /* FXInputMap.m in Sources */ = {isa = PBXBuildFile; fileRef = FED0B61D1C8AE4A900DD4EC3 /* FXInputMap.m */; };
@@ -683,8 +684,8 @@
 		FE23E4F91963171300429FCA /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Launcher.xib; sourceTree = "<group>"; };
 		FE4E21941C99D96E003F3700 /* NSString+FXAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSString+FXAdditions.h"; sourceTree = "<group>"; };
 		FE4E21951C99D96E003F3700 /* NSString+FXAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSString+FXAdditions.m"; sourceTree = "<group>"; };
-		FE4E21971C9A3638003F3700 /* FXImporter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXImporter.m; sourceTree = "<group>"; };
-		FE4E21981C9A3638003F3700 /* FXImporter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXImporter.h; sourceTree = "<group>"; };
+		FE4E21971C9A3638003F3700 /* FXImportOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXImportOperation.m; sourceTree = "<group>"; };
+		FE4E21981C9A3638003F3700 /* FXImportOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXImportOperation.h; sourceTree = "<group>"; };
 		FE505A2B194BC531003A2BC7 /* bitswap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitswap.h; sourceTree = "<group>"; };
 		FE505A2C194BC531003A2BC7 /* burn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = burn.cpp; sourceTree = "<group>"; };
 		FE505A2D194BC531003A2BC7 /* burn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burn.h; sourceTree = "<group>"; };
@@ -1382,8 +1383,8 @@
 		FE780120194C36510024716B /* lowpass2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowpass2.h; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
-		FE8F66B11C90DF4000A3A84A /* FXScanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScanner.h; sourceTree = "<group>"; };
-		FE8F66B21C90DF4000A3A84A /* FXScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXScanner.m; sourceTree = "<group>"; };
+		FE8F66B11C90DF4000A3A84A /* FXScanOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScanOperation.h; sourceTree = "<group>"; };
+		FE8F66B21C90DF4000A3A84A /* FXScanOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXScanOperation.m; sourceTree = "<group>"; };
 		FEA0B6DD1C7F8BCD00591D44 /* Emulator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Emulator; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEA0B6DF1C7F8BCD00591D44 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		FEA0B8EF1C7F944200591D44 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
@@ -1428,6 +1429,8 @@
 		FEC25357194CA3BF0039D85F /* epx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = epx.cpp; sourceTree = "<group>"; };
 		FEC25359194CA41B0039D85F /* misc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = misc.cpp; sourceTree = "<group>"; };
 		FECDF58719BA8366008F7B63 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Localizable.strings; sourceTree = "<group>"; };
+		FECF0D4B1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
+		FECF0D4C1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXVerticallyCenteredTextFieldCell.m; sourceTree = "<group>"; };
 		FED0B6151C8AE45700DD4EC3 /* AKKeyboardManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyboardManager.h; sourceTree = "<group>"; };
 		FED0B6161C8AE45700DD4EC3 /* AKKeyboardManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyboardManager.m; sourceTree = "<group>"; };
 		FED0B6171C8AE45700DD4EC3 /* AKKeyEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyEventData.h; sourceTree = "<group>"; };
@@ -1542,6 +1545,8 @@
 		FE0DC79419509EEB004A03A3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FECF0D4B1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.h */,
+				FECF0D4C1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.m */,
 				FE1FB77C19D13E550070325C /* AKKeyCaptureFieldCell.h */,
 				FE1FB77D19D13E550070325C /* AKKeyCaptureFieldCell.m */,
 				FE1FB77A19D13D0A0070325C /* AKKeyCaptureView.h */,
@@ -2710,10 +2715,10 @@
 		FE8F66941C90AE3F00A3A84A /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
-				FE4E21981C9A3638003F3700 /* FXImporter.h */,
-				FE4E21971C9A3638003F3700 /* FXImporter.m */,
-				FE8F66B11C90DF4000A3A84A /* FXScanner.h */,
-				FE8F66B21C90DF4000A3A84A /* FXScanner.m */,
+				FE4E21981C9A3638003F3700 /* FXImportOperation.h */,
+				FE4E21971C9A3638003F3700 /* FXImportOperation.m */,
+				FE8F66B11C90DF4000A3A84A /* FXScanOperation.h */,
+				FE8F66B21C90DF4000A3A84A /* FXScanOperation.m */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -2981,7 +2986,7 @@
 				FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */,
 				FED0B61A1C8AE45700DD4EC3 /* AKKeyEventData.m in Sources */,
 				FE8F669E1C90CE2400A3A84A /* gzclose.c in Sources */,
-				FE8F66B41C90E1A400A3A84A /* FXScanner.m in Sources */,
+				FE8F66B41C90E1A400A3A84A /* FXScanOperation.m in Sources */,
 				FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */,
 				FE8F66A71C90CE2400A3A84A /* uncompr.c in Sources */,
 				FE8F669B1C90CE2400A3A84A /* compress.c in Sources */,
@@ -2993,10 +2998,11 @@
 				FE8F66A81C90CE2400A3A84A /* zutil.c in Sources */,
 				FE8F66981C90CAF500A3A84A /* ioapi.c in Sources */,
 				FE8F669A1C90CE2400A3A84A /* adler32.c in Sources */,
+				FECF0D4D1C9CCB92007DFCFE /* FXVerticallyCenteredTextFieldCell.m in Sources */,
 				FE18ADCE1C989257008DD964 /* FXEmulationState.m in Sources */,
 				FE8F66A01C90CE2400A3A84A /* gzread.c in Sources */,
 				FE8F669F1C90CE2400A3A84A /* gzlib.c in Sources */,
-				FE4E21991C9A3638003F3700 /* FXImporter.m in Sources */,
+				FE4E21991C9A3638003F3700 /* FXImportOperation.m in Sources */,
 				FE8F66A31C90CE2400A3A84A /* inffast.c in Sources */,
 				FE8F669C1C90CE2400A3A84A /* crc32.c in Sources */,
 				FE8F66991C90CAF500A3A84A /* unzip.c in Sources */,

@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
- ** Copyright (C) 2014-2016 Akop Karapetyan
+ ** CocoaMSX: MSX Emulator for Mac OS X
+ ** http://www.cocoamsx.com
+ ** Copyright (C) 2013 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,31 +20,30 @@
  **
  ******************************************************************************
  */
-#import "FXAuditStatusAsNSImage.h"
+#import "FXVerticallyCenteredTextFieldCell.h"
 
-#import "FXScanOperation.h"
+@implementation FXVerticallyCenteredTextFieldCell
 
-@implementation FXAuditStatusAsNSImage
+#pragma mark - NSTextFieldCell
 
-+ (Class) transformedValueClass
+- (NSRect) titleRectForBounds:(NSRect) frame
 {
-    return [NSImage class];
+	// http://stackoverflow.com/a/33788973/132628
+	CGFloat stringHeight = [[self attributedStringValue] size].height;
+	NSRect titleRect = [super titleRectForBounds:frame];
+	
+	CGFloat oldOriginY = frame.origin.y;
+	titleRect.origin.y = oldOriginY + (frame.size.height - stringHeight) / 2.0;
+	titleRect.size.height = titleRect.size.height - (titleRect.origin.y - oldOriginY);
+	
+	return titleRect;
 }
 
-+ (BOOL) allowsReverseTransformation
+- (void) drawInteriorWithFrame:(NSRect) cFrame
+						inView:(NSView *) cView
 {
-    return NO;
-}
-
-- (id) transformedValue:(id) value
-{
-    switch ([value integerValue]) {
-		case FXSetStatusComplete:
-			return [NSImage imageNamed:@"NSStatusAvailable"];
-		case FXSetStatusIncomplete:
-		default:
-            return [NSImage imageNamed:@"NSStatusNone"];
-    }
+	[super drawInteriorWithFrame:[self titleRectForBounds:cFrame]
+						  inView:cView];
 }
 
 @end

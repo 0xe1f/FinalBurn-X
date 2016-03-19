@@ -145,7 +145,7 @@ static int cocoaLoadROMCallback(unsigned char *Dest, INT32 *pnWrote, int i);
 #if DEBUG
 	NSDate *started = [NSDate date];
 #endif
-	NSString *auditCachePath = [self->_supportPath stringByAppendingPathComponent:@"audit.cache"];
+	NSString *auditCachePath = [self->_supportPath stringByAppendingPathComponent:@"cache.plist"];
 	NSDictionary *auditData = [NSDictionary dictionaryWithContentsOfFile:auditCachePath];
 #ifdef DEBUG
 	NSLog(@"Loaded audit cache (%.04fs)", [[NSDate date] timeIntervalSinceDate:started]);

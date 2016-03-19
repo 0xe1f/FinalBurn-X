@@ -22,33 +22,22 @@
  */
 #import <Foundation/Foundation.h>
 
-#define FXSetStatusIncomplete 0
-#define FXSetStatusComplete   1
+@protocol FXImportDelegate <NSObject>
 
-#define FXFileStatusMissing 0
-#define FXFileStatusInvalid 1
-#define FXFileStatusValid   2
-
-extern NSString *const kFXSetStatus;
-extern NSString *const kFXSetFiles;
-extern NSString *const kFXFileStatus;
-extern NSString *const kFXFileLocation;
-extern NSString *const kFXErrorMessage;
-
-@protocol FXScannerDelegate <NSObject>
-
-- (void) scanDidComplete:(NSDictionary *) result;
-- (void) scanDidFail:(NSDictionary *) error;
+- (void) importDidComplete;
+- (void) importDidFail:(NSString *) reason;
 
 @end
 
-@interface FXScanner : NSObject
+@interface FXImportOperation : NSOperation
 
-@property (nonatomic, strong) NSString *rootPath;
-@property (nonatomic, strong) NSDictionary *sets;
-@property (nonatomic, weak) IBOutlet id<FXScannerDelegate> delegate;
+@property (nonatomic, weak) id<FXImportDelegate> delegate;
 
-- (void) start;
-- (void) stopAll;
+@property (nonatomic, strong) NSString *setPath;
+@property (nonatomic, strong) NSDictionary *setManifest;
+@property (nonatomic, strong) NSArray<NSString *> *importPaths;
+
++ (BOOL) canImportPath:(NSString *) path
+		   setManifest:(NSDictionary *) setManifest;
 
 @end

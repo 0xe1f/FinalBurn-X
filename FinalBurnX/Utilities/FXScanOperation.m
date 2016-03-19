@@ -20,7 +20,7 @@
  **
  ******************************************************************************
  */
-#import "FXScanner.h"
+#import "FXScanOperation.h"
 
 #import "FXZipArchive.h"
 
@@ -93,14 +93,11 @@ NSString *const kFXErrorMessage = @"errorMessage";
 
 @end
 
-#pragma mark - FXScanOperation
+#pragma mark - FXScanner
 
-@interface FXScanOperation : NSOperation
+@interface FXScanOperation()
 
-- (instancetype) initWithScanner:(FXScanner *) scanner;
-
-// Private
-- (void) scan;
+- (void) startScan;
 - (void) scanFileArchive:(FXZipArchive *) fileArchive;
 - (NSDictionary *) resultsAsPlist;
 
@@ -109,13 +106,11 @@ NSString *const kFXErrorMessage = @"errorMessage";
 @implementation FXScanOperation
 {
 	NSMutableDictionary<NSString *, FXSet *> *_results;
-	FXScanner *_scanner;
 }
 
-- (instancetype) initWithScanner:(FXScanner *) scanner
+- (instancetype) init
 {
 	if (self = [super init]) {
-		self->_scanner = scanner;
 		self->_results = [NSMutableDictionary dictionary];
 	}
 	
@@ -125,12 +120,12 @@ NSString *const kFXErrorMessage = @"errorMessage";
 - (void) main
 {
 	@try {
-		[self scan];
+		[self startScan];
 		if (![self isCancelled]) {
-			[[self->_scanner delegate] scanDidComplete:[self resultsAsPlist]];
+			[self->_delegate scanDidComplete:[self resultsAsPlist]];
 		}
 	} @catch (NSException *e) {
-		[[self->_scanner delegate] scanDidFail:@{ kFXErrorMessage: [e reason] }];
+		[self->_delegate scanDidFail:[e reason]];
 	}
 }
 
@@ -157,17 +152,14 @@ NSString *const kFXErrorMessage = @"errorMessage";
 	return plist;
 }
 
-- (void) scan
+- (void) startScan
 {
 #ifdef DEBUG
 	NSDate *started = [NSDate date];
 #endif
 	
-	NSDictionary *sm = [self->_scanner sets];
-	NSString *rootPath = [self->_scanner rootPath];
-	
 	[self->_results removeAllObjects];
-	[sm enumerateKeysAndObjectsUsingBlock:^(NSString *archiveName, NSDictionary *values, BOOL * _Nonnull stop) {
+	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archiveName, NSDictionary *values, BOOL * _Nonnull stop) {
 		if ([self isCancelled]) {
 			*stop = YES;
 			return;
@@ -197,7 +189,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		}];
 		
 		// Add files that are part of the superset
-		NSDictionary *parentSet = [sm objectForKey:[values objectForKey:@"parent"]];
+		NSDictionary *parentSet = [self->_setManifest objectForKey:[values objectForKey:@"parent"]];
 		if (parentSet) {
 			NSDictionary *parentFiles = [[parentSet objectForKey:@"files"] objectForKey:@"local"];
 			[[[values objectForKey:@"files"] objectForKey:@"parent"] enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -219,7 +211,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		}
 		
 		// Add files that are part of the bios set
-		NSDictionary *biosSet = [sm objectForKey:[values objectForKey:@"bios"]];
+		NSDictionary *biosSet = [self->_setManifest objectForKey:[values objectForKey:@"bios"]];
 		if (biosSet) {
 			NSDictionary *biosFiles = [[biosSet objectForKey:@"files"] objectForKey:@"local"];
 			[[[values objectForKey:@"files"] objectForKey:@"bios"] enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -245,7 +237,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 	}];
 	
 	// Initialize hierarchy
-	[sm enumerateKeysAndObjectsUsingBlock:^(NSString *archiveName, NSDictionary *values, BOOL * _Nonnull stop) {
+	[self->_setManifest enumerateKeysAndObjectsUsingBlock:^(NSString *archiveName, NSDictionary *values, BOOL * _Nonnull stop) {
 		if ([self isCancelled]) {
 			*stop = YES;
 			return;
@@ -265,7 +257,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 	}];
 	
 	__autoreleasing NSError *error = nil;
-	NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:rootPath
+	NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self->_rootPath
 																		 error:&error];
 	[files enumerateObjectsUsingBlock:^(NSString *file, NSUInteger idx, BOOL * _Nonnull stop) {
 		if ([self isCancelled]) {
@@ -275,7 +267,7 @@ NSString *const kFXErrorMessage = @"errorMessage";
 		
 		__autoreleasing NSError *blockErr = nil;
 		if ([[file pathExtension] caseInsensitiveCompare:@"zip"] == NSOrderedSame) {
-			NSString *fullPath = [rootPath stringByAppendingPathComponent:file];
+			NSString *fullPath = [self->_rootPath stringByAppendingPathComponent:file];
 			FXZipArchive *fileArchive = [[FXZipArchive alloc] initWithPath:fullPath
 																	 error:&blockErr];
 			if (!blockErr) {
@@ -323,44 +315,6 @@ NSString *const kFXErrorMessage = @"errorMessage";
 			}
 		}];
 	}];
-}
-
-@end
-
-#pragma mark - FXScanner
-
-@implementation FXScanner
-{
-	NSOperationQueue *_opQueue;
-	NSObject *_lock;
-}
-
-- (instancetype) init
-{
-	if (self = [super init]) {
-		self->_opQueue = [[NSOperationQueue alloc] init];
-		self->_lock = [[NSObject alloc] init];
-	}
-	
-	return self;
-}
-
-#pragma mark - Public
-
-- (void) start
-{
-	@synchronized(self->_opQueue) {
-		if ([self->_opQueue operationCount] < 1) {
-			FXScanOperation *op = [[FXScanOperation alloc] initWithScanner:self];
-			[self->_opQueue addOperation:op];
-		}
-	}
-}
-
-- (void) stopAll
-{
-	[self->_opQueue cancelAllOperations];
-	[self->_opQueue waitUntilAllOperationsAreFinished];
 }
 
 @end

@@ -25,8 +25,8 @@
 #import "FXGameController.h"
 #import "FXAppDelegate.h"
 
-#import "FXScanner.h"
-#import "FXImporter.h"
+#import "FXScanOperation.h"
+#import "FXImportOperation.h"
 
 @interface FXLauncherController ()
 
@@ -108,13 +108,13 @@
     }
 	
 	// See if the importer can handle it
-	return [FXImporter canImportPath:path
+	return [FXImportOperation canImportPath:path
 						 setManifest:[app setManifest]];
 }
 
 - (void) filesDidDrop:(NSArray *) paths
 {
-	FXImporter *importer = [[FXImporter alloc] init];
+	FXImportOperation *importer = [[FXImportOperation alloc] init];
 	
 	[importer setSetManifest:[[FXAppDelegate sharedInstance] setManifest]];
 	[importer setSetPath:[[[FXAppDelegate sharedInstance] romRootURL] path]];
@@ -136,7 +136,7 @@
 
 - (void) rescanROMs:(id) sender
 {
-	[[[FXAppDelegate sharedInstance] scanner] start];
+	[[FXAppDelegate sharedInstance] scan];
 }
 
 #pragma mark - Callbacks
@@ -156,6 +156,9 @@
 	NSDate *started = [NSDate date];
 #endif
 	[self resetAuditCache:[[notification userInfo] objectForKey:kFXNotificationCache]];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->setOutlineView reloadData];
+	});
 #ifdef DEBUG
 	NSLog(@"Reset audit cache (%.04fs)", [[NSDate date] timeIntervalSinceDate:started]);
 #endif

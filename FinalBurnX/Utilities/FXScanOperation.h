@@ -22,22 +22,29 @@
  */
 #import <Foundation/Foundation.h>
 
-@protocol FXImporterDelegate <NSObject>
+#define FXSetStatusIncomplete 0
+#define FXSetStatusComplete   1
 
-- (void) importDidComplete;
-- (void) importDidFail:(NSString *) reason;
+#define FXFileStatusMissing 0
+#define FXFileStatusInvalid 1
+#define FXFileStatusValid   2
+
+extern NSString *const kFXSetStatus;
+extern NSString *const kFXSetFiles;
+extern NSString *const kFXFileStatus;
+extern NSString *const kFXFileLocation;
+
+@protocol FXScanDelegate <NSObject>
+
+- (void) scanDidComplete:(NSDictionary *) result;
+- (void) scanDidFail:(NSString *) reason;
 
 @end
 
-@interface FXImporter : NSOperation
+@interface FXScanOperation : NSOperation
 
-@property (nonatomic, weak) id<FXImporterDelegate> delegate;
-
-@property (nonatomic, strong) NSString *setPath;
+@property (nonatomic, strong) NSString *rootPath;
 @property (nonatomic, strong) NSDictionary *setManifest;
-@property (nonatomic, strong) NSArray<NSString *> *importPaths;
-
-+ (BOOL) canImportPath:(NSString *) path
-		   setManifest:(NSDictionary *) setManifest;
+@property (nonatomic, weak) id<FXScanDelegate> delegate;
 
 @end

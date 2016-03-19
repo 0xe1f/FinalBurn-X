@@ -29,8 +29,8 @@
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSView *tbAccView;
-	IBOutlet NSProgressIndicator *tbAccSpinner;
 	IBOutlet FXEmulatorProcessWrapper *wrapper;
+	IBOutlet NSView *messagePane;
 }
 
 - (IBAction) resizeNormalSize:(id) sender;

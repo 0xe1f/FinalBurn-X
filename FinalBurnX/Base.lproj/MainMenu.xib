@@ -12,16 +12,7 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <customObject id="SAD-ad-QUJ" customClass="FXScanner">
-            <connections>
-                <outlet property="delegate" destination="Voe-Tx-rLC" id="amj-xy-PyK"/>
-            </connections>
-        </customObject>
-        <customObject id="Voe-Tx-rLC" userLabel="AppDelegate" customClass="FXAppDelegate">
-            <connections>
-                <outlet property="scanner" destination="SAD-ad-QUJ" id="O4F-yK-Ojm"/>
-            </connections>
-        </customObject>
+        <customObject id="Voe-Tx-rLC" userLabel="AppDelegate" customClass="FXAppDelegate"/>
         <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
             <items>
                 <menuItem title="FinalBurn X" id="1Xt-HY-uBw">

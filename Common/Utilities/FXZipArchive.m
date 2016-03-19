@@ -80,7 +80,7 @@
 			if (error != NULL) {
 				*error = [NSError errorWithDomain:@"org.akop.fbx.Zip"
 											 code:FXErrorLoadingArchive
-										 userInfo:@{ NSLocalizedDescriptionKey : @"Error loading archive" }];
+										 userInfo:@{ NSLocalizedDescriptionKey: @"Error loading archive" }];
 			}
 		}
 	}

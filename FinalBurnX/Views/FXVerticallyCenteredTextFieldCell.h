@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
- ** Copyright (C) 2014-2016 Akop Karapetyan
+ ** CocoaMSX: MSX Emulator for Mac OS X
+ ** http://www.cocoamsx.com
+ ** Copyright (C) 2013 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,31 +20,10 @@
  **
  ******************************************************************************
  */
-#import "FXAuditStatusAsNSImage.h"
+#import <Cocoa/Cocoa.h>
 
-#import "FXScanOperation.h"
-
-@implementation FXAuditStatusAsNSImage
-
-+ (Class) transformedValueClass
+@interface FXVerticallyCenteredTextFieldCell : NSTextFieldCell
 {
-    return [NSImage class];
-}
-
-+ (BOOL) allowsReverseTransformation
-{
-    return NO;
-}
-
-- (id) transformedValue:(id) value
-{
-    switch ([value integerValue]) {
-		case FXSetStatusComplete:
-			return [NSImage imageNamed:@"NSStatusAvailable"];
-		case FXSetStatusIncomplete:
-		default:
-            return [NSImage imageNamed:@"NSStatusNone"];
-    }
 }
 
 @end

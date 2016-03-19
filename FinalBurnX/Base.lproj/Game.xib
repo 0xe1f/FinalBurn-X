@@ -7,8 +7,8 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="FXGameController">
             <connections>
+                <outlet property="messagePane" destination="j08-BM-LMP" id="HOZ-q7-8Lw"/>
                 <outlet property="screen" destination="FwQ-py-ONg" id="nhn-zz-X4W"/>
-                <outlet property="tbAccSpinner" destination="Zw9-xu-NpB" id="l54-GP-6x9"/>
                 <outlet property="tbAccView" destination="l8W-oO-Vzm" id="QHs-Lj-tcL"/>
                 <outlet property="window" destination="tM2-tC-AiI" id="mVc-HX-Hya"/>
                 <outlet property="wrapper" destination="fC0-mF-6zl" id="iZu-5l-DQc"/>
@@ -49,7 +49,23 @@
                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                 </progressIndicator>
             </subviews>
-            <point key="canvasLocation" x="351" y="837"/>
+            <point key="canvasLocation" x="192" y="841"/>
+        </customView>
+        <customView id="j08-BM-LMP">
+            <rect key="frame" x="0.0" y="0.0" width="303" height="164"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="P38-mE-cXu">
+                    <rect key="frame" x="2" y="130" width="303" height="34"/>
+                    <autoresizingMask key="autoresizingMask" heightSizable="YES"/>
+                    <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="'Twas brillig, and the slithy toves did gyre and gimble in the wabe" id="qXz-MV-c39" customClass="FXVerticallyCenteredTextFieldCell">
+                        <font key="font" metaFont="system"/>
+                        <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+            </subviews>
+            <point key="canvasLocation" x="438.5" y="915"/>
         </customView>
     </objects>
 </document>
