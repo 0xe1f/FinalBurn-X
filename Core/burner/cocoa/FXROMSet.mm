@@ -88,19 +88,18 @@
 #ifdef wcslen
 #undef wcslen
 #endif
-    NSString *title = nil;
-    const wchar_t *fullName = pDriver[driverIndex]->szFullNameW;
-    
-    if (fullName != NULL) {
-        title = [[NSString alloc] initWithBytes:fullName
-                                         length:sizeof(wchar_t) * wcslen(fullName)
-                                       encoding:NSUTF8StringEncoding];
-    }
-    
-    if (title == nil) {
-        title = [NSString stringWithCString:pDriver[driverIndex]->szFullNameA
-                                   encoding:NSUTF8StringEncoding];
-    }
+	NSString *title = nil;
+	const wchar_t *fullName = pDriver[driverIndex]->szFullNameW;
+	if (fullName != NULL) {
+		title = [[NSString alloc] initWithBytes:fullName
+										 length:sizeof(wchar_t) * wcslen(fullName)
+									   encoding:NSUTF32LittleEndianStringEncoding];
+	}
+	
+	if (title == nil) {
+		title = [NSString stringWithCString:pDriver[driverIndex]->szFullNameA
+								   encoding:NSASCIIStringEncoding];
+	}
     
     return title;
 }
