@@ -592,15 +592,15 @@
 		FE02306A19595F6800661A17 /* burner_cocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burner_cocoa.h; sourceTree = "<group>"; };
 		FE05E61619D2469D00DA5CDC /* FXInputMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputMap.h; sourceTree = "<group>"; };
 		FE05E61719D2469D00DA5CDC /* FXInputMap.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInputMap.mm; sourceTree = "<group>"; };
-		FE08934419475F9800F79190 /* FinalBurn X.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FinalBurn X.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE08934419475F9800F79190 /* FinalBurnX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinalBurnX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE08934719475F9800F79190 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		FE08934A19475F9800F79190 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		FE08934B19475F9800F79190 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		FE08934C19475F9800F79190 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		FE08934F19475F9800F79190 /* FinalBurn X-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FinalBurn X-Info.plist"; sourceTree = "<group>"; };
+		FE08934F19475F9800F79190 /* FinalBurnX-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FinalBurnX-Info.plist"; sourceTree = "<group>"; };
 		FE08935119475F9800F79190 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		FE08935319475F9800F79190 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		FE08935519475F9800F79190 /* FinalBurn X-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FinalBurn X-Prefix.pch"; sourceTree = "<group>"; };
+		FE08935519475F9800F79190 /* FinalBurnX-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FinalBurnX-Prefix.pch"; sourceTree = "<group>"; };
 		FE08935719475F9800F79190 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = en; path = en.lproj/Credits.rtf; sourceTree = "<group>"; };
 		FE08935919475F9800F79190 /* FXAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FXAppDelegate.h; sourceTree = "<group>"; };
 		FE08935A19475F9800F79190 /* FXAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FXAppDelegate.m; sourceTree = "<group>"; };
@@ -1398,7 +1398,7 @@
 		FE08934519475F9800F79190 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				FE08934419475F9800F79190 /* FinalBurn X.app */,
+				FE08934419475F9800F79190 /* FinalBurnX.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1441,10 +1441,10 @@
 		FE08934E19475F9800F79190 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
-				FE08934F19475F9800F79190 /* FinalBurn X-Info.plist */,
+				FE08934F19475F9800F79190 /* FinalBurnX-Info.plist */,
 				FE08935019475F9800F79190 /* InfoPlist.strings */,
 				FE08935319475F9800F79190 /* main.m */,
-				FE08935519475F9800F79190 /* FinalBurn X-Prefix.pch */,
+				FE08935519475F9800F79190 /* FinalBurnX-Prefix.pch */,
 				FE08935619475F9800F79190 /* Credits.rtf */,
 			);
 			name = "Supporting Files";
@@ -2717,9 +2717,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		FE08934319475F9800F79190 /* FinalBurn X */ = {
+		FE08934319475F9800F79190 /* FinalBurnX */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FE08937519475F9800F79190 /* Build configuration list for PBXNativeTarget "FinalBurn X" */;
+			buildConfigurationList = FE08937519475F9800F79190 /* Build configuration list for PBXNativeTarget "FinalBurnX" */;
 			buildPhases = (
 				FE08934019475F9800F79190 /* Sources */,
 				FE08934119475F9800F79190 /* Frameworks */,
@@ -2729,9 +2729,9 @@
 			);
 			dependencies = (
 			);
-			name = "FinalBurn X";
+			name = FinalBurnX;
 			productName = "FinalBurn X";
-			productReference = FE08934419475F9800F79190 /* FinalBurn X.app */;
+			productReference = FE08934419475F9800F79190 /* FinalBurnX.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -2744,7 +2744,7 @@
 				LastUpgradeCheck = 0720;
 				ORGANIZATIONNAME = "Akop Karapetyan";
 			};
-			buildConfigurationList = FE08933F19475F9800F79190 /* Build configuration list for PBXProject "FinalBurn X" */;
+			buildConfigurationList = FE08933F19475F9800F79190 /* Build configuration list for PBXProject "FinalBurnX" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -2757,7 +2757,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				FE08934319475F9800F79190 /* FinalBurn X */,
+				FE08934319475F9800F79190 /* FinalBurnX */,
 			);
 		};
 /* End PBXProject section */
@@ -3515,12 +3515,12 @@
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurn X-Prefix.pch";
+				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
-				INFOPLIST_FILE = "FinalBurnX/FinalBurn X-Info.plist";
+				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
@@ -3531,7 +3531,7 @@
 					"-DSH2_INLINE=\"static inline\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.akop.fbx.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = "FinalBurn X";
+				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -3546,12 +3546,12 @@
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurn X-Prefix.pch";
+				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
-				INFOPLIST_FILE = "FinalBurnX/FinalBurn X-Info.plist";
+				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
@@ -3562,7 +3562,7 @@
 					"-DSH2_INLINE=\"static inline\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.akop.fbx.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = "FinalBurn X";
+				PRODUCT_NAME = FinalBurnX;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
@@ -3570,7 +3570,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		FE08933F19475F9800F79190 /* Build configuration list for PBXProject "FinalBurn X" */ = {
+		FE08933F19475F9800F79190 /* Build configuration list for PBXProject "FinalBurnX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FE08937319475F9800F79190 /* Debug */,
@@ -3579,7 +3579,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FE08937519475F9800F79190 /* Build configuration list for PBXNativeTarget "FinalBurn X" */ = {
+		FE08937519475F9800F79190 /* Build configuration list for PBXNativeTarget "FinalBurnX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FE08937619475F9800F79190 /* Debug */,
