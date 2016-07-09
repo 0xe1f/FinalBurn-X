@@ -36,6 +36,9 @@
 @end
 
 @implementation FXEmulatorController
+{
+	NSTitlebarAccessoryViewController *_tbAcc;
+}
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
@@ -52,13 +55,19 @@
 
 - (void)awakeFromNib
 {
+	// Initialize title bar controller
+	self->_tbAcc = [[NSTitlebarAccessoryViewController alloc] init];
+	[self->_tbAcc setView:self->spinner];
+	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
+	
     NSString *title = [[self romSet] title];
     NSSize screenSize = [[self romSet] screenSize];
     NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
     
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
-    
+	[[self window] setBackgroundColor:[NSColor blackColor]];
+	
     [[self video] setDelegate:self->screen];
     [[self runLoop] setDelegate:self];
     
@@ -73,20 +82,33 @@
 
 - (void)loadingDidStart
 {
-    [self->spinner startAnimation:self];
-    
-    // Block the window from being closed (until loading completes)
-    NSUInteger windowStyleMask = [[self window] styleMask];
-    [[self window] setStyleMask:(windowStyleMask &~ NSClosableWindowMask)];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->screen setHidden:YES];
+		
+		// Set up title bar spinner
+		[[[self->spinner subviews] firstObject] startAnimation:self];
+		[[self window] addTitlebarAccessoryViewController:self->_tbAcc];
+
+		// Block the window from being closed (until loading completes)
+		NSUInteger windowStyleMask = [[self window] styleMask];
+		[[self window] setStyleMask:(windowStyleMask &~ NSClosableWindowMask)];
+	});
 }
 
 - (void)loadingDidEnd
 {
-    [self->spinner stopAnimation:self];
-    
-    // Make window closable again
-    NSUInteger windowStyleMask = [[self window] styleMask];
-    [[self window] setStyleMask:(windowStyleMask | NSClosableWindowMask)];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->screen setHidden:NO];
+		
+		[[[self->spinner subviews] firstObject] stopAnimation:self];
+		
+		[self->_tbAcc removeFromParentViewController];
+		self->_tbAcc = nil;
+		
+		// Make window closable again
+		NSUInteger windowStyleMask = [[self window] styleMask];
+		[[self window] setStyleMask:(windowStyleMask | NSClosableWindowMask)];
+	});
 }
 
 #pragma mark - NSWindowDelegate

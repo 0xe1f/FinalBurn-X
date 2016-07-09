@@ -79,7 +79,7 @@
     [nsContext makeCurrentContext];
     
     glClear(GL_COLOR_BUFFER_BIT);
-    
+	
     GLfloat coordX = (GLfloat)self->imageWidth / self->textureWidth;
     GLfloat coordY = (GLfloat)self->imageHeight / self->textureHeight;
     

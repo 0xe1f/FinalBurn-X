@@ -35,7 +35,7 @@
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate>
 {
     IBOutlet FXScreenView *screen;
-    IBOutlet NSProgressIndicator *spinner;
+    IBOutlet NSView *spinner;
 }
 
 @property (nonatomic, strong) FXInput *input;
