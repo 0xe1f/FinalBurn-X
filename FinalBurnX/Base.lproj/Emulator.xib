@@ -7,6 +7,7 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="FXEmulatorController">
             <connections>
+                <outlet property="messagePane" destination="pTr-2D-3ww" id="t78-Fv-rH6"/>
                 <outlet property="screen" destination="FwQ-py-ONg" id="nhn-zz-X4W"/>
                 <outlet property="spinner" destination="6bs-OW-MZ9" id="mkc-x7-DJ7"/>
                 <outlet property="window" destination="tM2-tC-AiI" id="mVc-HX-Hya"/>
@@ -43,6 +44,22 @@
                 </progressIndicator>
             </subviews>
             <point key="canvasLocation" x="341.5" y="866"/>
+        </customView>
+        <customView id="pTr-2D-3ww" userLabel="Message Pane">
+            <rect key="frame" x="0.0" y="0.0" width="303" height="164"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="It9-vR-9Rd">
+                    <rect key="frame" x="-4" y="130" width="311" height="34"/>
+                    <autoresizingMask key="autoresizingMask" heightSizable="YES"/>
+                    <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="'Twas brillig, and the slithy toves did gyre and gimble in the wabe" id="cAT-CX-Qqw" customClass="FXVerticallyCenteredTextFieldCell">
+                        <font key="font" metaFont="system"/>
+                        <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+            </subviews>
+            <point key="canvasLocation" x="431.5" y="1039"/>
         </customView>
     </objects>
 </document>

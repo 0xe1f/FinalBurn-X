@@ -32,6 +32,7 @@
 - (void)windowKeyDidChange:(BOOL)isKey;
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate;
+- (void) displayMessage:(NSString *) message;
 
 @end
 
@@ -95,19 +96,24 @@
 	});
 }
 
-- (void)loadingDidEnd
+- (void) loadingDidEnd:(BOOL) success
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->screen setHidden:NO];
-		
+		// Disable spinner
 		[[[self->spinner subviews] firstObject] stopAnimation:self];
-		
 		[self->_tbAcc removeFromParentViewController];
 		self->_tbAcc = nil;
 		
 		// Make window closable again
 		NSUInteger windowStyleMask = [[self window] styleMask];
 		[[self window] setStyleMask:(windowStyleMask | NSClosableWindowMask)];
+		
+		if (success) {
+			[self->screen setHidden:NO];
+		} else {
+			[self displayMessage:NSLocalizedString(@"The emulator shut down unexpectedly. Game may be unsupported or unplayable.",
+												   @"Error message")];
+		}
 	});
 }
 
@@ -146,8 +152,9 @@
         // Screen size is not yet available
     } else {
         NSRect windowFrame = [[self window] frame];
-        NSRect viewRect = [self->screen convertRect:[self->screen bounds]
-                                             toView: nil];
+		NSView *contentView = [[self window] contentView];
+		NSRect viewRect = [contentView convertRect:[contentView bounds]
+											toView:nil];
         NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
         
         CGFloat screenRatio = screenSize.width / screenSize.height;
@@ -246,6 +253,25 @@
 
 #pragma mark - Private methods
 
+- (void) displayMessage:(NSString *) message
+{
+	@synchronized(self->messagePane) {
+		NSTextField *label = [[self->messagePane subviews] firstObject];
+		[label setStringValue:message];
+		
+		if (![self->messagePane superview]) {
+			[self->messagePane setFrame:[self->screen frame]];
+			[self->messagePane setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+			
+			[label setFrame:[self->messagePane bounds]];
+			[label setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+			
+			NSView *contentView = [[self window] contentView];
+			[contentView addSubview:messagePane];
+		}
+	}
+}
+
 - (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize
 {
     NSString *screenSizeString = NSStringFromSize(screenSize);
@@ -264,7 +290,7 @@
 {
     NSRect windowRect = [[self window] frame];
     NSSize windowSize = windowRect.size;
-    NSSize glViewSize = [self->screen frame].size;
+    NSSize glViewSize = [[[self window] contentView] bounds].size;
     
     CGFloat newWidth = newSize.width + (windowSize.width - glViewSize.width);
     CGFloat newHeight = newSize.height + (windowSize.height - glViewSize.height);

@@ -139,8 +139,8 @@ static int cocoaGetNextSound(int draw);
         initializationFailed = YES;
 	}
     
-    if ([delegate respondsToSelector:@selector(loadingDidEnd)]) {
-        [delegate loadingDidEnd];
+	if ([delegate respondsToSelector:@selector(loadingDidEnd:)]) {
+		[delegate loadingDidEnd:!initializationFailed];
     }
     
     // Close any open archives

@@ -1,8 +1,8 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
- ** Copyright (C) 2014-2016 Akop Karapetyan
+ ** CocoaMSX: MSX Emulator for Mac OS X
+ ** http://www.cocoamsx.com
+ ** Copyright (C) 2013 Akop Karapetyan
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License as published by
@@ -20,40 +20,30 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXVerticallyCenteredTextFieldCell.h"
 
-#import "FXROMSet.h"
-#import "FXDriverAudit.h"
+@implementation FXVerticallyCenteredTextFieldCell
 
-@protocol FXRunLoopDelegate<NSObject>
+#pragma mark - NSTextFieldCell
 
-@optional
-- (void) loadingDidStart;
-- (void) loadingDidEnd:(BOOL) success;
-
-@end
-
-@interface FXRunLoop : NSThread
+- (NSRect) titleRectForBounds:(NSRect) frame
 {
-    @private
-    NSMutableDictionary *zipArchiveDictionary;
-    UInt32 lastTick;
-    int fraction;
-    BOOL previouslyDrawn;
-    BOOL previouslyPaused;
-    BOOL soundBufferCleared;
+	// http://stackoverflow.com/a/33788973/132628
+	CGFloat stringHeight = [[self attributedStringValue] size].height;
+	NSRect titleRect = [super titleRectForBounds:frame];
+	
+	CGFloat oldOriginY = frame.origin.y;
+	titleRect.origin.y = oldOriginY + (frame.size.height - stringHeight) / 2.0;
+	titleRect.size.height = titleRect.size.height - (titleRect.origin.y - oldOriginY);
+	
+	return titleRect;
 }
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
-
-@property (nonatomic, readonly) FXROMSet *romSet;
-@property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
-@property (nonatomic, assign, getter = isPaused) BOOL paused;
+- (void) drawInteriorWithFrame:(NSRect) cFrame
+						inView:(NSView *) cView
+{
+	[super drawInteriorWithFrame:[self titleRectForBounds:cFrame]
+						  inView:cView];
+}
 
 @end
-
-enum {
-    FXErrorDriverInitialization = -100,
-    FXErrorDriverUnrecognized   = -101,
-    FXErrorDriverUnplayable     = -102,
-};

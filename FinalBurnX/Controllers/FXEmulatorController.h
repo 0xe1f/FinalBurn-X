@@ -36,6 +36,7 @@
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSView *spinner;
+	IBOutlet NSView *messagePane;
 }
 
 @property (nonatomic, strong) FXInput *input;

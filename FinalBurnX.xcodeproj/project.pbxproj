@@ -577,6 +577,7 @@
 		FED4361A19E63D5800315655 /* FXDIPSwitchSetting.m in Sources */ = {isa = PBXBuildFile; fileRef = FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
+		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1368,6 +1369,8 @@
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
 		FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchGroup.m; sourceTree = "<group>"; };
 		FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchGroup.h; sourceTree = "<group>"; };
+		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
+		FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXVerticallyCenteredTextFieldCell.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1461,6 +1464,8 @@
 				FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */,
 				FE0DC79519509F50004A03A3 /* FXScreenView.mm */,
 				FE0DC79619509F51004A03A3 /* FXScreenView.h */,
+				FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */,
+				FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -3040,6 +3045,7 @@
 				FE505F84194BCDD1003A2BC7 /* m6800_intf.cpp in Sources */,
 				FE505CAE194BC532003A2BC7 /* d_simpl156.cpp in Sources */,
 				FE505CB5194BC532003A2BC7 /* gal_run.cpp in Sources */,
+				FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */,
 				FE505DDD194BC533003A2BC7 /* toa_bcu2.cpp in Sources */,
 				FE505DA3194BC533003A2BC7 /* d_bublbobl.cpp in Sources */,
 				FE505CD5194BC532003A2BC7 /* d_surpratk.cpp in Sources */,
