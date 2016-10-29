@@ -34,10 +34,16 @@
 - (void)updateSpecifics;
 - (void)updateInput;
 - (void)updateDipSwitches;
+- (void) sliderValueChanged:(NSSlider *) sender;
 
 @end
 
 @implementation FXPreferencesController
+{
+	NSMutableArray *inputList;
+	NSMutableArray *dipSwitchList;
+	AKKeyCaptureView *keyCaptureView;
+}
 
 - (id)init
 {
@@ -51,7 +57,10 @@
 
 - (void)awakeFromNib
 {
-    [[NSNotificationCenter defaultCenter] addObserver:self
+	[volumeSlider setAction:@selector(sliderValueChanged:)];
+	[volumeSlider setTarget:self];
+
+	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(emulationChangedNotification:)
                                                  name:FXEmulatorChanged
                                                object:nil];
@@ -214,6 +223,67 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     
     [input resetDipSwitches];
     [self updateDipSwitches];
+}
+
+- (void) showNextTab:(id) sender
+{
+	NSArray<NSToolbarItem *> *items = [toolbar visibleItems];
+	__block int selected = -1;
+	[items enumerateObjectsUsingBlock:^(NSToolbarItem *item, NSUInteger idx, BOOL * _Nonnull stop) {
+		if ([[item itemIdentifier] isEqualToString:[toolbar selectedItemIdentifier]]) {
+			selected = (int) idx;
+			*stop = YES;
+		}
+	}];
+	
+	if (selected >= 0) {
+		if (++selected >= [items count]) {
+			selected = 0;
+		}
+		
+		NSString *nextId = [[items objectAtIndex:selected] itemIdentifier];
+		[toolbar setSelectedItemIdentifier:nextId];
+
+		[[NSUserDefaults standardUserDefaults] setObject:nextId
+												  forKey:@"selectedPreferencesTab"];
+	}
+}
+
+- (void) showPreviousTab:(id) sender
+{
+	NSArray<NSToolbarItem *> *items = [toolbar visibleItems];
+	__block int selected = -1;
+	[items enumerateObjectsUsingBlock:^(NSToolbarItem *item, NSUInteger idx, BOOL * _Nonnull stop) {
+		if ([[item itemIdentifier] isEqualToString:[toolbar selectedItemIdentifier]]) {
+			selected = (int) idx;
+			*stop = YES;
+		}
+	}];
+	
+	if (selected >= 0) {
+		if (--selected < 0) {
+			selected = (int) [items count] - 1;
+		}
+		
+		NSString *nextId = [[items objectAtIndex:selected] itemIdentifier];
+		[toolbar setSelectedItemIdentifier:nextId];
+
+		[[NSUserDefaults standardUserDefaults] setObject:nextId
+												  forKey:@"selectedPreferencesTab"];
+	}
+}
+
+- (void) sliderValueChanged:(NSSlider *) sender
+{
+	double range = [sender maxValue] - [sender minValue];
+	double tickInterval = range / ([sender numberOfTickMarks] - 1);
+	double relativeValue = [sender doubleValue] - [sender minValue];
+	
+	int nearestTick = round(relativeValue / tickInterval);
+	double distance = relativeValue - nearestTick * tickInterval;
+	
+	if (fabs(distance) < 5.0)
+		[sender setDoubleValue:[sender doubleValue] - distance];
 }
 
 #pragma mark - Private methods

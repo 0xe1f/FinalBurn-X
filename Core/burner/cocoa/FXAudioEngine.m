@@ -33,6 +33,8 @@ static OSStatus audioCallback(void *inRefCon,
                               UInt32 inBusNumber, UInt32 inNumberFrames,
                               AudioBufferList *ioData);
 
+#define VOLUME_RANGE (40)
+
 @interface FXAudioEngine ()
 
 - (void)renderSoundToStream:(AudioBufferList *)ioData;
@@ -40,6 +42,16 @@ static OSStatus audioCallback(void *inRefCon,
 @end
 
 @implementation FXAudioEngine
+{
+	BOOL isPaused;
+	BOOL isReady;
+	
+	void *buffer;
+	UInt32 bufferOffset;
+	UInt32 bufferSize;
+	
+	AudioUnit outputAudioUnit;
+}
 
 - (void)dealloc
 {
@@ -48,7 +60,7 @@ static OSStatus audioCallback(void *inRefCon,
         struct AURenderCallbackStruct callback;
         
         result = AudioOutputUnitStop(outputAudioUnit);
-        
+		
         callback.inputProc = 0;
         callback.inputProcRefCon = 0;
         result = AudioUnitSetProperty(outputAudioUnit,
@@ -201,6 +213,23 @@ static OSStatus audioCallback(void *inRefCon,
 }
 
 #pragma mark - Public Methods
+
+// http://kaniini.dereferenced.org/2014/08/31/CoreAudio-sucks.html
+- (void) setVolume:(NSInteger) value
+{
+	float factor;
+	if (value <= 0) {
+		factor = 0;
+	} else {
+		if (value > 100) {
+			value = 100;
+		}
+		factor = powf(10, (float) VOLUME_RANGE * (value - 100) / 100 / 20);
+	}
+
+	AudioUnitSetParameter(outputAudioUnit, kHALOutputParam_Volume,
+						  kAudioUnitScope_Global, 0, factor, 0);
+}
 
 - (void)pause
 {

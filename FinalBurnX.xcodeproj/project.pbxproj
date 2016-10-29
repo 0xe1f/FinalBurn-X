@@ -558,6 +558,8 @@
 		FE9FA4041959E81E00F791EB /* FXLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA4031959E81E00F791EB /* FXLoader.mm */; };
 		FE9FA407195BF00500F791EB /* FXZipArchive.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA406195BF00500F791EB /* FXZipArchive.m */; };
 		FE9FA40D195D349B00F791EB /* FXZipFile.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA40C195D349B00F791EB /* FXZipFile.m */; };
+		FEAD363E1DC42E8800F151CD /* toolbar-sound.png in Resources */ = {isa = PBXBuildFile; fileRef = FEAD363D1DC42E8800F151CD /* toolbar-sound.png */; };
+		FEAD36401DC42EA700F151CD /* toolbar-sound@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FEAD363F1DC42EA700F151CD /* toolbar-sound@2x.png */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
 		FEC252F5194C3ECA0039D85F /* cd_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC252F4194C3ECA0039D85F /* cd_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
 		FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEC25318194C410B0039D85F /* vid_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings -Wno-unused-variable"; }; };
@@ -1340,6 +1342,8 @@
 		FE9FA406195BF00500F791EB /* FXZipArchive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipArchive.m; sourceTree = "<group>"; };
 		FE9FA40B195D349B00F791EB /* FXZipFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXZipFile.h; sourceTree = "<group>"; };
 		FE9FA40C195D349B00F791EB /* FXZipFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXZipFile.m; sourceTree = "<group>"; };
+		FEAD363D1DC42E8800F151CD /* toolbar-sound.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-sound.png"; sourceTree = "<group>"; };
+		FEAD363F1DC42EA700F151CD /* toolbar-sound@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-sound@2x.png"; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
 		FEC252F4194C3ECA0039D85F /* cd_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cd_interface.cpp; sourceTree = "<group>"; };
 		FEC25318194C410B0039D85F /* vid_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vid_interface.cpp; sourceTree = "<group>"; };
@@ -1501,6 +1505,8 @@
 		FE1FB76E19CFD9330070325C /* Icons */ = {
 			isa = PBXGroup;
 			children = (
+				FEAD363D1DC42E8800F151CD /* toolbar-sound.png */,
+				FEAD363F1DC42EA700F151CD /* toolbar-sound@2x.png */,
 				FED4361219E60D0F00315655 /* toolbar-dipswitch.png */,
 				FED4361119E60D0F00315655 /* toolbar-dipswitch@2x.png */,
 				FED4361019E60D0F00315655 /* toolbar-dipswitch@3x.png */,
@@ -2781,12 +2787,14 @@
 				FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */,
 				FE1FB77219CFD9330070325C /* toolbar-joypad@2x.png in Resources */,
 				FED4361619E60D0F00315655 /* toolbar-dipswitch.png in Resources */,
+				FEAD363E1DC42E8800F151CD /* toolbar-sound.png in Resources */,
 				FE1FB76919CFD6770070325C /* Preferences.xib in Resources */,
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
 				FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */,
 				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
 				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */,
+				FEAD36401DC42EA700F151CD /* toolbar-sound@2x.png in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
 				FED4361419E60D0F00315655 /* toolbar-dipswitch@3x.png in Resources */,
 			);

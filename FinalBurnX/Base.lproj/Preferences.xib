@@ -1,7 +1,9 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="6245" systemVersion="13F34" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11542" systemVersion="16B2555" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="6245"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11542"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="FXPreferencesController">
@@ -56,14 +58,14 @@
                                             <rect key="frame" x="20" y="20" width="560" height="460"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="CD7-lr-pVp">
-                                                <rect key="frame" x="1" y="17" width="558" height="442"/>
-                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <rect key="frame" x="1" y="0.0" width="558" height="459"/>
+                                                <autoresizingMask key="autoresizingMask"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="aZz-dw-2vg" id="Sxf-xQ-z9A">
-                                                        <rect key="frame" x="0.0" y="0.0" width="233" height="19"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="558" height="442"/>
                                                         <autoresizingMask key="autoresizingMask"/>
                                                         <size key="intercellSpacing" width="3" height="2"/>
-                                                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                        <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         <tableViewGridLines key="gridStyleMask" vertical="YES"/>
                                                         <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                         <tableColumns>
@@ -99,7 +101,6 @@
                                                         </connections>
                                                     </tableView>
                                                 </subviews>
-                                                <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                             </clipView>
                                             <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="nEo-vy-zes">
                                                 <rect key="frame" x="1" y="119" width="223" height="15"/>
@@ -117,6 +118,22 @@
                                     </subviews>
                                 </view>
                             </tabViewItem>
+                            <tabViewItem label="Audio" identifier="audio" id="eip-fz-AFi" userLabel="Audio">
+                                <view key="view" id="zpc-ne-Sis">
+                                    <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <slider verticalHuggingPriority="750" misplaced="YES" id="m8R-Up-S3B">
+                                            <rect key="frame" x="153" y="361" width="321" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="5" sliderType="linear" id="kVa-Kz-RYu"/>
+                                            <connections>
+                                                <binding destination="fpA-S9-PLa" name="value" keyPath="values.audioVolume" id="O4E-Uc-xvz"/>
+                                            </connections>
+                                        </slider>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
                             <tabViewItem label="DIP Switches" identifier="dipswitches" id="ZYY-J6-eFd">
                                 <view key="view" id="lUH-Gp-HLO">
                                     <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
@@ -126,14 +143,14 @@
                                             <rect key="frame" x="20" y="272" width="560" height="208"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="ffG-tB-SS8">
-                                                <rect key="frame" x="1" y="17" width="238" height="117"/>
-                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <rect key="frame" x="1" y="0.0" width="558" height="207"/>
+                                                <autoresizingMask key="autoresizingMask"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="jLE-eJ-I97" id="8Mb-Qz-JDT">
-                                                        <rect key="frame" x="0.0" y="0.0" width="274" height="19"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="558" height="190"/>
                                                         <autoresizingMask key="autoresizingMask"/>
                                                         <size key="intercellSpacing" width="3" height="2"/>
-                                                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                        <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                                         <tableViewGridLines key="gridStyleMask" vertical="YES"/>
                                                         <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                                         <tableColumns>
@@ -175,7 +192,6 @@
                                                         </connections>
                                                     </tableView>
                                                 </subviews>
-                                                <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                             </clipView>
                                             <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="3Rq-Dp-EjZ">
                                                 <rect key="frame" x="1" y="119" width="223" height="15"/>
@@ -186,7 +202,7 @@
                                                 <autoresizingMask key="autoresizingMask"/>
                                             </scroller>
                                             <tableHeaderView key="headerView" id="jLE-eJ-I97">
-                                                <rect key="frame" x="0.0" y="0.0" width="238" height="17"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="558" height="17"/>
                                                 <autoresizingMask key="autoresizingMask"/>
                                             </tableHeaderView>
                                         </scrollView>
@@ -218,6 +234,11 @@
                             <action selector="tabChanged:" target="-2" id="3Ak-ID-X4r"/>
                         </connections>
                     </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="EC0E7B55-2DEA-4A97-8532-FE93A89136FA" explicitItemIdentifier="audio" label="Audio" paletteLabel="Audio" tag="-1" image="toolbar-sound" selectable="YES" id="g95-tq-3Sc">
+                        <connections>
+                            <action selector="tabChanged:" target="-2" id="ZnS-GE-u38"/>
+                        </connections>
+                    </toolbarItem>
                     <toolbarItem implicitItemIdentifier="B4EBBB97-82CB-4DEA-B2A8-4CACD5F6536E" explicitItemIdentifier="input" label="Input" paletteLabel="Input" tag="-1" image="toolbar-joypad" selectable="YES" id="5sm-os-Oaw">
                         <connections>
                             <action selector="tabChanged:" target="-2" id="8k7-AD-85A"/>
@@ -232,6 +253,7 @@
                 <defaultToolbarItems>
                     <toolbarItem reference="mqF-vo-QXz"/>
                     <toolbarItem reference="5sm-os-Oaw"/>
+                    <toolbarItem reference="g95-tq-3Sc"/>
                     <toolbarItem reference="mXe-Ub-0Xv"/>
                 </defaultToolbarItems>
             </toolbar>
@@ -245,5 +267,6 @@
         <image name="NSPreferencesGeneral" width="32" height="32"/>
         <image name="toolbar-dipswitch" width="25.600000381469727" height="25.600000381469727"/>
         <image name="toolbar-joypad" width="25.600000381469727" height="25.600000381469727"/>
+        <image name="toolbar-sound" width="45.176471710205078" height="45.176471710205078"/>
     </resources>
 </document>

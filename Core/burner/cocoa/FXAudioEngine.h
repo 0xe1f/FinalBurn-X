@@ -32,17 +32,6 @@
 @end
 
 @interface FXAudioEngine : NSObject
-{
-    @private
-    BOOL isPaused;
-    BOOL isReady;
-    
-	void *buffer;
-	UInt32 bufferOffset;
-	UInt32 bufferSize;
-    
-    AudioUnit outputAudioUnit;
-}
 
 @property (nonatomic, weak) id<FXAudioDelegate> delegate;
 
@@ -51,7 +40,8 @@
                  samples:(NSUInteger)samples
           bitsPerChannel:(UInt32)bitsPerChannel;
 
-- (void)pause;
-- (void)resume;
+- (void) pause;
+- (void) resume;
+- (void) setVolume:(NSInteger) volume;
 
 @end

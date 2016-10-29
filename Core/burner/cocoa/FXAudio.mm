@@ -35,12 +35,22 @@ static int cocoaGetNextSoundFiller(int draw);
 @end
 
 @implementation FXAudio
+{
+	int (*audioCallback)(int);
+	int soundFps;
+	int soundLoopLength;
+	short *soundBuffer;
+	int playPosition;
+	int fillSegment;
+	NSInteger _volume;
+}
 
 #pragma mark - Init and dealloc
 
-- (instancetype)init
+- (instancetype) init
 {
     if (self = [super init]) {
+		_volume = 100;
     }
 
     return self;
@@ -49,6 +59,16 @@ static int cocoaGetNextSoundFiller(int draw);
 - (void)dealloc
 {
     [self cleanup];
+}
+
+#pragma mark - Public
+
+- (void) setVolume:(NSInteger) volume
+{
+	NSLog(@"audio/setVolume: %ld", volume);
+
+	_volume = volume;
+	[_audioEngine setVolume:volume];
 }
 
 #pragma mark - Core callbacks
@@ -85,6 +105,7 @@ static int cocoaGetNextSoundFiller(int draw);
                                                           channels:2
                                                            samples:bufferSize
                                                     bitsPerChannel:16]];
+	[_audioEngine setVolume:_volume];
     
     nBurnSoundRate = sampleRate;
     nBurnSoundLen = nAudSegLen;

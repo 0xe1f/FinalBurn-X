@@ -49,7 +49,12 @@
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
         [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
-    }
+
+		[[NSUserDefaults standardUserDefaults] addObserver:self
+												forKeyPath:@"audioVolume"
+												   options:NSKeyValueObservingOptionNew
+												   context:NULL];
+	}
     
     return self;
 }
@@ -61,24 +66,41 @@
 	[self->_tbAcc setView:self->spinner];
 	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
 	
-	NSWindow *window = [self window];
     NSString *title = [[self romSet] title];
     NSSize screenSize = [[self romSet] screenSize];
     NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
     
-    [window setTitle:title];
-    [window setContentSize:preferredSize];
-	[window setBackgroundColor:[NSColor blackColor]];
-	[window setAcceptsMouseMovedEvents:YES];
+    [[self window] setTitle:title];
+    [[self window] setContentSize:preferredSize];
+	[[self window] setBackgroundColor:[NSColor blackColor]];
 	
     [[self video] setDelegate:self->screen];
     [[self runLoop] setDelegate:self];
     
     [[self runLoop] start];
-    
+	[self->_audio setVolume:[[NSUserDefaults standardUserDefaults] integerForKey:@"audioVolume"]];
+	
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
                                                       userInfo:@{ FXROMSetInfo: [self romSet] } ];
+}
+
+- (void)dealloc
+{
+	[[NSUserDefaults standardUserDefaults] removeObserver:self
+											   forKeyPath:@"audioVolume"];
+}
+
+#pragma mark - Notifications
+
+- (void)observeValueForKeyPath:(NSString *) keyPath
+					  ofObject:(id) object
+						change:(NSDictionary *) change
+					   context:(void *) context
+{
+	if ([keyPath isEqualToString:@"audioVolume"]) {
+		[self->_audio setVolume:[[change objectForKey:NSKeyValueChangeNewKey] integerValue]];
+	}
 }
 
 #pragma mark - FXRunLoopDelegate

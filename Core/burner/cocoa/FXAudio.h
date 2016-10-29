@@ -25,17 +25,10 @@
 #import "FXAudioEngine.h"
 
 @interface FXAudio : NSObject<FXAudioDelegate>
-{
-    @private
-    int (*audioCallback)(int);
-    int soundFps;
-    int soundLoopLength;
-    short *soundBuffer;
-    int playPosition;
-    int fillSegment;
-}
 
 @property (nonatomic, strong) FXAudioEngine *audioEngine;
 @property (nonatomic, assign, getter = isPaused) BOOL paused;
+
+- (void) setVolume:(NSInteger) volume;
 
 @end

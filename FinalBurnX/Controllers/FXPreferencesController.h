@@ -32,14 +32,12 @@
     IBOutlet NSTableView *inputTableView;
     IBOutlet NSTableView *dipswitchTableView;
     IBOutlet NSButton *resetDipSwitchesButton;
-    
-    @private
-    NSMutableArray *inputList;
-    NSMutableArray *dipSwitchList;
-    AKKeyCaptureView *keyCaptureView;
+	IBOutlet NSSlider *volumeSlider;
 }
 
-- (IBAction)tabChanged:(id)sender;
-- (IBAction)resetDipSwitchesClicked:(id)sender;
+- (IBAction) tabChanged:(id) sender;
+- (IBAction) resetDipSwitchesClicked:(id) sender;
+- (IBAction) showNextTab:(id) sender;
+- (IBAction) showPreviousTab:(id) sender;
 
 @end
