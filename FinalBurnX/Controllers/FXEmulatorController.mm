@@ -61,13 +61,15 @@
 	[self->_tbAcc setView:self->spinner];
 	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
 	
+	NSWindow *window = [self window];
     NSString *title = [[self romSet] title];
     NSSize screenSize = [[self romSet] screenSize];
     NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
     
-    [[self window] setTitle:title];
-    [[self window] setContentSize:preferredSize];
-	[[self window] setBackgroundColor:[NSColor blackColor]];
+    [window setTitle:title];
+    [window setContentSize:preferredSize];
+	[window setBackgroundColor:[NSColor blackColor]];
+	[window setAcceptsMouseMovedEvents:YES];
 	
     [[self video] setDelegate:self->screen];
     [[self runLoop] setDelegate:self];

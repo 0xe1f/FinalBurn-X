@@ -25,14 +25,32 @@
 
 #import "FXScreenView.h"
 
+#define HIDE_CURSOR_TIMEOUT_SECONDS 1.0f
+
 @interface FXScreenView ()
 
 + (int)powerOfTwoClosestTo:(int)number;
 - (void)resetProjection;
+- (void) handleMouseAction:(NSEvent *) theEvent;
 
 @end
 
 @implementation FXScreenView
+{
+	GLuint screenTextureId;
+	unsigned char *texture;
+	int imageWidth;
+	int imageHeight;
+	BOOL isRotated;
+	int textureWidth;
+	int textureHeight;
+	int textureBytesPerPixel;
+	NSLock *renderLock;
+	NSSize screenSize;
+	CFAbsoluteTime lastMouseAction;
+	NSPoint lastCursorPosition;
+	BOOL isCursorVisible;
+}
 
 #pragma mark - Initialize, Dealloc
 
@@ -47,6 +65,9 @@
 - (void)awakeFromNib
 {
     self->renderLock = [[NSLock alloc] init];
+	self->lastMouseAction = CFAbsoluteTimeGetCurrent();
+	self->lastCursorPosition = NSMakePoint(-1, -1);
+	self->isCursorVisible = YES;
 }
 
 #pragma mark - Cocoa Callbacks
@@ -58,7 +79,7 @@
     NSLog(@"FXScreenView/prepareOpenGL");
     
     [self->renderLock lock];
-    
+	
     // Synchronize buffer swaps with vertical refresh rate
     GLint swapInt = 1;
     [[self openGLContext] setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
@@ -74,7 +95,7 @@
 - (void)drawRect:(NSRect)dirtyRect
 {
     [self->renderLock lock];
-    
+	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
@@ -110,7 +131,7 @@
 - (void)reshape
 {
     [self->renderLock lock];
-    
+	
     [[self openGLContext] makeCurrentContext];
     [[self openGLContext] update];
     
@@ -131,7 +152,7 @@
     NSLog(@"FXScreenView/initTexture");
     
     [self->renderLock lock];
-    
+	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
@@ -170,8 +191,16 @@
 
 - (void)renderFrame:(unsigned char *)bitmap
 {
+	if (NSPointInRect(lastCursorPosition, [self bounds])) {
+		CFAbsoluteTime interval = CFAbsoluteTimeGetCurrent() - lastMouseAction;
+		if (self->isCursorVisible && interval > HIDE_CURSOR_TIMEOUT_SECONDS) {
+			self->isCursorVisible = NO;
+			[NSCursor hide];
+		}
+	}
+	
     [self->renderLock lock];
-    
+	
     NSOpenGLContext *nsContext = [self openGLContext];
     [nsContext makeCurrentContext];
     
@@ -217,7 +246,45 @@
     return self->screenSize;
 }
 
+- (void) mouseMoved:(NSEvent *) theEvent
+{
+	[self handleMouseAction:theEvent];
+}
+
+- (void) mouseDown:(NSEvent *) theEvent
+{
+	[self handleMouseAction:theEvent];
+}
+
+- (void) mouseUp:(NSEvent *) theEvent
+{
+	[self handleMouseAction:theEvent];
+}
+
+- (void) rightMouseDown:(NSEvent *) theEvent
+{
+	[self handleMouseAction:theEvent];
+}
+
+- (void) rightMouseUp:(NSEvent *) theEvent
+{
+	[self handleMouseAction:theEvent];
+}
+
 #pragma mark - Private methods
+
+- (void) handleMouseAction:(NSEvent *) theEvent
+{
+	self->lastMouseAction = CFAbsoluteTimeGetCurrent();
+	self->lastCursorPosition = [self convertPoint:[theEvent locationInWindow]
+								   fromView:nil];
+	
+	if (!self->isCursorVisible) {
+		NSLog(@"show");
+		self->isCursorVisible = YES;
+		[NSCursor unhide];
+	}
+}
 
 - (void)resetProjection
 {

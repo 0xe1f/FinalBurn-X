@@ -25,19 +25,6 @@
 #import "FXVideo.h"
 
 @interface FXScreenView : NSOpenGLView<FXVideoDelegate>
-{
-    @private
-    GLuint screenTextureId;
-    unsigned char *texture;
-    int imageWidth;
-    int imageHeight;
-    BOOL isRotated;
-    int textureWidth;
-    int textureHeight;
-    int textureBytesPerPixel;
-    NSLock *renderLock;
-    NSSize screenSize;
-}
 
 - (NSSize)screenSize;
 

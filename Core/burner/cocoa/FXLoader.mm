@@ -97,7 +97,7 @@
         if (pDriver[driverId]->GetRomName(&cAlias, romIndex, aliasIndex)) {
             break;
         }
-        
+		
         NSString *alias = [NSString stringWithCString:cAlias
                                              encoding:NSUTF8StringEncoding];
         
