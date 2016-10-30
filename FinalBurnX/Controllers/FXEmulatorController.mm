@@ -39,6 +39,8 @@
 @implementation FXEmulatorController
 {
 	NSTitlebarAccessoryViewController *_tbAcc;
+	
+	BOOL _cursorVisible;
 }
 
 - (instancetype)initWithROMSet:(FXROMSet *)romSet
@@ -49,6 +51,7 @@
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
         [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
+		_cursorVisible = YES;
 
 		[[NSUserDefaults standardUserDefaults] addObserver:self
 												forKeyPath:@"audioVolume"
@@ -79,6 +82,8 @@
     
     [[self runLoop] start];
 	[self->_audio setVolume:[[NSUserDefaults standardUserDefaults] integerForKey:@"audioVolume"]];
+	
+	[self->screen setDelegate:self];
 	
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
@@ -166,6 +171,10 @@
     
     [[self video] setDelegate:nil];
     [[self runLoop] cancel];
+	
+	if (!_cursorVisible) {
+		[NSCursor unhide];
+	}
 }
 
 - (NSSize)windowWillResize:(NSWindow *)sender
@@ -350,6 +359,24 @@
     }
     
     return [menuItem isEnabled];
+}
+
+#pragma mark - FXScreenViewDelegate
+
+- (void) mouseDidIdle
+{
+	if (_cursorVisible) {
+		_cursorVisible = NO;
+		[NSCursor hide];
+	}
+}
+
+- (void) mouseStateDidChange
+{
+	if (!_cursorVisible) {
+		_cursorVisible = YES;
+		[NSCursor unhide];
+	}
 }
 
 @end

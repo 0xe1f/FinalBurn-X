@@ -32,7 +32,7 @@
 #define FXEmulatorChanged @"org.akop.fbx.EmulatorChanged"
 #define FXROMSetInfo @"romSet"
 
-@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate>
+@interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate, FXScreenViewDelegate>
 {
     IBOutlet FXScreenView *screen;
     IBOutlet NSView *spinner;

@@ -29,8 +29,8 @@
 
 @interface FXScreenView ()
 
-+ (int)powerOfTwoClosestTo:(int)number;
-- (void)resetProjection;
++ (int) powerOfTwoClosestTo:(int) number;
+- (void) resetProjection;
 - (void) handleMouseAction:(NSEvent *) theEvent;
 
 @end
@@ -47,27 +47,25 @@
 	int textureBytesPerPixel;
 	NSLock *renderLock;
 	NSSize screenSize;
-	CFAbsoluteTime lastMouseAction;
-	NSPoint lastCursorPosition;
-	BOOL isCursorVisible;
+	CFAbsoluteTime _lastMouseAction;
+	NSPoint _lastCursorPosition;
 }
 
 #pragma mark - Initialize, Dealloc
 
-- (void)dealloc
+- (void) dealloc
 {
     glDeleteTextures(1, &screenTextureId);
     free(self->texture);
-    
-    [super dealloc];
 }
 
-- (void)awakeFromNib
+- (void) awakeFromNib
 {
+	[[self window] setAcceptsMouseMovedEvents:YES];
+	
     self->renderLock = [[NSLock alloc] init];
-	self->lastMouseAction = CFAbsoluteTimeGetCurrent();
-	self->lastCursorPosition = NSMakePoint(-1, -1);
-	self->isCursorVisible = YES;
+	_lastMouseAction = CFAbsoluteTimeGetCurrent();
+	_lastCursorPosition = NSMakePoint(-1, -1);
 }
 
 #pragma mark - Cocoa Callbacks
@@ -90,6 +88,11 @@
     glGenTextures(1, &screenTextureId);
     
     [self->renderLock unlock];
+}
+
+- (BOOL) acceptsFirstResponder
+{
+	return YES;
 }
 
 - (void)drawRect:(NSRect)dirtyRect
@@ -191,11 +194,13 @@
 
 - (void)renderFrame:(unsigned char *)bitmap
 {
-	if (NSPointInRect(lastCursorPosition, [self bounds])) {
-		CFAbsoluteTime interval = CFAbsoluteTimeGetCurrent() - lastMouseAction;
-		if (self->isCursorVisible && interval > HIDE_CURSOR_TIMEOUT_SECONDS) {
-			self->isCursorVisible = NO;
-			[NSCursor hide];
+	if (NSPointInRect(_lastCursorPosition, [self bounds])) {
+		CFAbsoluteTime interval = CFAbsoluteTimeGetCurrent() - _lastMouseAction;
+		if (interval > HIDE_CURSOR_TIMEOUT_SECONDS) {
+			if ([_delegate respondsToSelector:@selector(mouseDidIdle)]) {
+				[_delegate mouseDidIdle];
+			}
+			_lastCursorPosition.x = -1;
 		}
 	}
 	
@@ -275,14 +280,12 @@
 
 - (void) handleMouseAction:(NSEvent *) theEvent
 {
-	self->lastMouseAction = CFAbsoluteTimeGetCurrent();
-	self->lastCursorPosition = [self convertPoint:[theEvent locationInWindow]
-								   fromView:nil];
+	_lastMouseAction = CFAbsoluteTimeGetCurrent();
+	_lastCursorPosition = [self convertPoint:[theEvent locationInWindow]
+									fromView:nil];
 	
-	if (!self->isCursorVisible) {
-		NSLog(@"show");
-		self->isCursorVisible = YES;
-		[NSCursor unhide];
+	if ([_delegate respondsToSelector:@selector(mouseStateDidChange)]) {
+		[_delegate mouseStateDidChange];
 	}
 }
 

@@ -24,8 +24,18 @@
 
 #import "FXVideo.h"
 
+@protocol FXScreenViewDelegate<NSObject>
+
+@optional
+- (void) mouseDidIdle;
+- (void) mouseStateDidChange;
+
+@end
+
 @interface FXScreenView : NSOpenGLView<FXVideoDelegate>
 
-- (NSSize)screenSize;
+- (NSSize) screenSize;
+
+@property (nonatomic, weak) id<FXScreenViewDelegate> delegate;
 
 @end
