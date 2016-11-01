@@ -24,7 +24,7 @@
 
 #import "FXAppDelegate.h"
 #import "FXLoader.h"
-#import "FXROMSet.h"
+#import "FXManifest.h"
 #import "FXZipArchive.h"
 
 #include "burner.h"
@@ -36,7 +36,7 @@
 + (BOOL)romInfoOfDriverIndex:(int)driverIndex
                     romIndex:(int)romIndex
                      romInfo:(struct BurnRomInfo *)romInfo;
-- (BOOL)initializeDriver:(NSError **)error;
+- (BOOL) initializeDriver:(NSError **) error;
 - (BOOL)cleanupDriver;
 
 - (UInt32)ticks;
@@ -58,14 +58,27 @@
 static int cocoaGetNextSound(int draw);
 
 @implementation FXRunLoop
+{
+	NSMutableDictionary *zipArchiveDictionary;
+	UInt32 lastTick;
+	int fraction;
+	BOOL previouslyDrawn;
+	BOOL previouslyPaused;
+	BOOL soundBufferCleared;
+
+	FXDriver *_driver;
+	FXROMSet *_romSet;
+}
 
 #pragma mark - init
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet
+- (instancetype) initWithDriver:(FXDriver *) driver
+						 ROMSet:(FXROMSet *) romSet
 {
     if (self = [super init]) {
         self->zipArchiveDictionary = [[NSMutableDictionary alloc] init];
-        self->_romSet = romSet;
+        _driver = driver;
+		_romSet = romSet;
     }
     
     return self;
@@ -92,12 +105,10 @@ static int cocoaGetNextSound(int draw);
 
 #pragma mark - Driver init
 
-- (BOOL)initializeDriver:(NSError **)error
+- (BOOL) initializeDriver:(NSError **) error
 {
-    int driverIndex = [FXROMSet driverIndexOfArchive:[[self romSet] archive]];
-    
-    nBurnDrvActive = driverIndex;
-    nBurnDrvSelect[0] = driverIndex;
+	nBurnDrvActive = [_driver index];
+    nBurnDrvSelect[0] = nBurnDrvActive;
     
     GameInpInit();
 	InputInit();
@@ -165,7 +176,7 @@ static int cocoaGetNextSound(int draw);
 - (void)loadNVRAM
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@"nvram"];
+    NSString *nvramFile = [[_driver name] stringByAppendingPathExtension:@"nvram"];
     NSString *nvramPath = [[app nvramPath] stringByAppendingPathComponent:nvramFile];
     
     const char *cPath = [nvramPath cStringUsingEncoding:NSUTF8StringEncoding];
@@ -175,7 +186,7 @@ static int cocoaGetNextSound(int draw);
 - (void)saveNVRAM
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *nvramFile = [[self->_romSet archive] stringByAppendingPathExtension:@"nvram"];
+    NSString *nvramFile = [[_driver name] stringByAppendingPathExtension:@"nvram"];
     NSString *nvramPath = [[app nvramPath] stringByAppendingPathComponent:nvramFile];
     
     const char *cPath = [nvramPath cStringUsingEncoding:NSUTF8StringEncoding];
@@ -399,7 +410,7 @@ static int cocoaGetNextSound(int draw);
         return 1;
     }
     
-    FXROMAudit *romAudit = [[[self romSet] audit] findROMAuditByNeededCRC:info.nCrc];
+    FXROMAudit *romAudit = [[_romSet audit] findROMAuditByNeededCRC:info.nCrc];
     if (romAudit == nil || [romAudit statusCode] == FXROMAuditMissing) {
         return 1;
     }

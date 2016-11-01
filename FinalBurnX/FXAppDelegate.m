@@ -89,7 +89,7 @@ static FXAppDelegate *sharedInstance = nil;
     
     // One-time initialization of the emulation core
     [FXEmulatorController initializeCore];
-    
+	
     // Initialize the launcher
     self->launcher = [[FXLauncherController alloc] init];
 }

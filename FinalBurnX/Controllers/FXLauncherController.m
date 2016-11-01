@@ -24,7 +24,7 @@
 
 #import "FXEmulatorController.h"
 #import "FXAppDelegate.h"
-
+#import "FXManifest.h"
 #import "FXLoader.h"
 
 @interface FXLauncherController ()
@@ -82,7 +82,7 @@
     [self->importProgressBar startAnimation:self];
     [self->importProgressBar setMaxValue:0];
     [self->importProgressBar setDoubleValue:0];
-    
+	
     // Observe the import queue to be notified when tasks are available/done
     [self->importOpQueue addObserver:self
                           forKeyPath:@"operationCount"

@@ -44,8 +44,6 @@
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
 
-@property (nonatomic, strong) FXROMSet *romSet;
-
 - (IBAction)resizeNormalSize:(id)sender;
 - (IBAction)resizeDoubleSize:(id)sender;
 - (IBAction)pauseGameplay:(id)sender;

@@ -23,6 +23,7 @@
 #import "FXEmulatorController.h"
 
 #import "FXLoader.h"
+#import "FXManifest.h"
 
 #include "burner.h"
 
@@ -39,6 +40,7 @@
 @implementation FXEmulatorController
 {
 	NSTitlebarAccessoryViewController *_tbAcc;
+	FXDriver *_driver;
 	
 	BOOL _cursorVisible;
 }
@@ -46,11 +48,14 @@
 - (instancetype)initWithROMSet:(FXROMSet *)romSet
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
-        [self setRomSet:romSet];
-        [self setInput:[[FXInput alloc] initWithROMSet:romSet]];
+		// FIXME: get rid of romSet
+		_driver = [[FXManifest sharedInstance] driverNamed:[romSet archive]];
+
+		[self setInput:[[FXInput alloc] initWithROMSet:romSet]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithROMSet:romSet]];
+        [self setRunLoop:[[FXRunLoop alloc] initWithDriver:_driver
+													ROMSet:romSet]];
 		_cursorVisible = YES;
 
 		[[NSUserDefaults standardUserDefaults] addObserver:self
@@ -69,10 +74,9 @@
 	[self->_tbAcc setView:self->spinner];
 	[self->_tbAcc setLayoutAttribute:NSLayoutAttributeRight];
 	
-    NSString *title = [[self romSet] title];
-    NSSize screenSize = [[self romSet] screenSize];
-    NSSize preferredSize = [self preferredSizeOfScreenWithSize:screenSize];
-    
+	NSString *title = [_driver title];
+    NSSize preferredSize = [self preferredSizeOfScreenWithSize:[_driver screenSize]];
+	
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
 	[[self window] setBackgroundColor:[NSColor blackColor]];
@@ -87,7 +91,7 @@
 	
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
-                                                      userInfo:@{ FXROMSetInfo: [self romSet] } ];
+                                                      userInfo:nil];
 }
 
 - (void)dealloc
@@ -180,7 +184,7 @@
 - (NSSize)windowWillResize:(NSWindow *)sender
                     toSize:(NSSize)frameSize
 {
-    NSSize screenSize = [[self romSet] screenSize];
+    NSSize screenSize = [_driver screenSize];
     if (screenSize.width == 0 || screenSize.height == 0) {
         // Screen size is not yet available
     } else {
@@ -209,7 +213,7 @@
 
 - (void)windowDidResize:(NSNotification *)notification
 {
-    NSSize screenSize = [[self romSet] screenSize];
+    NSSize screenSize = [_driver screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         NSRect windowFrame = [[self window] frame];
         NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
@@ -230,7 +234,7 @@
 
 - (void)resizeNormalSize:(id)sender
 {
-    NSSize screenSize = [[self romSet] screenSize];
+    NSSize screenSize = [_driver screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         [self resizeFrame:screenSize
                   animate:YES];
@@ -239,7 +243,7 @@
 
 - (void)resizeDoubleSize:(id)sender
 {
-    NSSize screenSize = [[self romSet] screenSize];
+    NSSize screenSize = [_driver screenSize];
     if (screenSize.width != 0 && screenSize.height != 0) {
         NSSize doubleSize = NSMakeSize(screenSize.width * 2, screenSize.height * 2);
         [self resizeFrame:doubleSize

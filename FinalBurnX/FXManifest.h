@@ -22,31 +22,21 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXDriverAudit.h"
+@interface FXDriver : NSObject
 
-@class FXDriver;
-@class FXROMSet;
-
-@protocol FXRunLoopDelegate<NSObject>
-
-@optional
-- (void) loadingDidStart;
-- (void) loadingDidEnd:(BOOL) success;
+@property (nonatomic, readonly) int index;
+@property (nonatomic, readonly) NSString *name;
+@property (nonatomic, readonly) NSString *title;
+@property (nonatomic, readonly) NSSize screenSize;
+@property (nonatomic, readonly) FXDriver *parent;
 
 @end
 
-@interface FXRunLoop : NSThread
+@interface FXManifest : NSObject
 
-- (instancetype) initWithDriver:(FXDriver *) driver
-						 ROMSet:(FXROMSet *) romSet;
++ (FXManifest *) sharedInstance;
+- (FXDriver *) driverNamed:(NSString *) name;
 
-@property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
-@property (nonatomic, assign, getter = isPaused) BOOL paused;
+@property (nonatomic, readonly) NSArray<FXDriver *> *drivers;
 
 @end
-
-enum {
-    FXErrorDriverInitialization = -100,
-    FXErrorDriverUnrecognized   = -101,
-    FXErrorDriverUnplayable     = -102,
-};

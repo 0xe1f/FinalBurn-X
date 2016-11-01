@@ -1085,6 +1085,7 @@
 		FEAAC7381DC70F35008ED3AD /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
 		FEAAC73B1DC70FC2008ED3AD /* Stubs.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEAAC73A1DC70FC2008ED3AD /* Stubs.mm */; };
 		FEAAC73E1DC71094008ED3AD /* FXManifestBuilder.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEAAC73D1DC71094008ED3AD /* FXManifestBuilder.mm */; };
+		FEAAC7441DC7BACD008ED3AD /* FXManifest.m in Sources */ = {isa = PBXBuildFile; fileRef = FEAAC7421DC7BACD008ED3AD /* FXManifest.m */; };
 		FEAD363E1DC42E8800F151CD /* toolbar-sound.png in Resources */ = {isa = PBXBuildFile; fileRef = FEAD363D1DC42E8800F151CD /* toolbar-sound.png */; };
 		FEAD36401DC42EA700F151CD /* toolbar-sound@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FEAD363F1DC42EA700F151CD /* toolbar-sound@2x.png */; };
 		FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = FEC1003C1952A79700B2F8C3 /* MainMenu.xib */; };
@@ -1896,6 +1897,8 @@
 		FEAAC73A1DC70FC2008ED3AD /* Stubs.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Stubs.mm; sourceTree = "<group>"; };
 		FEAAC73C1DC71094008ED3AD /* FXManifestBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifestBuilder.h; sourceTree = "<group>"; };
 		FEAAC73D1DC71094008ED3AD /* FXManifestBuilder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXManifestBuilder.mm; sourceTree = "<group>"; };
+		FEAAC7421DC7BACD008ED3AD /* FXManifest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXManifest.m; sourceTree = "<group>"; };
+		FEAAC7431DC7BACD008ED3AD /* FXManifest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXManifest.h; sourceTree = "<group>"; };
 		FEAD363D1DC42E8800F151CD /* toolbar-sound.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-sound.png"; sourceTree = "<group>"; };
 		FEAD363F1DC42EA700F151CD /* toolbar-sound@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-sound@2x.png"; sourceTree = "<group>"; };
 		FEC1003D1952A79700B2F8C3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = MainMenu.xib; sourceTree = "<group>"; };
@@ -2002,6 +2005,8 @@
 				FE0DC79419509EEB004A03A3 /* Views */,
 				FE08935919475F9800F79190 /* FXAppDelegate.h */,
 				FE08935A19475F9800F79190 /* FXAppDelegate.m */,
+				FEAAC7431DC7BACD008ED3AD /* FXManifest.h */,
+				FEAAC7421DC7BACD008ED3AD /* FXManifest.m */,
 				FE08935F19475F9800F79190 /* Images.xcassets */,
 				FE08934E19475F9800F79190 /* Supporting Files */,
 			);
@@ -3478,6 +3483,7 @@
 				FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */,
 				FE505D02194BC532003A2BC7 /* d_blktiger.cpp in Sources */,
 				FE505DFC194BC533003A2BC7 /* k054539.cpp in Sources */,
+				FEAAC7441DC7BACD008ED3AD /* FXManifest.m in Sources */,
 				FE0DC79C1950AC33004A03A3 /* FXEmulatorController.mm in Sources */,
 				FE505F67194BCDD1003A2BC7 /* arm.cpp in Sources */,
 				FE505DF1194BC533003A2BC7 /* dac.cpp in Sources */,
