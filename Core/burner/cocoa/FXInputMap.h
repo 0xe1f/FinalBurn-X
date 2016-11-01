@@ -22,17 +22,11 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXROMSet.h"
+@class FXDriver;
 
 @interface FXInputMap : NSObject<NSCoding>
-{
-    @private
-    NSMutableArray *inputs;
-    NSUInteger hardware;
-    NSString *archive;
-}
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
+- (instancetype) initWithDriver:(FXDriver *) driver;
 
 @property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
 

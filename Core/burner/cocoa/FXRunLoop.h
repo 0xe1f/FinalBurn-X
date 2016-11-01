@@ -25,7 +25,6 @@
 #import "FXDriverAudit.h"
 
 @class FXDriver;
-@class FXROMSet;
 
 @protocol FXRunLoopDelegate<NSObject>
 
@@ -37,8 +36,7 @@
 
 @interface FXRunLoop : NSThread
 
-- (instancetype) initWithDriver:(FXDriver *) driver
-						 ROMSet:(FXROMSet *) romSet;
+- (instancetype) initWithDriver:(FXDriver *) driver;
 
 @property (nonatomic, weak) id<FXRunLoopDelegate> delegate;
 @property (nonatomic, assign, getter = isPaused) BOOL paused;

@@ -67,18 +67,15 @@ static int cocoaGetNextSound(int draw);
 	BOOL soundBufferCleared;
 
 	FXDriver *_driver;
-	FXROMSet *_romSet;
 }
 
 #pragma mark - init
 
 - (instancetype) initWithDriver:(FXDriver *) driver
-						 ROMSet:(FXROMSet *) romSet
 {
     if (self = [super init]) {
         self->zipArchiveDictionary = [[NSMutableDictionary alloc] init];
         _driver = driver;
-		_romSet = romSet;
     }
     
     return self;

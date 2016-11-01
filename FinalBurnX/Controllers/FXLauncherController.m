@@ -25,7 +25,6 @@
 #import "FXEmulatorController.h"
 #import "FXAppDelegate.h"
 #import "FXManifest.h"
-#import "FXLoader.h"
 
 @interface FXLauncherController ()
 

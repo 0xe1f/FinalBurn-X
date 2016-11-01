@@ -176,7 +176,7 @@
 		
 		if (bii.nType == BIT_DIGITAL) {
 			[inputs setObject:@{ @"code": @(i + 1),
-								 @"desc": [NSString stringWithCString:bii.szName
+								 @"title": [NSString stringWithCString:bii.szName
 															encoding:NSASCIIStringEncoding] }
 					   forKey:[NSString stringWithCString:bii.szInfo
 												 encoding:NSASCIIStringEncoding]];

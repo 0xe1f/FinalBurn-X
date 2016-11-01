@@ -22,13 +22,28 @@
  */
 #import <Foundation/Foundation.h>
 
+@class FXDriverAudit; // FIXME!
+
+@interface FXButton : NSObject
+
+@property (nonatomic, assign) int code;
+@property (nonatomic, readonly) NSString *name;
+@property (nonatomic, readonly) NSString *title;
+
+@end
+
 @interface FXDriver : NSObject
 
 @property (nonatomic, readonly) int index;
 @property (nonatomic, readonly) NSString *name;
 @property (nonatomic, readonly) NSString *title;
+@property (nonatomic, readonly) NSString *system;
 @property (nonatomic, readonly) NSSize screenSize;
 @property (nonatomic, readonly) FXDriver *parent;
+@property (nonatomic, readonly) NSArray<FXButton *> *buttons;
+
+// FIXME
+@property (nonatomic, strong) FXDriverAudit *audit;
 
 @end
 

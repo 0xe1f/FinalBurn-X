@@ -45,17 +45,14 @@
 	BOOL _cursorVisible;
 }
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet
+- (instancetype) initWithDriver:(FXDriver *) driver
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
-		// FIXME: get rid of romSet
-		_driver = [[FXManifest sharedInstance] driverNamed:[romSet archive]];
-
-		[self setInput:[[FXInput alloc] initWithROMSet:romSet]];
+		_driver = driver;
+		[self setInput:[[FXInput alloc] initWithDriver:driver]];
         [self setVideo:[[FXVideo alloc] init]];
         [self setAudio:[[FXAudio alloc] init]];
-        [self setRunLoop:[[FXRunLoop alloc] initWithDriver:_driver
-													ROMSet:romSet]];
+		[self setRunLoop:[[FXRunLoop alloc] initWithDriver:_driver]];
 		_cursorVisible = YES;
 
 		[[NSUserDefaults standardUserDefaults] addObserver:self

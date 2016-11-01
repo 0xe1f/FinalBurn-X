@@ -25,8 +25,7 @@
 #import "AKKeyEventData.h"
 #import "FXInput.h"
 #import "FXInputInfo.h"
-
-#include "burner.h"
+#import "FXManifest.h"
 
 @interface FXInputMapItem : NSObject<NSCoding>
 
@@ -68,18 +67,23 @@
 @end
 
 @implementation FXInputMap
+{
+	NSMutableArray *_inputs;
+	NSString *_system;
+	NSString *_name;
+}
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet
+- (instancetype) initWithDriver:(FXDriver *) driver
 {
     if ((self = [super init]) != nil) {
-        self->hardware = [romSet hardware];
-        self->archive = [[romSet archive] copy];
-        self->inputs = [NSMutableArray array];
-        
-        NSError *error = nil;
-        NSArray *inputInfoArray = [FXInput inputsForDriver:[romSet archive]
+        _system = [driver system];
+        _name = [driver name];
+        _inputs = [NSMutableArray array];
+
+		NSError *error = nil;
+        NSArray *inputInfoArray = [FXInput inputsForDriver:_name
                                                      error:&error];
-        
+
         if (error == nil) {
             [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
                 FXInputMapItem *item = [[FXInputMapItem alloc] init];
@@ -87,7 +91,7 @@
                 [item setDriverCode:[ii code]];
                 [item setKeyCode:AKKeyInvalid];
                 
-                [self->inputs addObject:item];
+                [_inputs addObject:item];
             }];
         }
     }
@@ -98,7 +102,7 @@
 - (NSInteger)fireButtonCount
 {
     __block NSInteger count = 0;
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] hasPrefix:@"p1 fire "]) {
             count++;
         }
@@ -107,18 +111,12 @@
     return count;
 }
 
-- (BOOL)usesStreetFighterLayout
+- (BOOL) usesStreetFighterLayout
 {
-    if ((self->hardware != HARDWARE_CAPCOM_CPS1) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS2) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS3) &&
-        (self->hardware != HARDWARE_CAPCOM_CPS3_NO_CD)) {
-        return NO;
-    }
-    
+	if (![_system hasPrefix:@"CPS"]) {
+		return NO;
+	}
+	
     return [self fireButtonCount] >= 6;
 }
 
@@ -126,7 +124,7 @@
 {
     NSLog(@"Restoring Generic defaults");
     
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] isEqualToString:@"p1 coin"]) {
             [item setKeyCode:AKKeyCode5];
         } else if ([[item driverCode] isEqualToString:@"p1 start"]) {
@@ -157,7 +155,7 @@
 {
     NSLog(@"Restoring SF defaults");
     
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] isEqualToString:@"p1 coin"]) {
             [item setKeyCode:AKKeyCode5];
         } else if ([[item driverCode] isEqualToString:@"p1 start"]) {
@@ -202,7 +200,7 @@
 - (NSArray *)inputCodes
 {
     NSMutableArray *inputCodes = [NSMutableArray array];
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         [inputCodes addObject:@([item inputCode])];
     }];
     
@@ -213,7 +211,7 @@
 {
     // FIXME: map
     __block NSInteger keyCode = AKKeyInvalid;
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] isEqualToString:driverCode]) {
             keyCode = [item keyCode];
             *stop = YES;
@@ -227,7 +225,7 @@
 {
     // FIXME: map
     __block int inputCode = 0;
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([item keyCode] == keyCode) {
             inputCode = [item inputCode];
             *stop = YES;
@@ -241,7 +239,7 @@
 {
     // FIXME: map
     __block NSInteger keyCode = AKKeyInvalid;
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([item inputCode] == inputCode) {
             keyCode = [item keyCode];
             *stop = YES;
@@ -255,7 +253,7 @@
          toDriverCode:(NSString *)driverCode
 {
     // FIXME: map
-    [self->inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
+    [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
         if ([[item driverCode] isEqualToString:driverCode]) {
             [item setKeyCode:keyCode];
             *stop = YES;
@@ -275,9 +273,9 @@
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     if ((self = [super init]) != nil) {
-        self->inputs = [coder decodeObjectForKey:@"inputs"];
-        self->archive = [coder decodeObjectForKey:@"archive"];
-        self->hardware = (NSUInteger)[coder decodeIntegerForKey:@"hardware"];
+        _inputs = [coder decodeObjectForKey:@"inputs"];
+        _name = [coder decodeObjectForKey:@"archive"];
+        _system = [coder decodeObjectForKey:@"system"];
     }
     
     return self;
@@ -285,9 +283,9 @@
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-    [coder encodeObject:self->inputs forKey:@"inputs"];
-    [coder encodeObject:self->archive forKey:@"archive"];
-    [coder encodeInteger:self->hardware forKey:@"hardware"];
+    [coder encodeObject:_inputs forKey:@"inputs"];
+    [coder encodeObject:_name forKey:@"archive"];
+    [coder encodeObject:_system forKey:@"system"];
 }
 
 @end

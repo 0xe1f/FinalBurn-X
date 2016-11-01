@@ -27,7 +27,6 @@
 #import "FXInput.h"
 #import "FXAudio.h"
 #import "FXRunLoop.h"
-#import "FXROMSet.h"
 
 #define FXEmulatorChanged @"org.akop.fbx.EmulatorChanged"
 #define FXROMSetInfo @"romSet"
@@ -51,7 +50,7 @@
 - (IBAction)resetEmulation:(id)sender;
 - (IBAction)toggleTestMode:(id)sender;
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet;
+- (instancetype) initWithDriver:(FXDriver *) driver;
 
 - (void)saveSettings;
 - (void)restoreSettings;

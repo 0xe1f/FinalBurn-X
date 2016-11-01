@@ -25,6 +25,7 @@
 #import "FXAppDelegate.h"
 
 #import "FXInputInfo.h"
+#import "FXManifest.h"
 
 #include "burner.h"
 #include "burnint.h"
@@ -47,13 +48,16 @@
 @end
 
 @implementation FXInput
+{
+	FXDriver *_driver;
+}
 
 #pragma mark - Init, dealloc
 
-- (instancetype)initWithROMSet:(FXROMSet *)romSet
+- (instancetype) initWithDriver:(FXDriver *) driver
 {
     if ((self = [super init]) != nil) {
-        [self setRomSet:romSet];
+		_driver = driver;
     }
     
     return self;
@@ -177,7 +181,7 @@
     self->_inputMap = nil;
     
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *file = [[self->_romSet archive] stringByAppendingPathExtension:@"inp"];
+    NSString *file = [[_driver name] stringByAppendingPathExtension:@"inp"];
     NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
     
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -188,8 +192,7 @@
     }
     
     if (self->_inputMap == nil) {
-        self->_inputMap = [[FXInputMap alloc] initWithROMSet:self->_romSet];
-        
+        self->_inputMap = [[FXInputMap alloc] initWithDriver:_driver];
         [self->_inputMap restoreDefaults];
         [self->_inputMap markClean];
     }
@@ -204,7 +207,7 @@
 {
     if ([self->_inputMap isDirty]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        NSString *file = [[self->_romSet archive] stringByAppendingPathExtension:@"inp"];
+        NSString *file = [[_driver name] stringByAppendingPathExtension:@"inp"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
         
         if (![NSKeyedArchiver archiveRootObject:self->_inputMap
@@ -223,17 +226,6 @@
 + (NSArray *)inputsForDriver:(NSString *)archive
                        error:(NSError **)error
 {
-    int driverId = [FXROMSet driverIndexOfArchive:archive];
-    if (driverId == -1) {
-        if (error != nil) {
-            *error = [NSError errorWithDomain:@"org.akop.fbx.Emulation"
-                                         code:0
-                                     userInfo:@{ NSLocalizedDescriptionKey : NSLocalizedString(@"ROM set not recognized", @"") }];
-        }
-        
-        return nil;
-    }
-    
     NSMutableArray *inputs = [NSMutableArray array];
     
     struct BurnInputInfo bii;
@@ -324,7 +316,7 @@
 
 - (NSArray *)inputs
 {
-    return [FXInput inputsForDriver:[[self romSet] archive]
+    return [FXInput inputsForDriver:[_driver name]
                               error:nil];
 }
 

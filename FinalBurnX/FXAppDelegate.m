@@ -22,7 +22,7 @@
  */
 #import "FXAppDelegate.h"
 
-#import "FXROMSet.h"
+#import "FXManifest.h"
 
 @interface FXAppDelegate ()
 
@@ -31,6 +31,13 @@
 @end
 
 @implementation FXAppDelegate
+{
+	FXEmulatorController *emulator;
+	FXLauncherController *launcher;
+	FXPreferencesController *prefs;
+	NSString *appSupportPath;
+	NSString *romPath;
+}
 
 static FXAppDelegate *sharedInstance = nil;
 
@@ -140,12 +147,16 @@ static FXAppDelegate *sharedInstance = nil;
     return self->prefs;
 }
 
-- (void)launch:(FXROMSet *)romSet
+- (void)launch:(NSString *) name
 {
-    [self shutDown];
-    
+	FXDriver *driver = [[FXManifest sharedInstance] driverNamed:name];
+	if (!driver) {
+		return;
+	}
+
+	[self shutDown];
     @synchronized(self) {
-        self->emulator = [[FXEmulatorController alloc] initWithROMSet:romSet];
+		self->emulator = [[FXEmulatorController alloc] initWithDriver:driver];
         [self->emulator restoreSettings];
         
         [self->emulator showWindow:self];

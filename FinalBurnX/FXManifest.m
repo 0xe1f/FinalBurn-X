@@ -22,6 +22,24 @@
  */
 #import "FXManifest.h"
 
+#pragma mark - FXButton
+
+@implementation FXButton
+
+- (instancetype) initWithName:(NSString *) name
+				   dictionary:(NSDictionary *) d
+{
+	if (self = [super init]) {
+		_name = name;
+		_title = [d objectForKey:@"title"];
+		_code = [[d objectForKey:@"code"] intValue];
+	}
+	
+	return self;
+}
+
+@end
+
 #pragma mark - FXDriver
 
 @interface FXDriver ()
@@ -39,8 +57,16 @@
 		_name = name;
 		_index = [[d objectForKey:@"driver"] intValue];
 		_title = [d objectForKey:@"title"];
+		_system = [d objectForKey:@"system"];
 		_screenSize = NSMakeSize([[d objectForKey:@"width"] floatValue],
 								 [[d objectForKey:@"height"] floatValue]);
+
+		NSMutableArray<FXButton *> *buttons = [NSMutableArray array];
+		_buttons = buttons;
+		[[d objectForKey:@"input"] enumerateKeysAndObjectsUsingBlock:^(NSString *iname, NSDictionary *idict, BOOL *stop) {
+			[buttons addObject:[[FXButton alloc] initWithName:iname
+												   dictionary:idict]];
+		}];
 	}
 
 	return self;
