@@ -45,6 +45,7 @@
 @interface FXDriver ()
 
 - (void) setParent:(FXDriver *) parent;
+- (void) addChildren:(NSArray<FXDriver *> *) children;
 
 @end
 
@@ -58,6 +59,7 @@
 		_index = [[d objectForKey:@"driver"] intValue];
 		_title = [d objectForKey:@"title"];
 		_system = [d objectForKey:@"system"];
+		_children = [NSMutableArray array];
 		_screenSize = NSMakeSize([[d objectForKey:@"width"] floatValue],
 								 [[d objectForKey:@"height"] floatValue]);
 
@@ -75,6 +77,11 @@
 - (void) setParent:(FXDriver *) parent
 {
 	_parent = parent;
+}
+
+- (void) addChildren:(NSArray<FXDriver *> *) children
+{
+	[(NSMutableArray *) _children addObjectsFromArray:children];
 }
 
 - (NSString *) description
@@ -156,8 +163,10 @@
 				[childMap setObject:children
 							 forKey:parentName];
 			}
-			
+
 			[children addObject:driver];
+		} else {
+			[(NSMutableArray *) _drivers addObject:driver];
 		}
 
 		[_driverMap setObject:driver
@@ -167,6 +176,7 @@
 	// Initialize parent references
 	[childMap enumerateKeysAndObjectsUsingBlock:^(NSString *parent, NSArray *children, BOOL *stop) {
 		FXDriver *pd = [_driverMap objectForKey:parent];
+		[pd addChildren:children];
 		[children enumerateObjectsUsingBlock:^(FXDriver *cd, NSUInteger idx, BOOL *stop) {
 			[cd setParent:pd];
 		}];

@@ -40,6 +40,7 @@
 @property (nonatomic, readonly) NSString *system;
 @property (nonatomic, readonly) NSSize screenSize;
 @property (nonatomic, readonly) FXDriver *parent;
+@property (nonatomic, readonly) NSArray<FXDriver *> *children;
 @property (nonatomic, readonly) NSArray<FXButton *> *buttons;
 
 // FIXME

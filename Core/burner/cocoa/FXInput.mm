@@ -95,8 +95,7 @@
         
         return isPressed;
     }
-    
-    
+	
     NSInteger keyCode = [self->_inputMap keyCodeForInputCode:inputCode];
     if (keyCode == AKKeyInvalid) {
         return NO;
@@ -105,7 +104,7 @@
     return self->keyStates[keyCode];
 }
 
-- (void)initializeInput
+- (void) initializeInput
 {
     NSArray *inputCodes = [self->_inputMap inputCodes];
     [inputCodes enumerateObjectsUsingBlock:^(NSNumber *inputCode, NSUInteger idx, BOOL *stop) {
@@ -222,38 +221,6 @@
     memset(self->keyStates, 0, sizeof(self->keyStates));
 }
 
-
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error
-{
-    NSMutableArray *inputs = [NSMutableArray array];
-    
-    struct BurnInputInfo bii;
-    for (int i = 0; i < 0x1000; i++) {
-        if (pDriver[driverId]->GetInputInfo(&bii, i)) {
-            break;
-        }
-        
-        if (bii.nType == BIT_DIGITAL) {
-            FXInputInfo *inputInfo = [[FXInputInfo alloc] initWithBurnInputInfo:&bii];
-            
-            int inputCode;
-            if ([[inputInfo code] isEqualToString:@"reset"]) {
-                inputCode = FXInputReset;
-            } else if ([[inputInfo code] isEqualToString:@"diag"]) {
-                inputCode = FXInputDiagnostic;
-            } else {
-                inputCode = i + 1;
-            }
-            
-            [inputInfo setInputCode:inputCode];
-            [inputs addObject:inputInfo];
-        }
-    }
-    
-    return inputs;
-}
-
 - (int)dipSwitchOffset
 {
     int offset = 0;
@@ -312,12 +279,6 @@
             }
         }
     }
-}
-
-- (NSArray *)inputs
-{
-    return [FXInput inputsForDriver:[_driver name]
-                              error:nil];
 }
 
 - (NSArray *)dipSwitches

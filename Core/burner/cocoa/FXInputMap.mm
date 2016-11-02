@@ -66,9 +66,20 @@
 
 @end
 
+static const NSComparator miComparator = ^NSComparisonResult(FXInputMapItem *obj1, FXInputMapItem *obj2)
+{
+	if ([obj1 inputCode] > [obj2 inputCode]) {
+		return (NSComparisonResult) NSOrderedDescending;
+	} else if ([obj1 inputCode] < [obj2 inputCode]) {
+		return (NSComparisonResult) NSOrderedAscending;
+	}
+	
+	return (NSComparisonResult) NSOrderedSame;
+};
+
 @implementation FXInputMap
 {
-	NSMutableArray *_inputs;
+	NSMutableArray<FXInputMapItem *> *_inputs;
 	NSString *_system;
 	NSString *_name;
 }
@@ -80,20 +91,20 @@
         _name = [driver name];
         _inputs = [NSMutableArray array];
 
-		NSError *error = nil;
-        NSArray *inputInfoArray = [FXInput inputsForDriver:_name
-                                                     error:&error];
-
-        if (error == nil) {
-            [inputInfoArray enumerateObjectsUsingBlock:^(FXInputInfo *ii, NSUInteger idx, BOOL *stop) {
-                FXInputMapItem *item = [[FXInputMapItem alloc] init];
-                [item setInputCode:[ii inputCode]];
-                [item setDriverCode:[ii code]];
-                [item setKeyCode:AKKeyInvalid];
-                
-                [_inputs addObject:item];
-            }];
-        }
+		[[driver buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
+			FXInputMapItem *item = [[FXInputMapItem alloc] init];
+			[item setInputCode:[b code]];
+			[item setDriverCode:[b name]];
+			[item setKeyCode:AKKeyInvalid];
+			
+			// Perform a binary insert
+			NSUInteger newIndex = [_inputs indexOfObject:item
+										   inSortedRange:(NSRange){0, [_inputs count]}
+												 options:NSBinarySearchingInsertionIndex
+										 usingComparator:miComparator];
+			[_inputs insertObject:item
+						  atIndex:newIndex];
+		}];
     }
     
     return self;
@@ -240,7 +251,7 @@
     // FIXME: map
     __block NSInteger keyCode = AKKeyInvalid;
     [_inputs enumerateObjectsUsingBlock:^(FXInputMapItem *item, NSUInteger idx, BOOL *stop) {
-        if ([item inputCode] == inputCode) {
+		if ([item inputCode] == inputCode) {
             keyCode = [item keyCode];
             *stop = YES;
         }

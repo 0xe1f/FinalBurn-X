@@ -24,6 +24,7 @@
 
 #import "FXEmulatorController.h"
 #import "FXAppDelegate.h"
+#import "FXLoader.h"
 #import "FXManifest.h"
 
 @interface FXLauncherController ()
@@ -131,8 +132,8 @@
     
     // Make sure it's one of the supported ROM sets
     __block BOOL supported = NO;
-    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-        if ([[romSet archive] caseInsensitiveCompare:archive] == NSOrderedSame) {
+    [_drivers enumerateObjectsUsingBlock:^(FXDriver *driver, NSUInteger idx, BOOL *stop) {
+        if ([[driver name] caseInsensitiveCompare:archive] == NSOrderedSame) {
             supported = YES;
             *stop = YES;
         }
@@ -189,10 +190,10 @@
 
 - (void)launchGame:(id)sender
 {
-    FXROMSet *romSet = [[self->driversTreeController selectedObjects] lastObject];
-    if ([[romSet audit] isPlayable]) {
+    FXDriver *driver = [[self->driversTreeController selectedObjects] lastObject];
+    if ([[driver audit] isPlayable]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        [app launch:romSet];
+        [app launch:[driver name]];
     }
 }
 
@@ -285,19 +286,19 @@
         FXLoader *loader = [[FXLoader alloc] init];
         
         // Determine the increment amount (not including subsets)
-        double incrementAmount = 1.0 / [[self drivers] count];
+        double incrementAmount = 1.0 / [_drivers count];
         
         // Begin the audit
-        [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
+        [_drivers enumerateObjectsUsingBlock:^(FXDriver *driver, NSUInteger idx, BOOL *stop) {
             NSError *parentError = nil;
-            FXDriverAudit *parentDriverAudit = [loader auditSet:romSet
-                                                          error:&parentError];
-            
+            FXDriverAudit *parentDriverAudit = [loader auditDriver:driver
+															 error:&parentError];
+			
             if (parentError == nil) {
-                [audits setObject:parentDriverAudit forKey:[romSet archive]];
+                [audits setObject:parentDriverAudit forKey:[driver name]];
             } else {
                 NSLog(@"Error scanning archive %@: %@",
-                      [romSet archive], [parentError description]);
+                      [driver name], [parentError description]);
             }
             
             if ([weakOp isCancelled]) {
@@ -310,7 +311,7 @@
                 [self->importProgressBar incrementBy:incrementAmount];
             }];
             
-            [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
+            [[driver children] enumerateObjectsUsingBlock:^(FXDriver *sd, NSUInteger idx, BOOL *stop) {
                 if ([weakOp isCancelled]) {
                     *stop = YES;
                     return;
@@ -318,14 +319,15 @@
                 
                 // Go through the children as well
                 NSError *childError = NULL;
-                FXDriverAudit *childDriverAudit = [loader auditSet:subset
-                                                             error:&childError];
+				FXDriverAudit *childDriverAudit = [loader auditDriver:sd
+																error:&childError];
                 
                 if (childError == nil) {
-                    [audits setObject:childDriverAudit forKey:[subset archive]];
+                    [audits setObject:childDriverAudit
+							   forKey:[sd name]];
                 } else {
                     NSLog(@"Error scanning archive %@: %@",
-                          [subset archive], [childError description]);
+                          [sd name], [childError description]);
                 }
             }];
         }];
@@ -371,9 +373,8 @@
     NSLog(@"Identifying sets...");
 #endif
     
-    FXLoader *loader = [[FXLoader alloc] init];
-    [[self drivers] addObjectsFromArray:[loader romSets]];
-    
+	[_drivers addObjectsFromArray:[[FXManifest sharedInstance] drivers]];
+	
 #ifdef DEBUG
     NSLog(@"done (%.02fs)", [[NSDate date] timeIntervalSinceDate:started]);
 #endif
@@ -386,13 +387,13 @@
     NSLog(@"Updating audit data...");
 #endif
     
-    [[self drivers] enumerateObjectsUsingBlock:^(FXROMSet *romSet, NSUInteger idx, BOOL *stop) {
-        FXDriverAudit *audit = [audits objectForKey:[romSet archive]];
-        [romSet setAudit:audit];
+    [_drivers enumerateObjectsUsingBlock:^(FXDriver *driver, NSUInteger idx, BOOL *stop) {
+        FXDriverAudit *audit = [audits objectForKey:[driver name]];
+        [driver setAudit:audit];
         
-        [[romSet subsets] enumerateObjectsUsingBlock:^(FXROMSet *subset, NSUInteger idx, BOOL *stop) {
-            FXDriverAudit *subAudit = [audits objectForKey:[subset archive]];
-            [subset setAudit:subAudit];
+        [[driver children] enumerateObjectsUsingBlock:^(FXDriver *sd, NSUInteger idx, BOOL *stop) {
+            FXDriverAudit *subAudit = [audits objectForKey:[sd name]];
+            [sd setAudit:subAudit];
         }];
     }];
     

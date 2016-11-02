@@ -321,7 +321,8 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     FXEmulatorController *emulator = [app emulator];
     
     if (emulator != nil) {
-        [self->inputList addObjectsFromArray:[[emulator input] inputs]];
+		// FIXME
+//        [self->inputList addObjectsFromArray:[[emulator input] inputs]];
     }
     
     [self->inputTableView setEnabled:[self->inputList count] > 0];

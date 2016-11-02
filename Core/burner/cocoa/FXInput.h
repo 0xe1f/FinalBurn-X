@@ -35,10 +35,6 @@
     BOOL keyStates[256];
 }
 
-+ (NSArray *)inputsForDriver:(NSString *)archive
-                       error:(NSError **)error;
-
-- (NSArray *)inputs;
 - (NSArray *)dipSwitches;
 
 - (instancetype) initWithDriver:(FXDriver *) driver;

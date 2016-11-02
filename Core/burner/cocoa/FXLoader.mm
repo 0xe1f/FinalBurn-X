@@ -24,6 +24,7 @@
 
 #import "FXZipArchive.h"
 #import "FXAppDelegate.h"
+#import "FXManifest.h"
 
 #include <wchar.h>
 
@@ -107,56 +108,8 @@
     return aliases;
 }
 
-- (NSArray *)romSets
-{
-    // Create a map of archive to driver id
-    NSMutableDictionary *indexMap = [NSMutableDictionary dictionary];
-    NSMutableDictionary *setMap = [NSMutableDictionary dictionary];
-    
-    for (int index = 0; index < nBurnDrvCount; index++) {
-        UInt32 hardware = pDriver[index]->Hardware & HARDWARE_PUBLIC_MASK;
-        if ((hardware != HARDWARE_CAPCOM_CPS1) &&
-            (hardware != HARDWARE_CAPCOM_CPS1_GENERIC) &&
-            (hardware != HARDWARE_CAPCOM_CPS1_QSOUND) &&
-            (hardware != HARDWARE_CAPCOM_CPS2) &&
-            (hardware != HARDWARE_CAPCOM_CPS2_SIMM) &&
-            (hardware != HARDWARE_CAPCOM_CPS3) &&
-            (hardware != HARDWARE_CAPCOM_CPS3_NO_CD) &&
-//            (hardware != HARDWARE_PREFIX_KONAMI) &&
-            (hardware != (HARDWARE_SNK_NEOGEO | HARDWARE_PREFIX_CARTRIDGE))) {
-            // Don't care
-            continue;
-        }
-        
-        NSString *archive = [self archiveNameForDriverId:index];
-        [indexMap setObject:@(index) forKey:archive];
-        
-        FXROMSet *romSet = [[FXROMSet alloc] initWithArchive:archive];
-        [romSet setHardware:hardware];
-        [setMap setObject:romSet forKey:archive];
-    }
-    
-    NSMutableArray *romSets = [NSMutableArray array];
-    [setMap enumerateKeysAndObjectsUsingBlock:^(NSString *archive, FXROMSet *romSet, BOOL *stop) {
-        int driverIndex = [[indexMap objectForKey:archive] intValue];
-        
-        if (pDriver[driverIndex]->szParent != NULL) {
-            NSString *parentArchive = [NSString stringWithCString:pDriver[driverIndex]->szParent
-                                                         encoding:NSUTF8StringEncoding];
-            FXROMSet *parentSet = [setMap objectForKey:parentArchive];
-            
-            [[parentSet subsets] addObject:romSet];
-            [romSet setParentSet:parentSet];
-        } else {
-            [romSets addObject:romSet];
-        }
-    }];
-    
-    return romSets;
-}
-
-- (NSArray *)componentsForDriver:(int)driverId
-                           error:(NSError **)error
+- (NSArray *) componentsForDriver:(int) driverId
+							error:(NSError **) error
 {
     if (driverId < 0 || driverId >= nBurnDrvCount) {
         if (error != nil) {
@@ -251,19 +204,10 @@
     return array;
 }
 
-- (FXDriverAudit *)auditSet:(FXROMSet *)romSet
-                      error:(NSError **)error
+- (FXDriverAudit *) auditDriver:(FXDriver *) driver
+						  error:(NSError **) error
 {
-    int driverIndex = [self driverIndexForArchive:[romSet archive]];
-    if (driverIndex < 0 || driverIndex >= nBurnDrvCount) {
-        if (error != nil) {
-            *error = [FXLoader newErrorWithDescription:NSLocalizedString(@"ROM set not recognized", @"")
-                                                  code:FXRomSetUnrecognized];
-        }
-        
-        return nil;
-    }
-    
+	int driverIndex = [driver index];
     NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
     
     // Get list of archive names for driver
