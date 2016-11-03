@@ -84,13 +84,21 @@
 	[(NSMutableArray *) _children addObjectsFromArray:children];
 }
 
-- (NSString *) description
+- (BOOL) usesStreetFighterLayout
 {
-	if (_parent) {
-		return [NSString stringWithFormat:@"%@/%@", _parent->_name, _name];
+	if (![_system hasPrefix:@"CPS"]) {
+		return NO;
 	}
-
-	return _name;
+	
+	__block NSInteger count = 0;
+	[_buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
+		if ([[b name] hasPrefix:@"p1 fire "]) {
+			if (++count >= 6) {
+				*stop = YES;
+			}
+		}
+	}];
+	return count >= 6;
 }
 
 @end

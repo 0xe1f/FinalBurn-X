@@ -30,8 +30,10 @@ static const int FXMappingNotFound = -1;
 
 @property (nonatomic, readonly) BOOL dirty;
 
-- (int) keyCodeMatching:(int) code;
-- (void) restoreDefaults:(FXDriver *) driver;
+- (int) deviceCodeMatching:(int) code;
+- (BOOL) mapDeviceCode:(int) deviceCode
+		   virtualCode:(int) virtualCode;
+
 - (void) markClean;
 
 @end

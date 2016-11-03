@@ -24,7 +24,6 @@
 
 #import "FXAppDelegate.h"
 #import "FXInput.h"
-#import "FXInputInfo.h"
 #import "FXDIPSwitchGroup.h"
 
 @interface FXPreferencesController ()

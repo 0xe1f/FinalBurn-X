@@ -24,7 +24,6 @@
 
 #import "FXAppDelegate.h"
 
-#import "FXInputInfo.h"
 #import "FXManifest.h"
 #import "FXButtonMap.h"
 
@@ -45,6 +44,8 @@
 
 - (void) restoreDipSwitches;
 - (void) saveDipSwitches;
+
+- (FXButtonMap *) defaultKeyboardMap;
 
 @end
 
@@ -99,7 +100,7 @@
         return isPressed;
     }
 	
-    int keyCode = [_keyboardMap keyCodeMatching:inputCode];
+    int keyCode = [_keyboardMap deviceCodeMatching:inputCode];
     if (keyCode == FXMappingNotFound) {
         return NO;
     }
@@ -173,6 +174,50 @@
 
 #pragma mark - Private
 
+- (FXButtonMap *) defaultKeyboardMap
+{
+	BOOL usesSfLayout = [_driver usesStreetFighterLayout];
+	FXButtonMap *map = [FXButtonMap new];
+	[[_driver buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
+		int code = [b code];
+		if ([[b name] isEqualToString:@"p1 coin"]) {
+			[map mapDeviceCode:AKKeyCode5 virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 start"]) {
+			[map mapDeviceCode:AKKeyCode1 virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 up"]) {
+			[map mapDeviceCode:AKKeyCodeUpArrow virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 down"]) {
+			[map mapDeviceCode:AKKeyCodeDownArrow virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 left"]) {
+			[map mapDeviceCode:AKKeyCodeLeftArrow virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 right"]) {
+			[map mapDeviceCode:AKKeyCodeRightArrow virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 fire 1"]) {
+			[map mapDeviceCode:AKKeyCodeA virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 fire 2"]) {
+			[map mapDeviceCode:AKKeyCodeS virtualCode:code];
+		} else if ([[b name] isEqualToString:@"p1 fire 3"]) {
+			[map mapDeviceCode:AKKeyCodeD virtualCode:code];
+		}
+		
+		if (usesSfLayout) {
+			if ([[b name] isEqualToString:@"p1 fire 4"]) {
+				[map mapDeviceCode:AKKeyCodeZ virtualCode:code];
+			} else if ([[b name] isEqualToString:@"p1 fire 5"]) {
+				[map mapDeviceCode:AKKeyCodeX virtualCode:code];
+			} else if ([[b name] isEqualToString:@"p1 fire 6"]) {
+				[map mapDeviceCode:AKKeyCodeC virtualCode:code];
+			}
+		} else {
+			if ([[b name] isEqualToString:@"p1 fire 4"]) {
+				[map mapDeviceCode:AKKeyCodeF virtualCode:code];
+			}
+		}
+	}];
+	
+	return map;
+}
+
 - (void)restoreDipSwitches
 {
     NSLog(@"FIXME: restore DIP");
@@ -194,8 +239,7 @@
     }
     
     if (!_keyboardMap) {
-        _keyboardMap = [FXButtonMap new];
-		[_keyboardMap restoreDefaults:_driver];
+        _keyboardMap = [self defaultKeyboardMap];
         [_keyboardMap markClean];
     }
 }

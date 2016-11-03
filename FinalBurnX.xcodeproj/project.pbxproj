@@ -28,7 +28,6 @@
 		FE1FB77119CFD9330070325C /* toolbar-joypad.png in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76F19CFD9330070325C /* toolbar-joypad.png */; };
 		FE1FB77219CFD9330070325C /* toolbar-joypad@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB77019CFD9330070325C /* toolbar-joypad@2x.png */; };
 		FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB77319CFE14B0070325C /* Defaults.plist */; };
-		FE1FB77819D132A60070325C /* FXInputInfo.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB77719D132A60070325C /* FXInputInfo.mm */; };
 		FE1FB77B19D13D0A0070325C /* AKKeyCaptureView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB77919D13D0A0070325C /* AKKeyCaptureView.m */; };
 		FE1FB77E19D13E550070325C /* AKKeyCaptureFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB77D19D13E550070325C /* AKKeyCaptureFieldCell.m */; };
 		FE23E4F11961D06B00429FCA /* FXDriverAudit.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F01961D06B00429FCA /* FXDriverAudit.m */; };
@@ -1169,8 +1168,6 @@
 		FE1FB76F19CFD9330070325C /* toolbar-joypad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-joypad.png"; sourceTree = "<group>"; };
 		FE1FB77019CFD9330070325C /* toolbar-joypad@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-joypad@2x.png"; sourceTree = "<group>"; };
 		FE1FB77419CFE14B0070325C /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Base; path = Defaults.plist; sourceTree = "<group>"; };
-		FE1FB77619D132A60070325C /* FXInputInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputInfo.h; sourceTree = "<group>"; };
-		FE1FB77719D132A60070325C /* FXInputInfo.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInputInfo.mm; sourceTree = "<group>"; };
 		FE1FB77919D13D0A0070325C /* AKKeyCaptureView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AKKeyCaptureView.m; sourceTree = "<group>"; };
 		FE1FB77A19D13D0A0070325C /* AKKeyCaptureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyCaptureView.h; sourceTree = "<group>"; };
 		FE1FB77C19D13E550070325C /* AKKeyCaptureFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyCaptureFieldCell.h; sourceTree = "<group>"; };
@@ -3284,8 +3281,6 @@
 				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
 				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
 				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
-				FE1FB77619D132A60070325C /* FXInputInfo.h */,
-				FE1FB77719D132A60070325C /* FXInputInfo.mm */,
 				FE9FA4021959E81E00F791EB /* FXLoader.h */,
 				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
 				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
@@ -3820,7 +3815,6 @@
 				FE505C88194BC532003A2BC7 /* cave.cpp in Sources */,
 				FE505DE0194BC533003A2BC7 /* toa_palette.cpp in Sources */,
 				FE505CA7194BC532003A2BC7 /* d_dietgogo.cpp in Sources */,
-				FE1FB77819D132A60070325C /* FXInputInfo.mm in Sources */,
 				FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */,
 				FE50607E194BD4E6003A2BC7 /* inftrees.c in Sources */,
 				FE505DDB194BC533003A2BC7 /* d_vimana.cpp in Sources */,

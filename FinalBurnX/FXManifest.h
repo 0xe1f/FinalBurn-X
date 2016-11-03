@@ -46,6 +46,8 @@
 // FIXME
 @property (nonatomic, strong) FXDriverAudit *audit;
 
+- (BOOL) usesStreetFighterLayout;
+
 @end
 
 @interface FXManifest : NSObject
