@@ -26,13 +26,13 @@
 
 @implementation FXButton
 
-- (instancetype) initWithName:(NSString *) name
+- (instancetype) initWithCode:(int) code
 				   dictionary:(NSDictionary *) d
 {
 	if (self = [super init]) {
-		_name = name;
+		_name = [d objectForKey:@"name"];
 		_title = [d objectForKey:@"title"];
-		_code = [[d objectForKey:@"code"] intValue];
+		_code = code;
 	}
 	
 	return self;
@@ -65,8 +65,8 @@
 
 		NSMutableArray<FXButton *> *buttons = [NSMutableArray array];
 		_buttons = buttons;
-		[[d objectForKey:@"input"] enumerateKeysAndObjectsUsingBlock:^(NSString *iname, NSDictionary *idict, BOOL *stop) {
-			[buttons addObject:[[FXButton alloc] initWithName:iname
+		[[d objectForKey:@"input"] enumerateObjectsUsingBlock:^(NSDictionary *idict, NSUInteger idx, BOOL *stop) {
+			[buttons addObject:[[FXButton alloc] initWithCode:(int) idx + 1
 												   dictionary:idict]];
 		}];
 	}

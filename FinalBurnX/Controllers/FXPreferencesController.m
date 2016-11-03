@@ -124,18 +124,19 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             row:(NSInteger)row
 {
     if (tableView == self->inputTableView) {
-        FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
-        if ([[tableColumn identifier] isEqualToString:@"name"]) {
-            return [inputInfo name];
-        } else if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
-            FXAppDelegate *app = [FXAppDelegate sharedInstance];
-            FXEmulatorController *emulator = [app emulator];
-            FXInput *input = [emulator input];
-            FXInputMap *inputMap = [input inputMap];
-            NSInteger keyCode = [inputMap keyCodeForDriverCode:[inputInfo code]];
-            
-            return [AKKeyCaptureView descriptionForKeyCode:keyCode];
-        }
+		// FIXME
+//        FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
+//        if ([[tableColumn identifier] isEqualToString:@"name"]) {
+//            return [inputInfo name];
+//        } else if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
+//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//            FXEmulatorController *emulator = [app emulator];
+//            FXInput *input = [emulator input];
+//            FXInputMap *inputMap = [input inputMap];
+//            NSInteger keyCode = [inputMap keyCodeForDriverCode:[inputInfo code]];
+//            
+//            return [AKKeyCaptureView descriptionForKeyCode:keyCode];
+//        }
     } else if (tableView == self->dipswitchTableView) {
         FXDIPSwitchGroup *group = [self->dipSwitchList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
@@ -166,14 +167,15 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 {
     if (tableView == self->inputTableView) {
         if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
-            NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
-            FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
-            
-            FXAppDelegate *app = [FXAppDelegate sharedInstance];
-            FXEmulatorController *emulator = [app emulator];
-            FXInput *input = [emulator input];
-            FXInputMap *inputMap = [input inputMap];
-            [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
+			// FIXME
+//            NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
+//            FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
+//            
+//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//            FXEmulatorController *emulator = [app emulator];
+//            FXInput *input = [emulator input];
+//            FXInputMap *inputMap = [input inputMap];
+//            [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
         }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {

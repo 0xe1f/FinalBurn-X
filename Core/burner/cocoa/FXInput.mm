@@ -26,6 +26,7 @@
 
 #import "FXInputInfo.h"
 #import "FXManifest.h"
+#import "FXButtonMap.h"
 
 #include "burner.h"
 #include "burnint.h"
@@ -35,20 +36,22 @@
 
 @interface FXInput()
 
-- (void)releaseAllKeys;
-- (void)initializeInput;
-- (int)dipSwitchOffset;
+- (void) releaseAllKeys;
+- (void) initializeInput;
+- (int) dipSwitchOffset;
 
-- (void)restoreInputMap;
-- (void)saveInputMap;
+- (void) restoreInputMap;
+- (void) saveInputMap;
 
-- (void)restoreDipSwitches;
-- (void)saveDipSwitches;
+- (void) restoreDipSwitches;
+- (void) saveDipSwitches;
 
 @end
 
 @implementation FXInput
 {
+	BOOL _hasFocus;
+	BOOL _keyStates[256];
 	FXDriver *_driver;
 }
 
@@ -96,20 +99,20 @@
         return isPressed;
     }
 	
-    NSInteger keyCode = [self->_inputMap keyCodeForInputCode:inputCode];
-    if (keyCode == AKKeyInvalid) {
+    int keyCode = [_keyboardMap keyCodeMatching:inputCode];
+    if (keyCode == FXMappingNotFound) {
         return NO;
     }
-    
-    return self->keyStates[keyCode];
+
+    return _keyStates[keyCode];
 }
 
 - (void) initializeInput
 {
-    NSArray *inputCodes = [self->_inputMap inputCodes];
-    [inputCodes enumerateObjectsUsingBlock:^(NSNumber *inputCode, NSUInteger idx, BOOL *stop) {
+    NSArray<FXButton *> *buttons = [_driver buttons];
+    [buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
         GameInp[idx].nInput = GIT_SWITCH;
-        GameInp[idx].Input.Switch.nCode = [inputCode unsignedShortValue];
+		GameInp[idx].Input.Switch.nCode = [b code];
     }];
 }
 
@@ -128,7 +131,7 @@
     
     // Don't generate a KeyDown if Command is pressed
     if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
-        self->keyStates[[event keyCode]] = isDown;
+        _keyStates[[event keyCode]] = isDown;
     }
 }
 
@@ -136,7 +139,7 @@
 
 - (void)setFocus:(BOOL)focus
 {
-    hasFocus = focus;
+    _hasFocus = focus;
     
     if (!focus) {
 #ifdef DEBUG
@@ -175,25 +178,25 @@
     NSLog(@"FIXME: restore DIP");
 }
 
-- (void)restoreInputMap
+- (void) restoreInputMap
 {
-    self->_inputMap = nil;
+    _keyboardMap = nil;
     
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *file = [[_driver name] stringByAppendingPathExtension:@"inp"];
+    NSString *file = [[_driver name] stringByAppendingPathExtension:@"in2"];
     NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
     
     NSFileManager *fm = [NSFileManager defaultManager];
     if ([fm fileExistsAtPath:path isDirectory:nil]) {
-        if ((self->_inputMap = [NSKeyedUnarchiver unarchiveObjectWithFile:path]) == nil) {
+        if (!(_keyboardMap = [NSKeyedUnarchiver unarchiveObjectWithFile:path])) {
             NSLog(@"Error reading input configuration");
         }
     }
     
-    if (self->_inputMap == nil) {
-        self->_inputMap = [[FXInputMap alloc] initWithDriver:_driver];
-        [self->_inputMap restoreDefaults];
-        [self->_inputMap markClean];
+    if (!_keyboardMap) {
+        _keyboardMap = [FXButtonMap new];
+		[_keyboardMap restoreDefaults:_driver];
+        [_keyboardMap markClean];
     }
 }
 
@@ -204,12 +207,12 @@
 
 - (void)saveInputMap
 {
-    if ([self->_inputMap isDirty]) {
+    if ([_keyboardMap dirty]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        NSString *file = [[_driver name] stringByAppendingPathExtension:@"inp"];
+        NSString *file = [[_driver name] stringByAppendingPathExtension:@"in2"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
         
-        if (![NSKeyedArchiver archiveRootObject:self->_inputMap
+        if (![NSKeyedArchiver archiveRootObject:_keyboardMap
                                          toFile:path]) {
             NSLog(@"Error writing to input configuration");
         }
@@ -218,7 +221,7 @@
 
 - (void)releaseAllKeys
 {
-    memset(self->keyStates, 0, sizeof(self->keyStates));
+    memset(_keyStates, 0, sizeof(_keyStates));
 }
 
 - (int)dipSwitchOffset

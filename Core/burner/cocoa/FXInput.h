@@ -23,33 +23,28 @@
 #import <Foundation/Foundation.h>
 
 #import "AKKeyboardManager.h"
-#import "FXInputMap.h"
 #import "FXDIPSwitchGroup.h"
 
 @class FXDriver;
+@class FXButtonMap;
 
 @interface FXInput : NSObject<AKKeyboardEventDelegate>
-{
-    @private
-    BOOL hasFocus;
-    BOOL keyStates[256];
-}
 
-- (NSArray *)dipSwitches;
+- (NSArray *) dipSwitches;
 
 - (instancetype) initWithDriver:(FXDriver *) driver;
 
-- (void)setFocus:(BOOL)focus;
+- (void) setFocus:(BOOL) focus;
 
-- (void)save;
-- (void)restore;
+- (void) save;
+- (void) restore;
 
-- (void)setDipSwitchSetting:(FXDIPSwitchSetting *)setting;
-- (void)resetDipSwitches;
+- (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
+- (void) resetDipSwitches;
 
+@property (nonatomic, readonly) FXButtonMap *keyboardMap;
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
 @property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
-@property (nonatomic, readonly) FXInputMap *inputMap;
 
 @end
 

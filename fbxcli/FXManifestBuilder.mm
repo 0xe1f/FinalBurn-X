@@ -165,9 +165,9 @@
 	return setMap;
 }
 
-- (NSDictionary *) inputsForDriver:(int) driverId
+- (NSArray *) inputsForDriver:(int) driverId
 {
-	NSMutableDictionary *inputs = [NSMutableDictionary dictionary];
+	NSMutableArray *inputs = [NSMutableArray array];
 	struct BurnInputInfo bii;
 	for (int i = 0; i < 0x1000; i++) {
 		if (pDriver[driverId]->GetInputInfo(&bii, i)) {
@@ -175,11 +175,10 @@
 		}
 		
 		if (bii.nType == BIT_DIGITAL) {
-			[inputs setObject:@{ @"code": @(i + 1),
-								 @"title": [NSString stringWithCString:bii.szName
-															encoding:NSASCIIStringEncoding] }
-					   forKey:[NSString stringWithCString:bii.szInfo
-												 encoding:NSASCIIStringEncoding]];
+			[inputs addObject:@{ @"title": [NSString stringWithCString:bii.szName
+															  encoding:NSASCIIStringEncoding],
+								 @"name": [NSString stringWithCString:bii.szInfo
+															 encoding:NSASCIIStringEncoding]}];
 		}
 	}
 	

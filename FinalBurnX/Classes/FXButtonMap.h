@@ -22,26 +22,16 @@
  */
 #import <Foundation/Foundation.h>
 
+static const int FXMappingNotFound = -1;
+
 @class FXDriver;
 
-@interface FXInputMap : NSObject<NSCoding>
+@interface FXButtonMap : NSObject<NSCoding>
 
-- (instancetype) initWithDriver:(FXDriver *) driver;
+@property (nonatomic, readonly) BOOL dirty;
 
-@property (nonatomic, assign, readonly, getter = isDirty) BOOL dirty;
-
-- (NSArray *)inputCodes;
-- (void)markClean;
-- (void)restoreDefaults;
-
-- (NSInteger)fireButtonCount;
-- (BOOL)usesStreetFighterLayout;
-
-- (NSInteger)keyCodeForDriverCode:(NSString *)driverCode;
-- (int)inputCodeForKeyCode:(NSInteger)keyCode;
-- (NSInteger)keyCodeForInputCode:(int)inputCode;
-
-- (void)assignKeyCode:(NSInteger)keyCode
-         toDriverCode:(NSString *)driverCode;
+- (int) keyCodeMatching:(int) code;
+- (void) restoreDefaults:(FXDriver *) driver;
+- (void) markClean;
 
 @end
