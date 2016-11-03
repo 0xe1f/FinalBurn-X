@@ -35,7 +35,6 @@
 		FE23E4F7196316B000429FCA /* FXLauncherController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE23E4F6196316B000429FCA /* FXLauncherController.m */; };
 		FE23E4FA1963171300429FCA /* Launcher.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE23E4F81963171300429FCA /* Launcher.xib */; };
 		FE2B11E71DCABC3A00FDAB33 /* FXButtonMap.m in Sources */ = {isa = PBXBuildFile; fileRef = FE2B11E61DCABC3A00FDAB33 /* FXButtonMap.m */; };
-		FE326E30197121A900B8D130 /* FXROMSet.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE326E2E197121A900B8D130 /* FXROMSet.mm */; };
 		FE505C5A194BC532003A2BC7 /* burn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2C194BC531003A2BC7 /* burn.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings -Wno-shorten-64-to-32"; }; };
 		FE505C5B194BC532003A2BC7 /* burn_gun.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A2E194BC531003A2BC7 /* burn_gun.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
 		FE505C5C194BC532003A2BC7 /* burn_led.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505A30194BC531003A2BC7 /* burn_led.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
@@ -1181,8 +1180,6 @@
 		FE23E4F91963171300429FCA /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Launcher.xib; sourceTree = "<group>"; };
 		FE2B11E51DCABC3A00FDAB33 /* FXButtonMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXButtonMap.h; sourceTree = "<group>"; };
 		FE2B11E61DCABC3A00FDAB33 /* FXButtonMap.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXButtonMap.m; sourceTree = "<group>"; };
-		FE326E2E197121A900B8D130 /* FXROMSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXROMSet.mm; sourceTree = "<group>"; };
-		FE326E2F197121A900B8D130 /* FXROMSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXROMSet.h; sourceTree = "<group>"; };
 		FE505A2B194BC531003A2BC7 /* bitswap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bitswap.h; sourceTree = "<group>"; };
 		FE505A2C194BC531003A2BC7 /* burn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = burn.cpp; sourceTree = "<group>"; };
 		FE505A2D194BC531003A2BC7 /* burn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = burn.h; sourceTree = "<group>"; };
@@ -3285,8 +3282,6 @@
 				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
 				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
 				FE23E4F31961D45D00429FCA /* FXROMAudit.m */,
-				FE326E2F197121A900B8D130 /* FXROMSet.h */,
-				FE326E2E197121A900B8D130 /* FXROMSet.mm */,
 				FE0230611956BB9B00661A17 /* FXRunLoop.h */,
 				FE0230621956BB9B00661A17 /* FXRunLoop.mm */,
 				FE9FA3FC19548C1E00F791EB /* FXVideo.h */,
@@ -3729,7 +3724,6 @@
 				FE505C9C194BC532003A2BC7 /* d_cps3.cpp in Sources */,
 				FE505CC8194BC532003A2BC7 /* d_gradius3.cpp in Sources */,
 				FE505DD6194BC533003A2BC7 /* d_tekipaki.cpp in Sources */,
-				FE326E30197121A900B8D130 /* FXROMSet.mm in Sources */,
 				FE505CC5194BC532003A2BC7 /* d_crimfght.cpp in Sources */,
 				FE505DCD194BC533003A2BC7 /* d_kbash.cpp in Sources */,
 				FE505D38194BC532003A2BC7 /* d_tigeroad.cpp in Sources */,

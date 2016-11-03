@@ -25,6 +25,13 @@
 #import "AKKeyCaptureView.h"
 #import "AKKeyboardManager.h"
 
+@interface FXButtonConfig : NSObject
+
+@property (nonatomic, strong) NSString *name;
+@property (nonatomic, strong) NSString *title;
+
+@end
+
 @interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate>
 {
     IBOutlet NSToolbar *toolbar;

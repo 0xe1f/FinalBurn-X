@@ -31,6 +31,8 @@
 #define FXEmulatorChanged @"org.akop.fbx.EmulatorChanged"
 #define FXROMSetInfo @"romSet"
 
+@class FXDriver;
+
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate, FXScreenViewDelegate>
 {
     IBOutlet FXScreenView *screen;
@@ -42,6 +44,7 @@
 @property (nonatomic, strong) FXVideo *video;
 @property (nonatomic, strong) FXAudio *audio;
 @property (nonatomic, strong) FXRunLoop *runLoop;
+@property (nonatomic, readonly) FXDriver *driver;
 
 - (IBAction)resizeNormalSize:(id)sender;
 - (IBAction)resizeDoubleSize:(id)sender;

@@ -25,6 +25,15 @@
 #import "FXAppDelegate.h"
 #import "FXInput.h"
 #import "FXDIPSwitchGroup.h"
+#import "FXManifest.h"
+
+#pragma mark - FXButtonConfig
+
+@implementation FXButtonConfig
+
+@end
+
+#pragma mark - FXPreferencesController
 
 @interface FXPreferencesController ()
 
@@ -39,22 +48,22 @@
 
 @implementation FXPreferencesController
 {
-	NSMutableArray *inputList;
+	NSMutableArray<FXButtonConfig *> *_inputList;
 	NSMutableArray *dipSwitchList;
 	AKKeyCaptureView *keyCaptureView;
 }
 
-- (id)init
+- (id) init
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
-        self->inputList = [NSMutableArray array];
+        _inputList = [NSMutableArray array];
         self->dipSwitchList = [NSMutableArray array];
     }
     
     return self;
 }
 
-- (void)awakeFromNib
+- (void) awakeFromNib
 {
 	[volumeSlider setAction:@selector(sliderValueChanged:)];
 	[volumeSlider setTarget:self];
@@ -110,7 +119,7 @@
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
     if (tableView == self->inputTableView) {
-        return [self->inputList count];
+        return [_inputList count];
     } else if (tableView == self->dipswitchTableView) {
         return [self->dipSwitchList count];
     }
@@ -123,6 +132,11 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
             row:(NSInteger)row
 {
     if (tableView == self->inputTableView) {
+        FXButtonConfig *bc = [_inputList objectAtIndex:row];
+        if ([[tableColumn identifier] isEqualToString:@"name"]) {
+			return [bc title];
+        } else if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
+        }
 		// FIXME
 //        FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
 //        if ([[tableColumn identifier] isEqualToString:@"name"]) {
@@ -166,6 +180,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 {
     if (tableView == self->inputTableView) {
         if ([[tableColumn identifier] isEqualToString:@"keyboard"]) {
+        }
 			// FIXME
 //            NSInteger keyCode = [AKKeyCaptureView keyCodeForDescription:object];
 //            FXInputInfo *inputInfo = [self->inputList objectAtIndex:row];
@@ -175,7 +190,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 //            FXInput *input = [emulator input];
 //            FXInputMap *inputMap = [input inputMap];
 //            [inputMap assignKeyCode:keyCode toDriverCode:[inputInfo code]];
-        }
+//        }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {
             FXDIPSwitchGroup *dipSwitchGroup = [self->dipSwitchList objectAtIndex:row];
@@ -316,17 +331,18 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 
 - (void)updateInput
 {
-    [self->inputList removeAllObjects];
+    [_inputList removeAllObjects];
     
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
-    
-    if (emulator != nil) {
-		// FIXME
-//        [self->inputList addObjectsFromArray:[[emulator input] inputs]];
-    }
-    
-    [self->inputTableView setEnabled:[self->inputList count] > 0];
+	
+	[[[emulator driver] buttons] enumerateObjectsUsingBlock:^(FXButton *obj, NSUInteger idx, BOOL *stop) {
+		FXButtonConfig *bc = [FXButtonConfig new];
+		[bc setName:[obj name]];
+		[bc setTitle:[obj title]];
+	}];
+	
+    [self->inputTableView setEnabled:[_inputList count] > 0];
     [self->inputTableView reloadData];
 }
 
