@@ -20,29 +20,11 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "FXDroppableScrollView.h"
+@class FXButtonMap;
 
-@class FXDriver;
+@interface FXGameConfig : NSObject<NSCoding>
 
-@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXScannerDelegate>
-{
-    IBOutlet NSPanel *importProgressPanel;
-    IBOutlet NSProgressIndicator *importProgressBar;
-    IBOutlet NSButton *importCancelButton;
-    IBOutlet NSTextField *importProgressLabel;
-    
-    IBOutlet NSTreeController *driversTreeController;
-    IBOutlet NSOutlineView *driversOutlineView;
-    
-    NSOperationQueue *importOpQueue;
-    
-    BOOL rescanROMsAtStartup;
-}
-
-- (IBAction)launchGame:(id)sender;
-- (IBAction)cancelImport:(id)sender;
-- (IBAction)rescanROMs:(id)sender;
-
-@property (nonatomic, strong) NSMutableArray *drivers;
+@property (nonatomic, readonly) FXButtonMap *keyboardMap;
+@property (nonatomic, readonly) NSMutableDictionary<NSString *, FXButtonMap *> *joyMaps;
 
 @end

@@ -18,31 +18,40 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXGameConfig.h"
 
-#import "FXDroppableScrollView.h"
+#import "FXButtonMap.h"
 
-@class FXDriver;
+@implementation FXGameConfig
 
-@interface FXLauncherController : NSWindowController<NSWindowDelegate, NSOutlineViewDataSource, FXScannerDelegate>
+#pragma mark - init, dealloc
+
+- (instancetype) init
 {
-    IBOutlet NSPanel *importProgressPanel;
-    IBOutlet NSProgressIndicator *importProgressBar;
-    IBOutlet NSButton *importCancelButton;
-    IBOutlet NSTextField *importProgressLabel;
-    
-    IBOutlet NSTreeController *driversTreeController;
-    IBOutlet NSOutlineView *driversOutlineView;
-    
-    NSOperationQueue *importOpQueue;
-    
-    BOOL rescanROMsAtStartup;
+	if (self = [super init]) {
+		_keyboardMap = [FXButtonMap new];
+		_joyMaps = [NSMutableDictionary dictionary];
+	}
+
+	return self;
 }
 
-- (IBAction)launchGame:(id)sender;
-- (IBAction)cancelImport:(id)sender;
-- (IBAction)rescanROMs:(id)sender;
+#pragma mark - NSCoding
 
-@property (nonatomic, strong) NSMutableArray *drivers;
+- (instancetype) initWithCoder:(NSCoder *) coder
+{
+	if ((self = [super init]) != nil) {
+		_keyboardMap = [coder decodeObjectForKey:@"keyMap"];
+		_joyMaps = [coder decodeObjectForKey:@"joyMaps"];
+	}
+	
+	return self;
+}
+
+- (void) encodeWithCoder:(NSCoder *) coder
+{
+	[coder encodeObject:_keyboardMap forKey:@"keyMap"];
+	[coder encodeObject:_joyMaps forKey:@"joyMaps"];
+}
 
 @end

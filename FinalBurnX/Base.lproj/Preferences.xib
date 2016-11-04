@@ -59,7 +59,7 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="CD7-lr-pVp">
                                                 <rect key="frame" x="1" y="0.0" width="558" height="459"/>
-                                                <autoresizingMask key="autoresizingMask"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="aZz-dw-2vg" id="Sxf-xQ-z9A">
                                                         <rect key="frame" x="0.0" y="0.0" width="558" height="442"/>
