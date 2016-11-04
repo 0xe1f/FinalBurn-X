@@ -1104,7 +1104,6 @@
 		FED4361719E60D0F00315655 /* toolbar-joypad@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */; };
 		FED4361A19E63D5800315655 /* FXDIPSwitchSetting.m in Sources */ = {isa = PBXBuildFile; fileRef = FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
-		FEEC2E741DCC503800DAA6F8 /* FXGameConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E731DCC503800DAA6F8 /* FXGameConfig.m */; };
 		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
 		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
@@ -1923,8 +1922,6 @@
 		FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchSetting.m; sourceTree = "<group>"; };
 		FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDroppableScrollView.h; sourceTree = "<group>"; };
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
-		FEEC2E721DCC503800DAA6F8 /* FXGameConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXGameConfig.h; sourceTree = "<group>"; };
-		FEEC2E731DCC503800DAA6F8 /* FXGameConfig.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXGameConfig.m; sourceTree = "<group>"; };
 		FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchGroup.m; sourceTree = "<group>"; };
 		FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchGroup.h; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
@@ -2086,8 +2083,6 @@
 		FE2B11E41DCABC2100FDAB33 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
-				FEEC2E721DCC503800DAA6F8 /* FXGameConfig.h */,
-				FEEC2E731DCC503800DAA6F8 /* FXGameConfig.m */,
 				FE2B11E51DCABC3A00FDAB33 /* FXButtonMap.h */,
 				FE2B11E61DCABC3A00FDAB33 /* FXButtonMap.m */,
 			);
@@ -3519,7 +3514,6 @@
 				FE505D2F194BC532003A2BC7 /* d_sf.cpp in Sources */,
 				FE505C77194BC532003A2BC7 /* cps_scr.cpp in Sources */,
 				FE505DC5194BC533003A2BC7 /* d_batsugun.cpp in Sources */,
-				FEEC2E741DCC503800DAA6F8 /* FXGameConfig.m in Sources */,
 				FE505C89194BC532003A2BC7 /* cave_palette.cpp in Sources */,
 				FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */,
 				FE505CF0194BC532003A2BC7 /* d_pce.cpp in Sources */,

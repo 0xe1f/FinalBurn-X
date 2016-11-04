@@ -62,12 +62,13 @@
 {
     if ((self = [super init]) != nil) {
 		_driver = driver;
+		_keyboardMap = [FXButtonMap new];
     }
     
     return self;
 }
 
-- (void)dealloc
+- (void) dealloc
 {
     // Release all virtual keys
     [self releaseAllKeys];

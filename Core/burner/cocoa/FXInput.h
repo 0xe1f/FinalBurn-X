@@ -43,6 +43,7 @@
 - (void) resetDipSwitches;
 
 @property (nonatomic, readonly) FXButtonMap *keyboardMap;
+
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
 @property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
 
