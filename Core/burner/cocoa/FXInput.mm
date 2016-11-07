@@ -26,6 +26,7 @@
 
 #import "FXManifest.h"
 #import "FXButtonMap.h"
+#import "FXInputConfig.h"
 
 #include "burner.h"
 #include "burnint.h"
@@ -62,7 +63,6 @@
 {
     if ((self = [super init]) != nil) {
 		_driver = driver;
-		_keyboardMap = [FXButtonMap new];
     }
     
     return self;
@@ -101,7 +101,7 @@
         return isPressed;
     }
 	
-    int keyCode = [_keyboardMap deviceCodeMatching:inputCode];
+    int keyCode = [[_config keyboard] deviceCodeMatching:inputCode];
     if (keyCode == FXMappingNotFound) {
         return NO;
     }
@@ -226,22 +226,22 @@
 
 - (void) restoreInputMap
 {
-    _keyboardMap = nil;
+    _config = nil;
     
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    NSString *file = [[_driver name] stringByAppendingPathExtension:@"in2"];
+    NSString *file = [[_driver name] stringByAppendingPathExtension:@"input"];
     NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
     
     NSFileManager *fm = [NSFileManager defaultManager];
     if ([fm fileExistsAtPath:path isDirectory:nil]) {
-        if (!(_keyboardMap = [NSKeyedUnarchiver unarchiveObjectWithFile:path])) {
+        if (!(_config = [NSKeyedUnarchiver unarchiveObjectWithFile:path])) {
             NSLog(@"Error reading input configuration");
         }
     }
     
-    if (!_keyboardMap) {
-        _keyboardMap = [self defaultKeyboardMap];
-        [_keyboardMap markClean];
+    if (!_config) {
+		_config = [FXInputConfig new];
+		[_config setKeyboard:[self defaultKeyboardMap]];
     }
 }
 
@@ -250,14 +250,14 @@
     NSLog(@"FIXME: save DIP");
 }
 
-- (void)saveInputMap
+- (void) saveInputMap
 {
-    if ([_keyboardMap dirty]) {
+    if ([_config dirty]) {
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
-        NSString *file = [[_driver name] stringByAppendingPathExtension:@"in2"];
+        NSString *file = [[_driver name] stringByAppendingPathExtension:@"input"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
         
-        if (![NSKeyedArchiver archiveRootObject:_keyboardMap
+        if (![NSKeyedArchiver archiveRootObject:_config
                                          toFile:path]) {
             NSLog(@"Error writing to input configuration");
         }

@@ -18,14 +18,37 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import "FXInputConfig.h"
 
-static const int FXMappingNotFound = -1;
+@implementation FXInputConfig
 
-@interface FXButtonMap : NSObject<NSCoding>
+#pragma mark - init, dealloc
 
-- (int) deviceCodeMatching:(int) code;
-- (BOOL) mapDeviceCode:(int) deviceCode
-		   virtualCode:(int) virtualCode;
+- (instancetype) init
+{
+	if (self = [super init]) {
+		_gamepads = [NSMutableDictionary new];
+	}
+
+	return self;
+}
+
+#pragma mark - NSCoding
+
+- (instancetype) initWithCoder:(NSCoder *) coder
+{
+	if ((self = [super init])) {
+		_keyboard = [coder decodeObjectForKey:@"keyboard"];
+		_gamepads = [coder decodeObjectForKey:@"gamepads"];
+	}
+	
+	return self;
+}
+
+- (void) encodeWithCoder:(NSCoder *) coder
+{
+	[coder encodeObject:_keyboard forKey:@"keyboard"];
+	[coder encodeObject:_gamepads forKey:@"gamepads"];
+}
 
 @end

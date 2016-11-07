@@ -20,12 +20,13 @@
  */
 #import <Foundation/Foundation.h>
 
-static const int FXMappingNotFound = -1;
+@class FXButtonMap;
 
-@interface FXButtonMap : NSObject<NSCoding>
+@interface FXInputConfig : NSObject<NSCoding>
 
-- (int) deviceCodeMatching:(int) code;
-- (BOOL) mapDeviceCode:(int) deviceCode
-		   virtualCode:(int) virtualCode;
+@property (nonatomic, strong) FXButtonMap *keyboard;
+@property (nonatomic, readonly) NSMutableDictionary<NSString *, FXButtonMap *> *gamepads;
+
+@property (nonatomic, assign) BOOL dirty;
 
 @end

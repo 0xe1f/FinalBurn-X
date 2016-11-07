@@ -53,7 +53,7 @@
 		[self resetAll];
 
 		NSDictionary<NSNumber *, NSNumber *> *map = [coder decodeObjectForKey:@"map"];
-		[map enumerateKeysAndObjectsUsingBlock:^(NSNumber *d, NSNumber *v, BOOL *stop) {
+		[map enumerateKeysAndObjectsUsingBlock:^(NSNumber *v, NSNumber *d, BOOL *stop) {
 			int di = [d intValue];
 			int vi = [v intValue];
 			_deviceToVirtualMap[di] = vi;
@@ -83,7 +83,7 @@
 	if (code < 0 || code >= MAP_SIZE) {
 		return FXMappingNotFound;
 	}
-
+	
 	return _virtualToDeviceMap[code];
 }
 
@@ -97,14 +97,8 @@
 
 	_deviceToVirtualMap[deviceCode] = virtualCode;
 	_virtualToDeviceMap[virtualCode] = deviceCode;
-	_dirty = YES;
 
 	return YES;
-}
-
-- (void) markClean
-{
-	_dirty = NO;
 }
 
 #pragma mark - Private

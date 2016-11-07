@@ -26,7 +26,7 @@
 #import "FXDIPSwitchGroup.h"
 
 @class FXDriver;
-@class FXButtonMap;
+@class FXInputConfig;
 
 @interface FXInput : NSObject<AKKeyboardEventDelegate>
 
@@ -42,10 +42,10 @@
 - (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
 - (void) resetDipSwitches;
 
-@property (nonatomic, readonly) FXButtonMap *keyboardMap;
-
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
 @property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
+
+@property (nonatomic, strong) FXInputConfig *config;
 
 @end
 
