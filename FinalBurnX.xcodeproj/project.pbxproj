@@ -1105,6 +1105,9 @@
 		FED4361A19E63D5800315655 /* FXDIPSwitchSetting.m in Sources */ = {isa = PBXBuildFile; fileRef = FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 		FEEC2E771DD0496600DAA6F8 /* FXInputConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E761DD0496600DAA6F8 /* FXInputConfig.m */; };
+		FEEC2E7E1DD0550300DAA6F8 /* AKGamepadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E791DD0550300DAA6F8 /* AKGamepadManager.m */; };
+		FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */; };
+		FEEC2E801DD0550300DAA6F8 /* AKGamepadEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */; };
 		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
 		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
@@ -1925,6 +1928,12 @@
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
 		FEEC2E751DD0496600DAA6F8 /* FXInputConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputConfig.h; sourceTree = "<group>"; };
 		FEEC2E761DD0496600DAA6F8 /* FXInputConfig.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXInputConfig.m; sourceTree = "<group>"; };
+		FEEC2E781DD0550300DAA6F8 /* AKGamepadManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AKGamepadManager.h; path = FinalBurnX/Hidput/AKGamepadManager.h; sourceTree = SOURCE_ROOT; };
+		FEEC2E791DD0550300DAA6F8 /* AKGamepadManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepadManager.m; path = FinalBurnX/Hidput/AKGamepadManager.m; sourceTree = SOURCE_ROOT; };
+		FEEC2E7A1DD0550300DAA6F8 /* AKGamepad.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AKGamepad.h; path = FinalBurnX/Hidput/AKGamepad.h; sourceTree = SOURCE_ROOT; };
+		FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepad.m; path = FinalBurnX/Hidput/AKGamepad.m; sourceTree = SOURCE_ROOT; };
+		FEEC2E7C1DD0550300DAA6F8 /* AKGamepadEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AKGamepadEventData.h; path = FinalBurnX/Hidput/AKGamepadEventData.h; sourceTree = SOURCE_ROOT; };
+		FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepadEventData.m; path = FinalBurnX/Hidput/AKGamepadEventData.m; sourceTree = SOURCE_ROOT; };
 		FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchGroup.m; sourceTree = "<group>"; };
 		FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchGroup.h; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
@@ -3210,6 +3219,12 @@
 		FE9FA3F5195346F000F791EB /* HIDput */ = {
 			isa = PBXGroup;
 			children = (
+				FEEC2E7A1DD0550300DAA6F8 /* AKGamepad.h */,
+				FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */,
+				FEEC2E7C1DD0550300DAA6F8 /* AKGamepadEventData.h */,
+				FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */,
+				FEEC2E781DD0550300DAA6F8 /* AKGamepadManager.h */,
+				FEEC2E791DD0550300DAA6F8 /* AKGamepadManager.m */,
 				FE9FA3F6195346F000F791EB /* AKKeyboardManager.h */,
 				FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */,
 				FE9FA3F8195346F000F791EB /* AKKeyEventData.h */,
@@ -3499,6 +3514,7 @@
 				FE505D7A194BC533003A2BC7 /* d_tecmosys.cpp in Sources */,
 				FE505C72194BC532003A2BC7 /* cps_mem.cpp in Sources */,
 				FE505FA1194BCDD1003A2BC7 /* z80_intf.cpp in Sources */,
+				FEEC2E7E1DD0550300DAA6F8 /* AKGamepadManager.m in Sources */,
 				FE50606B194BD4E6003A2BC7 /* pngset.c in Sources */,
 				FE505E02194BC533003A2BC7 /* samples.cpp in Sources */,
 				FE505D60194BC533003A2BC7 /* d_hyperpac.cpp in Sources */,
@@ -3550,6 +3566,7 @@
 				FE505CE9194BC532003A2BC7 /* neo_decrypt.cpp in Sources */,
 				FE506063194BD4E6003A2BC7 /* pngerror.c in Sources */,
 				FE505D06194BC532003A2BC7 /* d_commando.cpp in Sources */,
+				FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */,
 				FE505D7B194BC533003A2BC7 /* d_tumbleb.cpp in Sources */,
 				FE505CE6194BC532003A2BC7 /* d_megadrive.cpp in Sources */,
 				FE78011A194C33AD0024716B /* ymf278b.c in Sources */,
@@ -3814,6 +3831,7 @@
 				FE505DAA194BC533003A2BC7 /* d_retofinv.cpp in Sources */,
 				FE505C88194BC532003A2BC7 /* cave.cpp in Sources */,
 				FE505DE0194BC533003A2BC7 /* toa_palette.cpp in Sources */,
+				FEEC2E801DD0550300DAA6F8 /* AKGamepadEventData.m in Sources */,
 				FE505CA7194BC532003A2BC7 /* d_dietgogo.cpp in Sources */,
 				FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */,
 				FE50607E194BD4E6003A2BC7 /* inftrees.c in Sources */,
