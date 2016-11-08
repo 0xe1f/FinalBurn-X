@@ -154,6 +154,10 @@
 - (void)windowDidResignKey:(NSNotification *)notification
 {
     [self windowKeyDidChange:NO];
+	if (!_cursorVisible) {
+		_cursorVisible = YES;
+		[NSCursor unhide];
+	}
 }
 
 - (void)keyDown:(NSEvent *)theEvent
@@ -161,7 +165,7 @@
     // Suppress the beeps
 }
 
-- (void)windowWillClose:(NSNotification *)notification
+- (void) windowWillClose:(NSNotification *) notification
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self

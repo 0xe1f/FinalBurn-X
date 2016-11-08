@@ -36,6 +36,29 @@
 	return self;
 }
 
+- (int) playerIndex
+{
+	if ([_name length] > 3
+		&& [_name characterAtIndex:0] == 'p'
+		&& [_name characterAtIndex:2] == ' ') {
+		unichar ch = [_name characterAtIndex:1];
+		if (ch > '0' && ch <= '9') {
+			return ch - '0';
+		}
+	}
+	
+	return 0;
+}
+
+- (NSString *) neutralTitle
+{
+	if (![self playerIndex]) {
+		return _title;
+	}
+
+	return [_title substringWithRange:NSMakeRange(3, [_title length] - 3)];
+}
+
 @end
 
 #pragma mark - FXDriver

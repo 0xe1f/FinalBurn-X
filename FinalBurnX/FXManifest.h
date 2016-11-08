@@ -28,6 +28,9 @@
 @property (nonatomic, readonly) NSString *name;
 @property (nonatomic, readonly) NSString *title;
 
+- (int) playerIndex;
+- (NSString *) neutralTitle;
+
 @end
 
 @interface FXDriver : NSObject

@@ -41,10 +41,11 @@
 - (void) emulationChangedNotification:(NSNotification *)notification;
 
 - (void) updateSpecifics;
-- (void) updateInput;
 - (void) updateDipSwitches;
 - (void) sliderValueChanged:(NSSlider *) sender;
+- (void) resetButtonList;
 - (void) resetInputDevices;
+- (NSString *) selectedInputDeviceId;
 
 @end
 
@@ -271,9 +272,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 
 - (void) inputDeviceDidChange:(id) sender
 {
-	NSInteger index = [sender indexOfSelectedItem];
-
-	NSLog(@"-- %@", [_inputDeviceList objectAtIndex:index]);
+	[self resetButtonList];
 }
 
 - (void)tabChanged:(id)sender
@@ -358,7 +357,17 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 
 #pragma mark - Private methods
 
-- (void)emulationChangedNotification:(NSNotification *)notification
+- (NSString *) selectedInputDeviceId
+{
+	NSInteger index = [inputDevicesPopUp indexOfSelectedItem];
+	if (index < [_inputDeviceList count]) {
+		return [[_inputDeviceList objectAtIndex:index] objectForKey:@"id"];
+	}
+
+	return nil;
+}
+
+- (void) emulationChangedNotification:(NSNotification *)notification
 {
 #ifdef DEBUG
     NSLog(@"emulationChangedNotification");
@@ -383,21 +392,31 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     [self->dipswitchTableView reloadData];
 }
 
-- (void) updateInput
+- (void) resetButtonList
 {
     [_inputList removeAllObjects];
-    
+
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
 	FXButtonMap *map = [[[emulator input] config] keyboard];
-	
+	NSString *selectedId = [self selectedInputDeviceId];
+
 	[[[emulator driver] buttons] enumerateObjectsUsingBlock:^(FXButton *obj, NSUInteger idx, BOOL *stop) {
-		FXButtonConfig *bc = [FXButtonConfig new];
-		[bc setName:[obj name]];
-		[bc setTitle:[obj title]];
-		[bc setDeviceCode:[map deviceCodeMatching:[obj code]]];
-		[bc setVirtualCode:[obj code]];
-		[_inputList addObject:bc];
+		if (!selectedId) {
+			FXButtonConfig *bc = [FXButtonConfig new];
+			[bc setName:[obj name]];
+			[bc setTitle:[obj title]];
+			[bc setDeviceCode:[map deviceCodeMatching:[obj code]]];
+			[bc setVirtualCode:[obj code]];
+			[_inputList addObject:bc];
+		} else if ([obj playerIndex] == 1) {
+			FXButtonConfig *bc = [FXButtonConfig new];
+			[bc setName:[obj name]];
+			[bc setTitle:[obj neutralTitle]];
+			[bc setDeviceCode:[map deviceCodeMatching:[obj code]]];
+			[bc setVirtualCode:[obj code]];
+			[_inputList addObject:bc];
+		}
 	}];
 	
     [self->inputTableView setEnabled:[_inputList count] > 0];
@@ -412,10 +431,10 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 	}];
 }
 
-- (void)updateSpecifics
+- (void) updateSpecifics
 {
     [self updateDipSwitches];
-    [self updateInput];
+    [self resetButtonList];
 }
 
 @end
