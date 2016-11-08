@@ -22,7 +22,6 @@
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
 		FE0DC79719509F51004A03A3 /* FXScreenView.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79519509F50004A03A3 /* FXScreenView.mm */; };
 		FE0DC79C1950AC33004A03A3 /* FXEmulatorController.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC79A1950AC33004A03A3 /* FXEmulatorController.mm */; };
-		FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE0DC7A21951ED06004A03A3 /* FXInput.mm */; };
 		FE1FB76919CFD6770070325C /* Preferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76719CFD6770070325C /* Preferences.xib */; };
 		FE1FB76C19CFD71C0070325C /* FXPreferencesController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE1FB76B19CFD71C0070325C /* FXPreferencesController.m */; };
 		FE1FB77119CFD9330070325C /* toolbar-joypad.png in Resources */ = {isa = PBXBuildFile; fileRef = FE1FB76F19CFD9330070325C /* toolbar-joypad.png */; };
@@ -1108,6 +1107,7 @@
 		FEEC2E7E1DD0550300DAA6F8 /* AKGamepadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E791DD0550300DAA6F8 /* AKGamepadManager.m */; };
 		FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */; };
 		FEEC2E801DD0550300DAA6F8 /* AKGamepadEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */; };
+		FEEC2E841DD100C600DAA6F8 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E831DD100C600DAA6F8 /* FXInput.mm */; };
 		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
 		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
@@ -1163,8 +1163,6 @@
 		FE0DC79619509F51004A03A3 /* FXScreenView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXScreenView.h; sourceTree = "<group>"; };
 		FE0DC7991950AC33004A03A3 /* FXEmulatorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXEmulatorController.h; sourceTree = "<group>"; };
 		FE0DC79A1950AC33004A03A3 /* FXEmulatorController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXEmulatorController.mm; sourceTree = "<group>"; };
-		FE0DC7A11951ED06004A03A3 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
-		FE0DC7A21951ED06004A03A3 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
 		FE1FB76819CFD6770070325C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Preferences.xib; sourceTree = "<group>"; };
 		FE1FB76A19CFD71C0070325C /* FXPreferencesController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXPreferencesController.h; sourceTree = "<group>"; };
 		FE1FB76B19CFD71C0070325C /* FXPreferencesController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXPreferencesController.m; sourceTree = "<group>"; };
@@ -1934,6 +1932,8 @@
 		FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepad.m; path = FinalBurnX/Hidput/AKGamepad.m; sourceTree = SOURCE_ROOT; };
 		FEEC2E7C1DD0550300DAA6F8 /* AKGamepadEventData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AKGamepadEventData.h; path = FinalBurnX/Hidput/AKGamepadEventData.h; sourceTree = SOURCE_ROOT; };
 		FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepadEventData.m; path = FinalBurnX/Hidput/AKGamepadEventData.m; sourceTree = SOURCE_ROOT; };
+		FEEC2E821DD100C600DAA6F8 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
+		FEEC2E831DD100C600DAA6F8 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
 		FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchGroup.m; sourceTree = "<group>"; };
 		FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchGroup.h; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
@@ -2005,6 +2005,7 @@
 		FE08934D19475F9800F79190 /* FinalBurnX */ = {
 			isa = PBXGroup;
 			children = (
+				FEEC2E811DD100B200DAA6F8 /* Core */,
 				FE2B11E41DCABC2100FDAB33 /* Classes */,
 				FE9FA3F5195346F000F791EB /* HIDput */,
 				FE0DC7981950ABF2004A03A3 /* Controllers */,
@@ -3296,8 +3297,6 @@
 				FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */,
 				FE23E4EF1961D06B00429FCA /* FXDriverAudit.h */,
 				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
-				FE0DC7A11951ED06004A03A3 /* FXInput.h */,
-				FE0DC7A21951ED06004A03A3 /* FXInput.mm */,
 				FE9FA4021959E81E00F791EB /* FXLoader.h */,
 				FE9FA4031959E81E00F791EB /* FXLoader.mm */,
 				FE23E4F21961D45D00429FCA /* FXROMAudit.h */,
@@ -3328,6 +3327,15 @@
 				FE7800F3194C31E90024716B /* unzip.h */,
 			);
 			name = minizip;
+			sourceTree = "<group>";
+		};
+		FEEC2E811DD100B200DAA6F8 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				FEEC2E821DD100C600DAA6F8 /* FXInput.h */,
+				FEEC2E831DD100C600DAA6F8 /* FXInput.mm */,
+			);
+			path = Core;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -3465,7 +3473,6 @@
 				FE505D2E194BC532003A2BC7 /* d_scregg.cpp in Sources */,
 				FE505D36194BC532003A2BC7 /* d_tecmo.cpp in Sources */,
 				FE506066194BD4E6003A2BC7 /* pngpread.c in Sources */,
-				FE0DC7A31951ED06004A03A3 /* FXInput.mm in Sources */,
 				FE505D46194BC532003A2BC7 /* d_1945kiii.cpp in Sources */,
 				FEC2533E194C410B0039D85F /* vid_interface.cpp in Sources */,
 				FE505C70194BC532003A2BC7 /* cps_config.cpp in Sources */,
@@ -3617,6 +3624,7 @@
 				FE2B11E71DCABC3A00FDAB33 /* FXButtonMap.m in Sources */,
 				FE0230631956BB9B00661A17 /* FXRunLoop.mm in Sources */,
 				FE505D26194BC532003A2BC7 /* d_pacman.cpp in Sources */,
+				FEEC2E841DD100C600DAA6F8 /* FXInput.mm in Sources */,
 				FE505D8B194BC533003A2BC7 /* d_sys16a.cpp in Sources */,
 				FE505D1A194BC532003A2BC7 /* d_madgear.cpp in Sources */,
 				FEC2534C194CA1CF0039D85F /* xbr.cpp in Sources */,

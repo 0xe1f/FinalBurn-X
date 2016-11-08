@@ -27,24 +27,22 @@
 @protocol AKGamepadEventDelegate
 
 @optional
-- (void)gamepadDidConnect:(AKGamepad *)gamepad;
-- (void)gamepadDidDisconnect:(AKGamepad *)gamepad;
+- (void) gamepadDidConnect:(AKGamepad *) gamepad;
+- (void) gamepadDidDisconnect:(AKGamepad *) gamepad;
 
-- (void)gamepad:(AKGamepad *)gamepad
-       xChanged:(NSInteger)newValue
-         center:(NSInteger)center
-      eventData:(AKGamepadEventData *)eventData;
-- (void)gamepad:(AKGamepad *)gamepad
-       yChanged:(NSInteger)newValue
-         center:(NSInteger)center
-      eventData:(AKGamepadEventData *)eventData;
+- (void) gamepad:(AKGamepad *) gamepad
+		xChanged:(NSInteger) newValue
+		  center:(NSInteger) center
+	   eventData:(AKGamepadEventData *) eventData;
+- (void) gamepad:(AKGamepad *) gamepad
+		yChanged:(NSInteger) newValue
+		  center:(NSInteger) center
+	   eventData:(AKGamepadEventData *) eventData;
 
-- (void)gamepad:(AKGamepad *)gamepad
-     buttonDown:(NSInteger)index
-      eventData:(AKGamepadEventData *)eventData;
-- (void)gamepad:(AKGamepad *)gamepad
-       buttonUp:(NSInteger)index
-      eventData:(AKGamepadEventData *)eventData;
+- (void) gamepad:(AKGamepad *) gamepad
+		  button:(NSUInteger) index
+		  isDown:(BOOL) isDown
+	   eventData:(AKGamepadEventData *) eventData;
 
 @end
 
@@ -57,7 +55,7 @@
 
 - (NSUInteger) gamepadCount;
 
-- (void)addObserver:(id<AKGamepadEventDelegate>)observer;
-- (void)removeObserver:(id<AKGamepadEventDelegate>)observer;
+- (void) addObserver:(id<AKGamepadEventDelegate>) observer;
+- (void) removeObserver:(id<AKGamepadEventDelegate>) observer;
 
 @end

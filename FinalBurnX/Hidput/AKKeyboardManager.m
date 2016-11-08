@@ -20,38 +20,43 @@
  */
 #import "AKKeyboardManager.h"
 
-static AKKeyboardManager *_keyboardManager = nil;
-
 void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef value);
 
 @interface AKKeyboardManager()
 
-- (int)scanCodeToKeyCode:(NSInteger)usage
-           modifierFlags:(NSUInteger)modifierFlags;
-- (void)keyStateDidChange:(NSInteger)scanCode
-                   isDown:(BOOL)isDown;
+- (int) scanCodeToKeyCode:(NSInteger) usage
+			modifierFlags:(NSUInteger) modifierFlags;
+- (void) keyStateDidChange:(NSInteger) scanCode
+					isDown:(BOOL) isDown;
 
 @end
 
 @implementation AKKeyboardManager
-
-+ (AKKeyboardManager *)sharedInstance
 {
-    if (!_keyboardManager) {
-        _keyboardManager = [[AKKeyboardManager alloc] init];
-    }
-    
-    return _keyboardManager;
+	IOHIDManagerRef _keyboardHidManager;
+	NSMutableArray *_observers;
+	NSObject *_observerLock;
 }
 
-- (instancetype)init
++ (AKKeyboardManager *) sharedInstance
+{
+	static dispatch_once_t once;
+	static id sharedInstance;
+	dispatch_once(&once, ^{
+		sharedInstance = [[self alloc] init];
+	});
+	
+	return sharedInstance;
+}
+
+- (instancetype) init
 {
     if ((self = [super init])) {
-        observerLock = [[NSObject alloc] init];
-        observers = [[NSMutableArray alloc] init];
+        _observerLock = [[NSObject alloc] init];
+        _observers = [[NSMutableArray alloc] init];
         
         // Init keyboard hid management
-        keyboardHidManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+        _keyboardHidManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
         
         NSMutableDictionary *keyboardCriterion = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                                                   @(kHIDPage_GenericDesktop), (NSString *)CFSTR(kIOHIDDeviceUsagePageKey),
@@ -62,35 +67,35 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
                                                 @(kHIDUsage_GD_Keypad), (NSString *)CFSTR(kIOHIDDeviceUsageKey),
                                                 nil];
         
-        IOHIDManagerSetDeviceMatchingMultiple(keyboardHidManager,
+        IOHIDManagerSetDeviceMatchingMultiple(_keyboardHidManager,
                                               (__bridge CFArrayRef)[NSArray arrayWithObjects:keyboardCriterion,
                                                                               keypadCriterion, nil]);
         
-        IOHIDManagerRegisterInputValueCallback(keyboardHidManager, keyWasToggled, (__bridge void *)self);
+        IOHIDManagerRegisterInputValueCallback(_keyboardHidManager, keyWasToggled, (__bridge void *)self);
 
-        IOHIDManagerScheduleWithRunLoop(keyboardHidManager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-        IOHIDManagerOpen(keyboardHidManager, kIOHIDOptionsTypeNone);
+        IOHIDManagerScheduleWithRunLoop(_keyboardHidManager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+        IOHIDManagerOpen(_keyboardHidManager, kIOHIDOptionsTypeNone);
     }
     
     return self;
 }
 
-- (void)dealloc
+- (void) dealloc
 {
-    @synchronized (observerLock) {
-        observers = nil;
+    @synchronized (_observerLock) {
+        _observers = nil;
     }
     
-    observerLock = nil;
+    _observerLock = nil;
     
-    IOHIDManagerClose(keyboardHidManager, kIOHIDOptionsTypeNone);
-    IOHIDManagerUnscheduleFromRunLoop(keyboardHidManager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    CFRelease(keyboardHidManager);
+    IOHIDManagerClose(_keyboardHidManager, kIOHIDOptionsTypeNone);
+    IOHIDManagerUnscheduleFromRunLoop(_keyboardHidManager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    CFRelease(_keyboardHidManager);
 }
 
 // Adapted from https://github.com/LaurentGomila/SFML/
-- (int)scanCodeToKeyCode:(NSInteger)usage
-           modifierFlags:(NSUInteger)modifierFlags
+- (int) scanCodeToKeyCode:(NSInteger) usage
+			modifierFlags:(NSUInteger) modifierFlags
 {
     switch (usage) {
     case kHIDUsage_KeyboardA:                   return 0x00;
@@ -223,8 +228,8 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
     }
 }
 
-- (void)keyStateDidChange:(NSInteger)scanCode
-                   isDown:(BOOL)isDown
+- (void) keyStateDidChange:(NSInteger) scanCode
+					isDown:(BOOL) isDown
 {
     AKKeyEventData *event = [[AKKeyEventData alloc] init];
     NSUInteger modifierFlags = [NSEvent modifierFlags];
@@ -234,25 +239,25 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
     [event setKeyCode:[self scanCodeToKeyCode:scanCode
                                 modifierFlags:modifierFlags]];
 
-    @synchronized (observerLock) {
-        [observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
+    @synchronized (_observerLock) {
+        [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
              [obj keyStateChanged:event
                            isDown:isDown];
          }];
     }
 }
 
-- (void)addObserver:(id<AKKeyboardEventDelegate>)observer
+- (void) addObserver:(id<AKKeyboardEventDelegate>) observer
 {
-    @synchronized (observerLock) {
-        [observers addObject:observer];
+    @synchronized (_observerLock) {
+        [_observers addObject:observer];
     }
 }
 
-- (void)removeObserver:(id<AKKeyboardEventDelegate>)observer
+- (void) removeObserver:(id<AKKeyboardEventDelegate>) observer
 {
-    @synchronized (observerLock) {
-        [observers removeObject:observer];
+    @synchronized (_observerLock) {
+        [_observers removeObject:observer];
     }
 }
 

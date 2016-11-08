@@ -21,6 +21,7 @@
 #import <Cocoa/Cocoa.h>
 
 #import "AKKeyCaptureView.h"
+#import "AKGamepadManager.h"
 #import "AKKeyboardManager.h"
 
 @interface FXButtonConfig : NSObject
@@ -32,7 +33,7 @@
 
 @end
 
-@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate>
+@interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate, AKGamepadEventDelegate>
 {
     IBOutlet NSToolbar *toolbar;
     IBOutlet NSTabView *contentTabView;
@@ -40,11 +41,13 @@
     IBOutlet NSTableView *dipswitchTableView;
     IBOutlet NSButton *resetDipSwitchesButton;
 	IBOutlet NSSlider *volumeSlider;
+	IBOutlet NSPopUpButton *inputDevicesPopUp;
 }
 
 - (IBAction) tabChanged:(id) sender;
 - (IBAction) resetDipSwitchesClicked:(id) sender;
 - (IBAction) showNextTab:(id) sender;
 - (IBAction) showPreviousTab:(id) sender;
+- (IBAction) inputDeviceDidChange:(id) sender;
 
 @end

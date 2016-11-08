@@ -1,22 +1,20 @@
 /*****************************************************************************
  **
- ** FinalBurn X: Port of FinalBurn to OS X
- ** https://github.com/pokebyte/FinalBurnX
+ ** FinalBurn X: FinalBurn for macOS
+ ** https://github.com/pokebyte/FinalBurn-X
  ** Copyright (C) 2014-2016 Akop Karapetyan
  **
- ** This program is free software; you can redistribute it and/or modify
- ** it under the terms of the GNU General Public License as published by
- ** the Free Software Foundation; either version 2 of the License, or
- ** (at your option) any later version.
+ ** Licensed under the Apache License, Version 2.0 (the "License");
+ ** you may not use this file except in compliance with the License.
+ ** You may obtain a copy of the License at
  **
- ** This program is distributed in the hope that it will be useful,
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- ** GNU General Public License for more details.
+ **     http://www.apache.org/licenses/LICENSE-2.0
  **
- ** You should have received a copy of the GNU General Public License
- ** along with this program; if not, write to the Free Software
- ** Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ ** Unless required by applicable law or agreed to in writing, software
+ ** distributed under the License is distributed on an "AS IS" BASIS,
+ ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ** See the License for the specific language governing permissions and
+ ** limitations under the License.
  **
  ******************************************************************************
  */
@@ -33,6 +31,7 @@
 #include "driverlist.h"
 
 //#define DEBUG_KEY_STATE
+#define DEBUG_GP
 
 @interface FXInput()
 
@@ -63,6 +62,7 @@
 {
     if ((self = [super init]) != nil) {
 		_driver = driver;
+		[[AKGamepadManager sharedInstance] addObserver:self];
     }
     
     return self;
@@ -75,11 +75,12 @@
     
     // Stop listening for key events
     [[AKKeyboardManager sharedInstance] removeObserver:self];
+	[[AKGamepadManager sharedInstance] removeObserver:self];
 }
 
 #pragma mark - Core callbacks
 
-- (BOOL)isInputActiveForCode:(int)inputCode
+- (BOOL) isInputActiveForCode:(int)inputCode
 {
     if (inputCode < 0) {
         return NO;
@@ -135,6 +136,57 @@
     if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
         _keyStates[[event keyCode]] = isDown;
     }
+}
+
+#pragma mark - AKGamepadDelegate
+
+- (void) gamepadDidConnect:(AKGamepad *) gamepad
+{
+#ifdef DEBUG_GP
+	NSLog(@"Gamepad \"%@\" connected to port %i",
+		  [gamepad name], (int) [gamepad index]);
+#endif
+}
+
+- (void) gamepadDidDisconnect:(AKGamepad *) gamepad
+{
+#ifdef DEBUG_GP
+	NSLog(@"Gamepad \"%@\" disconnected from port %i",
+		  [gamepad name], (int) [gamepad index]);
+#endif
+}
+
+- (void) gamepad:(AKGamepad *) gamepad
+		xChanged:(NSInteger) newValue
+		  center:(NSInteger) center
+	   eventData:(AKGamepadEventData *) eventData
+{
+#ifdef DEBUG_GP
+	NSLog(@"Joystick X: %ld (center: %ld) on gamepad %@",
+		  newValue, center, gamepad);
+#endif
+}
+
+- (void) gamepad:(AKGamepad *) gamepad
+		yChanged:(NSInteger) newValue
+		  center:(NSInteger) center
+	   eventData:(AKGamepadEventData *) eventData
+{
+#ifdef DEBUG_GP
+	NSLog(@"Joystick Y: %ld (center: %ld) on gamepad %@",
+		  newValue, center, gamepad);
+#endif
+}
+
+- (void) gamepad:(AKGamepad *) gamepad
+		  button:(NSUInteger) index
+		  isDown:(BOOL) isDown
+	   eventData:(AKGamepadEventData *)eventData
+{
+#ifdef DEBUG_GP
+	NSLog(@"Button %ld %@ on gamepad %@", index, gamepad,
+		  isDown ? @"down" : @"up");
+#endif
 }
 
 #pragma mark - Etc

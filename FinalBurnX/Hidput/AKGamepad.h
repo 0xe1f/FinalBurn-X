@@ -32,15 +32,15 @@
 @property (nonatomic, readonly) NSInteger productId;
 @property (nonatomic, readonly) NSString *name;
 
-+ (NSArray *)allGamepads;
++ (NSArray<AKGamepad *> *) allGamepads;
 
-- (id)initWithHidDevice:(IOHIDDeviceRef)device;
+- (id) initWithHidDevice:(IOHIDDeviceRef) device;
 
-- (void)registerForEvents;
+- (void) registerForEvents;
 
-- (NSInteger)vendorProductId;
-- (NSString *)vendorProductString;
+- (NSInteger) vendorProductId;
+- (NSString *) vendorProductString;
 
-- (NSMutableDictionary *)currentAxisValues;
+- (NSMutableDictionary *) currentAxisValues;
 
 @end

@@ -21,18 +21,12 @@
 #import <Foundation/Foundation.h>
 
 @interface AKKeyEventData : NSObject
-{
-@private
-    NSInteger _scanCode;
-    NSInteger _keyCode;
-    NSUInteger _modifierFlags;
-}
 
 @property (nonatomic, assign) NSInteger scanCode;
 @property (nonatomic, assign) NSInteger keyCode;
 @property (nonatomic, assign) NSUInteger modifierFlags;
 
-- (BOOL)hasKeyCodeEquivalent;
+- (BOOL) hasKeyCodeEquivalent;
 
 @end
 

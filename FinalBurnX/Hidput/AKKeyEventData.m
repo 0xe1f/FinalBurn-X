@@ -21,8 +21,13 @@
 #import "AKKeyEventData.h"
 
 @implementation AKKeyEventData
+{
+	NSInteger _scanCode;
+	NSInteger _keyCode;
+	NSUInteger _modifierFlags;
+}
 
-- (BOOL)hasKeyCodeEquivalent
+- (BOOL) hasKeyCodeEquivalent
 {
     return _keyCode != AKKeyInvalid;
 }

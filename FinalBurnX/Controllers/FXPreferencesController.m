@@ -26,6 +26,7 @@
 #import "FXManifest.h"
 #import "FXInputConfig.h"
 #import "FXButtonMap.h"
+#import "AKGamepadManager.h"
 
 #pragma mark - FXButtonConfig
 
@@ -37,12 +38,13 @@
 
 @interface FXPreferencesController ()
 
-- (void)emulationChangedNotification:(NSNotification *)notification;
+- (void) emulationChangedNotification:(NSNotification *)notification;
 
-- (void)updateSpecifics;
-- (void)updateInput;
-- (void)updateDipSwitches;
+- (void) updateSpecifics;
+- (void) updateInput;
+- (void) updateDipSwitches;
 - (void) sliderValueChanged:(NSSlider *) sender;
+- (void) resetInputDevices;
 
 @end
 
@@ -51,14 +53,18 @@
 	NSMutableArray<FXButtonConfig *> *_inputList;
 	NSMutableArray *dipSwitchList;
 	AKKeyCaptureView *keyCaptureView;
+	NSMutableArray<NSDictionary *> *_inputDeviceList;
+	NSMutableDictionary<NSString *, NSDictionary *> *_inputDeviceMap;
 }
 
 - (id) init
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
-        _inputList = [NSMutableArray array];
-        self->dipSwitchList = [NSMutableArray array];
-    }
+        _inputList = [NSMutableArray new];
+		_inputDeviceList = [NSMutableArray new];
+		_inputDeviceMap = [NSMutableDictionary new];
+        self->dipSwitchList = [NSMutableArray new];
+	}
     
     return self;
 }
@@ -74,27 +80,49 @@
                                                object:nil];
     
     [self updateSpecifics];
+
+	NSDictionary *gp = @{ @"title": NSLocalizedString(@"Keyboard", @"Device") };
+	[_inputDeviceList addObject:gp];
+	[_inputDeviceMap setObject:gp
+						forKey:@"keyboard"];
+
+	AKGamepadManager *gm = [AKGamepadManager sharedInstance];
+	for (int i = 0, n = (int) [gm gamepadCount]; i < n; i++) {
+		AKGamepad *gamepad = [gm gamepadAtIndex:i];
+		NSString *key = [gamepad vendorProductString];
+		NSDictionary *gp = @{ @"id": key,
+							  @"title": [gamepad name] };
+
+		[_inputDeviceList addObject:gp];
+		[_inputDeviceMap setObject:gp
+							forKey:key];
+	}
+	[self resetInputDevices];
+
+	[[AKGamepadManager sharedInstance] addObserver:self];
 }
 
-- (void)dealloc
+- (void) dealloc
 {
-    [[NSNotificationCenter defaultCenter] removeObserver:self
+	[[AKGamepadManager sharedInstance] removeObserver:self];
+
+	[[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:FXEmulatorChanged
                                                   object:nil];
 }
 
 #pragma mark - NSWindowController
 
-- (void)windowDidLoad
+- (void) windowDidLoad
 {
     [toolbar setSelectedItemIdentifier:[[NSUserDefaults standardUserDefaults] objectForKey:@"selectedPreferencesTab"]];
 }
 
-- (id)windowWillReturnFieldEditor:(NSWindow *)sender
-                         toObject:(id)anObject
+- (id) windowWillReturnFieldEditor:(NSWindow *) sender
+						  toObject:(id) anObject
 {
     if (anObject == inputTableView) {
-        if (keyCaptureView == nil) {
+        if (!keyCaptureView) {
             keyCaptureView = [[AKKeyCaptureView alloc] init];
         }
         
@@ -104,14 +132,46 @@
     return nil;
 }
 
-- (void)windowDidBecomeKey:(NSNotification *)notification
+- (void) windowDidBecomeKey:(NSNotification *) notification
 {
     [[AKKeyboardManager sharedInstance] addObserver:self];
 }
 
-- (void)windowDidResignKey:(NSNotification *)notification
+- (void) windowDidResignKey:(NSNotification *) notification
 {
     [[AKKeyboardManager sharedInstance] removeObserver:self];
+}
+
+#pragma mark - AKGamepadDelegate
+
+- (void) gamepadDidConnect:(AKGamepad *) gamepad
+{
+	NSString *key = [gamepad vendorProductString];
+	@synchronized (_inputDeviceList) {
+		if (![_inputDeviceMap objectForKey:key]) {
+			NSDictionary *gp = @{ @"id": key,
+								  @"title": [gamepad name] };
+
+			[_inputDeviceMap setObject:gp
+								forKey:key];
+			[_inputDeviceList addObject:gp];
+		}
+	}
+
+	[self resetInputDevices];
+}
+
+- (void) gamepadDidDisconnect:(AKGamepad *) gamepad
+{
+	NSString *key = [gamepad vendorProductString];
+	@synchronized (_inputDeviceList) {
+		NSDictionary *gp = [_inputDeviceMap objectForKey:key];
+
+		[_inputDeviceMap removeObjectForKey:key];
+		[_inputDeviceList removeObject:gp];
+	}
+	
+	[self resetInputDevices];
 }
 
 #pragma mark - NSTableViewDataSource
@@ -208,6 +268,13 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 }
 
 #pragma mark - Actions
+
+- (void) inputDeviceDidChange:(id) sender
+{
+	NSInteger index = [sender indexOfSelectedItem];
+
+	NSLog(@"-- %@", [_inputDeviceList objectAtIndex:index]);
+}
 
 - (void)tabChanged:(id)sender
 {
@@ -316,7 +383,7 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
     [self->dipswitchTableView reloadData];
 }
 
-- (void)updateInput
+- (void) updateInput
 {
     [_inputList removeAllObjects];
     
@@ -335,6 +402,14 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 	
     [self->inputTableView setEnabled:[_inputList count] > 0];
     [self->inputTableView reloadData];
+}
+
+- (void) resetInputDevices
+{
+	[inputDevicesPopUp removeAllItems];
+	[_inputDeviceList enumerateObjectsUsingBlock:^(NSDictionary *gp, NSUInteger idx, BOOL *stop) {
+		[inputDevicesPopUp addItemWithTitle:[gp objectForKey:@"title"]];
+	}];
 }
 
 - (void)updateSpecifics

@@ -30,9 +30,8 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
 
 @interface AKGamepad()
 
-- (void)unregisterFromEvents;
-
-- (void)didReceiveInputValue:(IOHIDValueRef)valueRef;
+- (void) unregisterFromEvents;
+- (void) didReceiveInputValue:(IOHIDValueRef) valueRef;
 
 @end
 
@@ -44,7 +43,7 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
 	NSPoint _axes;
 }
 
-+ (NSArray *)allGamepads
++ (NSArray<AKGamepad *> *) allGamepads
 {
     NSUInteger usagePage = kHIDPage_GenericDesktop;
     NSUInteger usageId = kHIDUsage_GD_GamePad;
@@ -60,39 +59,35 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
     io_iterator_t hidObjectIterator = MACH_PORT_NULL;
     NSMutableArray *gamepads = [NSMutableArray array];
     
-    @try
-    {
-        IOServiceGetMatchingServices(kIOMasterPortDefault,
-                                     hidMatchDictionary,
+    @try {
+        IOServiceGetMatchingServices(kIOMasterPortDefault, hidMatchDictionary,
                                      &hidObjectIterator);
         
-        if (hidObjectIterator == 0)
+		if (hidObjectIterator == 0) {
             return [NSArray array];
-        
+		}
+		
         io_object_t hidDevice;
-        while ((hidDevice = IOIteratorNext(hidObjectIterator)))
-        {
+        while ((hidDevice = IOIteratorNext(hidObjectIterator))) {
             AKGamepad *gamepad = [[AKGamepad alloc] initWithHidDevice:hidDevice];
-            
-            if ([gamepad locationId] == 0)
+			if ([gamepad locationId] == 0) {
                 continue;
-            
+			}
+			
             [gamepads addObject:gamepad];
         }
-    }
-    @finally
-    {
-        if (hidObjectIterator != MACH_PORT_NULL)
+    } @finally {
+		if (hidObjectIterator != MACH_PORT_NULL) {
             IOObjectRelease(hidObjectIterator);
+		}
     }
     
     return gamepads;
 }
 
-- (id)initWithHidDevice:(IOHIDDeviceRef)device
+- (id) initWithHidDevice:(IOHIDDeviceRef) device
 {
-    if ((self = [self init]))
-    {
+    if ((self = [self init])) {
         registeredForEvents = NO;
         hidDevice = device;
         
@@ -107,76 +102,79 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
         CFTypeID numericTypeId = CFNumberGetTypeID();
         
         tCFTypeRef = IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDVendorIDKey));
-		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId)
+		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId) {
             CFNumberGetValue((CFNumberRef)tCFTypeRef, kCFNumberSInt32Type, &_vendorId);
-        
+		}
+		
         tCFTypeRef = IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDProductIDKey));
-		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId)
+		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId) {
             CFNumberGetValue((CFNumberRef)tCFTypeRef, kCFNumberSInt32Type, &_productId);
-        
+		}
+		
         tCFTypeRef = IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDLocationIDKey));
-		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId)
+		if (tCFTypeRef && CFGetTypeID(tCFTypeRef) == numericTypeId) {
             CFNumberGetValue((CFNumberRef)tCFTypeRef, kCFNumberSInt32Type, &_locationId);
-        
+		}
+		
         _name = (__bridge NSString *)IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDProductKey));
     }
     
     return self;
 }
 
-- (void)dealloc
+- (void) dealloc
 {
     [self unregisterFromEvents];
     
     IOObjectRelease(hidDevice);
 }
 
-- (void)registerForEvents
+- (void) registerForEvents
 {
-    if (!registeredForEvents)
-    {
+    if (!registeredForEvents) {
         IOHIDDeviceOpen(hidDevice, kIOHIDOptionsTypeNone);
         IOHIDDeviceRegisterInputValueCallback(hidDevice, gamepadInputValueCallback, (__bridge void *)(self));
         
         registeredForEvents = YES;
         
-        if ([_delegate respondsToSelector:@selector(gamepadDidConnect:)])
+		if ([_delegate respondsToSelector:@selector(gamepadDidConnect:)]) {
             [_delegate gamepadDidConnect:self];
+		}
     }
 }
 
-- (void)unregisterFromEvents
+- (void) unregisterFromEvents
 {
-    if (registeredForEvents)
-    {
+    if (registeredForEvents) {
         // FIXME: why does this crash the emulator?
 //        IOHIDDeviceClose(hidDevice, kIOHIDOptionsTypeNone);
         
         registeredForEvents = NO;
         
-        if ([_delegate respondsToSelector:@selector(gamepadDidDisconnect:)])
+		if ([_delegate respondsToSelector:@selector(gamepadDidDisconnect:)]) {
             [_delegate gamepadDidDisconnect:self];
+		}
     }
 }
 
-- (NSString *)vendorProductString
+- (NSString *) vendorProductString
 {
     return [NSString stringWithFormat:@"%04lx:%04lx",
             (long)[self vendorId], (long)[self productId]];
 }
 
-- (NSInteger)vendorProductId
+- (NSInteger) vendorProductId
 {
     return (_vendorId << 16) | _productId;
 }
 
-- (NSString *)description
+- (NSString *) description
 {
     return [NSString stringWithFormat:@"%@ (0x%04lx:0x%04lx)",
             [self name], (long)[self vendorId], (long)[self productId]];
 }
 
-- (void)didReceiveInputValue:(IOHIDValueRef)valueRef
+- (void) didReceiveInputValue:(IOHIDValueRef) valueRef
 {
     IOHIDElementRef element = IOHIDValueGetElement(valueRef);
     
@@ -184,10 +182,8 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
     NSInteger usage = IOHIDElementGetUsage(element);
     NSInteger value = IOHIDValueGetIntegerValue(valueRef);
     
-    if (usagePage == kHIDPage_GenericDesktop)
-    {
-        if (usage == kHIDUsage_GD_X)
-        {
+    if (usagePage == kHIDPage_GenericDesktop) {
+        if (usage == kHIDUsage_GD_X) {
             NSInteger min = IOHIDElementGetLogicalMin(element);
             NSInteger max = IOHIDElementGetLogicalMax(element);
             NSInteger center = (max + min) / 2;
@@ -199,8 +195,7 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
             
             if (_axes.x != value) {
                 _axes.x = value;
-                if ([_delegate respondsToSelector:@selector(gamepad:xChanged:center:eventData:)])
-                {
+                if ([_delegate respondsToSelector:@selector(gamepad:xChanged:center:eventData:)]) {
                     AKGamepadEventData *eventData = [[AKGamepadEventData alloc] init];
                     [eventData setSourceId:IOHIDElementGetCookie(element)];
                     
@@ -210,9 +205,7 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
                              eventData:eventData];
                 }
             }
-        }
-        else if (usage == kHIDUsage_GD_Y)
-        {
+        } else if (usage == kHIDUsage_GD_Y) {
             NSInteger min = IOHIDElementGetLogicalMin(element);
             NSInteger max = IOHIDElementGetLogicalMax(element);
             NSInteger center = (max + min) / 2;
@@ -224,8 +217,7 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
             
             if (_axes.y != value) {
                 _axes.y = value;
-                if ([_delegate respondsToSelector:@selector(gamepad:yChanged:center:eventData:)])
-                {
+                if ([_delegate respondsToSelector:@selector(gamepad:yChanged:center:eventData:)]) {
                     AKGamepadEventData *eventData = [[AKGamepadEventData alloc] init];
                     [eventData setSourceId:IOHIDElementGetCookie(element)];
                     
@@ -236,60 +228,37 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
                 }
             }
         }
-    }
-    else if (usagePage == kHIDPage_Button)
-    {
-        if (!value)
-        {
-            if ([_delegate respondsToSelector:@selector(gamepad:buttonUp:eventData:)])
-            {
-                AKGamepadEventData *eventData = [[AKGamepadEventData alloc] init];
-                [eventData setSourceId:IOHIDElementGetCookie(element)];
-                
-                [_delegate gamepad:self
-                          buttonUp:usage
-                         eventData:eventData];
-            }
-        }
-        else
-        {
-            if ([_delegate respondsToSelector:@selector(gamepad:buttonDown:eventData:)])
-            {
-                AKGamepadEventData *eventData = [[AKGamepadEventData alloc] init];
-                [eventData setSourceId:IOHIDElementGetCookie(element)];
-                
-                [_delegate gamepad:self
-                        buttonDown:usage
-                         eventData:eventData];
-            }
-        }
+    } else if (usagePage == kHIDPage_Button) {
+		if ([_delegate respondsToSelector:@selector(gamepad:button:isDown:eventData:)]) {
+			AKGamepadEventData *eventData = [[AKGamepadEventData alloc] init];
+			[eventData setSourceId:IOHIDElementGetCookie(element)];
+			
+			[_delegate gamepad:self
+						button:usage
+						isDown:(value & 1)
+					 eventData:eventData];
+		}
     }
 }
 
-- (NSMutableDictionary *)currentAxisValues
+- (NSMutableDictionary *) currentAxisValues
 {
     CFArrayRef elements = IOHIDDeviceCopyMatchingElements(hidDevice, NULL, kIOHIDOptionsTypeNone);
     NSArray *elementArray = (__bridge NSArray *) elements;
     
     NSMutableDictionary *axesAndValues = [[NSMutableDictionary alloc] init];
     
-    [elementArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
-     {
+    [elementArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
          IOHIDElementRef element = (__bridge IOHIDElementRef) obj;
          
          NSInteger usagePage = IOHIDElementGetUsagePage(element);
-         if (usagePage == kHIDPage_GenericDesktop)
-         {
+         if (usagePage == kHIDPage_GenericDesktop) {
              IOHIDElementType type = IOHIDElementGetType(element);
-             if (type == kIOHIDElementTypeInput_Misc ||
-                 type == kIOHIDElementTypeInput_Axis)
-             {
+             if (type == kIOHIDElementTypeInput_Misc || type == kIOHIDElementTypeInput_Axis) {
                  NSInteger usage = IOHIDElementGetUsage(element);
-                 if (usage == kHIDUsage_GD_X || usage == kHIDUsage_GD_Y)
-                 {
+                 if (usage == kHIDUsage_GD_X || usage == kHIDUsage_GD_Y) {
                      IOHIDValueRef tIOHIDValueRef;
-                     if (IOHIDDeviceGetValue(hidDevice, element, &tIOHIDValueRef) == kIOReturnSuccess)
-                     {
+                     if (IOHIDDeviceGetValue(hidDevice, element, &tIOHIDValueRef) == kIOReturnSuccess) {
                          IOHIDElementCookie cookie = IOHIDElementGetCookie(element);
                          NSInteger integerValue = IOHIDValueGetIntegerValue(tIOHIDValueRef);
                          
@@ -310,8 +279,7 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
 
 static void gamepadInputValueCallback(void *context, IOReturn result, void *sender, IOHIDValueRef value)
 {
-    @autoreleasepool
-    {
+    @autoreleasepool {
         [(__bridge AKGamepad *) context didReceiveInputValue:value];
     }
 }
