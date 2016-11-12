@@ -33,6 +33,12 @@
 @end
 
 @implementation FXVideo
+{
+	unsigned char *screenBuffer;
+	int bufferWidth;
+	int bufferHeight;
+	int bufferBytesPerPixel;
+}
 
 #pragma mark - Init and dealloc
 
@@ -48,8 +54,8 @@
 - (void)dealloc
 {
     [self cleanup];
-    
-    [self setDelegate:nil];
+	
+	_delegate = nil;
 }
 
 #pragma mark - Core callbacks

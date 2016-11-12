@@ -464,18 +464,13 @@
 
 static int cocoaInputInit()
 {
-    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
+    FXInput *__weak input = [[[FXAppDelegate sharedInstance] emulator] input];
     [input initializeInput];
     
 	return 0;
 }
 
 static int cocoaInputExit()
-{
-	return 0;
-}
-
-static int cocoaInputSetCooperativeLevel(bool bExclusive, bool bForeGround)
 {
 	return 0;
 }
@@ -487,47 +482,20 @@ static int cocoaInputStart()
 
 static int cocoaInputState(int nCode)
 {
-    FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
+    FXInput *__weak input = [[[FXAppDelegate sharedInstance] emulator] input];
 	return [input isInputActiveForCode:nCode] == YES;
-}
-
-static int cocoaInputJoystickAxis(int i, int nAxis)
-{
-    return 0;
-}
-
-static int cocoaInputMouseAxis(int i, int nAxis)
-{
-	return 0;
-}
-
-static int cocoaInputFind(bool createBaseline)
-{
-	return -1;
-}
-
-static int cocoaInputGetControlName(int nCode, TCHAR* pszDeviceName, TCHAR* pszControlName)
-{
-	if (pszDeviceName) {
-		pszDeviceName[0] = _T('\0');
-	}
-	if (pszControlName) {
-		pszControlName[0] = _T('\0');
-	}
-    
-	return 0;
 }
 
 struct InputInOut InputInOutCocoa = {
     cocoaInputInit,
     cocoaInputExit,
-    cocoaInputSetCooperativeLevel,
+    NULL,
     cocoaInputStart,
     cocoaInputState,
-    cocoaInputJoystickAxis,
-    cocoaInputMouseAxis,
-    cocoaInputFind,
-    cocoaInputGetControlName,
     NULL,
-    _T("Cocoa Input"),
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
 };

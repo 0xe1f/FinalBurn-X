@@ -29,7 +29,6 @@
 + (FXAppDelegate *)sharedInstance;
 
 - (NSURL *)appSupportURL;
-- (FXEmulatorController *)emulator;
 - (FXPreferencesController *)prefs;
 - (NSString *)ROMPath;
 - (void) launch:(NSString *) name;
@@ -39,5 +38,7 @@
 
 @property (nonatomic, readonly, strong) NSString *nvramPath;
 @property (nonatomic, readonly, strong) NSString *inputMapPath;
+
+@property (nonatomic, readonly) FXEmulatorController *emulator;
 
 @end

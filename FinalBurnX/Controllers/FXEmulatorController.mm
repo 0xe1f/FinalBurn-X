@@ -28,7 +28,6 @@
 @interface FXEmulatorController ()
 
 - (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize;
-- (void)windowKeyDidChange:(BOOL)isKey;
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate;
 - (void) displayMessage:(NSString *) message;
@@ -46,10 +45,10 @@
 {
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
 		_driver = driver;
-		[self setInput:[[FXInput alloc] initWithDriver:driver]];
-        [self setVideo:[[FXVideo alloc] init]];
-        [self setAudio:[[FXAudio alloc] init]];
-		[self setRunLoop:[[FXRunLoop alloc] initWithDriver:_driver]];
+		_input = [[FXInput alloc] initWithDriver:driver];
+        _video = [[FXVideo alloc] init];
+        _audio = [[FXAudio alloc] init];
+		_runLoop = [[FXRunLoop alloc] initWithDriver:_driver];
 		_cursorVisible = YES;
 
 		[[NSUserDefaults standardUserDefaults] addObserver:self
@@ -79,19 +78,18 @@
     [[self runLoop] setDelegate:self];
     
     [[self runLoop] start];
-	[self->_audio setVolume:[[NSUserDefaults standardUserDefaults] integerForKey:@"audioVolume"]];
+	[_audio setVolume:[[NSUserDefaults standardUserDefaults] integerForKey:@"audioVolume"]];
 	
-	[self->screen setDelegate:self];
+	[screen setDelegate:self];
 	
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
                                                       userInfo:nil];
 }
 
-- (void)dealloc
+- (void) dealloc
 {
-	[[NSUserDefaults standardUserDefaults] removeObserver:self
-											   forKeyPath:@"audioVolume"];
+	[screen setDelegate:nil];
 }
 
 #pragma mark - Notifications
@@ -102,7 +100,7 @@
 					   context:(void *) context
 {
 	if ([keyPath isEqualToString:@"audioVolume"]) {
-		[self->_audio setVolume:[[change objectForKey:NSKeyValueChangeNewKey] integerValue]];
+		[_audio setVolume:[[change objectForKey:NSKeyValueChangeNewKey] integerValue]];
 	}
 }
 
@@ -148,12 +146,12 @@
 
 - (void)windowDidBecomeKey:(NSNotification *)notification
 {
-    [self windowKeyDidChange:YES];
+	[_input setFocus:YES];
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification
 {
-    [self windowKeyDidChange:NO];
+	[_input setFocus:NO];
 	if (!_cursorVisible) {
 		_cursorVisible = YES;
 		[NSCursor unhide];
@@ -167,6 +165,8 @@
 
 - (void) windowWillClose:(NSNotification *) notification
 {
+	[[NSUserDefaults standardUserDefaults] removeObserver:self
+											   forKeyPath:@"audioVolume"];
     [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
                                                       userInfo:nil];
@@ -256,12 +256,12 @@
 
 - (void)resetEmulation:(id)sender
 {
-    [[self input] setResetPressed:YES];
+    [_input setResetPressed:YES];
 }
 
 - (void)toggleTestMode:(id)sender
 {
-    [[self input] setTestPressed:YES];
+    [_input setTestPressed:YES];
 }
 
 #pragma mark - Core
@@ -278,12 +278,12 @@
 
 - (void)saveSettings
 {
-    [[self input] save];
+    [_input save];
 }
 
 - (void)restoreSettings
 {
-    [[self input] restore];
+    [_input restore];
 }
 
 #pragma mark - Private methods
@@ -336,11 +336,6 @@
     [[self window] setFrame:newRect
                     display:YES
                     animate:animate];
-}
-
-- (void)windowKeyDidChange:(BOOL)isKey
-{
-    [[self input] setFocus:isKey];
 }
 
 #pragma mark - NSUserInterfaceValidation

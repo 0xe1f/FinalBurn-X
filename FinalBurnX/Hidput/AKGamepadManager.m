@@ -39,7 +39,7 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 	IOHIDManagerRef _hidManager;
 	NSMutableDictionary<NSNumber *, AKGamepad *> *_gamepadsByDeviceId;
 	NSMutableArray<AKGamepad *> *_allGamepads;
-	NSMutableArray *_observers;
+	NSPointerArray *_observers;
 }
 
 + (instancetype) sharedInstance
@@ -58,7 +58,7 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 	if ((self = [super init])) {
 		_gamepadsByDeviceId = [NSMutableDictionary dictionary];
 		_allGamepads = [NSMutableArray array];
-        _observers = [NSMutableArray array];
+        _observers = [NSPointerArray weakObjectsPointerArray];
         _hidManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
         
 		NSMutableDictionary *gamepadCriterion = [@{ (NSString *) CFSTR(kIOHIDDeviceUsagePageKey): @(kHIDPage_GenericDesktop),
@@ -135,20 +135,24 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 
 - (void) gamepadDidConnect:(AKGamepad *) gamepad
 {
-    [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-		 if ([obj respondsToSelector:_cmd]) {
-             [obj gamepadDidConnect:gamepad];
-		 }
-     }];
+	@synchronized (_observers) {
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:_cmd]) {
+				[delegate gamepadDidConnect:gamepad];
+			}
+		}
+	}
 }
 
 - (void) gamepadDidDisconnect:(AKGamepad *) gamepad
 {
-    [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-		 if ([obj respondsToSelector:_cmd]) {
-             [obj gamepadDidDisconnect:gamepad];
-		 }
-     }];
+	@synchronized (_observers) {
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:_cmd]) {
+				[delegate gamepadDidDisconnect:gamepad];
+			}
+		}
+	}
 }
 
 - (void) gamepad:(AKGamepad *) gamepad
@@ -156,14 +160,16 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
-    [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-		 if ([obj respondsToSelector:_cmd]) {
-             [obj gamepad:gamepad
-                 xChanged:newValue
-                   center:center
-                eventData:eventData];
-		 }
-     }];
+	@synchronized (_observers) {
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:_cmd]) {
+				[delegate gamepad:gamepad
+						 xChanged:newValue
+						   center:center
+						eventData:eventData];
+			}
+		}
+	}
 }
 
 - (void) gamepad:(AKGamepad *) gamepad
@@ -171,14 +177,16 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
-    [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-		 if ([obj respondsToSelector:_cmd]) {
-             [obj gamepad:gamepad
-                 yChanged:newValue
-                   center:center
-                eventData:eventData];
-		 }
-     }];
+	@synchronized (_observers) {
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:_cmd]) {
+				[delegate gamepad:gamepad
+						 yChanged:newValue
+						   center:center
+						eventData:eventData];
+			}
+		}
+	}
 }
 
 - (void) gamepad:(AKGamepad *) gamepad
@@ -186,24 +194,46 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 		  isDown:(BOOL) isDown
 	   eventData:(AKGamepadEventData *) eventData
 {
-    [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-		 if ([obj respondsToSelector:_cmd]) {
-             [obj gamepad:gamepad
-				   button:index
-				   isDown:isDown
-                eventData:eventData];
-		 }
-     }];
+	@synchronized (_observers) {
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:_cmd]) {
+				[delegate gamepad:gamepad
+						   button:index
+						   isDown:isDown
+						eventData:eventData];
+			}
+		}
+	}
 }
 
 - (void) addObserver:(id<AKGamepadEventDelegate>) observer
 {
-    [_observers addObject:observer];
+	@synchronized (_observers) {
+		[_observers addPointer:(__bridge void * _Nullable)(observer)];
+	}
+	
+#ifdef DEBUG
+	NSLog(@"AKGamepadManager/addObserver (%d)",
+		  (int) [_observers count]);
+#endif
 }
 
 - (void) removeObserver:(id<AKGamepadEventDelegate>) observer
 {
-    [_observers removeObject:observer];
+	void *remove = (__bridge void * _Nullable)(observer);
+	@synchronized (_observers) {
+		for (int i = (int) [_observers count] - 1; i >= 0; i--) {
+			void *ptr = [_observers pointerAtIndex:i];
+			if (ptr == remove || ptr == NULL) {
+				[_observers removePointerAtIndex:i];
+			}
+		}
+	}
+	
+#ifdef DEBUG
+	NSLog(@"AKGamepadManager/removeObserver (%d)",
+		  (int) [_observers count]);
+#endif
 }
 
 #pragma mark - Private

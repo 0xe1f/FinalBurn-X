@@ -35,13 +35,6 @@
 @end
 
 @interface FXVideo : NSObject
-{
-    @private
-    unsigned char *screenBuffer;
-    int bufferWidth;
-    int bufferHeight;
-    int bufferBytesPerPixel;
-}
 
 @property (nonatomic, weak) id<FXVideoDelegate> delegate;
 

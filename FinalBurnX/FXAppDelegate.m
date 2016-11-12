@@ -30,7 +30,6 @@
 
 @implementation FXAppDelegate
 {
-	FXEmulatorController *emulator;
 	FXLauncherController *launcher;
 	FXPreferencesController *prefs;
 	NSString *appSupportPath;
@@ -135,11 +134,6 @@ static FXAppDelegate *sharedInstance = nil;
     return self->romPath;
 }
 
-- (FXEmulatorController *)emulator
-{
-    return self->emulator;
-}
-
 - (FXPreferencesController *)prefs
 {
     return self->prefs;
@@ -154,10 +148,10 @@ static FXAppDelegate *sharedInstance = nil;
 
 	[self shutDown];
     @synchronized(self) {
-		self->emulator = [[FXEmulatorController alloc] initWithDriver:driver];
-        [self->emulator restoreSettings];
+		_emulator = [[FXEmulatorController alloc] initWithDriver:driver];
+        [_emulator restoreSettings];
         
-        [self->emulator showWindow:self];
+        [_emulator showWindow:self];
     }
 }
 
@@ -171,8 +165,9 @@ static FXAppDelegate *sharedInstance = nil;
 - (void)shutDown
 {
     @synchronized(self) {
-        [self->emulator saveSettings];
-        [self->emulator close];
+        [_emulator saveSettings];
+        [_emulator close];
+		_emulator = nil;
     }
 }
 

@@ -38,10 +38,10 @@
 	IBOutlet NSView *messagePane;
 }
 
-@property (nonatomic, strong) FXInput *input;
-@property (nonatomic, strong) FXVideo *video;
-@property (nonatomic, strong) FXAudio *audio;
-@property (nonatomic, strong) FXRunLoop *runLoop;
+@property (nonatomic, readonly) FXInput *input;
+@property (nonatomic, readonly) FXVideo *video;
+@property (nonatomic, readonly) FXAudio *audio;
+@property (nonatomic, readonly) FXRunLoop *runLoop;
 @property (nonatomic, readonly) FXDriver *driver;
 
 - (IBAction)resizeNormalSize:(id)sender;

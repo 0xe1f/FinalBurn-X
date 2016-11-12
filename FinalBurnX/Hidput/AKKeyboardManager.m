@@ -34,8 +34,7 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
 @implementation AKKeyboardManager
 {
 	IOHIDManagerRef _keyboardHidManager;
-	NSMutableArray *_observers;
-	NSObject *_observerLock;
+	NSPointerArray *_observers;
 }
 
 + (AKKeyboardManager *) sharedInstance
@@ -52,9 +51,8 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
 - (instancetype) init
 {
     if ((self = [super init])) {
-        _observerLock = [[NSObject alloc] init];
-        _observers = [[NSMutableArray alloc] init];
-        
+		_observers = [NSPointerArray weakObjectsPointerArray];
+
         // Init keyboard hid management
         _keyboardHidManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
         
@@ -82,11 +80,9 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
 
 - (void) dealloc
 {
-    @synchronized (_observerLock) {
+    @synchronized (_observers) {
         _observers = nil;
     }
-    
-    _observerLock = nil;
     
     IOHIDManagerClose(_keyboardHidManager, kIOHIDOptionsTypeNone);
     IOHIDManagerUnscheduleFromRunLoop(_keyboardHidManager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -239,34 +235,50 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
     [event setKeyCode:[self scanCodeToKeyCode:scanCode
                                 modifierFlags:modifierFlags]];
 
-    @synchronized (_observerLock) {
-        [_observers enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-             [obj keyStateChanged:event
-                           isDown:isDown];
-         }];
+    @synchronized (_observers) {
+		for (id<AKKeyboardEventDelegate> delegate in _observers) {
+			[delegate keyStateChanged:event
+							   isDown:isDown];
+		}
     }
 }
 
 - (void) addObserver:(id<AKKeyboardEventDelegate>) observer
 {
-    @synchronized (_observerLock) {
-        [_observers addObject:observer];
+    @synchronized (_observers) {
+		[_observers addPointer:(__bridge void * _Nullable)(observer)];
     }
+	
+#ifdef DEBUG
+	NSLog(@"AKKeyboardManager/addObserver (%d)",
+		  (int) [_observers count]);
+#endif
 }
 
 - (void) removeObserver:(id<AKKeyboardEventDelegate>) observer
 {
-    @synchronized (_observerLock) {
-        [_observers removeObject:observer];
+	void *remove = (__bridge void * _Nullable)(observer);
+    @synchronized (_observers) {
+		for (int i = (int) [_observers count] - 1; i >= 0; i--) {
+			void *ptr = [_observers pointerAtIndex:i];
+			if (ptr == remove || ptr == NULL) {
+				[_observers removePointerAtIndex:i];
+			}
+		}
     }
+
+#ifdef DEBUG
+	NSLog(@"AKKeyboardManager/removeObserver (%d)",
+		  (int) [_observers count]);
+#endif
 }
 
 @end
 
 #pragma mark - IOHID C Callbacks
 
-void keyWasToggled(void *context, IOReturn result, void *sender,
-                   IOHIDValueRef value) {
+void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef value)
+{
     IOHIDElementRef elem = IOHIDValueGetElement(value);
     NSInteger pressed = IOHIDValueGetIntegerValue(value);
     NSInteger scanCode = IOHIDElementGetUsage(elem);
