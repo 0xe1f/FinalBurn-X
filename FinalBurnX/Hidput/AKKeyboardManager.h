@@ -25,7 +25,7 @@
 
 @protocol AKKeyboardEventDelegate
 
-@required
+@optional
 - (void) keyStateChanged:(AKKeyEventData *) event
 				  isDown:(BOOL) isDown;
 

@@ -46,9 +46,9 @@
     if ((self = [super initWithWindowNibName:@"Emulator"])) {
 		_driver = driver;
 		_input = [[FXInput alloc] initWithDriver:driver];
-        _video = [[FXVideo alloc] init];
-        _audio = [[FXAudio alloc] init];
-		_runLoop = [[FXRunLoop alloc] initWithDriver:_driver];
+		_video = [[FXVideo alloc] init];
+		_audio = [[FXAudio alloc] init];
+		_runLoop = [[FXRunLoop alloc] initWithDriver:driver];
 		_cursorVisible = YES;
 
 		[[NSUserDefaults standardUserDefaults] addObserver:self
@@ -74,10 +74,9 @@
     [[self window] setContentSize:preferredSize];
 	[[self window] setBackgroundColor:[NSColor blackColor]];
 	
-    [[self video] setDelegate:self->screen];
-    [[self runLoop] setDelegate:self];
-    
-    [[self runLoop] start];
+    [_video setDelegate:self->screen];
+    [_runLoop setDelegate:self];
+    [_runLoop start];
 	[_audio setVolume:[[NSUserDefaults standardUserDefaults] integerForKey:@"audioVolume"]];
 	
 	[screen setDelegate:self];
@@ -171,41 +170,37 @@
                                                         object:self
                                                       userInfo:nil];
     
-    [[self video] setDelegate:nil];
-    [[self runLoop] cancel];
+    [_video setDelegate:nil];
+    [_runLoop cancel];
 	
 	if (!_cursorVisible) {
 		[NSCursor unhide];
 	}
 }
 
-- (NSSize)windowWillResize:(NSWindow *)sender
-                    toSize:(NSSize)frameSize
+- (NSSize) windowWillResize:(NSWindow *) sender
+					 toSize:(NSSize) frameSize
 {
     NSSize screenSize = [_driver screenSize];
-    if (screenSize.width == 0 || screenSize.height == 0) {
-        // Screen size is not yet available
-    } else {
-        NSRect windowFrame = [[self window] frame];
-		NSView *contentView = [[self window] contentView];
-		NSRect viewRect = [contentView convertRect:[contentView bounds]
-											toView:nil];
-        NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
-        
-        CGFloat screenRatio = screenSize.width / screenSize.height;
-        
-        float marginY = viewRect.origin.y + windowFrame.size.height - contentRect.size.height;
-        float marginX = contentRect.size.width - viewRect.size.width;
-        
-        // Clamp the minimum height
-        if ((frameSize.height - marginY) < screenSize.height) {
-            frameSize.height = screenSize.height + marginY;
-        }
-        
-        // Set the screen width as a percentage of the screen height
-        frameSize.width = (frameSize.height - marginY) * screenRatio + marginX;
-    }
-    
+	NSRect windowFrame = [[self window] frame];
+	NSView *contentView = [[self window] contentView];
+	NSRect viewRect = [contentView convertRect:[contentView bounds]
+										toView:nil];
+	NSRect contentRect = [[self window] contentRectForFrameRect:windowFrame];
+	
+	CGFloat screenRatio = screenSize.width / screenSize.height;
+	
+	float marginY = viewRect.origin.y + windowFrame.size.height - contentRect.size.height;
+	float marginX = contentRect.size.width - viewRect.size.width;
+	
+	// Clamp the minimum height
+	if ((frameSize.height - marginY) < screenSize.height) {
+		frameSize.height = screenSize.height + marginY;
+	}
+	
+	// Set the screen width as a percentage of the screen height
+	frameSize.width = (frameSize.height - marginY) * screenRatio + marginX;
+	
     return frameSize;
 }
 
@@ -251,7 +246,7 @@
 
 - (void)pauseGameplay:(id)sender
 {
-    [[self runLoop] setPaused:![[self runLoop] isPaused]];
+    [_runLoop setPaused:![_runLoop isPaused]];
 }
 
 - (void)resetEmulation:(id)sender
@@ -346,7 +341,7 @@
     
     if ([item action] == @selector(pauseGameplay:))
     {
-        if (![[self runLoop] isPaused]) {
+        if (![_runLoop isPaused]) {
             [menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
         } else {
             [menuItem setTitle:NSLocalizedString(@"Resume", @"Gameplay")];

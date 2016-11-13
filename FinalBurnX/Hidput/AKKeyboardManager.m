@@ -236,9 +236,11 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
                                 modifierFlags:modifierFlags]];
 
     @synchronized (_observers) {
-		for (id<AKKeyboardEventDelegate> delegate in _observers) {
-			[delegate keyStateChanged:event
-							   isDown:isDown];
+		for (id delegate in _observers) {
+			if ([delegate respondsToSelector:@selector(keyStateChanged:isDown:)]) {
+				[delegate keyStateChanged:event
+								   isDown:isDown];
+			}
 		}
     }
 }
