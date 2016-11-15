@@ -95,10 +95,16 @@
 		return NO;
 	}
 
+	_dirty = YES;
 	_deviceToVirtualMap[deviceCode] = virtualCode;
 	_virtualToDeviceMap[virtualCode] = deviceCode;
 
 	return YES;
+}
+
+- (void) clearDirty
+{
+	_dirty = NO;
 }
 
 #pragma mark - Private

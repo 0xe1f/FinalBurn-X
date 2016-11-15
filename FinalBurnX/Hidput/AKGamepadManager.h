@@ -52,6 +52,7 @@
 
 - (AKGamepad *) gamepadWithId:(NSInteger) gamepadId;
 - (AKGamepad *) gamepadAtIndex:(NSUInteger) index;
+- (NSArray<AKGamepad *> *) allConnected;
 
 - (NSUInteger) gamepadCount;
 

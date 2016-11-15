@@ -24,6 +24,13 @@
 #import "AKGamepadManager.h"
 #import "FXDIPSwitchGroup.h"
 
+enum {
+	FXGamepadUp    = 0xff,
+	FXGamepadDown  = 0xfe,
+	FXGamepadLeft  = 0xfd,
+	FXGamepadRight = 0xfc,
+};
+
 @class FXDriver;
 @class FXInputConfig;
 

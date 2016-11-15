@@ -20,6 +20,8 @@
  */
 #import "FXInputConfig.h"
 
+#import "FXButtonMap.h"
+
 @implementation FXInputConfig
 
 #pragma mark - init, dealloc
@@ -49,6 +51,33 @@
 {
 	[coder encodeObject:_keyboard forKey:@"keyboard"];
 	[coder encodeObject:_gamepads forKey:@"gamepads"];
+}
+
+#pragma mark - Public
+
+- (BOOL) dirty
+{
+	if ([_keyboard dirty]) {
+		return YES;
+	}
+
+	__block BOOL isDirty = NO;
+	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
+		if ([map dirty]) {
+			isDirty = YES;
+			*stop = YES;
+		}
+	}];
+
+	return isDirty;
+}
+
+- (void) clearDirty
+{
+	[_keyboard clearDirty];
+	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
+		[map clearDirty];
+	}];
 }
 
 @end

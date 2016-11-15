@@ -22,12 +22,35 @@
 
 #pragma mark - FXButton
 
+@interface FXButton ()
+
+- (void) parseIfNeeded;
+
+@end
+
 @implementation FXButton
+{
+	BOOL _parsed;
+	int _playerIndex;
+	int _fireIndex;
+	NSString *_neutralTitle;
+}
+
+static NSRegularExpression *regex;
+
++ (void) initialize
+{
+	regex = [NSRegularExpression regularExpressionWithPattern:@"^p(\\d) (.*?)( (\\d))?$"
+													  options:NSRegularExpressionCaseInsensitive
+														error:NULL];
+}
 
 - (instancetype) initWithCode:(int) code
 				   dictionary:(NSDictionary *) d
 {
 	if (self = [super init]) {
+		_fireIndex = -1;
+		_playerIndex = -1;
 		_name = [d objectForKey:@"name"];
 		_title = [d objectForKey:@"title"];
 		_code = code;
@@ -36,27 +59,80 @@
 	return self;
 }
 
+#pragma mark - Private
+
+- (void) parseIfNeeded
+{
+	if (!_parsed) {
+		NSTextCheckingResult *m = [regex firstMatchInString:_name
+													options:0
+													  range:NSMakeRange(0, [_name length])];
+		
+		if (m) {
+			NSRange playerRange = [m rangeAtIndex:1];
+			NSRange nameRange = [m rangeAtIndex:2];
+			NSRange fireRange = [m rangeAtIndex:4];
+			
+			if (playerRange.location != NSNotFound) {
+				_playerIndex = [[_name substringWithRange:playerRange] intValue];
+				if ([[_name substringWithRange:nameRange] isEqualToString:@"fire"]) {
+					_fireIndex = 0;
+					if (fireRange.location != NSNotFound) {
+						_fireIndex = [[_name substringWithRange:fireRange] intValue];
+					}
+				}
+			}
+		}
+
+		_parsed = YES;
+	}
+}
+
+#pragma mark - Public
+
+- (BOOL) isPlayerSpecific
+{
+	[self parseIfNeeded];
+	return _playerIndex > -1;
+}
+
+- (BOOL) isFireButton
+{
+	[self parseIfNeeded];
+	return _fireIndex > -1;
+}
+
 - (int) playerIndex
 {
-	if ([_name length] > 3
-		&& [_name characterAtIndex:0] == 'p'
-		&& [_name characterAtIndex:2] == ' ') {
-		unichar ch = [_name characterAtIndex:1];
-		if (ch > '0' && ch <= '9') {
-			return ch - '0';
-		}
-	}
-	
-	return 0;
+	[self parseIfNeeded];
+	return _playerIndex;
+}
+
+- (int) fireIndex
+{
+	[self parseIfNeeded];
+	return _fireIndex;
 }
 
 - (NSString *) neutralTitle
 {
-	if (![self playerIndex]) {
-		return _title;
+	if (!_neutralTitle) {
+		if ([_title length] > 3
+			&& [_title characterAtIndex:0] == 'P'
+			&& [_title characterAtIndex:2] == ' ') {
+			_neutralTitle = [_title substringWithRange:NSMakeRange(3, [_title length] - 3)];
+		} else {
+			_neutralTitle = _title;
+		}
 	}
 
-	return [_title substringWithRange:NSMakeRange(3, [_title length] - 3)];
+	return _neutralTitle;
+}
+
+- (NSString *) description
+{
+	return [NSString stringWithFormat:@"%@ (p%d,f%d)", _name,
+			[self playerIndex], [self fireIndex]];
 }
 
 @end
@@ -110,16 +186,20 @@
 	if (![_system hasPrefix:@"CPS"]) {
 		return NO;
 	}
-	
-	__block NSInteger count = 0;
+
+	return [self fireButtonCount] >= 6;
+}
+
+- (int) fireButtonCount
+{
+	__block int count = 0;
 	[_buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
-		if ([[b name] hasPrefix:@"p1 fire "]) {
-			if (++count >= 6) {
-				*stop = YES;
-			}
+		if ([b playerIndex] == 1 && [b isFireButton]) {
+			count++;
 		}
 	}];
-	return count >= 6;
+
+	return count;
 }
 
 @end

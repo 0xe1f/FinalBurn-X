@@ -27,6 +27,7 @@
 @property (nonatomic, strong) FXButtonMap *keyboard;
 @property (nonatomic, readonly) NSMutableDictionary<NSString *, FXButtonMap *> *gamepads;
 
-@property (nonatomic, assign) BOOL dirty;
+- (BOOL) dirty;
+- (void) clearDirty;
 
 @end

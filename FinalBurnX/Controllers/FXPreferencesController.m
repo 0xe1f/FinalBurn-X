@@ -237,7 +237,6 @@ objectValueForTableColumn:(NSTableColumn *)tableColumn
 			FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
 			[[[input config] keyboard] mapDeviceCode:deviceCode
 										 virtualCode:[bc virtualCode]];
-			[[input config] setDirty:YES];
         }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {

@@ -28,7 +28,11 @@
 @property (nonatomic, readonly) NSString *name;
 @property (nonatomic, readonly) NSString *title;
 
+- (BOOL) isPlayerSpecific;
+- (BOOL) isFireButton;
 - (int) playerIndex;
+- (int) fireIndex;
+
 - (NSString *) neutralTitle;
 
 @end
@@ -48,6 +52,7 @@
 @property (nonatomic, strong) FXDriverAudit *audit;
 
 - (BOOL) usesStreetFighterLayout;
+- (int) fireButtonCount;
 
 @end
 

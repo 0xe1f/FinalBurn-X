@@ -46,6 +46,7 @@
 - (void) saveDipSwitches;
 
 - (FXButtonMap *) defaultKeyboardMap;
+- (FXButtonMap *) defaultGamepadMap;
 
 @end
 
@@ -114,7 +115,7 @@
 {
     NSArray<FXButton *> *buttons = [_driver buttons];
     [buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
-        GameInp[idx].nInput = GIT_SWITCH;
+		GameInp[idx].nInput = GIT_SWITCH;
 		GameInp[idx].Input.Switch.nCode = [b code];
     }];
 }
@@ -271,6 +272,41 @@
 	return map;
 }
 
+- (FXButtonMap *) defaultGamepadMap
+{
+	int fireButtonCount = [_driver fireButtonCount];
+	FXButtonMap *map = [FXButtonMap new];
+	[[_driver buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
+		if ([[b name] isEqualToString:@"p1 coin"]) {
+			[map mapDeviceCode:(fireButtonCount + 1) virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 start"]) {
+			[map mapDeviceCode:(fireButtonCount + 2) virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 up"]) {
+			[map mapDeviceCode:FXGamepadUp virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 down"]) {
+			[map mapDeviceCode:FXGamepadDown virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 left"]) {
+			[map mapDeviceCode:FXGamepadLeft virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 right"]) {
+			[map mapDeviceCode:FXGamepadRight virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 1"]) {
+			[map mapDeviceCode:1 virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 2"]) {
+			[map mapDeviceCode:2 virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 3"]) {
+			[map mapDeviceCode:3 virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 4"]) {
+			[map mapDeviceCode:4 virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 5"]) {
+			[map mapDeviceCode:5 virtualCode:[b code]];
+		} else if ([[b name] isEqualToString:@"p1 fire 6"]) {
+			[map mapDeviceCode:6 virtualCode:[b code]];
+		}
+	}];
+	
+	return map;
+}
+
 - (void)restoreDipSwitches
 {
     NSLog(@"FIXME: restore DIP");
@@ -290,11 +326,20 @@
             NSLog(@"Error reading input configuration");
         }
     }
-    
-    if (!_config) {
+
+	if (!_config) {
 		_config = [FXInputConfig new];
 		[_config setKeyboard:[self defaultKeyboardMap]];
     }
+
+	AKGamepadManager *gm = [AKGamepadManager sharedInstance];
+	[[gm allConnected] enumerateObjectsUsingBlock:^(AKGamepad *gp, NSUInteger idx, BOOL *stop) {
+		NSString *gpId = [gp vendorProductString];
+		if (![[_config gamepads] objectForKey:gpId]) {
+			[[_config gamepads] setObject:[self defaultGamepadMap]
+								   forKey:gpId];
+		}
+	}];
 }
 
 - (void)saveDipSwitches
@@ -308,11 +353,13 @@
         FXAppDelegate *app = [FXAppDelegate sharedInstance];
         NSString *file = [[_driver name] stringByAppendingPathExtension:@"input"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
-        
+
         if (![NSKeyedArchiver archiveRootObject:_config
                                          toFile:path]) {
             NSLog(@"Error writing to input configuration");
-        }
+		} else {
+			[_config clearDirty];
+		}
     }
 }
 

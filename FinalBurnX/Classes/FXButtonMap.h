@@ -28,4 +28,7 @@ static const int FXMappingNotFound = -1;
 - (BOOL) mapDeviceCode:(int) deviceCode
 		   virtualCode:(int) virtualCode;
 
+@property (nonatomic, readonly) BOOL dirty;
+- (void) clearDirty;
+
 @end

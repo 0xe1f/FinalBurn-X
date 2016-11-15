@@ -131,6 +131,11 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 	return [_allGamepads count];
 }
 
+- (NSArray<AKGamepad *> *) allConnected
+{
+	return [NSArray arrayWithArray:_allGamepads];
+}
+
 #pragma mark - AKGamepadDelegate
 
 - (void) gamepadDidConnect:(AKGamepad *) gamepad
