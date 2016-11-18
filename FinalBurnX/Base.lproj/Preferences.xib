@@ -60,7 +60,7 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="CD7-lr-pVp">
                                                 <rect key="frame" x="1" y="0.0" width="558" height="430"/>
-                                                <autoresizingMask key="autoresizingMask"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="aZz-dw-2vg" id="Sxf-xQ-z9A">
                                                         <rect key="frame" x="0.0" y="0.0" width="558" height="413"/>
@@ -83,8 +83,8 @@
                                                                 </textFieldCell>
                                                                 <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                             </tableColumn>
-                                                            <tableColumn identifier="keyboard" width="111" minWidth="40" maxWidth="1000" id="h0q-G2-B7F">
-                                                                <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Keyboard">
+                                                            <tableColumn identifier="button" width="111" minWidth="40" maxWidth="1000" id="h0q-G2-B7F">
+                                                                <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Button">
                                                                     <font key="font" metaFont="smallSystem"/>
                                                                     <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                                     <color key="backgroundColor" white="0.33333298560000002" alpha="1" colorSpace="calibratedWhite"/>

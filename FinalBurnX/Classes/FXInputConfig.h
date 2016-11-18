@@ -24,8 +24,8 @@
 
 @interface FXInputConfig : NSObject<NSCoding>
 
-@property (nonatomic, strong) FXButtonMap *keyboard;
-@property (nonatomic, readonly) NSMutableDictionary<NSString *, FXButtonMap *> *gamepads;
+- (FXButtonMap *) mapWithId:(NSString *) mapId;
+- (void) setMap:(FXButtonMap *) map;
 
 - (BOOL) dirty;
 - (void) clearDirty;

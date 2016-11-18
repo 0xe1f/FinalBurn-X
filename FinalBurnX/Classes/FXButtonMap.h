@@ -28,7 +28,10 @@ static const int FXMappingNotFound = -1;
 - (BOOL) mapDeviceCode:(int) deviceCode
 		   virtualCode:(int) virtualCode;
 
+@property (nonatomic, strong) NSString *deviceId;
 @property (nonatomic, readonly) BOOL dirty;
+@property (nonatomic, readonly) BOOL customized;
+
 - (void) clearDirty;
 
 @end

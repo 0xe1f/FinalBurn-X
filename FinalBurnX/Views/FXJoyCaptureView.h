@@ -18,37 +18,13 @@
  **
  ******************************************************************************
  */
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 
-#import "AKKeyboardManager.h"
-#import "AKGamepadManager.h"
-#import "FXDIPSwitchGroup.h"
+@interface FXJoyCaptureView : NSTextView
 
-@class FXDriver;
-@class FXInputConfig;
++ (NSString *) descriptionForCode:(int) keyCode;
++ (int) codeForDescription:(NSString *) description;
 
-@interface FXInput : NSObject<AKKeyboardEventDelegate, AKGamepadEventDelegate>
-
-- (NSArray *) dipSwitches;
-
-- (instancetype) initWithDriver:(FXDriver *) driver;
-
-- (void) setFocus:(BOOL) focus;
-
-- (void) save;
-- (void) restore;
-
-- (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
-- (void) resetDipSwitches;
-
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
-
-@property (nonatomic, strong) FXInputConfig *config;
+- (BOOL) captureCode:(int) code;
 
 @end
-
-enum {
-    FXInputReset       = 0xff,
-    FXInputDiagnostic  = 0xfe,
-};

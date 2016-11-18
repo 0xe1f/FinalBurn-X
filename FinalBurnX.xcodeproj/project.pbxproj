@@ -528,6 +528,7 @@
 		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
+		FE70CF801DDEDABB009DE783 /* FXJoyCaptureView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE70CF7F1DDEDABB009DE783 /* FXJoyCaptureView.m */; };
 		FE7800C8194C1C640024716B /* es8712.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE505C20194BC532003A2BC7 /* es8712.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
 		FE7800D7194C29A50024716B /* inp_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800CC194C29A50024716B /* inp_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
 		FE7800DE194C2ABB0024716B /* interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE7800DC194C2ABB0024716B /* interface.cpp */; };
@@ -1840,6 +1841,9 @@
 		FE5FD7D8196896C300BD1386 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		FE5FD7DB1968F68500BD1386 /* FXAuditStatusAsNSImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAuditStatusAsNSImage.h; sourceTree = "<group>"; };
 		FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAuditStatusAsNSImage.m; sourceTree = "<group>"; };
+		FE70CF7E1DDEDABB009DE783 /* FXJoyCaptureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXJoyCaptureView.h; sourceTree = "<group>"; };
+		FE70CF7F1DDEDABB009DE783 /* FXJoyCaptureView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXJoyCaptureView.m; sourceTree = "<group>"; };
+		FE70CF811DDEDD22009DE783 /* FXInputConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputConstants.h; sourceTree = "<group>"; };
 		FE7800C9194C234A0024716B /* ym2151.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ym2151.h; sourceTree = "<group>"; };
 		FE7800CA194C24CF0024716B /* gameinp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gameinp.h; sourceTree = "<group>"; };
 		FE7800CC194C29A50024716B /* inp_interface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inp_interface.cpp; sourceTree = "<group>"; };
@@ -2036,6 +2040,8 @@
 		FE0DC79419509EEB004A03A3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FE70CF7E1DDEDABB009DE783 /* FXJoyCaptureView.h */,
+				FE70CF7F1DDEDABB009DE783 /* FXJoyCaptureView.m */,
 				FE1FB77C19D13E550070325C /* AKKeyCaptureFieldCell.h */,
 				FE1FB77D19D13E550070325C /* AKKeyCaptureFieldCell.m */,
 				FE1FB77A19D13D0A0070325C /* AKKeyCaptureView.h */,
@@ -2098,6 +2104,7 @@
 			children = (
 				FEEC2E751DD0496600DAA6F8 /* FXInputConfig.h */,
 				FEEC2E761DD0496600DAA6F8 /* FXInputConfig.m */,
+				FE70CF811DDEDD22009DE783 /* FXInputConstants.h */,
 				FE2B11E51DCABC3A00FDAB33 /* FXButtonMap.h */,
 				FE2B11E61DCABC3A00FDAB33 /* FXButtonMap.m */,
 			);
@@ -4005,6 +4012,7 @@
 				FE505D27194BC532003A2BC7 /* d_pkunwar.cpp in Sources */,
 				FE505C6C194BC532003A2BC7 /* v3021.cpp in Sources */,
 				FE505DB8194BC533003A2BC7 /* tc0100scn.cpp in Sources */,
+				FE70CF801DDEDABB009DE783 /* FXJoyCaptureView.m in Sources */,
 				FE780109194C32610024716B /* m68kops.c in Sources */,
 				FE505D21194BC532003A2BC7 /* d_mrdo.cpp in Sources */,
 				FE505D90194BC533003A2BC7 /* fd1089.cpp in Sources */,

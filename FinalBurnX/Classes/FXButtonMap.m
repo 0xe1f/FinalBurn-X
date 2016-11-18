@@ -52,6 +52,8 @@
 	if ((self = [super init]) != nil) {
 		[self resetAll];
 
+		_deviceId = [coder decodeObjectForKey:@"deviceId"];
+		_customized = [coder decodeBoolForKey:@"custom"];
 		NSDictionary<NSNumber *, NSNumber *> *map = [coder decodeObjectForKey:@"map"];
 		[map enumerateKeysAndObjectsUsingBlock:^(NSNumber *v, NSNumber *d, BOOL *stop) {
 			int di = [d intValue];
@@ -73,6 +75,8 @@
 			[map setObject:@(i) forKey:@(code)];
 		}
 	}
+	[coder encodeObject:_deviceId forKey:@"deviceId"];
+	[coder encodeBool:_customized forKey:@"custom"];
 	[coder encodeObject:map forKey:@"map"];
 }
 
@@ -95,6 +99,7 @@
 		return NO;
 	}
 
+	_customized = YES;
 	_dirty = YES;
 	_deviceToVirtualMap[deviceCode] = virtualCode;
 	_virtualToDeviceMap[virtualCode] = deviceCode;

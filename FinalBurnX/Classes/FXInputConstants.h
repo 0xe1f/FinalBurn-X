@@ -20,35 +20,12 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "AKKeyboardManager.h"
-#import "AKGamepadManager.h"
-#import "FXDIPSwitchGroup.h"
-
-@class FXDriver;
-@class FXInputConfig;
-
-@interface FXInput : NSObject<AKKeyboardEventDelegate, AKGamepadEventDelegate>
-
-- (NSArray *) dipSwitches;
-
-- (instancetype) initWithDriver:(FXDriver *) driver;
-
-- (void) setFocus:(BOOL) focus;
-
-- (void) save;
-- (void) restore;
-
-- (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
-- (void) resetDipSwitches;
-
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
-
-@property (nonatomic, strong) FXInputConfig *config;
-
-@end
-
 enum {
-    FXInputReset       = 0xff,
-    FXInputDiagnostic  = 0xfe,
+	FXGamepadNone  = -1,
+	FXGamepadUp    = 0xff,
+	FXGamepadDown  = 0xfe,
+	FXGamepadLeft  = 0xfd,
+	FXGamepadRight = 0xfc,
 };
+
+#define FXMakeButton(b) (b)

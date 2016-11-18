@@ -23,6 +23,9 @@
 #import "FXButtonMap.h"
 
 @implementation FXInputConfig
+{
+	NSMutableDictionary<NSString *, FXButtonMap *> *_gamepads;
+}
 
 #pragma mark - init, dealloc
 
@@ -40,8 +43,12 @@
 - (instancetype) initWithCoder:(NSCoder *) coder
 {
 	if ((self = [super init])) {
-		_keyboard = [coder decodeObjectForKey:@"keyboard"];
-		_gamepads = [coder decodeObjectForKey:@"gamepads"];
+		NSArray<FXButtonMap *> *gamepads = [coder decodeObjectForKey:@"gamepads"];
+
+		_gamepads = [NSMutableDictionary new];
+		[gamepads enumerateObjectsUsingBlock:^(FXButtonMap *bm, NSUInteger idx, BOOL *stop) {
+			[_gamepads setObject:bm forKey:[bm deviceId]];
+		}];
 	}
 	
 	return self;
@@ -49,18 +56,30 @@
 
 - (void) encodeWithCoder:(NSCoder *) coder
 {
-	[coder encodeObject:_keyboard forKey:@"keyboard"];
-	[coder encodeObject:_gamepads forKey:@"gamepads"];
+	NSMutableArray<FXButtonMap *> *gamepads = [NSMutableArray array];
+	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *bm, BOOL *stop) {
+		if ([bm customized]) {
+			[gamepads addObject:bm];
+		}
+	}];
+
+	[coder encodeObject:gamepads forKey:@"gamepads"];
 }
 
 #pragma mark - Public
 
+- (FXButtonMap *) mapWithId:(NSString *) mapId
+{
+	return [_gamepads objectForKey:mapId];
+}
+
+- (void) setMap:(FXButtonMap *) map
+{
+	[_gamepads setObject:map forKey:[map deviceId]];
+}
+
 - (BOOL) dirty
 {
-	if ([_keyboard dirty]) {
-		return YES;
-	}
-
 	__block BOOL isDirty = NO;
 	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
 		if ([map dirty]) {
@@ -74,7 +93,6 @@
 
 - (void) clearDirty
 {
-	[_keyboard clearDirty];
 	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
 		[map clearDirty];
 	}];

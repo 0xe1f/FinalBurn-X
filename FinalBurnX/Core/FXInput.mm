@@ -23,6 +23,7 @@
 #import "FXAppDelegate.h"
 
 #import "FXManifest.h"
+#import "FXInputConstants.h"
 #import "FXButtonMap.h"
 #import "FXInputConfig.h"
 
@@ -46,7 +47,7 @@
 - (void) saveDipSwitches;
 
 - (FXButtonMap *) defaultKeyboardMap;
-- (FXButtonMap *) defaultGamepadMap;
+- (FXButtonMap *) defaultGamepadMap:(AKGamepad *) gamepad;
 
 @end
 
@@ -55,6 +56,7 @@
 	BOOL _hasFocus;
 	BOOL _keyStates[256];
 	FXDriver *_driver;
+	FXButtonMap *_keyboardMap;
 }
 
 #pragma mark - Init, dealloc
@@ -103,7 +105,7 @@
         return isPressed;
     }
 	
-    int keyCode = [[_config keyboard] deviceCodeMatching:inputCode];
+    int keyCode = [_keyboardMap deviceCodeMatching:inputCode];
     if (keyCode == FXMappingNotFound) {
         return NO;
     }
@@ -143,6 +145,14 @@
 
 - (void) gamepadDidConnect:(AKGamepad *) gamepad
 {
+	NSString *gpId = [gamepad vendorProductString];
+	FXButtonMap *map = [_config mapWithId:gpId];
+	if (!map) {
+		map = [self defaultGamepadMap:gamepad];
+		[map setDeviceId:gpId];
+		[_config setMap:map];
+	}
+
 #ifdef DEBUG_GP
 	NSLog(@"Gamepad \"%@\" connected to port %i",
 		  [gamepad name], (int) [gamepad index]);
@@ -232,6 +242,7 @@
 {
 	BOOL usesSfLayout = [_driver usesStreetFighterLayout];
 	FXButtonMap *map = [FXButtonMap new];
+	[map setDeviceId:@"keyboard"];
 	[[_driver buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
 		int code = [b code];
 		if ([[b name] isEqualToString:@"p1 coin"]) {
@@ -272,10 +283,11 @@
 	return map;
 }
 
-- (FXButtonMap *) defaultGamepadMap
+- (FXButtonMap *) defaultGamepadMap:(AKGamepad *) gamepad
 {
 	int fireButtonCount = [_driver fireButtonCount];
 	FXButtonMap *map = [FXButtonMap new];
+	[map setDeviceId:[gamepad vendorProductString]];
 	[[_driver buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
 		if ([[b name] isEqualToString:@"p1 coin"]) {
 			[map mapDeviceCode:(fireButtonCount + 1) virtualCode:[b code]];
@@ -329,15 +341,16 @@
 
 	if (!_config) {
 		_config = [FXInputConfig new];
-		[_config setKeyboard:[self defaultKeyboardMap]];
+		[_config setMap:[self defaultKeyboardMap]];
     }
+
+	_keyboardMap = [_config mapWithId:@"keyboard"];
 
 	AKGamepadManager *gm = [AKGamepadManager sharedInstance];
 	[[gm allConnected] enumerateObjectsUsingBlock:^(AKGamepad *gp, NSUInteger idx, BOOL *stop) {
 		NSString *gpId = [gp vendorProductString];
-		if (![[_config gamepads] objectForKey:gpId]) {
-			[[_config gamepads] setObject:[self defaultGamepadMap]
-								   forKey:gpId];
+		if (![_config mapWithId:gpId]) {
+			[_config setMap:[self defaultGamepadMap:gp]];
 		}
 	}];
 }
