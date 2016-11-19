@@ -54,7 +54,7 @@
 @implementation FXInput
 {
 	BOOL _hasFocus;
-	BOOL _keyStates[256];
+	BOOL _inputStates[256];
 	FXDriver *_driver;
 	FXButtonMap *_keyboardMap;
 }
@@ -83,7 +83,7 @@
 
 #pragma mark - Core callbacks
 
-- (BOOL) isInputActiveForCode:(int)inputCode
+- (BOOL) isInputActiveForCode:(int) inputCode
 {
     if (inputCode < 0) {
         return NO;
@@ -105,12 +105,7 @@
         return isPressed;
     }
 	
-    int keyCode = [_keyboardMap deviceCodeMatching:inputCode];
-    if (keyCode == FXMappingNotFound) {
-        return NO;
-    }
-
-    return _keyStates[keyCode];
+    return _inputStates[inputCode];
 }
 
 - (void) initializeInput
@@ -124,8 +119,8 @@
 
 #pragma mark - AKKeyboardEventDelegate
 
-- (void)keyStateChanged:(AKKeyEventData *)event
-                 isDown:(BOOL)isDown
+- (void) keyStateChanged:(AKKeyEventData *) event
+				  isDown:(BOOL) isDown
 {
 #ifdef DEBUG_KEY_STATE
     if (isDown) {
@@ -134,11 +129,14 @@
         NSLog(@"keyboardKeyUp: 0x%lx", [event keyCode]);
     }
 #endif
-    
-    // Don't generate a KeyDown if Command is pressed
-    if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
-        _keyStates[[event keyCode]] = isDown;
-    }
+
+	// Don't generate a KeyDown if Command is pressed
+	if (([event modifierFlags] & NSCommandKeyMask) == 0 || !isDown) {
+		int code = [_keyboardMap virtualCodeMatching:(int) [event keyCode]];
+		if (code != FXMappingNotFound) {
+			_inputStates[code] = isDown;
+		}
+	}
 }
 
 #pragma mark - AKGamepadDelegate
@@ -172,6 +170,22 @@
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
+	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
+	if (map) {
+		// FIXME: map to appropriate player code
+		int leftCode = [map virtualCodeMatching:FXGamepadLeft];
+		int rightCode = [map virtualCodeMatching:FXGamepadRight];
+		if (center - newValue > FXDeadzoneSize) {
+			_inputStates[leftCode] = YES;
+			_inputStates[rightCode] = NO;
+		} else if (newValue - center > FXDeadzoneSize) {
+			_inputStates[rightCode] = YES;
+			_inputStates[leftCode] = NO;
+		} else {
+			_inputStates[rightCode] = NO;
+			_inputStates[leftCode] = NO;
+		}
+	}
 #ifdef DEBUG_GP
 	NSLog(@"Joystick X: %ld (center: %ld) on gamepad %@",
 		  newValue, center, gamepad);
@@ -183,6 +197,22 @@
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
+	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
+	if (map) {
+		// FIXME: map to appropriate player code
+		int upCode = [map virtualCodeMatching:FXGamepadUp];
+		int downCode = [map virtualCodeMatching:FXGamepadDown];
+		if (center - newValue > FXDeadzoneSize) {
+			_inputStates[upCode] = YES;
+			_inputStates[downCode] = NO;
+		} else if (newValue - center > FXDeadzoneSize) {
+			_inputStates[downCode] = YES;
+			_inputStates[upCode] = NO;
+		} else {
+			_inputStates[downCode] = NO;
+			_inputStates[upCode] = NO;
+		}
+	}
 #ifdef DEBUG_GP
 	NSLog(@"Joystick Y: %ld (center: %ld) on gamepad %@",
 		  newValue, center, gamepad);
@@ -192,8 +222,16 @@
 - (void) gamepad:(AKGamepad *) gamepad
 		  button:(NSUInteger) index
 		  isDown:(BOOL) isDown
-	   eventData:(AKGamepadEventData *)eventData
+	   eventData:(AKGamepadEventData *) eventData
 {
+	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
+	if (map) {
+		// FIXME: map to appropriate player code
+		int code = [map virtualCodeMatching:(int) FXMakeButton(index)];
+		if (code != FXMappingNotFound) {
+			_inputStates[code] = isDown;
+		}
+	}
 #ifdef DEBUG_GP
 	NSLog(@"Button %ld %@ on gamepad %@", index, gamepad,
 		  isDown ? @"down" : @"up");
@@ -378,7 +416,7 @@
 
 - (void)releaseAllKeys
 {
-    memset(_keyStates, 0, sizeof(_keyStates));
+    memset(_inputStates, 0, sizeof(_inputStates));
 }
 
 - (int)dipSwitchOffset

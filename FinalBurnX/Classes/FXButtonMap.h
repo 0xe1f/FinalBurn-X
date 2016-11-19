@@ -24,9 +24,10 @@ static const int FXMappingNotFound = -1;
 
 @interface FXButtonMap : NSObject<NSCoding>
 
+- (int) virtualCodeMatching:(int) code;
 - (int) deviceCodeMatching:(int) code;
-- (BOOL) mapDeviceCode:(int) deviceCode
-		   virtualCode:(int) virtualCode;
+- (int) mapDeviceCode:(int) deviceCode
+		  virtualCode:(int) virtualCode;
 
 @property (nonatomic, strong) NSString *deviceId;
 @property (nonatomic, readonly) BOOL dirty;

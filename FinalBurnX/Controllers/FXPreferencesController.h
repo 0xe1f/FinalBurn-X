@@ -29,7 +29,6 @@
 @property (nonatomic, strong) NSString *name;
 @property (nonatomic, strong) NSString *title;
 @property (nonatomic, assign) int virtualCode;
-@property (nonatomic, assign) int deviceCode;
 
 @end
 

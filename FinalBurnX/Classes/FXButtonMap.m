@@ -82,6 +82,15 @@
 
 #pragma mark - Public
 
+- (int) virtualCodeMatching:(int) code
+{
+	if (code < 0 || code >= MAP_SIZE) {
+		return FXMappingNotFound;
+	}
+	
+	return _deviceToVirtualMap[code];
+}
+
 - (int) deviceCodeMatching:(int) code
 {
 	if (code < 0 || code >= MAP_SIZE) {
@@ -91,20 +100,29 @@
 	return _virtualToDeviceMap[code];
 }
 
-- (BOOL) mapDeviceCode:(int) deviceCode
-		   virtualCode:(int) virtualCode
+- (int) mapDeviceCode:(int) deviceCode
+		  virtualCode:(int) virtualCode
 {
-	if (deviceCode < 0 || deviceCode >= MAP_SIZE
+	if (deviceCode < -1 || deviceCode >= MAP_SIZE
 		|| virtualCode < 0 || virtualCode >= MAP_SIZE) {
-		return NO;
+		return FXMappingNotFound;
 	}
 
 	_customized = YES;
 	_dirty = YES;
-	_deviceToVirtualMap[deviceCode] = virtualCode;
-	_virtualToDeviceMap[virtualCode] = deviceCode;
+	int currentVirtual = FXMappingNotFound;
+	@synchronized (self) {
+		if (deviceCode != FXMappingNotFound) {
+			currentVirtual = _deviceToVirtualMap[deviceCode];
+			_deviceToVirtualMap[deviceCode] = virtualCode;
+		}
+		if (currentVirtual != FXMappingNotFound) {
+			_virtualToDeviceMap[currentVirtual] = FXMappingNotFound;
+		}
+		_virtualToDeviceMap[virtualCode] = deviceCode;
+	}
 
-	return YES;
+	return currentVirtual;
 }
 
 - (void) clearDirty

@@ -28,4 +28,6 @@ enum {
 	FXGamepadRight = 0xfc,
 };
 
-#define FXMakeButton(b) (b)
+#define FXMakeButton(b) ((int)b)
+
+#define FXDeadzoneSize 50

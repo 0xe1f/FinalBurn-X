@@ -47,7 +47,7 @@
 - (void) sliderValueChanged:(NSSlider *) sender;
 - (void) resetButtonList;
 - (void) resetInputDevices;
-- (NSString *) selectedInputDeviceId;
+- (FXButtonMap *) currentMap;
 
 @end
 
@@ -59,6 +59,7 @@
 	FXJoyCaptureView *_joyCaptureView;
 	NSMutableArray<NSDictionary *> *_inputDeviceList;
 	NSMutableDictionary<NSString *, NSDictionary *> *_inputDeviceMap;
+	NSString *_selectedInputDeviceId;
 }
 
 - (id) init
@@ -83,8 +84,7 @@
                                                  name:FXEmulatorChanged
                                                object:nil];
     
-    [self updateSpecifics];
-
+	_selectedInputDeviceId = @"keyboard";
 	NSDictionary *gp = @{ @"id": @"keyboard",
 						  @"title": NSLocalizedString(@"Keyboard", @"Device") };
 	[_inputDeviceList addObject:gp];
@@ -102,7 +102,9 @@
 		[_inputDeviceMap setObject:gp
 							forKey:key];
 	}
+
 	[self resetInputDevices];
+	[self updateSpecifics];
 
 	[[AKGamepadManager sharedInstance] addObserver:self];
 }
@@ -127,7 +129,7 @@
 						  toObject:(id) anObject
 {
     if (anObject == inputTableView) {
-		BOOL isKeyboard = [@"keyboard" isEqualToString:[self selectedInputDeviceId]];
+		BOOL isKeyboard = [@"keyboard" isEqualToString:_selectedInputDeviceId];
 		if (isKeyboard) {
 			if (!_keyCaptureView) {
 				_keyCaptureView = [AKKeyCaptureView new];
@@ -191,11 +193,11 @@
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
-	if ([[gamepad vendorProductString] isEqualToString:[self selectedInputDeviceId]]) {
+	if ([[gamepad vendorProductString] isEqualToString:_selectedInputDeviceId]) {
 		if ([[self window] firstResponder] == _joyCaptureView) {
-			if (newValue < center) {
+			if (center - newValue > FXDeadzoneSize) {
 				[_joyCaptureView captureCode:FXGamepadLeft];
-			} else if (newValue > center) {
+			} else if (newValue - center > FXDeadzoneSize) {
 				[_joyCaptureView captureCode:FXGamepadRight];
 			}
 		}
@@ -207,11 +209,11 @@
 		  center:(NSInteger) center
 	   eventData:(AKGamepadEventData *) eventData
 {
-	if ([[gamepad vendorProductString] isEqualToString:[self selectedInputDeviceId]]) {
+	if ([[gamepad vendorProductString] isEqualToString:_selectedInputDeviceId]) {
 		if ([[self window] firstResponder] == _joyCaptureView) {
-			if (newValue < center) {
+			if (center - newValue > FXDeadzoneSize) {
 				[_joyCaptureView captureCode:FXGamepadUp];
-			} else if (newValue > center) {
+			} else if (newValue - center > FXDeadzoneSize) {
 				[_joyCaptureView captureCode:FXGamepadDown];
 			}
 		}
@@ -223,7 +225,7 @@
 		  isDown:(BOOL) isDown
 	   eventData:(AKGamepadEventData *) eventData
 {
-	if ([[gamepad vendorProductString] isEqualToString:[self selectedInputDeviceId]]) {
+	if ([[gamepad vendorProductString] isEqualToString:_selectedInputDeviceId]) {
 		if ([[self window] firstResponder] == _joyCaptureView) {
 			[_joyCaptureView captureCode:FXMakeButton(index)];
 		}
@@ -252,10 +254,11 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
 			return [bc title];
         } else if ([[tableColumn identifier] isEqualToString:@"button"]) {
-			if ([@"keyboard" isEqualToString:[self selectedInputDeviceId]]) {
-				return [AKKeyCaptureView descriptionForKeyCode:[bc deviceCode]];
+			int deviceCode = [[self currentMap] deviceCodeMatching:[bc virtualCode]];
+			if ([@"keyboard" isEqualToString:_selectedInputDeviceId]) {
+				return [AKKeyCaptureView descriptionForKeyCode:deviceCode];
 			} else {
-				return [FXJoyCaptureView descriptionForCode:[bc deviceCode]];
+				return [FXJoyCaptureView descriptionForCode:deviceCode];
 			}
         }
     } else if (tableView == self->dipswitchTableView) {
@@ -290,8 +293,7 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 		FXButtonConfig *bc = [_inputList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"button"]) {
 			int deviceCode = FXMappingNotFound;
-			NSString *inputDeviceId = [self selectedInputDeviceId];
-			if ([@"keyboard" isEqualToString:inputDeviceId]) {
+			if ([@"keyboard" isEqualToString:_selectedInputDeviceId]) {
 				int code = (int) [AKKeyCaptureView keyCodeForDescription:object];
 				if (code != AKKeyNone) {
 					deviceCode = code;
@@ -302,12 +304,20 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 					deviceCode = code;
 				}
 			}
-			
-			[bc setDeviceCode:deviceCode];
-			
-			FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
-			[[[input config] mapWithId:inputDeviceId] mapDeviceCode:deviceCode
-														virtualCode:[bc virtualCode]];
+
+			int current = [[self currentMap] mapDeviceCode:deviceCode
+											   virtualCode:[bc virtualCode]];
+			if (current != FXMappingNotFound) {
+				[_inputList enumerateObjectsUsingBlock:^(FXButtonConfig *bc, NSUInteger idx, BOOL *stop) {
+					if ([bc virtualCode] == current) {
+						if (idx != row) {
+							[inputTableView reloadDataForRowIndexes:[NSIndexSet indexSetWithIndex:idx]
+													  columnIndexes:[NSIndexSet indexSetWithIndex:1]];
+						}
+						*stop = YES;
+					}
+				}];
+			}
         }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {
@@ -359,7 +369,7 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
     FXInput *input = [emulator input];
-    
+
     [input resetDipSwitches];
     [self updateDipSwitches];
 }
@@ -427,14 +437,10 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 
 #pragma mark - Private methods
 
-- (NSString *) selectedInputDeviceId
+- (FXButtonMap *) currentMap
 {
-	NSInteger index = [inputDevicesPopUp indexOfSelectedItem];
-	if (index < [_inputDeviceList count]) {
-		return [[_inputDeviceList objectAtIndex:index] objectForKey:@"id"];
-	}
-
-	return nil;
+	FXInput *input = [[[FXAppDelegate sharedInstance] emulator] input];
+	return [[input config] mapWithId:_selectedInputDeviceId];
 }
 
 - (void) emulationChangedNotification:(NSNotification *)notification
@@ -464,33 +470,36 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 
 - (void) resetButtonList
 {
-    [_inputList removeAllObjects];
+	[inputTableView abortEditing];
 
-	NSString *inputDeviceId = [self selectedInputDeviceId];
-	BOOL isKeyboard = [@"keyboard" isEqualToString:inputDeviceId];
+	NSInteger index = [inputDevicesPopUp indexOfSelectedItem];
+	if (index < [_inputDeviceList count]) {
+		_selectedInputDeviceId = [[_inputDeviceList objectAtIndex:index] objectForKey:@"id"];
+	}
+
+	[_inputList removeAllObjects];
+
+	BOOL isKeyboard = [@"keyboard" isEqualToString:_selectedInputDeviceId];
     FXEmulatorController *emulator = [[FXAppDelegate sharedInstance] emulator];
-	FXButtonMap *map = [[[emulator input] config] mapWithId:inputDeviceId];
 
 	[[[emulator driver] buttons] enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
 		if (isKeyboard) {
 			FXButtonConfig *bc = [FXButtonConfig new];
 			[bc setName:[b name]];
 			[bc setTitle:[b title]];
-			[bc setDeviceCode:[map deviceCodeMatching:[b code]]];
 			[bc setVirtualCode:[b code]];
 			[_inputList addObject:bc];
 		} else if ([b playerIndex] == 1) {
 			FXButtonConfig *bc = [FXButtonConfig new];
 			[bc setName:[b name]];
 			[bc setTitle:[b neutralTitle]];
-			[bc setDeviceCode:[map deviceCodeMatching:[b code]]];
 			[bc setVirtualCode:[b code]];
 			[_inputList addObject:bc];
 		}
 	}];
 
-    [self->inputTableView setEnabled:[_inputList count] > 0];
-    [self->inputTableView reloadData];
+    [inputTableView setEnabled:[_inputList count] > 0];
+    [inputTableView reloadData];
 }
 
 - (void) resetInputDevices
@@ -499,6 +508,9 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 	[_inputDeviceList enumerateObjectsUsingBlock:^(NSDictionary *gp, NSUInteger idx, BOOL *stop) {
 		[inputDevicesPopUp addItemWithTitle:[gp objectForKey:@"title"]];
 	}];
+
+	[inputDevicesPopUp selectItemAtIndex:0]; // select the keyboard
+	[self resetButtonList];
 }
 
 - (void) updateSpecifics
