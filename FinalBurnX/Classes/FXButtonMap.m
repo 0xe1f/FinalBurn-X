@@ -112,12 +112,18 @@
 	_dirty = YES;
 	int currentVirtual = FXMappingNotFound;
 	@synchronized (self) {
+		int currentDevice = _virtualToDeviceMap[virtualCode];
 		if (deviceCode != FXMappingNotFound) {
 			currentVirtual = _deviceToVirtualMap[deviceCode];
-			_deviceToVirtualMap[deviceCode] = virtualCode;
+		}
+		if (currentDevice != FXMappingNotFound) {
+			_deviceToVirtualMap[currentDevice] = FXMappingNotFound;
 		}
 		if (currentVirtual != FXMappingNotFound) {
 			_virtualToDeviceMap[currentVirtual] = FXMappingNotFound;
+		}
+		if (deviceCode != FXMappingNotFound) {
+			_deviceToVirtualMap[deviceCode] = virtualCode;
 		}
 		_virtualToDeviceMap[virtualCode] = deviceCode;
 	}

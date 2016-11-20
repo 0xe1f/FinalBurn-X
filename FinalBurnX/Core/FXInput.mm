@@ -401,7 +401,7 @@
 - (void) saveInputMap
 {
     if ([_config dirty]) {
-        FXAppDelegate *app = [FXAppDelegate sharedInstance];
+		FXAppDelegate *app = [FXAppDelegate sharedInstance];
         NSString *file = [[_driver name] stringByAppendingPathExtension:@"input"];
         NSString *path = [[app inputMapPath] stringByAppendingPathComponent:file];
 

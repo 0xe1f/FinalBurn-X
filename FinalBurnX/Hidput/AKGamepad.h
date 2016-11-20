@@ -32,8 +32,6 @@
 @property (nonatomic, readonly) NSInteger productId;
 @property (nonatomic, readonly) NSString *name;
 
-+ (NSArray<AKGamepad *> *) allGamepads;
-
 - (id) initWithHidDevice:(IOHIDDeviceRef) device;
 
 - (void) registerForEvents;

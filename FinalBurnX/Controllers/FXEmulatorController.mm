@@ -273,7 +273,7 @@
 
 - (void)saveSettings
 {
-    [_input save];
+	[_input save];
 }
 
 - (void)restoreSettings

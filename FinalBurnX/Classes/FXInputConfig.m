@@ -24,7 +24,7 @@
 
 @implementation FXInputConfig
 {
-	NSMutableDictionary<NSString *, FXButtonMap *> *_gamepads;
+	NSMutableDictionary<NSString *, FXButtonMap *> *_maps;
 }
 
 #pragma mark - init, dealloc
@@ -32,7 +32,7 @@
 - (instancetype) init
 {
 	if (self = [super init]) {
-		_gamepads = [NSMutableDictionary new];
+		_maps = [NSMutableDictionary new];
 	}
 
 	return self;
@@ -43,11 +43,11 @@
 - (instancetype) initWithCoder:(NSCoder *) coder
 {
 	if ((self = [super init])) {
-		NSArray<FXButtonMap *> *gamepads = [coder decodeObjectForKey:@"gamepads"];
+		NSArray<FXButtonMap *> *maps = [coder decodeObjectForKey:@"gamepads"];
 
-		_gamepads = [NSMutableDictionary new];
-		[gamepads enumerateObjectsUsingBlock:^(FXButtonMap *bm, NSUInteger idx, BOOL *stop) {
-			[_gamepads setObject:bm forKey:[bm deviceId]];
+		_maps = [NSMutableDictionary new];
+		[maps enumerateObjectsUsingBlock:^(FXButtonMap *bm, NSUInteger idx, BOOL *stop) {
+			[_maps setObject:bm forKey:[bm deviceId]];
 		}];
 	}
 	
@@ -56,32 +56,32 @@
 
 - (void) encodeWithCoder:(NSCoder *) coder
 {
-	NSMutableArray<FXButtonMap *> *gamepads = [NSMutableArray array];
-	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *bm, BOOL *stop) {
+	NSMutableArray<FXButtonMap *> *maps = [NSMutableArray array];
+	[_maps enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *bm, BOOL *stop) {
 		if ([bm customized]) {
-			[gamepads addObject:bm];
+			[maps addObject:bm];
 		}
 	}];
 
-	[coder encodeObject:gamepads forKey:@"gamepads"];
+	[coder encodeObject:maps forKey:@"gamepads"];
 }
 
 #pragma mark - Public
 
 - (FXButtonMap *) mapWithId:(NSString *) mapId
 {
-	return [_gamepads objectForKey:mapId];
+	return [_maps objectForKey:mapId];
 }
 
 - (void) setMap:(FXButtonMap *) map
 {
-	[_gamepads setObject:map forKey:[map deviceId]];
+	[_maps setObject:map forKey:[map deviceId]];
 }
 
 - (BOOL) dirty
 {
 	__block BOOL isDirty = NO;
-	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
+	[_maps enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
 		if ([map dirty]) {
 			isDirty = YES;
 			*stop = YES;
@@ -93,7 +93,7 @@
 
 - (void) clearDirty
 {
-	[_gamepads enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
+	[_maps enumerateKeysAndObjectsUsingBlock:^(NSString *key, FXButtonMap *map, BOOL *stop) {
 		[map clearDirty];
 	}];
 }

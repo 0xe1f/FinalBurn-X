@@ -21,6 +21,7 @@
 #import "FXAppDelegate.h"
 
 #import "FXManifest.h"
+#import "AKGamepadManager.h"
 
 @interface FXAppDelegate ()
 
@@ -64,7 +65,10 @@ static FXAppDelegate *sharedInstance = nil;
 
 - (void)applicationWillFinishLaunching:(NSNotification *)notification
 {
-    // Initialize paths
+	// Initialize GM; will kick off gamepads enumeration, etc
+	[AKGamepadManager sharedInstance];
+
+	// Initialize paths
     self->appSupportPath = [[self appSupportURL] path];
     self->romPath = [self->appSupportPath stringByAppendingPathComponent:@"roms"];
     self->_nvramPath = [self->appSupportPath stringByAppendingPathComponent:@"nvram"];

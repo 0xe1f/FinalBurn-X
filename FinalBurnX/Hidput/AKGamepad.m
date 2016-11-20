@@ -43,48 +43,6 @@ static void gamepadInputValueCallback(void *context, IOReturn result, void *send
 	NSPoint _axes;
 }
 
-+ (NSArray<AKGamepad *> *) allGamepads
-{
-    NSUInteger usagePage = kHIDPage_GenericDesktop;
-    NSUInteger usageId = kHIDUsage_GD_GamePad;
-    
-    CFMutableDictionaryRef hidMatchDictionary = IOServiceMatching(kIOHIDDeviceKey);
-    NSMutableDictionary *objcMatchDictionary = (__bridge NSMutableDictionary *) hidMatchDictionary;
-    
-    [objcMatchDictionary setObject:@(usagePage)
-                            forKey:[NSString stringWithUTF8String:kIOHIDDeviceUsagePageKey]];
-    [objcMatchDictionary setObject:@(usageId)
-                            forKey:[NSString stringWithUTF8String:kIOHIDDeviceUsageKey]];
-    
-    io_iterator_t hidObjectIterator = MACH_PORT_NULL;
-    NSMutableArray *gamepads = [NSMutableArray array];
-    
-    @try {
-        IOServiceGetMatchingServices(kIOMasterPortDefault, hidMatchDictionary,
-                                     &hidObjectIterator);
-        
-		if (hidObjectIterator == 0) {
-            return [NSArray array];
-		}
-		
-        io_object_t hidDevice;
-        while ((hidDevice = IOIteratorNext(hidObjectIterator))) {
-            AKGamepad *gamepad = [[AKGamepad alloc] initWithHidDevice:hidDevice];
-			if ([gamepad locationId] == 0) {
-                continue;
-			}
-			
-            [gamepads addObject:gamepad];
-        }
-    } @finally {
-		if (hidObjectIterator != MACH_PORT_NULL) {
-            IOObjectRelease(hidObjectIterator);
-		}
-    }
-    
-    return gamepads;
-}
-
 - (id) initWithHidDevice:(IOHIDDeviceRef) device
 {
     if ((self = [self init])) {

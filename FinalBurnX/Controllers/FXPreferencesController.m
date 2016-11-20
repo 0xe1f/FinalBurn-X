@@ -154,6 +154,7 @@
 - (void) windowDidResignKey:(NSNotification *) notification
 {
     [[AKKeyboardManager sharedInstance] removeObserver:self];
+	[[[[FXAppDelegate sharedInstance] emulator] input] save];
 }
 
 #pragma mark - AKGamepadDelegate
