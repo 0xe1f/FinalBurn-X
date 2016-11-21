@@ -32,6 +32,7 @@
 - (BOOL) isFireButton;
 - (int) playerIndex;
 - (int) fireIndex;
+- (NSString *) neutralName;
 
 - (NSString *) neutralTitle;
 

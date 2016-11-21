@@ -32,7 +32,7 @@
 #include "driverlist.h"
 
 //#define DEBUG_KEY_STATE
-#define DEBUG_GP
+//#define DEBUG_GP
 
 @interface FXInput()
 
@@ -46,6 +46,9 @@
 - (void) restoreDipSwitches;
 - (void) saveDipSwitches;
 
+- (int) remap:(FXButtonMap *) map
+	 toPlayer:(int) playerIndex
+   deviceCode:(int) deviceCode;
 - (FXButtonMap *) defaultKeyboardMap;
 - (FXButtonMap *) defaultGamepadMap:(AKGamepad *) gamepad;
 
@@ -57,6 +60,9 @@
 	BOOL _inputStates[256];
 	FXDriver *_driver;
 	FXButtonMap *_keyboardMap;
+	int *_playerCodeOffsets;
+	int _playerCount;
+	int _playerInputSpan;
 }
 
 #pragma mark - Init, dealloc
@@ -64,16 +70,22 @@
 - (instancetype) initWithDriver:(FXDriver *) driver
 {
     if ((self = [super init]) != nil) {
+		_playerCount = 1;
+		_playerInputSpan = 0;
 		_driver = driver;
+		_playerCodeOffsets = NULL;
 		[[AKGamepadManager sharedInstance] addObserver:self];
     }
-    
+
     return self;
 }
 
 - (void) dealloc
 {
-    // Release all virtual keys
+	free(_playerCodeOffsets);
+	_playerCodeOffsets = NULL;
+
+	// Release all virtual keys
     [self releaseAllKeys];
     
     // Stop listening for key events
@@ -89,32 +101,57 @@
         return NO;
     }
     
+	BOOL isPressed;
     if (inputCode == FXInputReset) {
-        BOOL isPressed = [self isResetPressed];
-        if (isPressed) {
+        if ((isPressed = [self isResetPressed])) {
             [self setResetPressed:NO];
         }
-        
-        return isPressed;
     } else if (inputCode == FXInputDiagnostic) {
-        BOOL isPressed = [self isTestPressed];
-        if (isPressed) {
+        if ((isPressed = [self isTestPressed])) {
             [self setTestPressed:NO];
         }
-        
-        return isPressed;
-    }
+	} else {
+		isPressed = _inputStates[inputCode];
+	}
 	
-    return _inputStates[inputCode];
+	return isPressed;
 }
 
 - (void) initializeInput
 {
-    NSArray<FXButton *> *buttons = [_driver buttons];
+	NSArray<FXButton *> *buttons = [_driver buttons];
+
+	// Build a map that convert a P1 virtual code to Px virtual code
+	// Figure out the array dimensions
+	_playerCount = 1;
+	_playerInputSpan = 0;
+	NSMutableDictionary<NSString *, NSNumber *> *nameToIndexMap = [NSMutableDictionary dictionary];
+	[buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
+		_playerCount = MAX(_playerCount, [b playerIndex]);
+		if ([b playerIndex] == 1) {
+			[nameToIndexMap setObject:@([b code]) forKey:[b neutralName]];
+			_playerInputSpan = MAX(_playerInputSpan, [b code]);
+		}
+	}];
+	_playerInputSpan++;
+	if (_playerCodeOffsets) {
+		free(_playerCodeOffsets);
+	}
+	
+	int arraySize = sizeof(int) * _playerCount * _playerInputSpan;
+	_playerCodeOffsets = (int *) malloc(arraySize);
+	memset(_playerCodeOffsets, 0xff, arraySize);
+
     [buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
 		GameInp[idx].nInput = GIT_SWITCH;
 		GameInp[idx].Input.Switch.nCode = [b code];
-    }];
+
+		int playerIndex = [b playerIndex] - 1;
+		NSNumber *pxIndex = [nameToIndexMap objectForKey:[b neutralName]];
+		if (playerIndex >= 0 && pxIndex) {
+			_playerCodeOffsets[playerIndex * _playerInputSpan + [pxIndex intValue]] = [b code];
+		}
+	}];
 }
 
 #pragma mark - AKKeyboardEventDelegate
@@ -172,18 +209,33 @@
 {
 	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
 	if (map) {
-		// FIXME: map to appropriate player code
-		int leftCode = [map virtualCodeMatching:FXGamepadLeft];
-		int rightCode = [map virtualCodeMatching:FXGamepadRight];
+		int leftCode = [self remap:map
+						  toPlayer:(int) [gamepad index]
+						deviceCode:FXGamepadLeft];
+		int rightCode = [self remap:map
+						   toPlayer:(int) [gamepad index]
+						 deviceCode:FXGamepadRight];
 		if (center - newValue > FXDeadzoneSize) {
-			_inputStates[leftCode] = YES;
-			_inputStates[rightCode] = NO;
+			if (leftCode != FXMappingNotFound) {
+				_inputStates[leftCode] = YES;
+			}
+			if (rightCode != FXMappingNotFound) {
+				_inputStates[rightCode] = NO;
+			}
 		} else if (newValue - center > FXDeadzoneSize) {
-			_inputStates[rightCode] = YES;
-			_inputStates[leftCode] = NO;
+			if (leftCode != FXMappingNotFound) {
+				_inputStates[leftCode] = NO;
+			}
+			if (rightCode != FXMappingNotFound) {
+				_inputStates[rightCode] = YES;
+			}
 		} else {
-			_inputStates[rightCode] = NO;
-			_inputStates[leftCode] = NO;
+			if (leftCode != FXMappingNotFound) {
+				_inputStates[leftCode] = NO;
+			}
+			if (rightCode != FXMappingNotFound) {
+				_inputStates[rightCode] = NO;
+			}
 		}
 	}
 #ifdef DEBUG_GP
@@ -199,18 +251,33 @@
 {
 	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
 	if (map) {
-		// FIXME: map to appropriate player code
-		int upCode = [map virtualCodeMatching:FXGamepadUp];
-		int downCode = [map virtualCodeMatching:FXGamepadDown];
+		int upCode = [self remap:map
+						toPlayer:(int) [gamepad index]
+					  deviceCode:FXGamepadUp];
+		int downCode = [self remap:map
+						  toPlayer:(int) [gamepad index]
+						deviceCode:FXGamepadDown];
 		if (center - newValue > FXDeadzoneSize) {
-			_inputStates[upCode] = YES;
-			_inputStates[downCode] = NO;
+			if (upCode != FXMappingNotFound) {
+				_inputStates[upCode] = YES;
+			}
+			if (downCode != FXMappingNotFound) {
+				_inputStates[downCode] = NO;
+			}
 		} else if (newValue - center > FXDeadzoneSize) {
-			_inputStates[downCode] = YES;
-			_inputStates[upCode] = NO;
+			if (upCode != FXMappingNotFound) {
+				_inputStates[upCode] = NO;
+			}
+			if (downCode != FXMappingNotFound) {
+				_inputStates[downCode] = YES;
+			}
 		} else {
-			_inputStates[downCode] = NO;
-			_inputStates[upCode] = NO;
+			if (upCode != FXMappingNotFound) {
+				_inputStates[upCode] = NO;
+			}
+			if (downCode != FXMappingNotFound) {
+				_inputStates[downCode] = NO;
+			}
 		}
 	}
 #ifdef DEBUG_GP
@@ -226,8 +293,9 @@
 {
 	FXButtonMap *map = [_config mapWithId:[gamepad vendorProductString]];
 	if (map) {
-		// FIXME: map to appropriate player code
-		int code = [map virtualCodeMatching:(int) FXMakeButton(index)];
+		int code = [self remap:map
+					  toPlayer:(int) [gamepad index]
+					deviceCode:(int) FXMakeButton(index)];
 		if (code != FXMappingNotFound) {
 			_inputStates[code] = isDown;
 		}
@@ -275,6 +343,20 @@
 }
 
 #pragma mark - Private
+
+- (int) remap:(FXButtonMap *) map
+	 toPlayer:(int) playerIndex
+   deviceCode:(int) deviceCode
+{
+	if (playerIndex >= 0 && playerIndex < _playerCount) {
+		int vcode = [map virtualCodeMatching:deviceCode];
+		if (vcode != FXMappingNotFound) {
+			return _playerCodeOffsets[playerIndex * _playerInputSpan + vcode];
+		}
+	}
+
+	return FXMappingNotFound;
+}
 
 - (FXButtonMap *) defaultKeyboardMap
 {

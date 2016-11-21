@@ -33,6 +33,7 @@
 	BOOL _parsed;
 	int _playerIndex;
 	int _fireIndex;
+	NSString *_neutralName;
 	NSString *_neutralTitle;
 }
 
@@ -40,7 +41,7 @@ static NSRegularExpression *regex;
 
 + (void) initialize
 {
-	regex = [NSRegularExpression regularExpressionWithPattern:@"^p(\\d) (.*?)( (\\d))?$"
+	regex = [NSRegularExpression regularExpressionWithPattern:@"^p(\\d) ((.*?)( (\\d))?)$"
 													  options:NSRegularExpressionCaseInsensitive
 														error:NULL];
 }
@@ -70,12 +71,12 @@ static NSRegularExpression *regex;
 		
 		if (m) {
 			NSRange playerRange = [m rangeAtIndex:1];
-			NSRange nameRange = [m rangeAtIndex:2];
-			NSRange fireRange = [m rangeAtIndex:4];
+			NSRange fireRange = [m rangeAtIndex:5];
 			
 			if (playerRange.location != NSNotFound) {
 				_playerIndex = [[_name substringWithRange:playerRange] intValue];
-				if ([[_name substringWithRange:nameRange] isEqualToString:@"fire"]) {
+				_neutralName = [_name substringWithRange:[m rangeAtIndex:2]];
+				if ([[_name substringWithRange:[m rangeAtIndex:3]] isEqualToString:@"fire"]) {
 					_fireIndex = 0;
 					if (fireRange.location != NSNotFound) {
 						_fireIndex = [[_name substringWithRange:fireRange] intValue];
@@ -89,6 +90,12 @@ static NSRegularExpression *regex;
 }
 
 #pragma mark - Public
+
+- (NSString *) neutralName
+{
+	[self parseIfNeeded];
+	return _neutralName;
+}
 
 - (BOOL) isPlayerSpecific
 {
