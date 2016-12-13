@@ -29,7 +29,8 @@
 
 + (int) powerOfTwoClosestTo:(int) number;
 - (void) resetProjection;
-- (void) handleMouseAction:(NSEvent *) theEvent;
+- (void) handleMouseChange:(NSPoint) position;
+- (void) resetTrackingArea;
 
 @end
 
@@ -47,6 +48,7 @@
 	NSSize screenSize;
 	CFAbsoluteTime _lastMouseAction;
 	NSPoint _lastCursorPosition;
+	NSTrackingArea *_trackingArea;
 }
 
 #pragma mark - Initialize, Dealloc
@@ -59,16 +61,16 @@
 
 - (void) awakeFromNib
 {
-	[[self window] setAcceptsMouseMovedEvents:YES];
-	
     self->renderLock = [[NSLock alloc] init];
 	_lastMouseAction = CFAbsoluteTimeGetCurrent();
 	_lastCursorPosition = NSMakePoint(-1, -1);
+
+	[self resetTrackingArea];
 }
 
 #pragma mark - Cocoa Callbacks
 
-- (void)prepareOpenGL
+- (void) prepareOpenGL
 {
     [super prepareOpenGL];
     
@@ -78,7 +80,8 @@
 	
     // Synchronize buffer swaps with vertical refresh rate
     GLint swapInt = 1;
-    [[self openGLContext] setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
+    [[self openGLContext] setValues:&swapInt
+					   forParameter:NSOpenGLCPSwapInterval];
     
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -93,7 +96,7 @@
 	return YES;
 }
 
-- (void)drawRect:(NSRect)dirtyRect
+- (void) drawRect:(NSRect)dirtyRect
 {
     [self->renderLock lock];
 	
@@ -242,44 +245,60 @@
     [self->renderLock unlock];
 }
 
+#pragma mark - Mouse tracking
+
+- (void) mouseEntered:(NSEvent *) event
+{
+	[self handleMouseChange:[event locationInWindow]];
+}
+
+- (void) mouseMoved:(NSEvent *) event
+{
+	[self handleMouseChange:[event locationInWindow]];
+}
+
+- (void) mouseExited:(NSEvent *) event
+{
+	[self handleMouseChange:NSMakePoint(-1, -1)];
+}
+
+- (void) mouseDown:(NSEvent *) event
+{
+	[self handleMouseChange:[event locationInWindow]];
+}
+
+- (void) rightMouseDown:(NSEvent *) event
+{
+	[self handleMouseChange:[event locationInWindow]];
+}
+
 #pragma mark - Public methods
 
-- (NSSize)screenSize
+- (NSSize) screenSize
 {
     return self->screenSize;
 }
 
-- (void) mouseMoved:(NSEvent *) theEvent
-{
-	[self handleMouseAction:theEvent];
-}
-
-- (void) mouseDown:(NSEvent *) theEvent
-{
-	[self handleMouseAction:theEvent];
-}
-
-- (void) mouseUp:(NSEvent *) theEvent
-{
-	[self handleMouseAction:theEvent];
-}
-
-- (void) rightMouseDown:(NSEvent *) theEvent
-{
-	[self handleMouseAction:theEvent];
-}
-
-- (void) rightMouseUp:(NSEvent *) theEvent
-{
-	[self handleMouseAction:theEvent];
-}
-
 #pragma mark - Private methods
 
-- (void) handleMouseAction:(NSEvent *) theEvent
+- (void) resetTrackingArea
+{
+	if (_trackingArea) {
+		[self removeTrackingArea:_trackingArea];
+	}
+
+	NSTrackingAreaOptions opts = NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveInKeyWindow | NSTrackingInVisibleRect;
+	_trackingArea = [[NSTrackingArea alloc] initWithRect:NSZeroRect
+												 options:opts
+												   owner:self
+												userInfo:nil];
+	[self addTrackingArea:_trackingArea];
+}
+
+- (void) handleMouseChange:(NSPoint) position
 {
 	_lastMouseAction = CFAbsoluteTimeGetCurrent();
-	_lastCursorPosition = [self convertPoint:[theEvent locationInWindow]
+	_lastCursorPosition = [self convertPoint:position
 									fromView:nil];
 	
 	if ([_delegate respondsToSelector:@selector(mouseStateDidChange)]) {

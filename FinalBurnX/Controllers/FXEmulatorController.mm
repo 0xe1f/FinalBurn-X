@@ -37,7 +37,7 @@
 @implementation FXEmulatorController
 {
 	NSTitlebarAccessoryViewController *_tbAcc;
-	
+
 	BOOL _cursorVisible;
 }
 
