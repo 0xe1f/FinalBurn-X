@@ -369,7 +369,11 @@ static int cocoaGetNextSound(int draw);
     self->soundBufferCleared = NO;
     bRunPause = paused;
 #ifdef DEBUG
-    NSLog(@"runLoop/setPaused:%d", paused);
+	if (paused) {
+		NSLog(@"runLoop/pause");
+	} else {
+		NSLog(@"runLoop/resume");
+	}
 #endif
 }
 

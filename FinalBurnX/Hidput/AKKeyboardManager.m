@@ -252,8 +252,7 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
     }
 	
 #ifdef DEBUG
-	NSLog(@"AKKeyboardManager/addObserver (%d)",
-		  (int) [_observers count]);
+	NSLog(@"keyboardManager/addObserver");
 #endif
 }
 
@@ -270,8 +269,7 @@ void keyWasToggled(void *context, IOReturn result, void *sender, IOHIDValueRef v
     }
 
 #ifdef DEBUG
-	NSLog(@"AKKeyboardManager/removeObserver (%d)",
-		  (int) [_observers count]);
+	NSLog(@"keyboardManager/removeObserver");
 #endif
 }
 

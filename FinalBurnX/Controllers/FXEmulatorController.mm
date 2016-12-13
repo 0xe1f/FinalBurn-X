@@ -22,6 +22,7 @@
 
 #import "FXLoader.h"
 #import "FXManifest.h"
+#import "FXAppDelegate.h"
 
 #include "burner.h"
 
@@ -52,16 +53,16 @@
 		_audio = [[FXAudio alloc] init];
 		_runLoop = [[FXRunLoop alloc] initWithDriver:driver];
 		_cursorVisible = YES;
-
 		_defaultsToObserve = @[ @"audioVolume",
 								@"pauseWhenInactive",
+								@"suppressScreenSaver",
 							   ];
 	}
-    
+	
     return self;
 }
 
-- (void)awakeFromNib
+- (void) awakeFromNib
 {
 	[_defaultsToObserve enumerateObjectsUsingBlock:^(NSString *key, NSUInteger idx, BOOL * _Nonnull stop) {
 		[[NSUserDefaults standardUserDefaults] addObserver:self
@@ -106,13 +107,21 @@
 						change:(NSDictionary *) change
 					   context:(void *) context
 {
+	NSWindow *window = [self window];
 	if ([keyPath isEqualToString:@"audioVolume"]) {
 		[_audio setVolume:[[change objectForKey:NSKeyValueChangeNewKey] integerValue]];
 	} else if ([keyPath isEqualToString:@"pauseWhenInactive"]) {
 		BOOL newValue = [[change objectForKey:NSKeyValueChangeNewKey] boolValue];
-		if (![[self window] isKeyWindow] && newValue && ![_runLoop isPaused]) {
+		if (![window isKeyWindow] && newValue && ![_runLoop isPaused]) {
 			[_runLoop setPaused:YES];
 			_autoPaused = YES;
+		}
+	} else if ([keyPath isEqualToString:@"suppressScreenSaver"]) {
+		BOOL newValue = [[change objectForKey:NSKeyValueChangeNewKey] boolValue];
+		if (newValue && [window isKeyWindow]) {
+			[(FXAppDelegate *) [NSApp delegate] suppressScreenSaver];
+		} else if (!newValue) {
+			[(FXAppDelegate *) [NSApp delegate] restoreScreenSaver];
 		}
 	}
 }
@@ -166,6 +175,10 @@
 	}
 
 	_autoPaused = NO;
+
+	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"suppressScreenSaver"]) {
+		[(FXAppDelegate *) [NSApp delegate] suppressScreenSaver];
+	}
 }
 
 - (void) windowDidResignKey:(NSNotification *) notification
@@ -181,6 +194,8 @@
 		[_runLoop setPaused:YES];
 		_autoPaused = YES;
 	}
+
+	[(FXAppDelegate *) [NSApp delegate] restoreScreenSaver];
 }
 
 - (void) keyDown:(NSEvent *) theEvent

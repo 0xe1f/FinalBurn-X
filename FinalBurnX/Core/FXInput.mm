@@ -314,7 +314,7 @@
     
     if (!focus) {
 #ifdef DEBUG
-        NSLog(@"FXInput: -Focus");
+        NSLog(@"input/focus-");
 #endif
         // Emulator has lost focus - release all virtual keys
         [self releaseAllKeys];
@@ -323,7 +323,7 @@
         [[AKKeyboardManager sharedInstance] removeObserver:self];
     } else {
 #ifdef DEBUG
-        NSLog(@"FXInput: +Focus");
+        NSLog(@"input/focus+");
 #endif
         // Start listening for key events
         [[AKKeyboardManager sharedInstance] addObserver:self];

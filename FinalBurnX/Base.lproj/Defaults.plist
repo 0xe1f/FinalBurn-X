@@ -8,5 +8,7 @@
 	<integer>100</integer>
 	<key>pauseWhenInactive</key>
 	<true/>
+	<key>suppressScreenSaver</key>
+	<true/>
 </dict>
 </plist>

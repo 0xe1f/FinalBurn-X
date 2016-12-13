@@ -20,6 +20,8 @@
  */
 #import "FXAppDelegate.h"
 
+#import <IOKit/pwr_mgt/IOPMLib.h>
+
 #import "FXManifest.h"
 #import "AKGamepadManager.h"
 
@@ -32,14 +34,14 @@
 @implementation FXAppDelegate
 {
 	FXLauncherController *launcher;
-	FXPreferencesController *prefs;
 	NSString *appSupportPath;
 	NSString *romPath;
+	IOPMAssertionID _preventSleepAssertionID;
 }
 
 static FXAppDelegate *sharedInstance = nil;
 
-+ (void)initialize
++ (void) initialize
 {
     // Register the NSUserDefaults
     NSString *bundleResourcePath = [[NSBundle mainBundle] pathForResource:@"Defaults" ofType:@"plist"];
@@ -48,17 +50,22 @@ static FXAppDelegate *sharedInstance = nil;
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 }
 
-- (instancetype)init
+- (instancetype) init
 {
-    if (self = [super init]) {
-        sharedInstance = self;
-    }
-    
-    return self;
+	if (self = [super init]) {
+		sharedInstance = self;
+	}
+	
+	return self;
 }
 
-- (void)dealloc
+- (void) dealloc
 {
+}
+
+- (void) awakeFromNib
+{
+	_preventSleepAssertionID = kIOPMNullAssertionID;
 }
 
 #pragma mark - NSAppDelegate
@@ -110,37 +117,62 @@ static FXAppDelegate *sharedInstance = nil;
 - (void)applicationWillTerminate:(NSNotification *)notification
 {
     [self shutDown];
-    
+	
     [FXEmulatorController cleanupCore];
 }
 
 #pragma mark - Actions
 
-- (void)showLauncher:(id)sender
+- (void) showLauncher:(id)sender
 {
     [[self->launcher window] makeKeyAndOrderFront:self];
 }
 
-- (void)showPreferences:(id)sender
+- (void) showPreferences:(id)sender
 {
-    if (self->prefs == nil) {
-        self->prefs = [[FXPreferencesController alloc] init];
-        [self->prefs showWindow:self];
+    if (!_prefs) {
+        _prefs = [FXPreferencesController new];
+        [_prefs showWindow:self];
     } else {
-        [[self->prefs window] makeKeyAndOrderFront:self];
+        [[_prefs window] makeKeyAndOrderFront:self];
     }
 }
 
 #pragma mark - Public methods
 
+- (void) suppressScreenSaver
+{
+	if (_preventSleepAssertionID != kIOPMNullAssertionID) {
+		return;
+	}
+
+	IOPMAssertionCreateWithName(kIOPMAssertionTypeNoDisplaySleep,
+								kIOPMAssertionLevelOn,
+								(__bridge CFStringRef) @"FinalBurnX",
+								&_preventSleepAssertionID);
+
+#if DEBUG
+	NSLog(@"app/suppressScreenSaver");
+#endif
+}
+
+- (void) restoreScreenSaver
+{
+	if (_preventSleepAssertionID == kIOPMNullAssertionID) {
+		return;
+	}
+
+	_preventSleepAssertionID = kIOPMNullAssertionID;
+	IOPMAssertionRelease(_preventSleepAssertionID);
+
+#if DEBUG
+	NSLog(@"app/restoreScreenSaver");
+#endif
+}
+
 - (NSString *)ROMPath
 {
     return self->romPath;
-}
-
-- (FXPreferencesController *)prefs
-{
-    return self->prefs;
 }
 
 - (void)launch:(NSString *) name
@@ -166,7 +198,7 @@ static FXAppDelegate *sharedInstance = nil;
 
 #pragma mark - Private methods
 
-- (void)shutDown
+- (void) shutDown
 {
     @synchronized(self) {
         [_emulator saveSettings];

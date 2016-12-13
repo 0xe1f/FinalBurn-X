@@ -218,8 +218,7 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 	}
 	
 #ifdef DEBUG
-	NSLog(@"AKGamepadManager/addObserver (%d)",
-		  (int) [_observers count]);
+	NSLog(@"gamepadManager/addObserver");
 #endif
 }
 
@@ -236,8 +235,7 @@ void gamepadWasRemoved(void *inContext, IOReturn inResult, void *inSender, IOHID
 	}
 	
 #ifdef DEBUG
-	NSLog(@"AKGamepadManager/removeObserver (%d)",
-		  (int) [_observers count]);
+	NSLog(@"gamepadManager/removeObserver");
 #endif
 }
 
