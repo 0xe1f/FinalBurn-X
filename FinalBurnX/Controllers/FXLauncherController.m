@@ -115,7 +115,7 @@
     
     // Disallow importing from the library directory
     NSString *parentPath = [path stringByDeletingLastPathComponent];
-    NSString *romPath = [[FXAppDelegate sharedInstance] ROMPath];
+    NSString *romPath = [[FXAppDelegate sharedInstance] romPath];
     
     if ([parentPath caseInsensitiveCompare:romPath] == NSOrderedSame) {
         return NO;
@@ -234,7 +234,7 @@
                 [self->importCancelButton setEnabled:YES];
             }];
             
-            NSString *dstPath = [[[FXAppDelegate sharedInstance] ROMPath] stringByAppendingPathComponent:filename];
+            NSString *dstPath = [[[FXAppDelegate sharedInstance] romPath] stringByAppendingPathComponent:filename];
             NSLog(@"Importing %@ as %@", filename, dstPath);
             
             // FIXME

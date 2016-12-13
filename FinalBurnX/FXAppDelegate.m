@@ -35,7 +35,6 @@
 {
 	FXLauncherController *launcher;
 	NSString *appSupportPath;
-	NSString *romPath;
 	IOPMAssertionID _preventSleepAssertionID;
 }
 
@@ -77,14 +76,14 @@ static FXAppDelegate *sharedInstance = nil;
 
 	// Initialize paths
     self->appSupportPath = [[self appSupportURL] path];
-    self->romPath = [self->appSupportPath stringByAppendingPathComponent:@"roms"];
-    self->_nvramPath = [self->appSupportPath stringByAppendingPathComponent:@"nvram"];
-    self->_inputMapPath = [self->appSupportPath stringByAppendingPathComponent:@"input"];
+    _romPath = [self->appSupportPath stringByAppendingPathComponent:@"roms"];
+    _nvramPath = [self->appSupportPath stringByAppendingPathComponent:@"nvram"];
+    _inputMapPath = [self->appSupportPath stringByAppendingPathComponent:@"input"];
     
     NSArray *pathsToCreate = @[self->appSupportPath,
-                               self->romPath,
-                               self->_nvramPath,
-                               self->_inputMapPath];
+                               _romPath,
+                               _nvramPath,
+                               _inputMapPath];
     
     NSFileManager *fm = [NSFileManager defaultManager];
     [pathsToCreate enumerateObjectsUsingBlock:^(NSString *path, NSUInteger idx, BOOL *stop) {
@@ -168,11 +167,6 @@ static FXAppDelegate *sharedInstance = nil;
 #if DEBUG
 	NSLog(@"app/restoreScreenSaver");
 #endif
-}
-
-- (NSString *)ROMPath
-{
-    return self->romPath;
 }
 
 - (void)launch:(NSString *) name

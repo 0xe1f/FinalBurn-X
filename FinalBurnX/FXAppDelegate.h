@@ -29,7 +29,6 @@
 + (FXAppDelegate *)sharedInstance;
 
 - (NSURL *) appSupportURL;
-- (NSString *) ROMPath;
 - (void) launch:(NSString *) name;
 - (void) suppressScreenSaver;
 - (void) restoreScreenSaver;
@@ -37,8 +36,9 @@
 - (IBAction) showLauncher:(id) sender;
 - (IBAction) showPreferences:(id) sender;
 
-@property (nonatomic, readonly, strong) NSString *nvramPath;
-@property (nonatomic, readonly, strong) NSString *inputMapPath;
+@property (nonatomic, readonly) NSString *romPath;
+@property (nonatomic, readonly) NSString *nvramPath;
+@property (nonatomic, readonly) NSString *inputMapPath;
 
 @property (nonatomic, readonly) FXEmulatorController *emulator;
 @property (nonatomic, readonly) FXPreferencesController *prefs;

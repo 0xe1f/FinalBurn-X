@@ -208,7 +208,7 @@
 						  error:(NSError **) error
 {
 	int driverIndex = [driver index];
-    NSArray *romPaths = @[[[FXAppDelegate sharedInstance] ROMPath]];
+    NSArray *romPaths = @[[[FXAppDelegate sharedInstance] romPath]];
     
     // Get list of archive names for driver
     NSError *archiveError = nil;
