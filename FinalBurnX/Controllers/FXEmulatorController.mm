@@ -27,9 +27,9 @@
 
 @interface FXEmulatorController ()
 
-- (NSSize)preferredSizeOfScreenWithSize:(NSSize)screenSize;
-- (void)resizeFrame:(NSSize)newSize
-            animate:(BOOL)animate;
+- (NSSize) preferredSizeOfScreenWithSize:(NSSize) screenSize;
+- (void) resizeFrame:(NSSize) newSize
+			 animate:(BOOL) animate;
 - (void) displayMessage:(NSString *) message;
 
 @end
@@ -38,7 +38,9 @@
 {
 	NSTitlebarAccessoryViewController *_tbAcc;
 
+	BOOL _autoPaused;
 	BOOL _cursorVisible;
+	NSArray<NSString *> *_defaultsToObserve;
 }
 
 - (instancetype) initWithDriver:(FXDriver *) driver
@@ -51,10 +53,9 @@
 		_runLoop = [[FXRunLoop alloc] initWithDriver:driver];
 		_cursorVisible = YES;
 
-		[[NSUserDefaults standardUserDefaults] addObserver:self
-												forKeyPath:@"audioVolume"
-												   options:NSKeyValueObservingOptionNew
-												   context:NULL];
+		_defaultsToObserve = @[ @"audioVolume",
+								@"pauseWhenInactive",
+							   ];
 	}
     
     return self;
@@ -62,6 +63,13 @@
 
 - (void)awakeFromNib
 {
+	[_defaultsToObserve enumerateObjectsUsingBlock:^(NSString *key, NSUInteger idx, BOOL * _Nonnull stop) {
+		[[NSUserDefaults standardUserDefaults] addObserver:self
+												forKeyPath:key
+												   options:NSKeyValueObservingOptionNew
+												   context:NULL];
+	}];
+
 	// Initialize title bar controller
 	self->_tbAcc = [[NSTitlebarAccessoryViewController alloc] init];
 	[self->_tbAcc setView:self->spinner];
@@ -100,6 +108,12 @@
 {
 	if ([keyPath isEqualToString:@"audioVolume"]) {
 		[_audio setVolume:[[change objectForKey:NSKeyValueChangeNewKey] integerValue]];
+	} else if ([keyPath isEqualToString:@"pauseWhenInactive"]) {
+		BOOL newValue = [[change objectForKey:NSKeyValueChangeNewKey] boolValue];
+		if (![[self window] isKeyWindow] && newValue && ![_runLoop isPaused]) {
+			[_runLoop setPaused:YES];
+			_autoPaused = YES;
+		}
 	}
 }
 
@@ -143,30 +157,45 @@
 
 #pragma mark - NSWindowDelegate
 
-- (void)windowDidBecomeKey:(NSNotification *)notification
+- (void) windowDidBecomeKey:(NSNotification *) notification
 {
 	[_input setFocus:YES];
+
+	if (_autoPaused && [_runLoop isPaused]) {
+		[_runLoop setPaused:NO];
+	}
+
+	_autoPaused = NO;
 }
 
-- (void)windowDidResignKey:(NSNotification *)notification
+- (void) windowDidResignKey:(NSNotification *) notification
 {
 	[_input setFocus:NO];
 	if (!_cursorVisible) {
 		_cursorVisible = YES;
 		[NSCursor unhide];
 	}
+
+	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"pauseWhenInactive"]
+		&& ![_runLoop isPaused]) {
+		[_runLoop setPaused:YES];
+		_autoPaused = YES;
+	}
 }
 
-- (void)keyDown:(NSEvent *)theEvent
+- (void) keyDown:(NSEvent *) theEvent
 {
     // Suppress the beeps
 }
 
 - (void) windowWillClose:(NSNotification *) notification
 {
-	[[NSUserDefaults standardUserDefaults] removeObserver:self
-											   forKeyPath:@"audioVolume"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
+	[_defaultsToObserve enumerateObjectsUsingBlock:^(NSString *key, NSUInteger idx, BOOL * _Nonnull stop) {
+		[[NSUserDefaults standardUserDefaults] removeObserver:self
+												   forKeyPath:key];
+	}];
+
+	[[NSNotificationCenter defaultCenter] postNotificationName:FXEmulatorChanged
                                                         object:self
                                                       userInfo:nil];
     

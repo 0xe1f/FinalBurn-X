@@ -38,15 +38,17 @@
                                     <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
-                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="FvX-S0-j84">
-                                            <rect key="frame" x="274" y="242" width="53" height="17"/>
+                                        <button misplaced="YES" id="K1g-1d-vr7">
+                                            <rect key="frame" x="80" y="352" width="265" height="18"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="General" id="qUM-yd-8yD">
+                                            <buttonCell key="cell" type="check" title="Pause when another window is active" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="riz-Dp-0ic">
+                                                <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                                 <font key="font" metaFont="system"/>
-                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                                            </textFieldCell>
-                                        </textField>
+                                            </buttonCell>
+                                            <connections>
+                                                <binding destination="fpA-S9-PLa" name="value" keyPath="values.pauseWhenInactive" id="TCG-ae-f8X"/>
+                                            </connections>
+                                        </button>
                                     </subviews>
                                 </view>
                             </tabViewItem>

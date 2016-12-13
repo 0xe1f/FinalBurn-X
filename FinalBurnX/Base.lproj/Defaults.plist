@@ -6,5 +6,7 @@
 	<string>general</string>
 	<key>audioVolume</key>
 	<integer>100</integer>
+	<key>pauseWhenInactive</key>
+	<true/>
 </dict>
 </plist>
