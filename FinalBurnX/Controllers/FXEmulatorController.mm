@@ -32,6 +32,8 @@
 - (void) resizeFrame:(NSSize) newSize
 			 animate:(BOOL) animate;
 - (void) displayMessage:(NSString *) message;
+- (NSString *) generateScreenshotFilenameAtPath:(NSString *) parentPath
+									  extension:(NSString *) ext;
 
 @end
 
@@ -303,6 +305,28 @@
     [_input setTestPressed:YES];
 }
 
+- (void)saveScreenshot:(id)sender
+{
+	NSString *path = [self generateScreenshotFilenameAtPath:nil
+												  extension:@"png"];
+	
+	if (path) {
+		MakeScreenShot([path cStringUsingEncoding:NSUTF8StringEncoding]);
+	}
+}
+
+- (void)saveScreenshotAs:(id)sender
+{
+	[self showSaveFileDialogWithTitle:NSLocalizedString(@"Save Screenshot", @"Dialog title")
+					 allowedFileTypes:@[@"png"]
+					  openInDirectory:nil
+					completionHandler:^(NSString *file, NSString *path) {
+		 if (file) {
+			 MakeScreenShot([file cStringUsingEncoding:NSUTF8StringEncoding]);
+		 }
+	 }];
+}
+
 #pragma mark - Core
 
 + (void)initializeCore
@@ -326,6 +350,71 @@
 }
 
 #pragma mark - Private methods
+
+- (void) showSaveFileDialogWithTitle:(NSString *) title
+					allowedFileTypes:(NSArray *) allowedFileTypes
+					 openInDirectory:(NSString *) initialDirectory
+				   completionHandler:(void (^)(NSString *file, NSString *path)) handler
+{
+	NSSavePanel *dialog = [NSSavePanel savePanel];
+	
+	dialog.title = title;
+	dialog.canCreateDirectories = YES;
+	dialog.allowedFileTypes = allowedFileTypes;
+	
+	if (initialDirectory)
+		dialog.directoryURL = [NSURL fileURLWithPath:initialDirectory];
+	
+	[dialog beginSheetModalForWindow:[self->screen window]
+				   completionHandler:^(NSInteger result)
+	 {
+		 NSString *file = nil;
+		 NSString *filePath = nil;
+		 
+		 if (result == NSFileHandlingPanelOKButton)
+		 {
+			 file = [dialog URL].path;
+			 filePath = dialog.directoryURL.path;
+		 }
+		 
+		 handler(file, filePath);
+	 }];
+}
+
+- (NSString *) generateScreenshotFilenameAtPath:(NSString *) parentPath
+									  extension:(NSString *) ext
+{
+	NSString *path = nil;
+	
+	if (parentPath == nil) {
+		// Default parent is desktop
+		parentPath = [NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) firstObject];
+	}
+	
+	if (parentPath != nil) {
+		NSDate *now = [NSDate date];
+		NSCalendar *calendar = [NSCalendar currentCalendar];
+		NSDateComponents *components = [calendar components:NSCalendarUnitYear
+										| NSCalendarUnitMonth | NSCalendarUnitDay
+										| NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond
+												   fromDate:now];
+		
+		NSString *prefix = [NSString stringWithFormat:@"%@ %04zd-%02zd-%02zd at %02zd.%02zd.%02zd",
+							[self->_driver title],
+							[components year], [components month], [components day],
+							[components hour], [components minute], [components second]];
+		
+		path = [parentPath stringByAppendingPathComponent:prefix];
+		path = [path stringByAppendingPathExtension:ext];
+		
+		for (int i = 2; [[NSFileManager defaultManager] fileExistsAtPath:path]; i++) {
+			path = [[parentPath stringByAppendingPathComponent:prefix] stringByAppendingFormat:@" %zd", i];
+			path = [path stringByAppendingPathExtension:ext];
+		}
+	}
+	
+	return path;
+}
 
 - (void) displayMessage:(NSString *) message
 {
@@ -382,9 +471,7 @@
 - (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)item
 {
     NSMenuItem *menuItem = (NSMenuItem*)item;
-    
-    if ([item action] == @selector(pauseGameplay:))
-    {
+    if ([item action] == @selector(pauseGameplay:)) {
         if (![_runLoop isPaused]) {
             [menuItem setTitle:NSLocalizedString(@"Pause", @"Gameplay")];
         } else {
@@ -392,8 +479,11 @@
         }
         
         return YES;
-    }
-    
+	} else if ([item action] == @selector(saveScreenshot:)
+			   || [item action] == @selector(saveScreenshotAs:)) {
+		return YES;
+	}
+	
     return [menuItem isEnabled];
 }
 

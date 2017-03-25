@@ -52,6 +52,6 @@ int DrvExit();
 void InpDIPSWResetDIPs();
 
 //TODO:
-#define szAppBurnVer 1
+#define szAppBurnVer "1"
 
 #endif

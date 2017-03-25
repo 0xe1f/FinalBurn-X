@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11201" systemVersion="16A323" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11762" systemVersion="16D32" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11201"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11762"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -73,6 +73,19 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="hdQ-LG-mLb"/>
+                            <menuItem title="Save Screenshot" keyEquivalent="3" id="clx-pw-1Fe">
+                                <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
+                                <connections>
+                                    <action selector="saveScreenshot:" target="-1" id="0jF-O8-ORj"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Save Screenshot As..." alternate="YES" keyEquivalent="3" id="ESN-VK-4cn">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="saveScreenshotAs:" target="-1" id="1un-RB-k3h"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="gn4-xP-zht"/>
                             <menuItem title="Close" keyEquivalent="w" id="Was-JA-tGl">
                                 <connections>
                                     <action selector="performClose:" target="-1" id="hQr-80-VXW"/>

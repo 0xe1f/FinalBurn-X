@@ -12,7 +12,7 @@ static UINT8* pConvertedImage = NULL;
 static png_bytep* pSShotImageRows = NULL;
 static FILE* ff;
 
-INT32 MakeScreenShot()
+INT32 MakeScreenShot(const char *path)
 {
 	char szAuthor[256]; char szDescription[256]; char szCopyright[256];	char szSoftware[256]; char szSource[256];
 	png_text text_ptr[8] = { { 0, 0, 0, 0, 0, 0, 0 }, };
@@ -22,7 +22,6 @@ INT32 MakeScreenShot()
     tm* tmTime;
     png_time_struct png_time_now;
 
-    char szSShotName[MAX_PATH];
     INT32 w, h;
 
     // do our PNG construct things
@@ -51,7 +50,7 @@ INT32 MakeScreenShot()
 		}
 
 		fclose(ff);
-        remove(szSShotName);
+        remove(path);
 
 		return SSHOT_LIBPNG_ERROR;
     }
@@ -148,9 +147,7 @@ INT32 MakeScreenShot()
 	png_convert_from_time_t(&png_time_now, currentTime);
 
 	// construct our filename -> "romname-mm-dd-hms.png"
-    sprintf(szSShotName,"%s%s-%.2d-%.2d-%.2d%.2d%.2d.png", SSHOT_DIRECTORY, BurnDrvGetTextA(DRV_NAME), tmTime->tm_mon + 1, tmTime->tm_mday, tmTime->tm_hour, tmTime->tm_min, tmTime->tm_sec);
-
-	ff = fopen(szSShotName, "wb");
+	ff = fopen(path, "wb");
 	if (ff == NULL) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 
@@ -168,7 +165,7 @@ INT32 MakeScreenShot()
 #else
 	sprintf(szAuthor, APP_TITLE " v%.20s", szAppBurnVer);
 #endif
-	sprintf(szDescription, "Screenshot of %s", DecorateGameName(nBurnDrvActive));
+	sprintf(szDescription, "Screenshot of %s", BurnDrvGetTextA(DRV_FULLNAME));
 	sprintf(szCopyright, "%s %s", BurnDrvGetTextA(DRV_DATE), BurnDrvGetTextA(DRV_MANUFACTURER));
 #ifdef _UNICODE
 	sprintf(szSoftware, APP_TITLE " v%.20ls using LibPNG " PNG_LIBPNG_VER_STRING, szAppBurnVer);

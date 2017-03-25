@@ -44,6 +44,9 @@
 @property (nonatomic, readonly) FXRunLoop *runLoop;
 @property (nonatomic, readonly) FXDriver *driver;
 
+- (IBAction)saveScreenshot:(id)sender;
+- (IBAction)saveScreenshotAs:(id)sender;
+
 - (IBAction)resizeNormalSize:(id)sender;
 - (IBAction)resizeDoubleSize:(id)sender;
 - (IBAction)pauseGameplay:(id)sender;
