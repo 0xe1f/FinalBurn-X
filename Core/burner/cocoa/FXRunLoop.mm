@@ -104,6 +104,7 @@ static int cocoaGetNextSound(int draw);
 
 - (BOOL) initializeDriver:(NSError **) error
 {
+	bRunPause = 0;
 	nBurnDrvActive = [_driver index];
     nBurnDrvSelect[0] = nBurnDrvActive;
     
