@@ -63,6 +63,8 @@
 	int *_playerCodeOffsets;
 	int _playerCount;
 	int _playerInputSpan;
+	int _resetInputCode;
+	int _diagInputCode;
 }
 
 #pragma mark - Init, dealloc
@@ -102,11 +104,11 @@
     }
     
 	BOOL isPressed;
-    if (inputCode == FXInputReset) {
+    if (inputCode == _resetInputCode) {
         if ((isPressed = [self isResetPressed])) {
             [self setResetPressed:NO];
         }
-    } else if (inputCode == FXInputDiagnostic) {
+    } else if (inputCode == _diagInputCode) {
         if ((isPressed = [self isTestPressed])) {
             [self setTestPressed:NO];
         }
@@ -125,12 +127,19 @@
 	// Figure out the array dimensions
 	_playerCount = 1;
 	_playerInputSpan = 0;
+	_resetInputCode = -1;
+	_diagInputCode = -1;
 	NSMutableDictionary<NSString *, NSNumber *> *nameToIndexMap = [NSMutableDictionary dictionary];
 	[buttons enumerateObjectsUsingBlock:^(FXButton *b, NSUInteger idx, BOOL *stop) {
 		_playerCount = MAX(_playerCount, [b playerIndex]);
 		if ([b playerIndex] == 1) {
 			[nameToIndexMap setObject:@([b code]) forKey:[b neutralName]];
 			_playerInputSpan = MAX(_playerInputSpan, [b code]);
+		}
+		if ([[b name] isEqualToString:@"reset"]) {
+			_resetInputCode = [b code];
+		} else if ([[b name] isEqualToString:@"diag"]) {
+			_diagInputCode = [b code];
 		}
 	}];
 	_playerInputSpan++;

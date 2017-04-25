@@ -47,8 +47,3 @@
 @property (nonatomic, strong) FXInputConfig *config;
 
 @end
-
-enum {
-    FXInputReset       = 0xff,
-    FXInputDiagnostic  = 0xfe,
-};

@@ -297,7 +297,7 @@
 
 - (void)resetEmulation:(id)sender
 {
-    [_input setResetPressed:YES];
+	[_input setResetPressed:YES];
 }
 
 - (void)toggleTestMode:(id)sender
@@ -481,6 +481,9 @@
         return YES;
 	} else if ([item action] == @selector(saveScreenshot:)
 			   || [item action] == @selector(saveScreenshotAs:)) {
+		return YES;
+	} else if ([item action] == @selector(resetEmulation:)
+			   || [item action] == @selector(toggleTestMode:)) {
 		return YES;
 	}
 	
