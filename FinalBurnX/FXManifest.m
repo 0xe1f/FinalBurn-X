@@ -20,6 +20,65 @@
  */
 #import "FXManifest.h"
 
+#pragma mark - FXDIPOption
+
+@interface FXDIPOption ()
+
+@end
+
+@implementation FXDIPOption
+
+- (instancetype) initWithDictionary:(NSDictionary *) d
+{
+	if (self = [super init]) {
+		_title = [d objectForKey:@"name"];
+		_mask = [[d objectForKey:@"mask"] unsignedIntegerValue];
+		_setting = [[d objectForKey:@"setting"] unsignedIntegerValue];
+		_start = [[d objectForKey:@"start"] unsignedIntegerValue];
+	}
+	
+	return self;
+}
+
+@end
+
+#pragma mark - FXDIPGroup
+
+@interface FXDIPGroup ()
+@end
+
+@implementation FXDIPGroup
+
+- (instancetype) initWithDictionary:(NSDictionary *) d
+{
+	if (self = [super init]) {
+		_title = [d objectForKey:@"name"];
+		_selection = -1;
+
+		NSMutableArray *options = [NSMutableArray array];
+		[[d objectForKey:@"items"] enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+			FXDIPOption *option = [[FXDIPOption alloc] initWithDictionary:obj];
+			[options addObject:option];
+
+			if ([[obj objectForKey:@"default"] boolValue]) {
+				_selection = idx;
+			} else if ([option setting] == 0 && _selection == -1) {
+				_selection = idx;
+			}
+		}];
+
+		if (_selection == -1) {
+			_selection = 0;
+		}
+
+		_options = [NSArray arrayWithArray:options];
+	}
+	
+	return self;
+}
+
+@end
+
 #pragma mark - FXButton
 
 @interface FXButton ()
@@ -168,11 +227,17 @@ static NSRegularExpression *regex;
 								 [[d objectForKey:@"height"] floatValue]);
 
 		NSMutableArray<FXButton *> *buttons = [NSMutableArray array];
-		_buttons = buttons;
 		[[d objectForKey:@"input"] enumerateObjectsUsingBlock:^(NSDictionary *idict, NSUInteger idx, BOOL *stop) {
 			[buttons addObject:[[FXButton alloc] initWithCode:(int) idx + 1
 												   dictionary:idict]];
 		}];
+		_buttons = [NSArray arrayWithArray:buttons];
+
+		NSMutableArray<FXDIPGroup *> *groups = [NSMutableArray array];
+		[[d objectForKey:@"dipswitches"] enumerateObjectsUsingBlock:^(NSDictionary *idict, NSUInteger idx, BOOL *stop) {
+			[groups addObject:[[FXDIPGroup alloc] initWithDictionary:idict]];
+		}];
+		_dipswitches = [NSArray arrayWithArray:groups];
 	}
 
 	return self;

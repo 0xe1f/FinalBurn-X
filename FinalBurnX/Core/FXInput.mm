@@ -510,36 +510,37 @@
     memset(_inputStates, 0, sizeof(_inputStates));
 }
 
-- (int)dipSwitchOffset
-{
-    int offset = 0;
-    BurnDIPInfo bdi;
-    for (int i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
-        if (bdi.nFlags == 0xF0) {
-            offset = bdi.nInput;
-            break;
-        }
-    }
-    
-    return offset;
-}
+//- (int)dipSwitchOffset
+//{
+//    int offset = 0;
+//    BurnDIPInfo bdi;
+//    for (int i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+//        if (bdi.nFlags == 0xF0) {
+//            offset = bdi.nInput;
+//            break;
+//        }
+//    }
+//    
+//    return offset;
+//}
 
 - (void)resetDipSwitches
 {
-    int i = 0;
-    BurnDIPInfo bdi;
-    struct GameInp* pgi;
-    
-    int offset = [self dipSwitchOffset];
-    while (BurnDrvGetDIPInfo(&bdi, i) == 0) {
-        if (bdi.nFlags == 0xFF) {
-            pgi = GameInp + bdi.nInput + offset;
-            pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
-        }
-        i++;
-    }
+//    int i = 0;
+//    BurnDIPInfo bdi;
+//    struct GameInp* pgi;
+//    
+//    int offset = [self dipSwitchOffset];
+//    while (BurnDrvGetDIPInfo(&bdi, i) == 0) {
+//        if (bdi.nFlags == 0xFF) {
+//            pgi = GameInp + bdi.nInput + offset;
+//            pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
+//        }
+//        i++;
+//    }
 }
 
+/*
 - (void)setDipSwitchSetting:(FXDIPSwitchSetting *)setting
 {
     BurnDIPInfo bdi = {0, 0, 0, 0, NULL};
@@ -646,6 +647,7 @@
     
     return groups;
 }
+*/
 
 @end
 

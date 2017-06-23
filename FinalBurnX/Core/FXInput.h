@@ -22,7 +22,6 @@
 
 #import "AKKeyboardManager.h"
 #import "AKGamepadManager.h"
-#import "FXDIPSwitchGroup.h"
 
 @class FXDriver;
 @class FXInputConfig;
@@ -38,7 +37,7 @@
 - (void) save;
 - (void) restore;
 
-- (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
+//- (void) setDipSwitchSetting:(FXDIPSwitchSetting *) setting;
 - (void) resetDipSwitches;
 
 @property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;

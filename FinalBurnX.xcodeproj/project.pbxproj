@@ -1104,14 +1104,12 @@
 		FED4361519E60D0F00315655 /* toolbar-dipswitch@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361119E60D0F00315655 /* toolbar-dipswitch@2x.png */; };
 		FED4361619E60D0F00315655 /* toolbar-dipswitch.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361219E60D0F00315655 /* toolbar-dipswitch.png */; };
 		FED4361719E60D0F00315655 /* toolbar-joypad@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */; };
-		FED4361A19E63D5800315655 /* FXDIPSwitchSetting.m in Sources */ = {isa = PBXBuildFile; fileRef = FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */; };
 		FEE6DDBB199D00CA0015EC0F /* FXDroppableScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */; };
 		FEEC2E771DD0496600DAA6F8 /* FXInputConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E761DD0496600DAA6F8 /* FXInputConfig.m */; };
 		FEEC2E7E1DD0550300DAA6F8 /* AKGamepadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E791DD0550300DAA6F8 /* AKGamepadManager.m */; };
 		FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */; };
 		FEEC2E801DD0550300DAA6F8 /* AKGamepadEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */; };
 		FEEC2E841DD100C600DAA6F8 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E831DD100C600DAA6F8 /* FXInput.mm */; };
-		FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */; };
 		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
 
@@ -1928,8 +1926,6 @@
 		FED4361119E60D0F00315655 /* toolbar-dipswitch@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-dipswitch@2x.png"; sourceTree = "<group>"; };
 		FED4361219E60D0F00315655 /* toolbar-dipswitch.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-dipswitch.png"; sourceTree = "<group>"; };
 		FED4361319E60D0F00315655 /* toolbar-joypad@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-joypad@3x.png"; sourceTree = "<group>"; };
-		FED4361819E63D5800315655 /* FXDIPSwitchSetting.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchSetting.h; sourceTree = "<group>"; };
-		FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchSetting.m; sourceTree = "<group>"; };
 		FEE6DDB9199D00CA0015EC0F /* FXDroppableScrollView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDroppableScrollView.h; sourceTree = "<group>"; };
 		FEE6DDBA199D00CA0015EC0F /* FXDroppableScrollView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDroppableScrollView.m; sourceTree = "<group>"; };
 		FEEC2E751DD0496600DAA6F8 /* FXInputConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInputConfig.h; sourceTree = "<group>"; };
@@ -1942,8 +1938,6 @@
 		FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepadEventData.m; path = FinalBurnX/Hidput/AKGamepadEventData.m; sourceTree = SOURCE_ROOT; };
 		FEEC2E821DD100C600DAA6F8 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
 		FEEC2E831DD100C600DAA6F8 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
-		FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPSwitchGroup.m; sourceTree = "<group>"; };
-		FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPSwitchGroup.h; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
 		FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXVerticallyCenteredTextFieldCell.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -3304,10 +3298,6 @@
 				FE9FA4001954B97B00F791EB /* FXAudio.mm */,
 				FE0230671957F7F500661A17 /* FXAudioEngine.h */,
 				FE0230681957F7F500661A17 /* FXAudioEngine.m */,
-				FED4361819E63D5800315655 /* FXDIPSwitchSetting.h */,
-				FED4361919E63D5800315655 /* FXDIPSwitchSetting.m */,
-				FEEDFA4B19E8DF0B00FC396D /* FXDIPSwitchGroup.h */,
-				FEEDFA4A19E8DF0B00FC396D /* FXDIPSwitchGroup.m */,
 				FE23E4EF1961D06B00429FCA /* FXDriverAudit.h */,
 				FE23E4F01961D06B00429FCA /* FXDriverAudit.m */,
 				FE9FA4021959E81E00F791EB /* FXLoader.h */,
@@ -3677,7 +3667,6 @@
 				FE505D30194BC532003A2BC7 /* d_skyfox.cpp in Sources */,
 				FE505C98194BC532003A2BC7 /* d_tjumpman.cpp in Sources */,
 				FE505DD4194BC533003A2BC7 /* d_shippumd.cpp in Sources */,
-				FEEDFA4C19E8DF0B00FC396D /* FXDIPSwitchGroup.m in Sources */,
 				FE505D3A194BC532003A2BC7 /* d_vulgus.cpp in Sources */,
 				FE505C79194BC532003A2BC7 /* cpsrd.cpp in Sources */,
 				FE780110194C33790024716B /* fmopl.c in Sources */,
@@ -3805,7 +3794,6 @@
 				FE506067194BD4E6003A2BC7 /* pngread.c in Sources */,
 				FE505D78194BC533003A2BC7 /* d_suprnova.cpp in Sources */,
 				FE505DB9194BC533003A2BC7 /* tc0110pcr.cpp in Sources */,
-				FED4361A19E63D5800315655 /* FXDIPSwitchSetting.m in Sources */,
 				FE505CD0194BC532003A2BC7 /* d_pooyan.cpp in Sources */,
 				FE505D37194BC532003A2BC7 /* d_terracre.cpp in Sources */,
 				FE505D07194BC532003A2BC7 /* d_cybertnk.cpp in Sources */,

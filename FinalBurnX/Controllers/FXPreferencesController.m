@@ -22,13 +22,49 @@
 
 #import "FXAppDelegate.h"
 #import "FXInput.h"
-#import "FXDIPSwitchGroup.h"
 #import "FXManifest.h"
 #import "FXInputConfig.h"
 #import "FXInputConstants.h"
 #import "FXButtonMap.h"
 #import "FXJoyCaptureView.h"
 #import "AKGamepadManager.h"
+
+#pragma mark - FXDIPOptionUI
+
+@implementation FXDIPOptionUI
+
+- (instancetype) initWithOption:(FXDIPOption *) option
+{
+	if (self = [super init]) {
+		_title = [option title];
+	}
+	
+	return self;
+}
+
+@end
+
+#pragma mark - FXDIPGroupUI
+
+@implementation FXDIPGroupUI
+
+- (instancetype) initWithGroup:(FXDIPGroup *) group
+{
+	if (self = [super init]) {
+		NSMutableArray *options = [NSMutableArray array];
+		[[group options] enumerateObjectsUsingBlock:^(FXDIPOption *obj, NSUInteger idx, BOOL *stop) {
+			[options addObject:[[FXDIPOptionUI alloc] initWithOption:obj]];
+		}];
+
+		_title = [group title];
+		_options = [NSArray arrayWithArray:options];
+		_selection = [group selection];
+	}
+	
+	return self;
+}
+
+@end
 
 #pragma mark - FXButtonConfig
 
@@ -54,7 +90,7 @@
 @implementation FXPreferencesController
 {
 	NSMutableArray<FXButtonConfig *> *_inputList;
-	NSMutableArray *dipSwitchList;
+	NSMutableArray<FXDIPGroupUI *> *_dipList;
 	AKKeyCaptureView *_keyCaptureView;
 	FXJoyCaptureView *_joyCaptureView;
 	NSMutableArray<NSDictionary *> *_inputDeviceList;
@@ -66,9 +102,9 @@
 {
     if ((self = [super initWithWindowNibName:@"Preferences"]) != nil) {
         _inputList = [NSMutableArray new];
+		_dipList = [NSMutableArray new];
 		_inputDeviceList = [NSMutableArray new];
 		_inputDeviceMap = [NSMutableDictionary new];
-        self->dipSwitchList = [NSMutableArray new];
 	}
     
     return self;
@@ -240,7 +276,7 @@
     if (tableView == self->inputTableView) {
         return [_inputList count];
     } else if (tableView == self->dipswitchTableView) {
-        return [self->dipSwitchList count];
+        return [_dipList count];
     }
     
     return 0;
@@ -263,19 +299,19 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 			}
         }
     } else if (tableView == self->dipswitchTableView) {
-        FXDIPSwitchGroup *group = [self->dipSwitchList objectAtIndex:row];
+		FXDIPGroupUI *group = [_dipList objectAtIndex:row];
         if ([[tableColumn identifier] isEqualToString:@"name"]) {
-            return [group name];
+            return [group title];
         } else if ([[tableColumn identifier] isEqualToString:@"value"]) {
-            NSPopUpButtonCell* cell = [tableColumn dataCell];
+			NSPopUpButtonCell* cell = [tableColumn dataCell];
             [cell removeAllItems];
             
             __block NSUInteger enabledIndex = -1;
-            [[group settings] enumerateObjectsUsingBlock:^(FXDIPSwitchSetting *setting, NSUInteger idx, BOOL *stop) {
-                [cell addItemWithTitle:[setting name]];
-                if ([setting isEnabled]) {
-                    enabledIndex = idx;
-                }
+            [[group options] enumerateObjectsUsingBlock:^(FXDIPOptionUI *opt, NSUInteger idx, BOOL *stop) {
+                [cell addItemWithTitle:[opt title]];
+				if (idx == [group selection]) {
+					enabledIndex = idx;
+				}
             }];
             
             return @(enabledIndex);
@@ -322,15 +358,14 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
         }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {
-            FXDIPSwitchGroup *dipSwitchGroup = [self->dipSwitchList objectAtIndex:row];
-            FXDIPSwitchSetting *setting = [[dipSwitchGroup settings] objectAtIndex:[object intValue]];
-            
-            FXAppDelegate *app = [FXAppDelegate sharedInstance];
-            FXEmulatorController *emulator = [app emulator];
-            FXInput *input = [emulator input];
-            [input setDipSwitchSetting:setting];
-            [dipSwitchGroup enableSetting:setting];
-        }
+			FXDIPGroupUI *group = [_dipList objectAtIndex:row];
+//            FXDIPOptionUI *option = [[group options] objectAtIndex:[object intValue]];
+//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
+//            FXEmulatorController *emulator = [app emulator];
+//            FXInput *input = [emulator input];
+//            [input setDipSwitchSetting:setting];
+            [group setSelection:[object intValue]];
+		}
     }
 }
 
@@ -455,17 +490,16 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 
 - (void)updateDipSwitches
 {
-    [self->dipSwitchList removeAllObjects];
-    
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
-    FXEmulatorController *emulator = [app emulator];
-    
-    if (emulator != nil) {
-        [self->dipSwitchList addObjectsFromArray:[[emulator input] dipSwitches]];
-    }
-    
-    [self->resetDipSwitchesButton setEnabled:[self->dipSwitchList count] > 0];
-    [self->dipswitchTableView setEnabled:[self->dipSwitchList count] > 0];
+    FXDriver *driver = [[app emulator] driver];
+	
+	[_dipList removeAllObjects];
+	[[driver dipswitches] enumerateObjectsUsingBlock:^(FXDIPGroup *obj, NSUInteger idx, BOOL *stop) {
+		[_dipList addObject:[[FXDIPGroupUI alloc] initWithGroup:obj]];
+	}];
+	
+    [self->resetDipSwitchesButton setEnabled:[_dipList count] > 0];
+    [self->dipswitchTableView setEnabled:[_dipList count] > 0];
     [self->dipswitchTableView reloadData];
 }
 

@@ -103,6 +103,64 @@
 	return supported;
 }
 
+- (NSArray *) dipswitchesForDriver:(int) driverId
+{
+	if (!pDriver[driverId]->GetDIPInfo) {
+		return @[];
+	}
+
+	int offset = -1;
+	BurnDIPInfo dipSwitch;
+	
+	NSMutableArray *root = [NSMutableArray array];
+	NSMutableArray *allOptions = [NSMutableArray array];
+	NSMutableArray *sg;
+
+	for (int i = 0; pDriver[driverId]->GetDIPInfo(&dipSwitch, i) == 0; i++) {
+		if (dipSwitch.nFlags == 0xf0) {
+			offset = dipSwitch.nInput;
+		}
+
+		if (!dipSwitch.szText) {
+			continue;
+		}
+
+		NSMutableDictionary *sweetch = [@{
+										 @"name": [NSString stringWithCString:dipSwitch.szText
+																	 encoding:NSASCIIStringEncoding],
+										 } mutableCopy];
+
+		if (dipSwitch.nFlags & 0x40) {
+			[sweetch setObject:(sg = [NSMutableArray array])
+					   forKey:@"items"];
+			[root addObject:sweetch];
+		} else {
+			[sweetch setObject:@(dipSwitch.nInput + offset)
+					   forKey:@"start"];
+			[sweetch setObject:@(dipSwitch.nMask)
+					   forKey:@"mask"];
+			[sweetch setObject:@(dipSwitch.nSetting)
+					   forKey:@"setting"];
+			[sg addObject:sweetch];
+			[allOptions addObject:sweetch];
+		}
+	}
+
+	for (int i = 0; pDriver[driverId]->GetDIPInfo(&dipSwitch, i) == 0; i++) {
+		if (dipSwitch.nFlags == 0xff) {
+			[allOptions enumerateObjectsUsingBlock:^(NSMutableDictionary *d, NSUInteger idx, BOOL *stop) {
+				if ([[d objectForKey:@"start"] unsignedIntValue] - offset == dipSwitch.nInput
+					&& dipSwitch.nSetting == [[d objectForKey:@"setting"] unsignedIntValue]) {
+					[d setObject:@true
+						  forKey:@"default"];
+				}
+			}];
+		}
+	}
+
+	return root;
+}
+
 - (NSDictionary *) romSets
 {
 	NSMutableDictionary *setMap = [NSMutableDictionary dictionary];
@@ -123,6 +181,7 @@
 									   @"system": [NSString stringWithCString:pDriver[index]->szSystemA
 																	 encoding:NSASCIIStringEncoding],
 									   @"input": [self inputsForDriver:index],
+									   @"dipswitches": [self dipswitchesForDriver:index],
 									   } mutableCopy];
 		
 		if (pDriver[index]->szBoardROM) {

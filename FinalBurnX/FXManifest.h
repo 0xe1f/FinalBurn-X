@@ -22,6 +22,23 @@
 
 @class FXDriverAudit; // FIXME!
 
+@interface FXDIPOption : NSObject
+
+@property (nonatomic, assign) NSUInteger mask;
+@property (nonatomic, assign) NSUInteger setting;
+@property (nonatomic, assign) NSUInteger start;
+@property (nonatomic, readonly) NSString *title;
+
+@end
+
+@interface FXDIPGroup : NSObject
+
+@property (nonatomic, readonly) NSArray<FXDIPOption *> *options;
+@property (nonatomic, readonly) NSString *title;
+@property (nonatomic, assign) NSUInteger selection;
+
+@end
+
 @interface FXButton : NSObject
 
 @property (nonatomic, assign) int code;
@@ -48,6 +65,7 @@
 @property (nonatomic, readonly) FXDriver *parent;
 @property (nonatomic, readonly) NSArray<FXDriver *> *children;
 @property (nonatomic, readonly) NSArray<FXButton *> *buttons;
+@property (nonatomic, readonly) NSArray<FXDIPGroup *> *dipswitches;
 
 // FIXME
 @property (nonatomic, strong) FXDriverAudit *audit;

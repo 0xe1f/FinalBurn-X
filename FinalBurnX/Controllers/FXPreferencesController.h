@@ -32,6 +32,20 @@
 
 @end
 
+@interface FXDIPOptionUI : NSObject
+
+@property (nonatomic, readonly) NSString *title;
+
+@end
+
+@interface FXDIPGroupUI : NSObject
+
+@property (nonatomic, readonly) NSString *title;
+@property (nonatomic, readonly) NSArray<FXDIPOptionUI *> *options;
+@property (nonatomic, assign) NSUInteger selection;
+
+@end
+
 @interface FXPreferencesController : NSWindowController<NSTableViewDataSource, NSWindowDelegate, AKKeyboardEventDelegate, AKGamepadEventDelegate>
 {
     IBOutlet NSToolbar *toolbar;

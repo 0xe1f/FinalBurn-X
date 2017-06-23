@@ -83,7 +83,8 @@
 	
     [[self window] setTitle:title];
     [[self window] setContentSize:preferredSize];
-	[[self window] setBackgroundColor:[NSColor blackColor]];
+//	[[[self window] contentView] setWantsLayer:YES];
+//	[[[self window] contentView] setBackgroundColor:[NSColor blackColor]];
 	
     [_video setDelegate:self->screen];
     [_runLoop setDelegate:self];
@@ -133,7 +134,7 @@
 - (void)loadingDidStart
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->screen setHidden:YES];
+//		[self->screen setHidden:YES];
 		
 		// Set up title bar spinner
 		[[[self->spinner subviews] firstObject] startAnimation:self];
@@ -159,6 +160,7 @@
 		
 		if (success) {
 			[self->screen setHidden:NO];
+//			[[[self window] contentView] setWantsLayer:NO];
 		} else {
 			[self displayMessage:NSLocalizedString(@"The emulator shut down unexpectedly. Game may be unsupported or unplayable.",
 												   @"Error message")];
