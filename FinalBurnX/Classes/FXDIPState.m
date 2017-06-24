@@ -22,11 +22,14 @@
 
 #import "FXManifest.h"
 
+#define VERSION 0
+
 NSString *const FXDIPStateChanged = @"org.akop.fbx.DIPStateChanged";
 
 @implementation FXDIPState
 {
 	NSMutableDictionary<NSNumber *, NSNumber *> *_states;
+	int _version;
 }
 
 #pragma mark - init, dealloc
@@ -37,6 +40,7 @@ NSString *const FXDIPStateChanged = @"org.akop.fbx.DIPStateChanged";
 		_driverName = name;
 		_states = [NSMutableDictionary dictionary];
 		_dirty = NO;
+		_version = VERSION;
 	}
 
 	return self;
@@ -50,6 +54,7 @@ NSString *const FXDIPStateChanged = @"org.akop.fbx.DIPStateChanged";
 		_driverName = [coder decodeObjectForKey:@"archive"];
 		_states = [coder decodeObjectForKey:@"states"];
 		_dirty = NO;
+		_version = [coder decodeIntForKey:@"version"];
 	}
 	
 	return self;
@@ -61,6 +66,8 @@ NSString *const FXDIPStateChanged = @"org.akop.fbx.DIPStateChanged";
 				 forKey:@"states"];
 	[coder encodeObject:_driverName
 				 forKey:@"archive"];
+	[coder encodeInt:_version
+			  forKey:@"version"];
 }
 
 #pragma mark - Public
