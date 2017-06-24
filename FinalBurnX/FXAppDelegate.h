@@ -39,6 +39,7 @@
 @property (nonatomic, readonly) NSString *romPath;
 @property (nonatomic, readonly) NSString *nvramPath;
 @property (nonatomic, readonly) NSString *inputMapPath;
+@property (nonatomic, readonly) NSString *dipPath;
 
 @property (nonatomic, readonly) FXEmulatorController *emulator;
 @property (nonatomic, readonly) FXPreferencesController *prefs;

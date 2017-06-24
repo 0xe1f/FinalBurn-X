@@ -109,7 +109,7 @@
 		return @[];
 	}
 
-	int offset = -1;
+	int offset = 0;
 	BurnDIPInfo dipSwitch;
 	
 	NSMutableArray *root = [NSMutableArray array];

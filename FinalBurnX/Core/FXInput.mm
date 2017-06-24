@@ -25,6 +25,7 @@
 #import "FXManifest.h"
 #import "FXInputConstants.h"
 #import "FXButtonMap.h"
+#import "FXDIPState.h"
 #import "FXInputConfig.h"
 
 #include "burner.h"
@@ -38,19 +39,16 @@
 
 - (void) releaseAllKeys;
 - (void) initializeInput;
-- (int) dipSwitchOffset;
 
 - (void) restoreInputMap;
 - (void) saveInputMap;
-
-- (void) restoreDipSwitches;
-- (void) saveDipSwitches;
 
 - (int) remap:(FXButtonMap *) map
 	 toPlayer:(int) playerIndex
    deviceCode:(int) deviceCode;
 - (FXButtonMap *) defaultKeyboardMap;
 - (FXButtonMap *) defaultGamepadMap:(AKGamepad *) gamepad;
+- (void) didReceiveDIPNotification:(NSNotification *) notification;
 
 @end
 
@@ -72,11 +70,17 @@
 - (instancetype) initWithDriver:(FXDriver *) driver
 {
     if ((self = [super init]) != nil) {
+		_ready = NO;
 		_playerCount = 1;
 		_playerInputSpan = 0;
 		_driver = driver;
 		_playerCodeOffsets = NULL;
 		[[AKGamepadManager sharedInstance] addObserver:self];
+
+		[[NSNotificationCenter defaultCenter] addObserver:self
+												 selector:@selector(didReceiveDIPNotification:)
+													 name:FXDIPStateChanged
+												   object:nil];
     }
 
     return self;
@@ -93,6 +97,19 @@
     // Stop listening for key events
     [[AKKeyboardManager sharedInstance] removeObserver:self];
 	[[AKGamepadManager sharedInstance] removeObserver:self];
+
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - Notifications
+
+- (void) didReceiveDIPNotification:(NSNotification *) notification
+{
+	FXDIPState *state = [notification object];
+	if ([[state driverName] isEqualToString:[_driver name]]) {
+		NSLog(@"Updating DIP switches");
+		[self updateDIPSwitches:state];
+	}
 }
 
 #pragma mark - Core callbacks
@@ -125,6 +142,7 @@
 
 	// Build a map that convert a P1 virtual code to Px virtual code
 	// Figure out the array dimensions
+	_ready = YES;
 	_playerCount = 1;
 	_playerInputSpan = 0;
 	_resetInputCode = -1;
@@ -161,6 +179,8 @@
 			_playerCodeOffsets[playerIndex * _playerInputSpan + [pxIndex intValue]] = [b code];
 		}
 	}];
+
+	[self updateDIPSwitches:[[[FXAppDelegate sharedInstance] emulator] dipState]];
 }
 
 #pragma mark - AKKeyboardEventDelegate
@@ -342,13 +362,32 @@
 - (void)restore
 {
     [self restoreInputMap];
-    [self restoreDipSwitches];
 }
 
 - (void)save
 {
     [self saveInputMap];
-    [self saveDipSwitches];
+}
+
+- (void) updateDIPSwitches:(FXDIPState *) state
+{
+	if (!_ready) {
+		return;
+	}
+	
+	NSDictionary<NSNumber *, NSNumber *> *dipStates = [state states];
+	[[_driver dipswitches] enumerateObjectsUsingBlock:^(FXDIPGroup *group, NSUInteger idx, BOOL *stop) {
+		FXDIPOption *option;
+		NSNumber *reset = [dipStates objectForKey:@(idx)];
+		if (reset) {
+			option = [[group options] objectAtIndex:[reset unsignedIntegerValue]];
+		} else {
+			option = [[group options] objectAtIndex:[group selection]];
+		}
+		
+		struct GameInp *pgi = GameInp + [option start];
+		pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~[option mask]) | ([option setting] & [option mask]);
+	}];
 }
 
 #pragma mark - Private
@@ -448,11 +487,6 @@
 	return map;
 }
 
-- (void)restoreDipSwitches
-{
-    NSLog(@"FIXME: restore DIP");
-}
-
 - (void) restoreInputMap
 {
     _config = nil;
@@ -484,11 +518,6 @@
 	}];
 }
 
-- (void)saveDipSwitches
-{
-    NSLog(@"FIXME: save DIP");
-}
-
 - (void) saveInputMap
 {
     if ([_config dirty]) {
@@ -505,149 +534,10 @@
     }
 }
 
-- (void)releaseAllKeys
+- (void) releaseAllKeys
 {
     memset(_inputStates, 0, sizeof(_inputStates));
 }
-
-//- (int)dipSwitchOffset
-//{
-//    int offset = 0;
-//    BurnDIPInfo bdi;
-//    for (int i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
-//        if (bdi.nFlags == 0xF0) {
-//            offset = bdi.nInput;
-//            break;
-//        }
-//    }
-//    
-//    return offset;
-//}
-
-- (void)resetDipSwitches
-{
-//    int i = 0;
-//    BurnDIPInfo bdi;
-//    struct GameInp* pgi;
-//    
-//    int offset = [self dipSwitchOffset];
-//    while (BurnDrvGetDIPInfo(&bdi, i) == 0) {
-//        if (bdi.nFlags == 0xFF) {
-//            pgi = GameInp + bdi.nInput + offset;
-//            pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
-//        }
-//        i++;
-//    }
-}
-
-/*
-- (void)setDipSwitchSetting:(FXDIPSwitchSetting *)setting
-{
-    BurnDIPInfo bdi = {0, 0, 0, 0, NULL};
-    struct GameInp *pgi;
-    
-    int offset = [self dipSwitchOffset];
-    
-    FXDIPSwitchGroup *group = [setting group];
-    int nSel = [setting index];
-    int j = 0;
-    for (int i = 0; i <= nSel; i++) {
-        do {
-            BurnDrvGetDIPInfo(&bdi, [group index] + 1 + j++);
-        } while (bdi.nFlags == 0);
-    }
-    
-    pgi = GameInp + bdi.nInput + offset;
-    pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
-    if (bdi.nFlags & 0x40) {
-        while (BurnDrvGetDIPInfo(&bdi, [group index] + 1 + j++) == 0) {
-            if (bdi.nFlags == 0) {
-                pgi = GameInp + bdi.nInput + offset;
-                pgi->Input.Constant.nConst = (pgi->Input.Constant.nConst & ~bdi.nMask) | (bdi.nSetting & bdi.nMask);
-            } else {
-                break;
-            }
-        }
-    }
-}
-
-- (NSArray *)dipSwitches
-{
-    NSMutableArray *groups = [NSMutableArray array];
-    
-    FXDIPSwitchGroup *group = nil;
-    int dipSwitchIndex = -1;
-    
-    BurnDIPInfo dipGroup;
-    int dipSwitchOffset = [self dipSwitchOffset];
-    int dipSwitchCount = 0;
-    
-    for (int i = 0; BurnDrvGetDIPInfo(&dipGroup, i) == 0; i++) {
-        if ((dipGroup.nFlags & 0xF0) == 0xF0) {
-            if (dipGroup.nFlags == 0xFE || dipGroup.nFlags == 0xFD) {
-                if ([group anyEnabled]) {
-                    [groups addObject:group];
-                }
-                
-                dipSwitchCount = dipGroup.nSetting;
-                dipSwitchIndex = 0;
-                
-                group = [[FXDIPSwitchGroup alloc] init];
-                [group setIndex:i];
-                [group setFlags:dipGroup.nFlags];
-                [group setName:[NSString stringWithCString:dipGroup.szText
-                                                          encoding:NSUTF8StringEncoding]];
-            }
-        } else {
-            BOOL isEnabled = NO;
-            struct GameInp *pgi = GameInp + dipGroup.nInput + dipSwitchOffset;
-            
-            if ((pgi->Input.Constant.nConst & dipGroup.nMask) == dipGroup.nSetting) {
-                isEnabled = YES;
-                if ((dipGroup.nFlags & 0x0F) > 1) {
-                    for (int j = 1; j < (dipGroup.nFlags & 0x0F); j++) {
-                        BurnDIPInfo dipSetting;
-                        BurnDrvGetDIPInfo(&dipSetting, i + j);
-                        struct GameInp *dipInput = GameInp + dipSetting.nInput + dipSwitchOffset;
-                        
-                        if (dipGroup.nFlags & 0x80) {
-                            if ((dipInput->Input.Constant.nConst & dipSetting.nMask) == dipSetting.nSetting) {
-                                isEnabled = NO;
-                                break;
-                            }
-                        } else {
-                            if ((dipInput->Input.Constant.nConst & dipSetting.nMask) != dipSetting.nSetting) {
-                                isEnabled = NO;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            if (dipSwitchIndex < dipSwitchCount && dipGroup.szText != NULL) {
-                FXDIPSwitchSetting *setting = [[FXDIPSwitchSetting alloc] init];
-                [setting setIndex:dipSwitchIndex];
-                [setting setGroup:group];
-                [setting setEnabled:isEnabled];
-                [setting setName:[NSString stringWithCString:dipGroup.szText
-                                                    encoding:NSUTF8StringEncoding]];
-                
-                [[group settings] addObject:setting];
-            }
-            
-            dipSwitchIndex++;
-            i += (dipGroup.nFlags & 0x0F) - 1; // loop will add another increment
-        }
-    }
-    
-    if ([group anyEnabled]) {
-        [groups addObject:group];
-    }
-    
-    return groups;
-}
-*/
 
 @end
 

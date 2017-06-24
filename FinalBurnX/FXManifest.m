@@ -32,9 +32,9 @@
 {
 	if (self = [super init]) {
 		_title = [d objectForKey:@"name"];
-		_mask = [[d objectForKey:@"mask"] unsignedIntegerValue];
-		_setting = [[d objectForKey:@"setting"] unsignedIntegerValue];
-		_start = [[d objectForKey:@"start"] unsignedIntegerValue];
+		_mask = [[d objectForKey:@"mask"] unsignedLongValue];
+		_setting = [[d objectForKey:@"setting"] unsignedLongValue];
+		_start = [[d objectForKey:@"start"] unsignedIntValue];
 	}
 	
 	return self;
@@ -45,6 +45,7 @@
 #pragma mark - FXDIPGroup
 
 @interface FXDIPGroup ()
+
 @end
 
 @implementation FXDIPGroup
@@ -56,7 +57,7 @@
 		_selection = -1;
 
 		NSMutableArray *options = [NSMutableArray array];
-		[[d objectForKey:@"items"] enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+		[[d objectForKey:@"items"] enumerateObjectsUsingBlock:^(NSDictionary *obj, NSUInteger idx, BOOL *stop) {
 			FXDIPOption *option = [[FXDIPOption alloc] initWithDictionary:obj];
 			[options addObject:option];
 

@@ -549,6 +549,7 @@
 		FE78012C194C36510024716B /* aud_interface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011E194C36510024716B /* aud_interface.cpp */; settings = {COMPILER_FLAGS = "-Wno-deprecated-writable-strings -Wno-writable-strings"; }; };
 		FE78012D194C36510024716B /* lowpass2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE78011F194C36510024716B /* lowpass2.cpp */; };
 		FE780136194C36BD0024716B /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
+		FE8BEDEE1EFD9FAA00743918 /* FXDIPState.m in Sources */ = {isa = PBXBuildFile; fileRef = FE8BEDED1EFD9FAA00743918 /* FXDIPState.m */; };
 		FE98B61E1E01201400CB12A5 /* fbx.iconset in Resources */ = {isa = PBXBuildFile; fileRef = FE98B61D1E01201400CB12A5 /* fbx.iconset */; };
 		FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE9FA3EB195340C100F791EB /* Emulator.xib */; };
 		FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */ = {isa = PBXBuildFile; fileRef = FE9FA3F7195346F000F791EB /* AKKeyboardManager.m */; };
@@ -1878,6 +1879,8 @@
 		FE780120194C36510024716B /* lowpass2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowpass2.h; sourceTree = "<group>"; };
 		FE780134194C36BD0024716B /* ioapi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ioapi.c; sourceTree = "<group>"; };
 		FE780135194C36BD0024716B /* ioapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioapi.h; sourceTree = "<group>"; };
+		FE8BEDEC1EFD9FAA00743918 /* FXDIPState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXDIPState.h; sourceTree = "<group>"; };
+		FE8BEDED1EFD9FAA00743918 /* FXDIPState.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXDIPState.m; sourceTree = "<group>"; };
 		FE98B61D1E01201400CB12A5 /* fbx.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = fbx.iconset; path = FinalBurnX/fbx.iconset; sourceTree = SOURCE_ROOT; };
 		FE9FA3EC195340C100F791EB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Emulator.xib; sourceTree = "<group>"; };
 		FE9FA3F6195346F000F791EB /* AKKeyboardManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AKKeyboardManager.h; sourceTree = "<group>"; };
@@ -2101,6 +2104,8 @@
 		FE2B11E41DCABC2100FDAB33 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				FE8BEDEC1EFD9FAA00743918 /* FXDIPState.h */,
+				FE8BEDED1EFD9FAA00743918 /* FXDIPState.m */,
 				FEEC2E751DD0496600DAA6F8 /* FXInputConfig.h */,
 				FEEC2E761DD0496600DAA6F8 /* FXInputConfig.m */,
 				FE70CF811DDEDD22009DE783 /* FXInputConstants.h */,
@@ -3554,6 +3559,7 @@
 				FE505F9A194BCDD1003A2BC7 /* pic16c5x.cpp in Sources */,
 				FE505CC3194BC532003A2BC7 /* d_bottom9.cpp in Sources */,
 				FE505C8F194BC532003A2BC7 /* d_feversos.cpp in Sources */,
+				FE8BEDEE1EFD9FAA00743918 /* FXDIPState.m in Sources */,
 				FE505E00194BC533003A2BC7 /* rf5c68.cpp in Sources */,
 				FE505C9F194BC532003A2BC7 /* d_backfire.cpp in Sources */,
 				FE505DE8194BC533003A2BC7 /* burn_ym2203.cpp in Sources */,

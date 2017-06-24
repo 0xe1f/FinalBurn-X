@@ -26,6 +26,7 @@
 #import "FXInputConfig.h"
 #import "FXInputConstants.h"
 #import "FXButtonMap.h"
+#import "FXDIPState.h"
 #import "FXJoyCaptureView.h"
 #import "AKGamepadManager.h"
 
@@ -358,13 +359,10 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
         }
     } else if (tableView == self->dipswitchTableView) {
         if ([[tableColumn identifier] isEqualToString:@"value"]) {
-			FXDIPGroupUI *group = [_dipList objectAtIndex:row];
-//            FXDIPOptionUI *option = [[group options] objectAtIndex:[object intValue]];
-//            FXAppDelegate *app = [FXAppDelegate sharedInstance];
-//            FXEmulatorController *emulator = [app emulator];
-//            FXInput *input = [emulator input];
-//            [input setDipSwitchSetting:setting];
-            [group setSelection:[object intValue]];
+			FXEmulatorController *emulator = [[FXAppDelegate sharedInstance] emulator];
+			[[emulator dipState] setGroup:row
+								 toOption:[object unsignedIntegerValue]];
+            [[_dipList objectAtIndex:row] setSelection:[object intValue]];
 		}
     }
 }
@@ -391,7 +389,7 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 	[self resetButtonList];
 }
 
-- (void)tabChanged:(id)sender
+- (void) tabChanged:(id)sender
 {
     NSToolbarItem *selectedItem = (NSToolbarItem *)sender;
     NSString *tabIdentifier = [selectedItem itemIdentifier];
@@ -404,10 +402,9 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXEmulatorController *emulator = [app emulator];
-    FXInput *input = [emulator input];
 
-    [input resetDipSwitches];
-    [self updateDipSwitches];
+	[[emulator dipState] reset];
+	[self updateDipSwitches];
 }
 
 - (void) showNextTab:(id) sender
@@ -492,13 +489,18 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 {
     FXAppDelegate *app = [FXAppDelegate sharedInstance];
     FXDriver *driver = [[app emulator] driver];
-	
+
 	[_dipList removeAllObjects];
 	[[driver dipswitches] enumerateObjectsUsingBlock:^(FXDIPGroup *obj, NSUInteger idx, BOOL *stop) {
 		[_dipList addObject:[[FXDIPGroupUI alloc] initWithGroup:obj]];
 	}];
-	
-    [self->resetDipSwitchesButton setEnabled:[_dipList count] > 0];
+
+	[[[[app emulator] dipState] states] enumerateKeysAndObjectsUsingBlock:^(NSNumber *key, NSNumber *obj, BOOL *stop) {
+		FXDIPGroupUI *group = [_dipList objectAtIndex:[key intValue]];
+		[group setSelection:[obj intValue]];
+	}];
+
+	[self->resetDipSwitchesButton setEnabled:[_dipList count] > 0];
     [self->dipswitchTableView setEnabled:[_dipList count] > 0];
     [self->dipswitchTableView reloadData];
 }

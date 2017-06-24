@@ -2,7 +2,7 @@
  **
  ** FinalBurn X: FinalBurn for macOS
  ** https://github.com/pokebyte/FinalBurn-X
- ** Copyright (C) 2014-2016 Akop Karapetyan
+ ** Copyright (C) 2017 Akop Karapetyan
  **
  ** Licensed under the Apache License, Version 2.0 (the "License");
  ** you may not use this file except in compliance with the License.
@@ -20,28 +20,19 @@
  */
 #import <Foundation/Foundation.h>
 
-#import "AKKeyboardManager.h"
-#import "AKGamepadManager.h"
+FOUNDATION_EXPORT NSString *const FXDIPStateChanged;
 
-@class FXDriver;
-@class FXInputConfig;
-@class FXDIPState;
+@interface FXDIPState : NSObject<NSCoding>
 
-@interface FXInput : NSObject<AKKeyboardEventDelegate, AKGamepadEventDelegate>
+- (instancetype) initWithDriverName:(NSString *) name;
 
-- (instancetype) initWithDriver:(FXDriver *) driver;
+@property (nonatomic, readonly) BOOL dirty;
+@property (nonatomic, strong, readonly) NSString *driverName;
 
-- (void) setFocus:(BOOL) focus;
-
-- (void) save;
-- (void) restore;
-
-- (void) updateDIPSwitches:(FXDIPState *) state;
-
-@property (nonatomic, assign, getter = isResetPressed) BOOL resetPressed;
-@property (nonatomic, assign, getter = isTestPressed) BOOL testPressed;
-@property (nonatomic, readonly) BOOL ready;
-
-@property (nonatomic, strong) FXInputConfig *config;
+- (void) setGroup:(NSUInteger) group
+		 toOption:(NSUInteger) option;
+- (void) reset;
+- (NSDictionary<NSNumber *, NSNumber *> *) states;
+- (void) clearDirtyFlag;
 
 @end

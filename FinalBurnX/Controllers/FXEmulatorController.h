@@ -30,6 +30,7 @@
 #define FXROMSetInfo @"romSet"
 
 @class FXDriver;
+@class FXDIPState;
 
 @interface FXEmulatorController : NSWindowController<NSWindowDelegate, FXRunLoopDelegate, FXScreenViewDelegate>
 {
@@ -43,6 +44,7 @@
 @property (nonatomic, readonly) FXAudio *audio;
 @property (nonatomic, readonly) FXRunLoop *runLoop;
 @property (nonatomic, readonly) FXDriver *driver;
+@property (nonatomic, readonly) FXDIPState *dipState;
 
 - (IBAction)saveScreenshot:(id)sender;
 - (IBAction)saveScreenshotAs:(id)sender;

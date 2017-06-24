@@ -23,6 +23,7 @@
 #import "FXLoader.h"
 #import "FXManifest.h"
 #import "FXAppDelegate.h"
+#import "FXDIPState.h"
 
 #include "burner.h"
 
@@ -34,6 +35,8 @@
 - (void) displayMessage:(NSString *) message;
 - (NSString *) generateScreenshotFilenameAtPath:(NSString *) parentPath
 									  extension:(NSString *) ext;
+- (void) restoreDIPSwitches;
+- (void) saveDIPSwitches;
 
 @end
 
@@ -55,6 +58,7 @@
 		_audio = [[FXAudio alloc] init];
 		_runLoop = [[FXRunLoop alloc] initWithDriver:driver];
 		_cursorVisible = YES;
+		_dipState = [[FXDIPState alloc] initWithDriverName:[driver name]];
 		_defaultsToObserve = @[ @"audioVolume",
 								@"pauseWhenInactive",
 								@"suppressScreenSaver",
@@ -344,11 +348,13 @@
 - (void)saveSettings
 {
 	[_input save];
+	[self saveDIPSwitches];
 }
 
 - (void)restoreSettings
 {
     [_input restore];
+	[self restoreDIPSwitches];
 }
 
 #pragma mark - Private methods
@@ -466,6 +472,42 @@
     [[self window] setFrame:newRect
                     display:YES
                     animate:animate];
+}
+
+- (void) restoreDIPSwitches
+{
+	FXAppDelegate *app = [FXAppDelegate sharedInstance];
+	NSString *file = [[_driver name] stringByAppendingPathExtension:@"dip"];
+	NSString *path = [[app dipPath] stringByAppendingPathComponent:file];
+	
+	NSFileManager *fm = [NSFileManager defaultManager];
+	if ([fm fileExistsAtPath:path isDirectory:nil]) {
+		FXDIPState *state = [NSKeyedUnarchiver unarchiveObjectWithFile:path];
+		if (!state) {
+			NSLog(@"Error reading DIP switch config");
+			[_dipState reset];
+		} else {
+			_dipState = state;
+		}
+	}
+
+	[_input updateDIPSwitches:_dipState];
+}
+
+- (void) saveDIPSwitches
+{
+	if ([_dipState dirty]) {
+		FXAppDelegate *app = [FXAppDelegate sharedInstance];
+		NSString *file = [[_driver name] stringByAppendingPathExtension:@"dip"];
+		NSString *path = [[app dipPath] stringByAppendingPathComponent:file];
+		
+		if (![NSKeyedArchiver archiveRootObject:_dipState
+										 toFile:path]) {
+			NSLog(@"Error writing dip switch config");
+		} else {
+			[_dipState clearDirtyFlag];
+		}
+	}
 }
 
 #pragma mark - NSUserInterfaceValidation

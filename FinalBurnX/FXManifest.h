@@ -24,9 +24,9 @@
 
 @interface FXDIPOption : NSObject
 
-@property (nonatomic, assign) NSUInteger mask;
-@property (nonatomic, assign) NSUInteger setting;
-@property (nonatomic, assign) NSUInteger start;
+@property (nonatomic, readonly) unsigned char mask;
+@property (nonatomic, readonly) unsigned char setting;
+@property (nonatomic, readonly) unsigned int start;
 @property (nonatomic, readonly) NSString *title;
 
 @end
@@ -35,7 +35,7 @@
 
 @property (nonatomic, readonly) NSArray<FXDIPOption *> *options;
 @property (nonatomic, readonly) NSString *title;
-@property (nonatomic, assign) NSUInteger selection;
+@property (nonatomic, readonly) NSUInteger selection;
 
 @end
 
