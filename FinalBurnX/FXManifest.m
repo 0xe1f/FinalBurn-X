@@ -20,6 +20,8 @@
  */
 #import "FXManifest.h"
 
+#import "FXZipArchive.h"
+
 #pragma mark - FXDIPOption
 
 @interface FXDIPOption ()
@@ -204,6 +206,44 @@ static NSRegularExpression *regex;
 
 @end
 
+#pragma mark - FXDriverFile
+
+@implementation FXDriverFile
+
+- (instancetype) initWithName:(NSString *) name
+				   dictionary:(NSDictionary *) dict
+{
+	if (self = [super init]) {
+		_name = name;
+		_crc = (UInt32) [[dict objectForKey:@"crc"] unsignedIntValue];
+		_length = [[dict objectForKey:@"len"] unsignedIntValue];
+	}
+	return self;
+}
+
+- (NSString *) description
+{
+	return [NSString stringWithFormat:@"%@ (crc:0x%x,len:%d)", _name, _crc, _length];
+}
+
+- (BOOL) isEqual:(id) other
+{
+	if (other == self) {
+		return YES;
+	} else if (![super isEqual:other]) {
+		return NO;
+	} else {
+		return [_name isEqual:[other name]];
+	}
+}
+
+- (NSUInteger) hash
+{
+	return [_name hash];
+}
+
+@end
+
 #pragma mark - FXDriver
 
 @interface FXDriver ()
@@ -239,6 +279,20 @@ static NSRegularExpression *regex;
 			[groups addObject:[[FXDIPGroup alloc] initWithDictionary:idict]];
 		}];
 		_dipswitches = [NSArray arrayWithArray:groups];
+
+		NSDictionary *fileRoot = [d objectForKey:@"files"];
+		NSMutableDictionary<NSString *, FXDriverFile *> *files = [NSMutableDictionary dictionary];
+		[[fileRoot objectForKey:@"local"] enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSDictionary *stats, BOOL *stop) {
+			[files setObject:[[FXDriverFile alloc] initWithName:name
+													 dictionary:stats]
+					  forKey:name];
+		}];
+		_files = [NSDictionary dictionaryWithDictionary:files];
+
+		NSArray *parentFiles = [fileRoot objectForKey:@"parent"];
+		if (parentFiles) {
+			_parentFiles = [NSArray arrayWithArray:parentFiles];
+		}
 	}
 
 	return self;

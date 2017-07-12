@@ -55,6 +55,14 @@
 
 @end
 
+@interface FXDriverFile : NSObject
+
+@property (nonatomic, readonly) NSString *name;
+@property (nonatomic, readonly) UInt32 crc;
+@property (nonatomic, readonly) UInt length;
+
+@end
+
 @interface FXDriver : NSObject
 
 @property (nonatomic, readonly) int index;
@@ -66,6 +74,8 @@
 @property (nonatomic, readonly) NSArray<FXDriver *> *children;
 @property (nonatomic, readonly) NSArray<FXButton *> *buttons;
 @property (nonatomic, readonly) NSArray<FXDIPGroup *> *dipswitches;
+@property (nonatomic, readonly) NSDictionary<NSString *, FXDriverFile *> *files;
+@property (nonatomic, readonly) NSArray<NSString *> *parentFiles;
 
 // FIXME
 @property (nonatomic, strong) FXDriverAudit *audit;
