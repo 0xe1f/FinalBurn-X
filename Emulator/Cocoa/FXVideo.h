@@ -21,6 +21,7 @@
  ******************************************************************************
  */
 #import <Foundation/Foundation.h>
+#import <IOSurface/IOSurface.h>
 
 @interface FXVideo : NSObject
 

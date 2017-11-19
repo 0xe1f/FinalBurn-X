@@ -35,7 +35,7 @@
 		FE6D55271C8032F6001B1A7E /* Game.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE6D55251C8032F6001B1A7E /* Game.xib */; };
 		FE6F48721C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; };
 		FE6F48731C93E88F0045784D /* OpenEmuXPCCommunicator.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; };
-		FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in Copy Files */ = {isa = PBXBuildFile; fileRef = FE6F48711C93E88F0045784D /* OpenEmuXPCCommunicator.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FE6F48771C93E9F90045784D /* Emulator in CopyFiles */ = {isa = PBXBuildFile; fileRef = FEA0B6DD1C7F8BCD00591D44 /* Emulator */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		FE6F487B1C93EF280045784D /* FXManifestBuilder.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE6F48791C93EF280045784D /* FXManifestBuilder.mm */; };
 		FE8F66981C90CAF500A3A84A /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = FE780134194C36BD0024716B /* ioapi.c */; };
@@ -619,14 +619,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		FE6F48741C93E8D30045784D /* CopyFiles */ = {
+		FE6F48741C93E8D30045784D /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in CopyFiles */,
+				FE6F48751C93E8F40045784D /* OpenEmuXPCCommunicator.framework in Copy Files */,
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		FE6F48761C93E9E50045784D /* CopyFiles */ = {
@@ -2865,7 +2866,7 @@
 				FE08934019475F9800F79190 /* Sources */,
 				FE08934119475F9800F79190 /* Frameworks */,
 				FE08934219475F9800F79190 /* Resources */,
-				FE6F48741C93E8D30045784D /* CopyFiles */,
+				FE6F48741C93E8D30045784D /* Copy Files */,
 				FE6F48761C93E9E50045784D /* CopyFiles */,
 				FE68437D1C81964400A859C0 /* ShellScript */,
 			);
