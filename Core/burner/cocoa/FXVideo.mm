@@ -124,18 +124,20 @@
     
     NSSize screenSize = NSMakeSize((CGFloat)self->bufferWidth,
                                    (CGFloat)self->bufferHeight);
-    
-    id<FXVideoDelegate> delegate = [self delegate];
-    if ([delegate respondsToSelector:@selector(initTextureOfWidth:height:isRotated:bytesPerPixel:)]) {
-        [delegate initTextureOfWidth:textureWidth
-                              height:textureHeight
-                           isRotated:isRotated
-                       bytesPerPixel:self->bufferBytesPerPixel];
-    }
-    
-    if ([delegate respondsToSelector:@selector(screenSizeDidChange:)]) {
-        [delegate screenSizeDidChange:screenSize];
-    }
+	
+	dispatch_async(dispatch_get_main_queue(), ^{
+		id<FXVideoDelegate> delegate = [self delegate];
+		if ([delegate respondsToSelector:@selector(initTextureOfWidth:height:isRotated:bytesPerPixel:)]) {
+			[delegate initTextureOfWidth:textureWidth
+								  height:textureHeight
+							   isRotated:isRotated
+						   bytesPerPixel:self->bufferBytesPerPixel];
+		}
+		
+		if ([delegate respondsToSelector:@selector(screenSizeDidChange:)]) {
+			[delegate screenSizeDidChange:screenSize];
+		}
+	});
     
     return YES;
 }

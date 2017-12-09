@@ -5729,7 +5729,7 @@ static INT32 TopspeedFrame()
 		nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 		nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 		nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-		if (i == (nInterleave / 2) && (GetCurrentFrame > 0)) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave / 2) && (GetCurrentFrame() > 0)) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
 		if (i == (nInterleave - 1)) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
 		SekClose();
 		
@@ -5740,7 +5740,7 @@ static INT32 TopspeedFrame()
 			nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 			nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 			nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-			if (i == (nInterleave / 2) && (GetCurrentFrame > 0)) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+			if (i == (nInterleave / 2) && (GetCurrentFrame() > 0)) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
 			if (i == (nInterleave - 1)) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
 			SekClose();
 		}
