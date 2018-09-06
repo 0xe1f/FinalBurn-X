@@ -68,7 +68,7 @@ static OSStatus audioCallback(void *inRefCon,
                                       kAudioUnitScope_Input, 0, &callback,
                                       sizeof(callback));
         
-        result = CloseComponent(outputAudioUnit); // FIXME: deprec
+        result = AudioComponentInstanceDispose(outputAudioUnit);
         isReady = NO;
     }
     
@@ -94,8 +94,8 @@ static OSStatus audioCallback(void *inRefCon,
         self->buffer = NULL;
         
         OSStatus result = noErr;
-        Component comp;
-        ComponentDescription desc;
+        AudioComponent comp;
+        AudioComponentDescription desc;
         struct AURenderCallbackStruct callback;
         AudioStreamBasicDescription requestedDesc;
         
@@ -119,10 +119,10 @@ static OSStatus audioCallback(void *inRefCon,
         desc.componentFlags = 0;
         desc.componentFlagsMask = 0;
         
-        comp = FindNextComponent(NULL, &desc); // FIXME: deprec
+        comp = AudioComponentFindNext(NULL, &desc);
         if (comp != NULL) {
             // Open & initialize the default output audio unit
-            result = OpenAComponent(comp, &outputAudioUnit); // FIXME: deprec
+            result = AudioComponentInstanceNew(comp, &outputAudioUnit);
             if (result == noErr) {
                 result = AudioUnitInitialize(outputAudioUnit);
                 if (result == noErr) {

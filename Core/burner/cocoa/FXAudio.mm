@@ -43,6 +43,7 @@ static int cocoaGetNextSoundFiller(int draw);
 	int playPosition;
 	int fillSegment;
 	NSInteger _volume;
+	BOOL needsCleanup;
 }
 
 #pragma mark - Init and dealloc
@@ -51,6 +52,7 @@ static int cocoaGetNextSoundFiller(int draw);
 {
     if (self = [super init]) {
 		_volume = 100;
+		needsCleanup = NO;
     }
 
     return self;
@@ -92,12 +94,13 @@ static int cocoaGetNextSoundFiller(int draw);
         [self cleanup];
         return NO;
     }
-    
-	nAudNextSound = (short *)calloc(nAudSegLen << 2, 1);
-	if (nAudNextSound == NULL) {
+
+    nAudNextSound = (short *)calloc(nAudSegLen << 2, 1);
+    if (nAudNextSound == NULL) {
         return NO;
-	}
-    
+    }
+
+    needsCleanup = YES;
     self->playPosition = 0;
     self->fillSegment = nAudSegCount - 1;
     
@@ -109,9 +112,9 @@ static int cocoaGetNextSoundFiller(int draw);
     
     nBurnSoundRate = sampleRate;
     nBurnSoundLen = nAudSegLen;
-    
+
     [[self audioEngine] setDelegate:self];
-    
+
     return YES;
 }
 
@@ -212,7 +215,6 @@ static int cocoaGetNextSoundFiller(int draw);
     // work out which seg we will fill next
     int followingSegment = self->fillSegment;
     WRAP_INC(followingSegment);
-    
     while (self->fillSegment != playSegment) {
         int draw = (followingSegment == playSegment);
         self->audioCallback(draw);
@@ -233,8 +235,11 @@ static int cocoaGetNextSoundFiller(int draw);
 {
     free(self->soundBuffer);
     self->soundBuffer = NULL;
-    free(nAudNextSound);
-    nAudNextSound = NULL;
+    if (needsCleanup) {
+        free(nAudNextSound);
+        nAudNextSound = NULL;
+    }
+    needsCleanup = NO;
 }
 
 @end
