@@ -1116,6 +1116,9 @@
 		FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7B1DD0550300DAA6F8 /* AKGamepad.m */; };
 		FEEC2E801DD0550300DAA6F8 /* AKGamepadEventData.m in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */; };
 		FEEC2E841DD100C600DAA6F8 /* FXInput.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEEC2E831DD100C600DAA6F8 /* FXInput.mm */; };
+		FEF974B92142DC1200352CEA /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FEF974B82142DC1100352CEA /* Sparkle.framework */; };
+		FEF974BA2142DD1200352CEA /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = FEF974B82142DC1100352CEA /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FEF974BD2142DF8400352CEA /* sparkle_dsa_pub.pem in Resources */ = {isa = PBXBuildFile; fileRef = FEF974BB2142DF8400352CEA /* sparkle_dsa_pub.pem */; };
 		FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */; };
 /* End PBXBuildFile section */
 
@@ -1138,6 +1141,16 @@
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FEF974B42142D97A00352CEA /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				FEF974BA2142DD1200352CEA /* Sparkle.framework in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -1953,6 +1966,8 @@
 		FEEC2E7D1DD0550300DAA6F8 /* AKGamepadEventData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AKGamepadEventData.m; path = FinalBurnX/Hidput/AKGamepadEventData.m; sourceTree = SOURCE_ROOT; };
 		FEEC2E821DD100C600DAA6F8 /* FXInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXInput.h; sourceTree = "<group>"; };
 		FEEC2E831DD100C600DAA6F8 /* FXInput.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FXInput.mm; sourceTree = "<group>"; };
+		FEF974B82142DC1100352CEA /* Sparkle.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Sparkle.framework; path = FinalBurnX/Sparkle.framework; sourceTree = "<group>"; };
+		FEF974BC2142DF8400352CEA /* Base */ = {isa = PBXFileReference; lastKnownFileType = text; name = Base; path = sparkle_dsa_pub.pem; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
 		FEFE35E01D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXVerticallyCenteredTextFieldCell.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1963,6 +1978,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */,
+				FEF974B92142DC1200352CEA /* Sparkle.framework in Frameworks */,
 				FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2012,6 +2028,7 @@
 		FE08934919475F9800F79190 /* Other Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				FEF974B82142DC1100352CEA /* Sparkle.framework */,
 				FE08934A19475F9800F79190 /* AppKit.framework */,
 				FE08934B19475F9800F79190 /* CoreData.framework */,
 				FE08934C19475F9800F79190 /* Foundation.framework */,
@@ -2086,6 +2103,7 @@
 		FE0DC79E1950AC61004A03A3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FEF974BB2142DF8400352CEA /* sparkle_dsa_pub.pem */,
 				FE59CD402141B18000D635B2 /* Documents */,
 				FE59CD2421419ACF00D635B2 /* Images */,
 				FE98B61D1E01201400CB12A5 /* fbx.iconset */,
@@ -3384,6 +3402,7 @@
 				FE08934119475F9800F79190 /* Frameworks */,
 				FE08934219475F9800F79190 /* Resources */,
 				FEAAC7411DC7130B008ED3AD /* Run Script */,
+				FEF974B42142D97A00352CEA /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -3470,6 +3489,7 @@
 				FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */,
 				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */,
+				FEF974BD2142DF8400352CEA /* sparkle_dsa_pub.pem in Resources */,
 				FEAD36401DC42EA700F151CD /* toolbar-sound@2x.png in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
 				FE98B61E1E01201400CB12A5 /* fbx.iconset in Resources */,
@@ -3493,7 +3513,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${TARGET_BUILD_DIR}/fbxcli\" > \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SetManifest.plist\"\n";
+			shellScript = "\"${BUILT_PRODUCTS_DIR}/fbxcli\" > \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SetManifest.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -4672,6 +4692,14 @@
 			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
+		FEF974BB2142DF8400352CEA /* sparkle_dsa_pub.pem */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FEF974BC2142DF8400352CEA /* Base */,
+			);
+			name = sparkle_dsa_pub.pem;
+			sourceTree = "<group>";
+		};
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -4780,6 +4808,8 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/FinalBurnX",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
@@ -4788,6 +4818,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
@@ -4811,6 +4842,8 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/FinalBurnX",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "FinalBurnX/FinalBurnX-Prefix.pch";
@@ -4819,6 +4852,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "FinalBurnX/FinalBurnX-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",

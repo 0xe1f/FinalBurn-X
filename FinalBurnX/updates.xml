@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+   <channel>
+      <title>FinalBurn X Changelog</title>
+      <link>https://www.akop.org/su-updates/fbx.xml</link>
+      <description>FinalBurn X version updates</description>
+      <language>en</language>
+         <item>
+            <title>Version 0.5</title>
+              <description>
+                <![CDATA[
+                  <html>
+                    <head>
+                      <style type="text/css">
+                        body {
+                          font-size: 9pt;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <ul>
+                        <li>Added dip switch configuration</li>
+                        <li>Added control configuration</li>
+                        <li>Added joystick/joypad support</li>
+                        <li>Added new ROM scanner</li>
+                      </ul>
+                      <p><a href="https://github.com/0xe1f/FinalBurn-X/releases/v0.5">Full list of changes</a></p>
+                    </body>
+                  </html>
+                ]]>
+              </description>
+            <pubDate>Fri, 07 Sep 2018 12:01:11 -0700</pubDate>
+            <sparkle:minimumSystemVersion>10.9</sparkle:minimumSystemVersion>
+            <enclosure
+               url="https://github.com/0xe1f/FinalBurn-X/releases/download/v0.5/FinalBurnX-v0.5.dmg"
+               length="6613795"
+               type="application/octet-stream"
+               sparkle:version="2"
+               sparkle:shortVersionString="0.5"
+               sparkle:dsaSignature="MCwCFDKKjAqMr3hrY13PPy1G/arpphJyAhQpR2u08TCceQJTvk7gMDB/XKHDrg=="
+            />
+         </item>
+   </channel>
+</rss>

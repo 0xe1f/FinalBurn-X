@@ -225,11 +225,9 @@ static FXAppDelegate *sharedInstance = nil;
     if (appSupportUrl == nil) {
         return nil;
     }
-    
-    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
-    NSString *appName = [[bundlePath lastPathComponent] stringByDeletingPathExtension];
-    
-    return [appSupportUrl URLByAppendingPathComponent:appName];
+
+    NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
+    return [appSupportUrl URLByAppendingPathComponent:[infoDict objectForKey:@"CFBundleName"]];
 }
 
 @end
