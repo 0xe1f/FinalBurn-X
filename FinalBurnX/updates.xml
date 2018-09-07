@@ -6,7 +6,7 @@
       <description>FinalBurn X version updates</description>
       <language>en</language>
          <item>
-            <title>Version 0.5</title>
+            <title>Version 0.6</title>
               <description>
                 <![CDATA[
                   <html>
@@ -24,20 +24,20 @@
                         <li>Added joystick/joypad support</li>
                         <li>Added new ROM scanner</li>
                       </ul>
-                      <p><a href="https://github.com/0xe1f/FinalBurn-X/releases/v0.5">Full list of changes</a></p>
+                      <p><a href="https://github.com/0xe1f/FinalBurn-X/releases/v0.6">Full list of changes</a></p>
                     </body>
                   </html>
                 ]]>
               </description>
-            <pubDate>Fri, 07 Sep 2018 12:01:11 -0700</pubDate>
+            <pubDate>Fri, 07 Sep 2018 12:24:10 -0700</pubDate>
             <sparkle:minimumSystemVersion>10.9</sparkle:minimumSystemVersion>
             <enclosure
-               url="https://github.com/0xe1f/FinalBurn-X/releases/download/v0.5/FinalBurnX-v0.5.dmg"
-               length="6613795"
+               url="https://github.com/0xe1f/FinalBurn-X/releases/download/v0.6/FinalBurnX-v0.6.dmg"
+               length="6364122"
                type="application/octet-stream"
-               sparkle:version="2"
-               sparkle:shortVersionString="0.5"
-               sparkle:dsaSignature="MCwCFDKKjAqMr3hrY13PPy1G/arpphJyAhQpR2u08TCceQJTvk7gMDB/XKHDrg=="
+               sparkle:version="3"
+               sparkle:shortVersionString="0.6"
+               sparkle:dsaSignature="MCwCFCInQvMDOJAKY2+M0mxVE4ZdelOsAhQ0jN3WVrvFkoBn0qsOYUl4xXr5tg=="
             />
          </item>
    </channel>

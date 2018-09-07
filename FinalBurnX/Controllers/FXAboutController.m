@@ -85,8 +85,8 @@
 
 - (void) openFbxLicense:(id) sender
 {
-    NSString *documentPath = [[NSBundle mainBundle] pathForResource:@"LICENSE"
-                                                             ofType:@""
+    NSString *documentPath = [[NSBundle mainBundle] pathForResource:@"FBXLicense"
+                                                             ofType:@"rtf"
                                                         inDirectory:@"Documents"];
 
     [[NSWorkspace sharedWorkspace] openURL:[NSURL fileURLWithPath:documentPath]];

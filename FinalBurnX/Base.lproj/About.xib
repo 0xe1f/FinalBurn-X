@@ -55,7 +55,7 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" sendsActionOnEndEditing="YES" id="Zcd-lh-blA">
                                     <font key="font" metaFont="system"/>
-                                    <string key="title">Ⓒ 2014-2018 Akop Karapetyan © 2004-2017 Team FB Alpha © 2001 Dave  FinalBurn X code is licensed under Apache 2 license.  FBA and the original FinalBurn are licensed under a different license - see  below for details.</string>
+                                    <string key="title">Ⓒ 2014-2018 Akop Karapetyan © 2004-2017 Team FB Alpha © 2001 Dave  For FBA license information, see "FinalBurn Alpha License" below.  For license information on FinalBurn X and its components, see "FinalBurn X License" below.</string>
                                     <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                     <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
