@@ -38,8 +38,25 @@
                                     <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
+                                        <slider verticalHuggingPriority="750" misplaced="YES" id="m8R-Up-S3B">
+                                            <rect key="frame" x="277" y="457" width="248" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="5" sliderType="linear" id="kVa-Kz-RYu"/>
+                                            <connections>
+                                                <binding destination="fpA-S9-PLa" name="value" keyPath="values.audioVolume" id="O4E-Uc-xvz"/>
+                                            </connections>
+                                        </slider>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" misplaced="YES" id="Xsj-hN-O3d">
+                                            <rect key="frame" x="199" y="463" width="69" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Volume:" id="NKa-uL-4Xq">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
                                         <button misplaced="YES" id="K1g-1d-vr7">
-                                            <rect key="frame" x="288" y="431" width="294" height="18"/>
+                                            <rect key="frame" x="277" y="412" width="248" height="18"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <buttonCell key="cell" type="check" title="Pause when another window is active" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="riz-Dp-0ic">
                                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -62,7 +79,7 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="CD7-lr-pVp">
                                                 <rect key="frame" x="1" y="0.0" width="558" height="430"/>
-                                                <autoresizingMask key="autoresizingMask"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="aZz-dw-2vg" id="Sxf-xQ-z9A">
                                                         <rect key="frame" x="0.0" y="0.0" width="558" height="413"/>
@@ -139,31 +156,6 @@
                                     </subviews>
                                 </view>
                             </tabViewItem>
-                            <tabViewItem label="Audio" identifier="audio" id="eip-fz-AFi" userLabel="Audio">
-                                <view key="view" id="zpc-ne-Sis">
-                                    <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
-                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                    <subviews>
-                                        <slider verticalHuggingPriority="750" misplaced="YES" id="m8R-Up-S3B">
-                                            <rect key="frame" x="140" y="427" width="321" height="25"/>
-                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="5" sliderType="linear" id="kVa-Kz-RYu"/>
-                                            <connections>
-                                                <binding destination="fpA-S9-PLa" name="value" keyPath="values.audioVolume" id="O4E-Uc-xvz"/>
-                                            </connections>
-                                        </slider>
-                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" misplaced="YES" id="Xsj-hN-O3d">
-                                            <rect key="frame" x="67" y="433" width="69" height="17"/>
-                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Volume:" id="NKa-uL-4Xq">
-                                                <font key="font" metaFont="system"/>
-                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                                            </textFieldCell>
-                                        </textField>
-                                    </subviews>
-                                </view>
-                            </tabViewItem>
                             <tabViewItem label="DIP Switches" identifier="dipswitches" id="ZYY-J6-eFd">
                                 <view key="view" id="lUH-Gp-HLO">
                                     <rect key="frame" x="0.0" y="0.0" width="600" height="500"/>
@@ -174,7 +166,7 @@
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <clipView key="contentView" id="ffG-tB-SS8">
                                                 <rect key="frame" x="1" y="0.0" width="558" height="207"/>
-                                                <autoresizingMask key="autoresizingMask"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 <subviews>
                                                     <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="none" alternatingRowBackgroundColors="YES" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="jLE-eJ-I97" id="8Mb-Qz-JDT">
                                                         <rect key="frame" x="0.0" y="0.0" width="558" height="190"/>
@@ -253,6 +245,7 @@
                         </tabViewItems>
                         <connections>
                             <binding destination="fpA-S9-PLa" name="selectedIdentifier" keyPath="values.selectedPreferencesTab" id="AFT-wQ-rQF"/>
+                            <outlet property="delegate" destination="-2" id="OSB-g5-Xqv"/>
                         </connections>
                     </tabView>
                 </subviews>
@@ -262,11 +255,6 @@
                     <toolbarItem implicitItemIdentifier="D1D1D2FA-441F-4497-833C-EF6CB3A17097" explicitItemIdentifier="general" label="General" paletteLabel="General" tag="-1" image="NSPreferencesGeneral" selectable="YES" id="mqF-vo-QXz">
                         <connections>
                             <action selector="tabChanged:" target="-2" id="3Ak-ID-X4r"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="EC0E7B55-2DEA-4A97-8532-FE93A89136FA" explicitItemIdentifier="audio" label="Audio" paletteLabel="Audio" tag="-1" image="toolbar-sound" selectable="YES" id="g95-tq-3Sc">
-                        <connections>
-                            <action selector="tabChanged:" target="-2" id="ZnS-GE-u38"/>
                         </connections>
                     </toolbarItem>
                     <toolbarItem implicitItemIdentifier="B4EBBB97-82CB-4DEA-B2A8-4CACD5F6536E" explicitItemIdentifier="input" label="Input" paletteLabel="Input" tag="-1" image="toolbar-joypad" selectable="YES" id="5sm-os-Oaw">
@@ -283,7 +271,6 @@
                 <defaultToolbarItems>
                     <toolbarItem reference="mqF-vo-QXz"/>
                     <toolbarItem reference="5sm-os-Oaw"/>
-                    <toolbarItem reference="g95-tq-3Sc"/>
                     <toolbarItem reference="mXe-Ub-0Xv"/>
                 </defaultToolbarItems>
             </toolbar>
@@ -297,6 +284,5 @@
         <image name="NSPreferencesGeneral" width="32" height="32"/>
         <image name="toolbar-dipswitch" width="25.600000381469727" height="25.600000381469727"/>
         <image name="toolbar-joypad" width="25.600000381469727" height="25.600000381469727"/>
-        <image name="toolbar-sound" width="45.176471710205078" height="45.176471710205078"/>
     </resources>
 </document>

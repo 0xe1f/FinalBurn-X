@@ -22,6 +22,8 @@
 
 #import <IOKit/pwr_mgt/IOPMLib.h>
 
+#import "FXAboutController.h"
+
 #import "FXManifest.h"
 #import "AKGamepadManager.h"
 
@@ -36,6 +38,7 @@
 	FXLauncherController *launcher;
 	NSString *appSupportPath;
 	IOPMAssertionID _preventSleepAssertionID;
+    FXAboutController *_aboutController;
 }
 
 static FXAppDelegate *sharedInstance = nil;
@@ -136,6 +139,16 @@ static FXAppDelegate *sharedInstance = nil;
         [_prefs showWindow:self];
     } else {
         [[_prefs window] makeKeyAndOrderFront:self];
+    }
+}
+
+- (void) showAbout:(id) sender
+{
+    if (!_aboutController) {
+        _aboutController = [FXAboutController new];
+        [_aboutController showWindow:self];
+    } else {
+        [[_aboutController window] makeKeyAndOrderFront:self];
     }
 }
 

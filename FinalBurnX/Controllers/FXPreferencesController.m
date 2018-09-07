@@ -85,6 +85,7 @@
 - (void) resetButtonList;
 - (void) resetInputDevices;
 - (FXButtonMap *) currentMap;
+- (void)sizeWindowToTabContent:(NSString *)tabId;
 
 @end
 
@@ -142,6 +143,7 @@
 
 	[self resetInputDevices];
 	[self updateSpecifics];
+    [self sizeWindowToTabContent:[[contentTabView selectedTabViewItem] identifier]];
 
 	[[AKGamepadManager sharedInstance] addObserver:self];
 }
@@ -367,6 +369,13 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
     }
 }
 
+#pragma mark - NSTabViewDelegate
+
+- (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem
+{
+    [self sizeWindowToTabContent:[tabViewItem identifier]];
+}
+
 #pragma mark - AKKeyboardEventDelegate
 
 - (void) keyStateChanged:(AKKeyEventData *) event
@@ -469,6 +478,31 @@ objectValueForTableColumn:(NSTableColumn *) tableColumn
 }
 
 #pragma mark - Private methods
+
+- (void)sizeWindowToTabContent:(NSString *)tabId
+{
+    NSRect contentFrame = [[self window] contentRectForFrameRect:[[self window] frame]];
+    CGFloat newHeight = contentFrame.size.height;
+
+    if ([tabId isEqual:@"general"])
+        newHeight = 150;
+    else if ([tabId isEqual:@"input"])
+        newHeight = 500;
+    else if ([tabId isEqual:@"dipswitches"])
+        newHeight = 300;
+
+    NSRect newContentFrame = NSMakeRect(contentFrame.origin.x,
+                                        contentFrame.origin.y,
+                                        contentFrame.size.width,
+                                        newHeight);
+
+    NSRect newWindowFrame = [[self window] frameRectForContentRect:newContentFrame];
+    newWindowFrame.origin.y -= (newWindowFrame.size.height - [[self window] frame].size.height);
+
+    [[self window] setFrame:newWindowFrame
+                    display:YES
+                    animate:YES];
+}
 
 - (FXButtonMap *) currentMap
 {

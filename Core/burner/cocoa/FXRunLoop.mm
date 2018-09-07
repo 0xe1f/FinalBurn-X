@@ -460,8 +460,9 @@ static int cocoaGetNextSound(int draw);
     }
     
 #ifdef DEBUG
-    NSLog(@"%d/%d found in %@, read %d bytes",
-          driverIndex, romIndex, path, bytesRead);
+    NSLog(@"%d/%d found in %@, read %@ kB",
+          driverIndex, romIndex, [path lastPathComponent],
+          [NSString localizedStringWithFormat:@"%@", @(bytesRead/1024)]);
 #endif
     
     return 0;

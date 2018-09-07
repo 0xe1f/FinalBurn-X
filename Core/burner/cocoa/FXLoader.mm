@@ -345,6 +345,9 @@
     }];
     
     [self updateAvailability:driverAudit];
+    if ([[driver name] isEqualTo:@"neogeo"]) {
+        [driverAudit setIsPlayable:NO];
+    }
     
     return driverAudit;
 }

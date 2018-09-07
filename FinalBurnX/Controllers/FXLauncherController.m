@@ -158,9 +158,11 @@
         void(^block)(void) = ^{
             if (newCount == 0) {
                 // Reset panel's properties
-                [self->importProgressBar setMaxValue:0];
-                [self->importProgressBar setDoubleValue:0];
-                
+                if ([NSThread isMainThread]) {
+                    [self->importProgressBar setMaxValue:0];
+                    [self->importProgressBar setDoubleValue:0];
+                }
+
                 // Hide the panel
                 [NSApp endSheet:self->importProgressPanel];
             } else if (![self->importProgressPanel isVisible]) {

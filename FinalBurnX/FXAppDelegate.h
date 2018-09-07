@@ -35,6 +35,7 @@
 
 - (IBAction) showLauncher:(id) sender;
 - (IBAction) showPreferences:(id) sender;
+- (IBAction) showAbout:(id) sender;
 
 @property (nonatomic, readonly) NSString *romPath;
 @property (nonatomic, readonly) NSString *nvramPath;

@@ -16,7 +16,6 @@
 		FE08934819475F9800F79190 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08934719475F9800F79190 /* Cocoa.framework */; };
 		FE08935219475F9800F79190 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FE08935019475F9800F79190 /* InfoPlist.strings */; };
 		FE08935419475F9800F79190 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935319475F9800F79190 /* main.m */; };
-		FE08935819475F9800F79190 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = FE08935619475F9800F79190 /* Credits.rtf */; };
 		FE08935B19475F9800F79190 /* FXAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = FE08935A19475F9800F79190 /* FXAppDelegate.m */; };
 		FE08936019475F9800F79190 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE08935F19475F9800F79190 /* Images.xcassets */; };
 		FE08A07F1949651D00F79190 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE08A07E1949651D00F79190 /* OpenGL.framework */; };
@@ -527,6 +526,11 @@
 		FE50607F194BD4E6003A2BC7 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = FE506058194BD4E6003A2BC7 /* trees.c */; };
 		FE506080194BD4E6003A2BC7 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605A194BD4E6003A2BC7 /* uncompr.c */; };
 		FE506082194BD4E6003A2BC7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = FE50605E194BD4E6003A2BC7 /* zutil.c */; };
+		FE59CD1F21418EF800D635B2 /* About.xib in Resources */ = {isa = PBXBuildFile; fileRef = FE59CD1D21418EF800D635B2 /* About.xib */; };
+		FE59CD2B21419B1B00D635B2 /* AppIcon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = FE59CD2921419B1B00D635B2 /* AppIcon@2x.png */; };
+		FE59CD2C21419B1B00D635B2 /* AppIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = FE59CD2A21419B1B00D635B2 /* AppIcon.png */; };
+		FE59CD2F21419D4300D635B2 /* FXAboutController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE59CD2E21419D4300D635B2 /* FXAboutController.m */; };
+		FE59CD412141B18000D635B2 /* Documents in Resources */ = {isa = PBXBuildFile; fileRef = FE59CD402141B18000D635B2 /* Documents */; };
 		FE5FD7D9196896C300BD1386 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE5FD7D8196896C300BD1386 /* README.md */; };
 		FE5FD7DD1968F68500BD1386 /* FXAuditStatusAsNSImage.m in Sources */ = {isa = PBXBuildFile; fileRef = FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */; };
 		FE70CF801DDEDABB009DE783 /* FXJoyCaptureView.m in Sources */ = {isa = PBXBuildFile; fileRef = FE70CF7F1DDEDABB009DE783 /* FXJoyCaptureView.m */; };
@@ -1157,7 +1161,6 @@
 		FE08935119475F9800F79190 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		FE08935319475F9800F79190 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		FE08935519475F9800F79190 /* FinalBurnX-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FinalBurnX-Prefix.pch"; sourceTree = "<group>"; };
-		FE08935719475F9800F79190 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = en; path = en.lproj/Credits.rtf; sourceTree = "<group>"; };
 		FE08935919475F9800F79190 /* FXAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FXAppDelegate.h; sourceTree = "<group>"; };
 		FE08935A19475F9800F79190 /* FXAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FXAppDelegate.m; sourceTree = "<group>"; };
 		FE08935F19475F9800F79190 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
@@ -1842,6 +1845,12 @@
 		FE50605F194BD4E6003A2BC7 /* zutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zutil.h; sourceTree = "<group>"; };
 		FE5076FE194C1869003A2BC7 /* cd_interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cd_interface.h; sourceTree = "<group>"; };
 		FE507706194C18B5003A2BC7 /* neocdlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = neocdlist.h; sourceTree = "<group>"; };
+		FE59CD1E21418EF800D635B2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = About.xib; sourceTree = "<group>"; };
+		FE59CD2921419B1B00D635B2 /* AppIcon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon@2x.png"; sourceTree = "<group>"; };
+		FE59CD2A21419B1B00D635B2 /* AppIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIcon.png; sourceTree = "<group>"; };
+		FE59CD2D21419D4300D635B2 /* FXAboutController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FXAboutController.h; sourceTree = "<group>"; };
+		FE59CD2E21419D4300D635B2 /* FXAboutController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FXAboutController.m; sourceTree = "<group>"; };
+		FE59CD402141B18000D635B2 /* Documents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Documents; path = FinalBurnX/Resources/Documents; sourceTree = SOURCE_ROOT; };
 		FE5FD7D8196896C300BD1386 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		FE5FD7DB1968F68500BD1386 /* FXAuditStatusAsNSImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXAuditStatusAsNSImage.h; sourceTree = "<group>"; };
 		FE5FD7DC1968F68500BD1386 /* FXAuditStatusAsNSImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FXAuditStatusAsNSImage.m; sourceTree = "<group>"; };
@@ -2036,7 +2045,6 @@
 				FE08935019475F9800F79190 /* InfoPlist.strings */,
 				FE08935319475F9800F79190 /* main.m */,
 				FE08935519475F9800F79190 /* FinalBurnX-Prefix.pch */,
-				FE08935619475F9800F79190 /* Credits.rtf */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -2069,6 +2077,8 @@
 				FE23E4F6196316B000429FCA /* FXLauncherController.m */,
 				FE1FB76A19CFD71C0070325C /* FXPreferencesController.h */,
 				FE1FB76B19CFD71C0070325C /* FXPreferencesController.m */,
+				FE59CD2D21419D4300D635B2 /* FXAboutController.h */,
+				FE59CD2E21419D4300D635B2 /* FXAboutController.m */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -2076,9 +2086,12 @@
 		FE0DC79E1950AC61004A03A3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FE59CD402141B18000D635B2 /* Documents */,
+				FE59CD2421419ACF00D635B2 /* Images */,
 				FE98B61D1E01201400CB12A5 /* fbx.iconset */,
 				FE1FB76E19CFD9330070325C /* Icons */,
 				FE1FB77319CFE14B0070325C /* Defaults.plist */,
+				FE59CD1D21418EF800D635B2 /* About.xib */,
 				FEC1003C1952A79700B2F8C3 /* MainMenu.xib */,
 				FE9FA3EB195340C100F791EB /* Emulator.xib */,
 				FE23E4F81963171300429FCA /* Launcher.xib */,
@@ -3182,6 +3195,15 @@
 			path = cd;
 			sourceTree = "<group>";
 		};
+		FE59CD2421419ACF00D635B2 /* Images */ = {
+			isa = PBXGroup;
+			children = (
+				FE59CD2A21419B1B00D635B2 /* AppIcon.png */,
+				FE59CD2921419B1B00D635B2 /* AppIcon@2x.png */,
+			);
+			path = Images;
+			sourceTree = "<group>";
+		};
 		FE5FD7D71968962E00BD1386 /* Documentation */ = {
 			isa = PBXGroup;
 			children = (
@@ -3436,19 +3458,22 @@
 				FE23E4FA1963171300429FCA /* Launcher.xib in Resources */,
 				FE505FCD194BD4A3003A2BC7 /* license.rtf in Resources */,
 				FED4361719E60D0F00315655 /* toolbar-joypad@3x.png in Resources */,
+				FE59CD1F21418EF800D635B2 /* About.xib in Resources */,
 				FE9FA3ED195340C100F791EB /* Emulator.xib in Resources */,
 				FE1FB77219CFD9330070325C /* toolbar-joypad@2x.png in Resources */,
 				FED4361619E60D0F00315655 /* toolbar-dipswitch.png in Resources */,
 				FEAD363E1DC42E8800F151CD /* toolbar-sound.png in Resources */,
 				FE1FB76919CFD6770070325C /* Preferences.xib in Resources */,
 				FE08936019475F9800F79190 /* Images.xcassets in Resources */,
+				FE59CD412141B18000D635B2 /* Documents in Resources */,
+				FE59CD2B21419B1B00D635B2 /* AppIcon@2x.png in Resources */,
 				FECDF58819BA8366008F7B63 /* Localizable.strings in Resources */,
-				FE08935819475F9800F79190 /* Credits.rtf in Resources */,
 				FE5FD7D9196896C300BD1386 /* README.md in Resources */,
 				FE1FB77519CFE14B0070325C /* Defaults.plist in Resources */,
 				FEAD36401DC42EA700F151CD /* toolbar-sound@2x.png in Resources */,
 				FEC1003E1952A79700B2F8C3 /* MainMenu.xib in Resources */,
 				FE98B61E1E01201400CB12A5 /* fbx.iconset in Resources */,
+				FE59CD2C21419B1B00D635B2 /* AppIcon.png in Resources */,
 				FED4361419E60D0F00315655 /* toolbar-dipswitch@3x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3598,6 +3623,7 @@
 				FE505D5E194BC533003A2BC7 /* d_gotcha.cpp in Sources */,
 				FE505C8B194BC532003A2BC7 /* cave_tile.cpp in Sources */,
 				FE505D88194BC533003A2BC7 /* d_outrun.cpp in Sources */,
+				FE59CD2F21419D4300D635B2 /* FXAboutController.m in Sources */,
 				FE505D47194BC532003A2BC7 /* d_aerofgt.cpp in Sources */,
 				FE505D43194BC532003A2BC7 /* psikyo_sprite.cpp in Sources */,
 				FE02305A1951685200661A17 /* tchar.cpp in Sources */,
@@ -4590,14 +4616,6 @@
 			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
-		FE08935619475F9800F79190 /* Credits.rtf */ = {
-			isa = PBXVariantGroup;
-			children = (
-				FE08935719475F9800F79190 /* en */,
-			);
-			name = Credits.rtf;
-			sourceTree = "<group>";
-		};
 		FE1FB76719CFD6770070325C /* Preferences.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -4620,6 +4638,14 @@
 				FE23E4F91963171300429FCA /* Base */,
 			);
 			name = Launcher.xib;
+			sourceTree = "<group>";
+		};
+		FE59CD1D21418EF800D635B2 /* About.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FE59CD1E21418EF800D635B2 /* Base */,
+			);
+			name = About.xib;
 			sourceTree = "<group>";
 		};
 		FE9FA3EB195340C100F791EB /* Emulator.xib */ = {

@@ -49,6 +49,7 @@
 	CFAbsoluteTime _lastMouseAction;
 	NSPoint _lastCursorPosition;
 	NSTrackingArea *_trackingArea;
+    NSRect viewBounds; // Access from non-UI thread
 }
 
 #pragma mark - Initialize, Dealloc
@@ -134,6 +135,7 @@
 
 - (void)reshape
 {
+    viewBounds = [self bounds];
     [self->renderLock lock];
 	
     [[self openGLContext] makeCurrentContext];
@@ -195,7 +197,7 @@
 
 - (void)renderFrame:(unsigned char *)bitmap
 {
-	if (NSPointInRect(_lastCursorPosition, [self bounds])) {
+	if (NSPointInRect(_lastCursorPosition, viewBounds)) {
 		CFAbsoluteTime interval = CFAbsoluteTimeGetCurrent() - _lastMouseAction;
 		if (interval > HIDE_CURSOR_TIMEOUT_SECONDS) {
 			if ([_delegate respondsToSelector:@selector(mouseDidIdle)]) {
@@ -225,7 +227,7 @@
                         bitmap + y * self->imageWidth * self->textureBytesPerPixel);
     }
     
-    NSSize size = [self bounds].size;
+    NSSize size = viewBounds.size;
     CGFloat offset = 0;
     
     glBegin(GL_QUADS);
