@@ -1,7 +1,7 @@
 /*****************************************************************************
  **
  ** FinalBurn X: FinalBurn for macOS
- ** https://github.com/pokebyte/FinalBurn-X
+ ** https://github.com/0xe1f/FinalBurn-X
  ** Copyright (C) 2017 Akop Karapetyan
  **
  ** Licensed under the Apache License, Version 2.0 (the "License");
