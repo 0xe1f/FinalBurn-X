@@ -15,7 +15,9 @@ To Play
 
 1. Launch the emulator
 2. Import ROM sets by dropping them into the Launcher window (see
-[Limitations](#limitations) below).
+[Limitations](#limitations) below)
+
+Neo Geo games will additionally require the Neo Geo BIOS set (`neogeo.zip`).
 
 Controls
 --------
@@ -34,11 +36,33 @@ respectively.
 Limitations
 -----------
 
+ROM sets must be:
 
-FinalBurn X will only import from ZIP-compressed archives, and only
-[merged sets](https://docs.mamedev.org/usingmame/aboutromsets.html) are
-currently supported. When dropping multiple sets, each must be supported by the
-emulator, or none will be imported. Only CPS I, II, III and Neo-Geo sets are currently
-supported.
+* ZIP-compressed
+* [Merged sets](https://docs.mamedev.org/usingmame/aboutromsets.html)
+* Belong to CPS I, II, III or Neo Geo
 
-Note that to play Neo Geo games, the Neo Geo BIOS (`neogeo.zip`) is required.
+When dropping multiple sets into the launcher window, each of the files must meet the
+above conditions, or none will be imported.
+
+License
+-------
+
+```
+Copyright (c) Akop Karapetyan
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+For Final Burn Alpha license information, see
+[FB Alpha License](https://www.fbalpha.com/license/)
