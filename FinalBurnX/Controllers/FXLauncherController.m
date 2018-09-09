@@ -32,6 +32,8 @@
 - (void)updateAudits:(NSDictionary *)audits;
 - (void)importAsync:(NSArray *)paths;
 - (void)auditAsync;
+- (BOOL) doesDriverArray:(NSArray<FXDriver *>*) driverArray
+      containDriverNamed:(NSString *) driverName;
 
 @end
 
@@ -106,7 +108,7 @@
 
 #pragma mark - FXScannerDelegate
 
-- (BOOL)isArchiveSupported:(NSString *)path
+- (BOOL) isArchiveSupported:(NSString *)path
 {
     // Make sure it's a ZIP file
     if ([[path pathExtension] caseInsensitiveCompare:@"zip"] != NSOrderedSame) {
@@ -122,25 +124,33 @@
     }
     
     NSString *archive = [[path lastPathComponent] stringByDeletingPathExtension];
-    
-    // FIXME
-    if ([archive isEqualToString:@"neogeo"]) {
+
+    return [self doesDriverArray:_drivers
+              containDriverNamed:archive];
+}
+
+- (BOOL) doesDriverArray:(NSArray<FXDriver *>*) driverArray
+      containDriverNamed:(NSString *) driverName
+{
+    if ([driverName isEqualTo:@"neogeo"]) {
         return YES;
     }
-    
-    // Make sure it's one of the supported ROM sets
+
     __block BOOL supported = NO;
-    [_drivers enumerateObjectsUsingBlock:^(FXDriver *driver, NSUInteger idx, BOOL *stop) {
-        if ([[driver name] caseInsensitiveCompare:archive] == NSOrderedSame) {
+    [driverArray enumerateObjectsUsingBlock:^(FXDriver *driver, NSUInteger idx, BOOL *stop) {
+        if ([[driver name] caseInsensitiveCompare:driverName] == NSOrderedSame) {
             supported = YES;
-            *stop = YES;
+        } else if ([[driver children] count] > 0) {
+            supported = [self doesDriverArray:[driver children]
+                           containDriverNamed:driverName];
         }
+        if (supported) *stop = YES;
     }];
-    
+
     return supported;
 }
 
-- (void)importArchives:(NSArray *)paths
+- (void) importArchives:(NSArray *)paths
 {
     [self importAsync:paths];
 }

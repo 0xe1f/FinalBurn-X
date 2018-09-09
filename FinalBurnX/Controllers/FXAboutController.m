@@ -52,24 +52,23 @@
 
 - (void) awakeFromNib
 {
+    NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
 
+    NSMutableAttributedString *appName = [[appNameField attributedStringValue] mutableCopy];
+    [appName beginEditing];
+    [appName replaceCharactersInRange:NSMakeRange(0, [appName length])
+                           withString:[infoDict objectForKey:@"CFBundleName"]];
+    [appName applyFontTraits:NSBoldFontMask
+                       range:NSMakeRange([appName length] - 1, 1)];
+    [appName endEditing];
+
+    [appNameField setAttributedStringValue:appName];
+    [versionNumberField setStringValue:[NSString stringWithFormat:NSLocalizedString(@"Version %@", @""),
+                                        [infoDict objectForKey:@"CFBundleShortVersionString"]]];
 }
 
 - (void)dealloc
 {
-}
-
-#pragma mark - NSWindowController
-
-- (void) windowDidLoad
-{
-    [super windowDidLoad];
-
-    NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
-
-    [appNameField setStringValue:[infoDict objectForKey:@"CFBundleName"]];
-    [versionNumberField setStringValue:[NSString stringWithFormat:NSLocalizedString(@"Version %@", @""),
-                                      [infoDict objectForKey:@"CFBundleShortVersionString"]]];
 }
 
 #pragma mark - Actions
