@@ -459,6 +459,11 @@
 - (void)resizeFrame:(NSSize)newSize
             animate:(BOOL)animate
 {
+    // Turn off full screen if active
+    if (([[NSApplication sharedApplication] presentationOptions] & NSApplicationPresentationFullScreen) != 0) {
+        [[self window] toggleFullScreen:nil];
+    }
+
     NSRect windowRect = [[self window] frame];
     NSSize windowSize = windowRect.size;
     NSSize glViewSize = [[[self window] contentView] bounds].size;
@@ -523,15 +528,9 @@
         }
         
         return YES;
-	} else if ([item action] == @selector(saveScreenshot:)
-			   || [item action] == @selector(saveScreenshotAs:)) {
-		return YES;
-	} else if ([item action] == @selector(resetEmulation:)
-			   || [item action] == @selector(toggleTestMode:)) {
-		return YES;
-	}
-	
-    return [menuItem isEnabled];
+    }
+
+    return YES;
 }
 
 #pragma mark - FXScreenViewDelegate
