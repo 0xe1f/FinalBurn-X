@@ -1,14 +1,17 @@
 FinalBurn X
 ===========
 
-![Screenshot](http://i.imgur.com/9pCL8PA.png "Parodius")
+![Screenshot](https://i.imgur.com/X1v8WEx.png "AvsP")
 
 FinalBurn X is a port of [FinalBurn Alpha](http://www.barryharris.me.uk/fba.php)
 to OS X. The goal of FinalBurn is the emulation of Capcom Systems I, II, III and
 SNK Neo Geo.
 
-(The screenshot doesn't belong to any of the four,
-[but I couldn't resist the reference](https://github.com/CocoaMSX/CocoaMSX/))
+Download
+--------
+
+[Version 0.7](https://github.com/0xe1f/FinalBurn-X/releases/v0.7) is the latest stable release.
+[View all releases](https://github.com/0xe1f/FinalBurn-X/releases/).
 
 To Play
 -------
@@ -39,7 +42,7 @@ Limitations
 ROM sets must be:
 
 * ZIP-compressed
-* [Merged sets](https://docs.mamedev.org/usingmame/aboutromsets.html)
+* [Merged, split or non-merged](https://docs.mamedev.org/usingmame/aboutromsets.html)
 * Belong to CPS I, II, III or Neo Geo
 
 When dropping multiple sets into the launcher window, each of the files must meet the
