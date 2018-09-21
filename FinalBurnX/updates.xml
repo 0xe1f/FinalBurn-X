@@ -6,6 +6,40 @@
       <description>FinalBurn X version updates</description>
       <language>en</language>
          <item>
+            <title>Version 0.7</title>
+              <description>
+                <![CDATA[
+                  <html>
+                    <head>
+                      <style type="text/css">
+                        body {
+                          font-size: 9pt;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <ul>
+                        <li>Added drag & drop support for non-merged and split sets</li>
+                        <li>Fixed Normal size/Double size resize options</li>
+                        <li>Fixed resizing in full screen mode</li>
+                      </ul>
+                      <p><a href="https://github.com/0xe1f/FinalBurn-X/releases/v0.7">Full list of changes</a></p>
+                    </body>
+                  </html>
+                ]]>
+              </description>
+            <pubDate>Thu, 20 Sep 2018 22:56:55 -0700</pubDate>
+            <sparkle:minimumSystemVersion>10.9</sparkle:minimumSystemVersion>
+            <enclosure
+               url="https://github.com/0xe1f/FinalBurn-X/releases/download/v0.7/FinalBurnX-v0.7.dmg"
+               length="6592565"
+               type="application/octet-stream"
+               sparkle:version="4"
+               sparkle:shortVersionString="0.7"
+               sparkle:dsaSignature="MCwCFGV1MQyN4pnE+uouk4Jdzp9sv5TvAhQ2x73y9UXUb8D3Uyri2YxtE5CX8w=="
+            />
+         </item>
+         <item>
             <title>Version 0.6</title>
               <description>
                 <![CDATA[
