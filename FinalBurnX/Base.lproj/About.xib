@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="14113" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="14460.31" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="14113"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="14460.31"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -15,7 +15,7 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="About" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" visibleAtLaunch="NO" animationBehavior="default" id="QvC-M9-y7g">
+        <window title="About" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" visibleAtLaunch="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <rect key="contentRect" x="966" y="610" width="562" height="357"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1417"/>
@@ -55,9 +55,10 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" sendsActionOnEndEditing="YES" id="Zcd-lh-blA">
                                     <font key="font" metaFont="system"/>
-                                    <string key="title">Ⓒ 2014-2018 Akop Karapetyan © 2004-2017 Team FB Alpha © 2001 Dave  For FBA license information, see "FinalBurn Alpha License" below.  For license information on FinalBurn X and its components, see "FinalBurn X License" below.</string>
+                                    <string key="title">Ⓒ 2014-2019 Akop Karapetyan © 2004-2018 Team FB Alpha © 2001 Dave  For FBA license information, see "FinalBurn Alpha License" below.  For license information on FinalBurn X and its components, see "FinalBurn X License" below.</string>
                                     <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                     <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                    <string key="userLabel">Ⓒ 2014-2019 Akop Karapetyan © 2004-2018 Team FB Alpha © 2001 Dave  For FBA license information, see "FinalBurn Alpha License" below.  For license information on FinalBurn X and its components, see "FinalBurn X License" below.</string>
                                 </textFieldCell>
                             </textField>
                         </subviews>

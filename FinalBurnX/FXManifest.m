@@ -2,7 +2,7 @@
  **
  ** FinalBurn X: FinalBurn for macOS
  ** https://github.com/0xe1f/FinalBurn-X
- ** Copyright (C) 2014-2018 Akop Karapetyan
+ ** Copyright (C) Akop Karapetyan
  **
  ** Licensed under the Apache License, Version 2.0 (the "License");
  ** you may not use this file except in compliance with the License.
@@ -266,8 +266,15 @@ static NSRegularExpression *regex;
 		_children = [NSMutableArray array];
 		_screenSize = NSMakeSize([[d objectForKey:@"width"] floatValue],
 								 [[d objectForKey:@"height"] floatValue]);
+        NSNumber *xAspect = [d objectForKey:@"xAspect"];
+        NSNumber *yAspect = [d objectForKey:@"yAspect"];
 
-		NSMutableArray<FXButton *> *buttons = [NSMutableArray array];
+        if (xAspect && yAspect) {
+            float ratio = (float) [yAspect integerValue] / (float) [xAspect integerValue];
+            _screenSize.height = _screenSize.width * ratio;
+        }
+
+        NSMutableArray<FXButton *> *buttons = [NSMutableArray array];
 		[[d objectForKey:@"input"] enumerateObjectsUsingBlock:^(NSDictionary *idict, NSUInteger idx, BOOL *stop) {
 			[buttons addObject:[[FXButton alloc] initWithCode:(int) idx + 1
 												   dictionary:idict]];

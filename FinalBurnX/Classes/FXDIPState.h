@@ -2,7 +2,7 @@
  **
  ** FinalBurn X: FinalBurn for macOS
  ** https://github.com/0xe1f/FinalBurn-X
- ** Copyright (C) 2017 Akop Karapetyan
+ ** Copyright (C) Akop Karapetyan
  **
  ** Licensed under the Apache License, Version 2.0 (the "License");
  ** you may not use this file except in compliance with the License.

@@ -2,7 +2,7 @@
  **
  ** FinalBurn X: Port of FinalBurn to OS X
  ** https://github.com/0xe1f/FinalBurn-X
- ** Copyright (C) 2014-2018 Akop Karapetyan
+ ** Copyright (C) Akop Karapetyan
  **
  ** Sound engine based on SDL_audio:
  **

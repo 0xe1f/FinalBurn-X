@@ -2,7 +2,7 @@
  **
  ** FinalBurn X: FinalBurn for macOS
  ** https://github.com/0xe1f/FinalBurn-X
- ** Copyright (C) 2014-2018 Akop Karapetyan
+ ** Copyright (C) Akop Karapetyan
  **
  ** Portions of code from ShortcutRecorder by various contributors
  ** http://wafflesoftware.net/shortcut/
