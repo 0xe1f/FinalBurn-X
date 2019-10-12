@@ -29,6 +29,9 @@ typedef struct tagRECT {
 } RECT,*PRECT,*LPRECT;
 typedef const RECT *LPCRECT;
 
+typedef unsigned long DWORD;
+typedef unsigned char BYTE;
+
 #ifndef __cdecl
 #define	__cdecl
 #endif

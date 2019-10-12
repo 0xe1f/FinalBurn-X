@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "burn_sound.h"
 #include "driverlist.h"
+#include <wchar.h>
 
 #ifndef __LIBRETRO__
 // filler function, used if the application is not printing debug messages
@@ -925,7 +926,11 @@ struct MovieExtInfo
 	UINT32 hour, minute, second;
 };
 
+#ifndef __APPLE__
 extern struct MovieExtInfo MovieInfo; // from replay.cpp
+#else
+struct MovieExtInfo MovieInfo = { 2018, 5, 1, 0, 0, 0 };
+#endif
 
 void BurnGetLocalTime(tm *nTime)
 {

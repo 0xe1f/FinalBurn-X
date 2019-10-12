@@ -51,7 +51,7 @@ INT32 MakeScreenShot(const char *path)
 
 		if (ff) {
 			fclose(ff);
-			remove(szSShotName);
+			remove(path);
 		}
 
 		return SSHOT_LIBPNG_ERROR;

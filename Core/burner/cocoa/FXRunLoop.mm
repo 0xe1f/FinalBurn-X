@@ -109,7 +109,6 @@ static int cocoaGetNextSound(int draw);
     GameInpInit();
 	InputInit();
     
-	bBurnUseASMCPUEmulation = 0;
  	bCheatsAllowed = false;
     
 #ifdef DEBUG

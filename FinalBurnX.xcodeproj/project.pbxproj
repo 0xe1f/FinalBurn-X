@@ -625,8 +625,6 @@
 		FEF1539F23519D83004DF009 /* cps_mem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500323519D7E004DF009 /* cps_mem.cpp */; };
 		FEF153A023519D83004DF009 /* ps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500423519D7E004DF009 /* ps.cpp */; };
 		FEF153A123519D83004DF009 /* ps.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500423519D7E004DF009 /* ps.cpp */; };
-		FEF153A223519D83004DF009 /* ctv_make.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500523519D7E004DF009 /* ctv_make.cpp */; };
-		FEF153A323519D83004DF009 /* ctv_make.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500523519D7E004DF009 /* ctv_make.cpp */; };
 		FEF153A423519D83004DF009 /* cps2_crpt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500623519D7E004DF009 /* cps2_crpt.cpp */; };
 		FEF153A523519D83004DF009 /* cps2_crpt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500623519D7E004DF009 /* cps2_crpt.cpp */; };
 		FEF153A623519D83004DF009 /* ctv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1500723519D7E004DF009 /* ctv.cpp */; };
@@ -720,8 +718,6 @@
 		FEF153FE23519D83004DF009 /* pgm_asic27a_type2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504123519D7E004DF009 /* pgm_asic27a_type2.cpp */; };
 		FEF153FF23519D83004DF009 /* pgm_asic27a_type3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504223519D7E004DF009 /* pgm_asic27a_type3.cpp */; };
 		FEF1540023519D83004DF009 /* pgm_asic27a_type3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504223519D7E004DF009 /* pgm_asic27a_type3.cpp */; };
-		FEF1540123519D83004DF009 /* pgm_sprite_create.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504323519D7E004DF009 /* pgm_sprite_create.cpp */; };
-		FEF1540223519D83004DF009 /* pgm_sprite_create.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504323519D7E004DF009 /* pgm_sprite_create.cpp */; };
 		FEF1540323519D83004DF009 /* pgm_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504423519D7E004DF009 /* pgm_draw.cpp */; };
 		FEF1540423519D83004DF009 /* pgm_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504423519D7E004DF009 /* pgm_draw.cpp */; };
 		FEF1540523519D83004DF009 /* d_pgm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1504523519D7E004DF009 /* d_pgm.cpp */; };
@@ -1136,8 +1132,8 @@
 		FEF1559E23519D84004DF009 /* neo_run.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1513E23519D81004DF009 /* neo_run.cpp */; };
 		FEF1559F23519D84004DF009 /* neo_upd4990a.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1513F23519D81004DF009 /* neo_upd4990a.cpp */; };
 		FEF155A023519D84004DF009 /* neo_upd4990a.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1513F23519D81004DF009 /* neo_upd4990a.cpp */; };
-		FEF155A123519D84004DF009 /* ide.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514123519D81004DF009 /* ide.cpp */; };
-		FEF155A223519D84004DF009 /* ide.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514123519D81004DF009 /* ide.cpp */; };
+		FEF155A123519D84004DF009 /* ide.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514123519D81004DF009 /* ide.cpp */; settings = {COMPILER_FLAGS = "-Wno-return-type"; }; };
+		FEF155A223519D84004DF009 /* ide.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514123519D81004DF009 /* ide.cpp */; settings = {COMPILER_FLAGS = "-Wno-return-type"; }; };
 		FEF155A323519D84004DF009 /* d_kinst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514423519D81004DF009 /* d_kinst.cpp */; };
 		FEF155A423519D84004DF009 /* d_kinst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514423519D81004DF009 /* d_kinst.cpp */; };
 		FEF155A523519D84004DF009 /* dcs2k.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1514523519D81004DF009 /* dcs2k.cpp */; };
@@ -1724,32 +1720,22 @@
 		FEF158EC23519E76004DF009 /* sh2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157F123519E66004DF009 /* sh2.cpp */; };
 		FEF158ED23519E76004DF009 /* arm_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157F223519E67004DF009 /* arm_intf.cpp */; };
 		FEF158EE23519E76004DF009 /* arm_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157F223519E67004DF009 /* arm_intf.cpp */; };
-		FEF158EF23519E76004DF009 /* tms34010_dasm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FB23519E67004DF009 /* tms34010_dasm.cpp */; };
-		FEF158F023519E76004DF009 /* tms34010_dasm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FB23519E67004DF009 /* tms34010_dasm.cpp */; };
 		FEF158F123519E76004DF009 /* tms34010.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FE23519E67004DF009 /* tms34010.cpp */; };
 		FEF158F223519E76004DF009 /* tms34010.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FE23519E67004DF009 /* tms34010.cpp */; };
 		FEF158F323519E76004DF009 /* tms34010_optable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FF23519E67004DF009 /* tms34010_optable.cpp */; };
 		FEF158F423519E76004DF009 /* tms34010_optable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF157FF23519E67004DF009 /* tms34010_optable.cpp */; };
-		FEF158F523519E76004DF009 /* tms34010_newdasm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580023519E67004DF009 /* tms34010_newdasm.cpp */; };
-		FEF158F623519E76004DF009 /* tms34010_newdasm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580023519E67004DF009 /* tms34010_newdasm.cpp */; };
 		FEF158F723519E76004DF009 /* m6502_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580123519E67004DF009 /* m6502_intf.cpp */; };
 		FEF158F823519E76004DF009 /* m6502_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580123519E67004DF009 /* m6502_intf.cpp */; };
 		FEF158FD23519E76004DF009 /* z180.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580823519E67004DF009 /* z180.cpp */; };
 		FEF158FE23519E76004DF009 /* z180.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580823519E67004DF009 /* z180.cpp */; };
-		FEF1590723519E76004DF009 /* arm7exec.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580F23519E67004DF009 /* arm7exec.c */; };
-		FEF1590823519E76004DF009 /* arm7exec.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1580F23519E67004DF009 /* arm7exec.c */; };
 		FEF1590923519E76004DF009 /* arm7.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581123519E67004DF009 /* arm7.cpp */; };
 		FEF1590A23519E76004DF009 /* arm7.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581123519E67004DF009 /* arm7.cpp */; };
-		FEF1590B23519E76004DF009 /* arm7core.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581223519E67004DF009 /* arm7core.c */; };
-		FEF1590C23519E76004DF009 /* arm7core.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581223519E67004DF009 /* arm7core.c */; };
 		FEF1590D23519E76004DF009 /* tms32010.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581523519E68004DF009 /* tms32010.cpp */; };
 		FEF1590E23519E76004DF009 /* tms32010.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581523519E68004DF009 /* tms32010.cpp */; };
 		FEF1590F23519E76004DF009 /* arm7_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581623519E68004DF009 /* arm7_intf.cpp */; };
 		FEF1591023519E76004DF009 /* arm7_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581623519E68004DF009 /* arm7_intf.cpp */; };
 		FEF1591123519E76004DF009 /* s2650.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581823519E68004DF009 /* s2650.cpp */; };
 		FEF1591223519E76004DF009 /* s2650.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581823519E68004DF009 /* s2650.cpp */; };
-		FEF1591323519E76004DF009 /* tblh6280.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581B23519E68004DF009 /* tblh6280.c */; };
-		FEF1591423519E76004DF009 /* tblh6280.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581B23519E68004DF009 /* tblh6280.c */; };
 		FEF1591523519E76004DF009 /* h6280.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581C23519E68004DF009 /* h6280.cpp */; };
 		FEF1591623519E76004DF009 /* h6280.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1581C23519E68004DF009 /* h6280.cpp */; };
 		FEF1591D23519E76004DF009 /* m6502.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1582823519E69004DF009 /* m6502.cpp */; };
@@ -1764,8 +1750,6 @@
 		FEF1593223519E77004DF009 /* upd7810.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1583D23519E6A004DF009 /* upd7810.cpp */; };
 		FEF1593923519E77004DF009 /* m6805_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584223519E6A004DF009 /* m6805_intf.cpp */; };
 		FEF1593A23519E77004DF009 /* m6805_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584223519E6A004DF009 /* m6805_intf.cpp */; };
-		FEF1593B23519E77004DF009 /* mcs51ops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584723519E6B004DF009 /* mcs51ops.c */; };
-		FEF1593C23519E77004DF009 /* mcs51ops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584723519E6B004DF009 /* mcs51ops.c */; };
 		FEF1593D23519E77004DF009 /* mcs51.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584923519E6B004DF009 /* mcs51.cpp */; };
 		FEF1593E23519E77004DF009 /* mcs51.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584923519E6B004DF009 /* mcs51.cpp */; };
 		FEF1593F23519E77004DF009 /* adsp2100.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1584B23519E6C004DF009 /* adsp2100.cpp */; };
@@ -1774,16 +1758,6 @@
 		FEF1594623519E77004DF009 /* konami_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585023519E6C004DF009 /* konami_intf.cpp */; };
 		FEF1594723519E77004DF009 /* m6800_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585123519E6C004DF009 /* m6800_intf.cpp */; };
 		FEF1594823519E77004DF009 /* m6800_intf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585123519E6C004DF009 /* m6800_intf.cpp */; };
-		FEF1594923519E77004DF009 /* m68kfpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585323519E6C004DF009 /* m68kfpu.c */; };
-		FEF1594A23519E77004DF009 /* m68kfpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585323519E6C004DF009 /* m68kfpu.c */; };
-		FEF1594B23519E77004DF009 /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585523519E6C004DF009 /* m68kcpu.c */; };
-		FEF1594C23519E77004DF009 /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585523519E6C004DF009 /* m68kcpu.c */; };
-		FEF1594D23519E77004DF009 /* m68kdasm.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585623519E6C004DF009 /* m68kdasm.c */; };
-		FEF1594E23519E77004DF009 /* m68kdasm.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585623519E6C004DF009 /* m68kdasm.c */; };
-		FEF1594F23519E77004DF009 /* m68kmake.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585723519E6C004DF009 /* m68kmake.c */; };
-		FEF1595023519E77004DF009 /* m68kmake.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585723519E6C004DF009 /* m68kmake.c */; };
-		FEF1595123519E77004DF009 /* m68k_in.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585A23519E6C004DF009 /* m68k_in.c */; };
-		FEF1595223519E77004DF009 /* m68k_in.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585A23519E6C004DF009 /* m68k_in.c */; };
 		FEF1595323519E77004DF009 /* upd7725.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585D23519E6D004DF009 /* upd7725.cpp */; };
 		FEF1595423519E77004DF009 /* upd7725.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585D23519E6D004DF009 /* upd7725.cpp */; };
 		FEF1595723519E77004DF009 /* i8x41.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1586123519E6D004DF009 /* i8x41.cpp */; };
@@ -1796,8 +1770,6 @@
 		FEF1595E23519E77004DF009 /* z80.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1586723519E6E004DF009 /* z80.cpp */; };
 		FEF1595F23519E77004DF009 /* z80daisy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1586A23519E6E004DF009 /* z80daisy.cpp */; };
 		FEF1596023519E77004DF009 /* z80daisy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1586A23519E6E004DF009 /* z80daisy.cpp */; };
-		FEF1596123519E77004DF009 /* mips3_x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1587823519E6E004DF009 /* mips3_x64.cpp */; };
-		FEF1596223519E77004DF009 /* mips3_x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1587823519E6E004DF009 /* mips3_x64.cpp */; };
 		FEF1596323519E77004DF009 /* mips3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1588523519E6E004DF009 /* mips3.cpp */; };
 		FEF1596423519E77004DF009 /* mips3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1588523519E6E004DF009 /* mips3.cpp */; };
 		FEF1596523519E77004DF009 /* mips3_dasm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF1588823519E6E004DF009 /* mips3_dasm.cpp */; };
@@ -1834,10 +1806,6 @@
 		FEF1599C23519E77004DF009 /* v60.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF158BF23519E75004DF009 /* v60.cpp */; };
 		FEF159A723519E77004DF009 /* konami.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF158C723519E75004DF009 /* konami.cpp */; };
 		FEF159A823519E77004DF009 /* konami.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF158C723519E75004DF009 /* konami.cpp */; };
-		FEF159A923519E77004DF009 /* konamtbl.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF158C823519E75004DF009 /* konamtbl.c */; };
-		FEF159AA23519E77004DF009 /* konamtbl.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF158C823519E75004DF009 /* konamtbl.c */; };
-		FEF159AB23519E77004DF009 /* konamops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF158CA23519E75004DF009 /* konamops.c */; };
-		FEF159AC23519E77004DF009 /* konamops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF158CA23519E75004DF009 /* konamops.c */; };
 		FEF15A302351A2B7004DF009 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF159B02351A2B7004DF009 /* inflate.c */; };
 		FEF15A312351A2B7004DF009 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF159B02351A2B7004DF009 /* inflate.c */; };
 		FEF15A322351A2B7004DF009 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF159B12351A2B7004DF009 /* compress.c */; };
@@ -1912,12 +1880,8 @@
 		FEF15B3D2351A360004DF009 /* vid_support.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AD92351A35E004DF009 /* vid_support.cpp */; };
 		FEF15B3E2351A360004DF009 /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15ADB2351A35E004DF009 /* epx.cpp */; };
 		FEF15B3F2351A360004DF009 /* epx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15ADB2351A35E004DF009 /* epx.cpp */; };
-		FEF15B442351A360004DF009 /* hq_shared32.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15ADF2351A35E004DF009 /* hq_shared32.cpp */; };
-		FEF15B452351A360004DF009 /* hq_shared32.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15ADF2351A35E004DF009 /* hq_shared32.cpp */; };
 		FEF15B482351A360004DF009 /* 2xpm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE12351A35E004DF009 /* 2xpm.cpp */; };
 		FEF15B492351A360004DF009 /* 2xpm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE12351A35E004DF009 /* 2xpm.cpp */; };
-		FEF15B4C2351A360004DF009 /* hq3xs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE42351A35E004DF009 /* hq3xs.cpp */; };
-		FEF15B4D2351A360004DF009 /* hq3xs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE42351A35E004DF009 /* hq3xs.cpp */; };
 		FEF15B4E2351A360004DF009 /* xbr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE52351A35E004DF009 /* xbr.cpp */; };
 		FEF15B4F2351A360004DF009 /* xbr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE52351A35E004DF009 /* xbr.cpp */; };
 		FEF15B522351A360004DF009 /* hq2xs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15AE82351A35E004DF009 /* hq2xs.cpp */; };
@@ -2032,6 +1996,12 @@
 		FEF15DAB2351A9E0004DF009 /* XzCrc64Opt.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF15A282351A2B7004DF009 /* XzCrc64Opt.c */; };
 		FEF15DAC2351A9E0004DF009 /* XzDec.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF159EB2351A2B7004DF009 /* XzDec.c */; };
 		FEF15DAE2351B5D3004DF009 /* license.txt in Resources */ = {isa = PBXBuildFile; fileRef = FEF15DAD2351B5D3004DF009 /* license.txt */; };
+		FEF15DC02351C49C004DF009 /* dynhuff.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15DBE2351C49C004DF009 /* dynhuff.cpp */; };
+		FEF15DC12351C49C004DF009 /* dynhuff.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF15DBE2351C49C004DF009 /* dynhuff.cpp */; };
+		FEF15DC82351CE7A004DF009 /* m68kops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF15DC62351CE79004DF009 /* m68kops.c */; };
+		FEF15DC92351CE7A004DF009 /* m68kops.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF15DC62351CE79004DF009 /* m68kops.c */; };
+		FEF15DCC2351CEE3004DF009 /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585523519E6C004DF009 /* m68kcpu.c */; };
+		FEF15DCD2351CEE3004DF009 /* m68kcpu.c in Sources */ = {isa = PBXBuildFile; fileRef = FEF1585523519E6C004DF009 /* m68kcpu.c */; };
 		FEF974B92142DC1200352CEA /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FEF974B82142DC1100352CEA /* Sparkle.framework */; };
 		FEF974BA2142DD1200352CEA /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = FEF974B82142DC1100352CEA /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FEF974BD2142DF8400352CEA /* sparkle_dsa_pub.pem in Resources */ = {isa = PBXBuildFile; fileRef = FEF974BB2142DF8400352CEA /* sparkle_dsa_pub.pem */; };
@@ -3604,6 +3574,23 @@
 		FEF15D632351A49C004DF009 /* tchar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tchar.h; sourceTree = "<group>"; };
 		FEF15D642351A49C004DF009 /* tchar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tchar.cpp; sourceTree = "<group>"; };
 		FEF15DAD2351B5D3004DF009 /* license.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
+		FEF15DB02351B70D004DF009 /* neo_sprite_func.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = neo_sprite_func.h; sourceTree = "<group>"; };
+		FEF15DB12351B70D004DF009 /* neo_sprite_func_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = neo_sprite_func_table.h; sourceTree = "<group>"; };
+		FEF15DB22351B70D004DF009 /* toa_gp9001_func.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = toa_gp9001_func.h; sourceTree = "<group>"; };
+		FEF15DB32351B70D004DF009 /* driverlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = driverlist.h; sourceTree = "<group>"; };
+		FEF15DB42351B70D004DF009 /* psikyo_tile_func_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = psikyo_tile_func_table.h; sourceTree = "<group>"; };
+		FEF15DB52351B70D004DF009 /* psikyo_tile_func.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = psikyo_tile_func.h; sourceTree = "<group>"; };
+		FEF15DB62351B70D004DF009 /* cave_tile_func.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cave_tile_func.h; sourceTree = "<group>"; };
+		FEF15DB72351B70D004DF009 /* cave_sprite_func.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cave_sprite_func.h; sourceTree = "<group>"; };
+		FEF15DB82351B70D004DF009 /* cave_sprite_func_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cave_sprite_func_table.h; sourceTree = "<group>"; };
+		FEF15DB92351B70D004DF009 /* toa_gp9001_func_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = toa_gp9001_func_table.h; sourceTree = "<group>"; };
+		FEF15DBA2351B70D004DF009 /* pgm_sprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pgm_sprite.h; sourceTree = "<group>"; };
+		FEF15DBB2351B70D004DF009 /* ctv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ctv.h; sourceTree = "<group>"; };
+		FEF15DBC2351B70D004DF009 /* cave_tile_func_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cave_tile_func_table.h; sourceTree = "<group>"; };
+		FEF15DBE2351C49C004DF009 /* dynhuff.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = dynhuff.cpp; sourceTree = "<group>"; };
+		FEF15DBF2351C49C004DF009 /* dynhuff.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = dynhuff.h; sourceTree = "<group>"; };
+		FEF15DC62351CE79004DF009 /* m68kops.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = m68kops.c; sourceTree = "<group>"; };
+		FEF15DC72351CE79004DF009 /* m68kops.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = m68kops.h; sourceTree = "<group>"; };
 		FEF974B82142DC1100352CEA /* Sparkle.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Sparkle.framework; path = FinalBurnX/Sparkle.framework; sourceTree = "<group>"; };
 		FEF974BC2142DF8400352CEA /* Base */ = {isa = PBXFileReference; lastKnownFileType = text; name = Base; path = sparkle_dsa_pub.pem; sourceTree = "<group>"; };
 		FEFE35DF1D340235008C07CA /* FXVerticallyCenteredTextFieldCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FXVerticallyCenteredTextFieldCell.h; sourceTree = "<group>"; };
@@ -4235,6 +4222,7 @@
 		FE505FBB194BD46C003A2BC7 /* dep */ = {
 			isa = PBXGroup;
 			children = (
+				FEF15DAF2351B70D004DF009 /* generated */,
 				FE506028194BD4E6003A2BC7 /* libs */,
 			);
 			path = dep;
@@ -4243,6 +4231,7 @@
 		FE506028194BD4E6003A2BC7 /* libs */ = {
 			isa = PBXGroup;
 			children = (
+				FEF15DBD2351C49C004DF009 /* dynhuff */,
 				FEF159E22351A2B7004DF009 /* lib7z */,
 				FEF159CA2351A2B7004DF009 /* libpng */,
 				FEF159AD2351A2B7004DF009 /* zlib */,
@@ -5489,14 +5478,14 @@
 		FEF1585223519E6C004DF009 /* m68k */ = {
 			isa = PBXGroup;
 			children = (
-				FEF1585323519E6C004DF009 /* m68kfpu.c */,
-				FEF1585423519E6C004DF009 /* m68k.h */,
-				FEF1585523519E6C004DF009 /* m68kcpu.c */,
-				FEF1585623519E6C004DF009 /* m68kdasm.c */,
-				FEF1585723519E6C004DF009 /* m68kmake.c */,
-				FEF1585823519E6C004DF009 /* m68kcpu.h */,
-				FEF1585923519E6C004DF009 /* m68kconf.h */,
 				FEF1585A23519E6C004DF009 /* m68k_in.c */,
+				FEF1585423519E6C004DF009 /* m68k.h */,
+				FEF1585923519E6C004DF009 /* m68kconf.h */,
+				FEF1585523519E6C004DF009 /* m68kcpu.c */,
+				FEF1585823519E6C004DF009 /* m68kcpu.h */,
+				FEF1585623519E6C004DF009 /* m68kdasm.c */,
+				FEF1585323519E6C004DF009 /* m68kfpu.c */,
+				FEF1585723519E6C004DF009 /* m68kmake.c */,
 			);
 			path = m68k;
 			sourceTree = "<group>";
@@ -5919,6 +5908,37 @@
 			path = cocoa;
 			sourceTree = "<group>";
 		};
+		FEF15DAF2351B70D004DF009 /* generated */ = {
+			isa = PBXGroup;
+			children = (
+				FEF15DB82351B70D004DF009 /* cave_sprite_func_table.h */,
+				FEF15DB72351B70D004DF009 /* cave_sprite_func.h */,
+				FEF15DBC2351B70D004DF009 /* cave_tile_func_table.h */,
+				FEF15DB62351B70D004DF009 /* cave_tile_func.h */,
+				FEF15DBB2351B70D004DF009 /* ctv.h */,
+				FEF15DB32351B70D004DF009 /* driverlist.h */,
+				FEF15DC62351CE79004DF009 /* m68kops.c */,
+				FEF15DC72351CE79004DF009 /* m68kops.h */,
+				FEF15DB12351B70D004DF009 /* neo_sprite_func_table.h */,
+				FEF15DB02351B70D004DF009 /* neo_sprite_func.h */,
+				FEF15DBA2351B70D004DF009 /* pgm_sprite.h */,
+				FEF15DB42351B70D004DF009 /* psikyo_tile_func_table.h */,
+				FEF15DB52351B70D004DF009 /* psikyo_tile_func.h */,
+				FEF15DB92351B70D004DF009 /* toa_gp9001_func_table.h */,
+				FEF15DB22351B70D004DF009 /* toa_gp9001_func.h */,
+			);
+			path = generated;
+			sourceTree = "<group>";
+		};
+		FEF15DBD2351C49C004DF009 /* dynhuff */ = {
+			isa = PBXGroup;
+			children = (
+				FEF15DBE2351C49C004DF009 /* dynhuff.cpp */,
+				FEF15DBF2351C49C004DF009 /* dynhuff.h */,
+			);
+			path = dynhuff;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -6233,7 +6253,6 @@
 				FEF15B3C2351A360004DF009 /* vid_support.cpp in Sources */,
 				FEF1548B23519D83004DF009 /* d_galspnbl.cpp in Sources */,
 				FEF153D523519D83004DF009 /* d_m63.cpp in Sources */,
-				FEF1596123519E77004DF009 /* mips3_x64.cpp in Sources */,
 				FEF1547923519D83004DF009 /* d_20pacgal.cpp in Sources */,
 				FEF153C023519D83004DF009 /* cps_pal.cpp in Sources */,
 				FEF1556F23519D84004DF009 /* cave_sprite.cpp in Sources */,
@@ -6241,7 +6260,6 @@
 				FEF1592523519E76004DF009 /* m6800.cpp in Sources */,
 				FEF1579F23519D86004DF009 /* d_headonb.cpp in Sources */,
 				FEF15D732351A49D004DF009 /* FXLoader.mm in Sources */,
-				FEF1590B23519E76004DF009 /* arm7core.c in Sources */,
 				FEF152E623519D82004DF009 /* d_hyperspt.cpp in Sources */,
 				FEF154FF23519D84004DF009 /* d_bigstrkb.cpp in Sources */,
 				FEF1546323519D83004DF009 /* d_fuukifg3.cpp in Sources */,
@@ -6250,7 +6268,6 @@
 				FEF146AC23519CCC004DF009 /* burn_md2612.cpp in Sources */,
 				FEF1531223519D82004DF009 /* k051316.cpp in Sources */,
 				FEF156AF23519D85004DF009 /* d_capbowl.cpp in Sources */,
-				FEF15B4C2351A360004DF009 /* hq3xs.cpp in Sources */,
 				FEF15B662351A360004DF009 /* vid_interface.cpp in Sources */,
 				FEEC2E7F1DD0550300DAA6F8 /* AKGamepad.m in Sources */,
 				FEF1529823519D82004DF009 /* d_funkyjet.cpp in Sources */,
@@ -6343,13 +6360,11 @@
 				FEF1543B23519D83004DF009 /* d_sys16b.cpp in Sources */,
 				FEF1557723519D84004DF009 /* cave.cpp in Sources */,
 				FEF146DC23519CCC004DF009 /* sp0250.cpp in Sources */,
-				FEF159AB23519E77004DF009 /* konamops.c in Sources */,
 				FEF1569F23519D85004DF009 /* d_cclimber.cpp in Sources */,
 				FEF15A522351A2B8004DF009 /* pngerror.c in Sources */,
 				FEF15A612351A2B8004DF009 /* pngread.c in Sources */,
 				FEF1563923519D85004DF009 /* d_jrpacman.cpp in Sources */,
 				FEF1578323519D86004DF009 /* d_mcr3.cpp in Sources */,
-				FEF1540123519D83004DF009 /* pgm_sprite_create.cpp in Sources */,
 				FEF154EF23519D84004DF009 /* d_tecmosys.cpp in Sources */,
 				FEF1530E23519D82004DF009 /* d_trackfld.cpp in Sources */,
 				FEF15CC02351A43C004DF009 /* image.cpp in Sources */,
@@ -6458,11 +6473,9 @@
 				FEF152B023519D82004DF009 /* d_metlclsh.cpp in Sources */,
 				FEF1535C23519D82004DF009 /* d_flkatck.cpp in Sources */,
 				FEF1595B23519E77004DF009 /* z80ctc.cpp in Sources */,
-				FEF1594D23519E77004DF009 /* m68kdasm.c in Sources */,
 				FEF1558523519D84004DF009 /* d_uopoko.cpp in Sources */,
 				FEF1556523519D84004DF009 /* gal_gfx.cpp in Sources */,
 				FEF152AE23519D82004DF009 /* d_deco32.cpp in Sources */,
-				FEF153A223519D83004DF009 /* ctv_make.cpp in Sources */,
 				FEF157C723519D86004DF009 /* d_freekick.cpp in Sources */,
 				FEF1561F23519D85004DF009 /* tnzs_prot.cpp in Sources */,
 				FEF1539823519D83004DF009 /* cps_obj.cpp in Sources */,
@@ -6505,7 +6518,6 @@
 				FEF152AC23519D82004DF009 /* d_sidepckt.cpp in Sources */,
 				FEF153D923519D83004DF009 /* d_vigilant.cpp in Sources */,
 				FEF1551F23519D84004DF009 /* d_tekipaki.cpp in Sources */,
-				FEF1594923519E77004DF009 /* m68kfpu.c in Sources */,
 				FEF1527623519D82004DF009 /* d_kchamp.cpp in Sources */,
 				FEF1531C23519D82004DF009 /* d_timeplt.cpp in Sources */,
 				FEF1530823519D82004DF009 /* d_moo.cpp in Sources */,
@@ -6543,7 +6555,6 @@
 				FEF155E523519D84004DF009 /* tc0180vcu.cpp in Sources */,
 				FEF154FD23519D84004DF009 /* d_gaelco2.cpp in Sources */,
 				FEF154BB23519D83004DF009 /* d_macrossp.cpp in Sources */,
-				FEF15B442351A360004DF009 /* hq_shared32.cpp in Sources */,
 				FEF15D8C2351A9DD004DF009 /* Delta.c in Sources */,
 				FEF1555723519D84004DF009 /* d_psikyo4.cpp in Sources */,
 				FEF146B823519CCC004DF009 /* k005289.cpp in Sources */,
@@ -6618,7 +6629,6 @@
 				FEF1528023519D82004DF009 /* d_cbuster.cpp in Sources */,
 				FE9FA3FA195346F000F791EB /* AKKeyboardManager.m in Sources */,
 				FEF1556723519D84004DF009 /* gal_stars.cpp in Sources */,
-				FEF1594B23519E77004DF009 /* m68kcpu.c in Sources */,
 				FE505DE9194BC533003A2BC7 /* burn_ym2413.cpp in Sources */,
 				FEF152E823519D82004DF009 /* k054338.cpp in Sources */,
 				FEFE35E11D340235008C07CA /* FXVerticallyCenteredTextFieldCell.m in Sources */,
@@ -6737,6 +6747,7 @@
 				FEF152E023519D82004DF009 /* d_fastlane.cpp in Sources */,
 				FEF146C823519CCC004DF009 /* ymf262.cpp in Sources */,
 				FEF1545D23519D83004DF009 /* d_ohmygod.cpp in Sources */,
+				FEF15DC82351CE7A004DF009 /* m68kops.c in Sources */,
 				FEF15D842351A9DD004DF009 /* 7zDec.c in Sources */,
 				FEF1528223519D82004DF009 /* d_dreambal.cpp in Sources */,
 				FEF1574923519D86004DF009 /* d_vulgus.cpp in Sources */,
@@ -6791,6 +6802,7 @@
 				FEF1573F23519D86004DF009 /* d_travrusa.cpp in Sources */,
 				FEF156F323519D85004DF009 /* d_tsamurai.cpp in Sources */,
 				FEF1560523519D84004DF009 /* d_superchs.cpp in Sources */,
+				FEF15DCC2351CEE3004DF009 /* m68kcpu.c in Sources */,
 				FEF156B523519D85004DF009 /* d_mystston.cpp in Sources */,
 				FEF1559123519D84004DF009 /* neo_decrypt.cpp in Sources */,
 				FEF1576D23519D86004DF009 /* d_commando.cpp in Sources */,
@@ -6802,7 +6814,6 @@
 				FEF157BB23519D86004DF009 /* d_pitnrun.cpp in Sources */,
 				FEF1571923519D85004DF009 /* d_snk68.cpp in Sources */,
 				FEF146D823519CCC004DF009 /* vlm5030.cpp in Sources */,
-				FEF1594F23519E77004DF009 /* m68kmake.c in Sources */,
 				FEF146CC23519CCC004DF009 /* bzone.cpp in Sources */,
 				FEF153BE23519D83004DF009 /* cps.cpp in Sources */,
 				FEF156B323519D85004DF009 /* d_citycon.cpp in Sources */,
@@ -6868,7 +6879,6 @@
 				FEF157BF23519D86004DF009 /* d_xxmissio.cpp in Sources */,
 				FEF1462F23519C84004DF009 /* midsg.cpp in Sources */,
 				FEF156D723519D85004DF009 /* d_stfight.cpp in Sources */,
-				FEF158EF23519E76004DF009 /* tms34010_dasm.cpp in Sources */,
 				FEF1536823519D83004DF009 /* d_akkaarrh.cpp in Sources */,
 				FEF153E123519D83004DF009 /* d_m57.cpp in Sources */,
 				FEF1552F23519D84004DF009 /* toa_extratext.cpp in Sources */,
@@ -6893,7 +6903,6 @@
 				FEF1568523519D85004DF009 /* d_mole.cpp in Sources */,
 				FEF1543D23519D83004DF009 /* d_angelkds.cpp in Sources */,
 				FEF1552323519D84004DF009 /* d_slapfght.cpp in Sources */,
-				FEF1593B23519E77004DF009 /* mcs51ops.c in Sources */,
 				FE505C64194BC532003A2BC7 /* 8255ppi.cpp in Sources */,
 				FEF1558123519D84004DF009 /* d_gaia.cpp in Sources */,
 				FEF159A723519E77004DF009 /* konami.cpp in Sources */,
@@ -6929,10 +6938,8 @@
 				FEF155B123519D84004DF009 /* d_buggychl.cpp in Sources */,
 				FEF1548D23519D83004DF009 /* d_ssv.cpp in Sources */,
 				FE1FB77B19D13D0A0070325C /* AKKeyCaptureView.m in Sources */,
-				FEF1595123519E77004DF009 /* m68k_in.c in Sources */,
 				FEF1563323519D85004DF009 /* d_1942.cpp in Sources */,
 				FEF1465323519C84004DF009 /* bsmt2000.cpp in Sources */,
-				FEF158F523519E76004DF009 /* tms34010_newdasm.cpp in Sources */,
 				FE505C6B194BC532003A2BC7 /* timekpr.cpp in Sources */,
 				FE505C6D194BC532003A2BC7 /* vdc.cpp in Sources */,
 				FEF1534C23519D82004DF009 /* d_ultraman.cpp in Sources */,
@@ -6959,6 +6966,7 @@
 				FEF1547123519D83004DF009 /* d_playmark.cpp in Sources */,
 				FEF1570F23519D85004DF009 /* d_seicross.cpp in Sources */,
 				FEF1465F23519C84004DF009 /* atarijsa.cpp in Sources */,
+				FEF15DC02351C49C004DF009 /* dynhuff.cpp in Sources */,
 				FEF1592923519E76004DF009 /* hd6309.cpp in Sources */,
 				FEF155AF23519D84004DF009 /* d_wunit.cpp in Sources */,
 				FEF1572323519D86004DF009 /* d_higemaru.cpp in Sources */,
@@ -6969,7 +6977,6 @@
 				FEF1538E23519D83004DF009 /* cpsrd.cpp in Sources */,
 				FEF1576B23519D86004DF009 /* d_kangaroo.cpp in Sources */,
 				FEF154CB23519D83004DF009 /* d_tetrisp2.cpp in Sources */,
-				FEF1590723519E76004DF009 /* arm7exec.c in Sources */,
 				FEF1548123519D83004DF009 /* d_powerins.cpp in Sources */,
 				FEF152B623519D82004DF009 /* d_decocass.cpp in Sources */,
 				FEF15B912351A360004DF009 /* interface.cpp in Sources */,
@@ -7058,10 +7065,8 @@
 				FEF1554923519D84004DF009 /* d_kbash2.cpp in Sources */,
 				FEF1568123519D85004DF009 /* d_renegade.cpp in Sources */,
 				FEF1553923519D84004DF009 /* d_dogyuun.cpp in Sources */,
-				FEF159A923519E77004DF009 /* konamtbl.c in Sources */,
 				FEF1463723519C84004DF009 /* nmk112.cpp in Sources */,
 				FEF1545923519D83004DF009 /* d_suna16.cpp in Sources */,
-				FEF1591323519E76004DF009 /* tblh6280.c in Sources */,
 				FEF1547F23519D83004DF009 /* d_pipedrm.cpp in Sources */,
 				FEF154E523519D84004DF009 /* d_bestleag.cpp in Sources */,
 				FEF1554F23519D84004DF009 /* psikyo_tile.cpp in Sources */,
@@ -7104,7 +7109,6 @@
 				FEF1563823519D85004DF009 /* d_tecmo.cpp in Sources */,
 				FEF157C423519D86004DF009 /* d_chinagat.cpp in Sources */,
 				FEF1558E23519D84004DF009 /* d_tjumpman.cpp in Sources */,
-				FEF1590823519E76004DF009 /* arm7exec.c in Sources */,
 				FEF1538F23519D83004DF009 /* cpsrd.cpp in Sources */,
 				FEF155EC23519D84004DF009 /* d_jollyjgr.cpp in Sources */,
 				FEF1537923519D83004DF009 /* d_arcadecl.cpp in Sources */,
@@ -7114,7 +7118,6 @@
 				FEF158CF23519E76004DF009 /* z180_intf.cpp in Sources */,
 				FEF15D702351A49D004DF009 /* neocdlist.cpp in Sources */,
 				FEF1535323519D82004DF009 /* k007121.cpp in Sources */,
-				FEF159AC23519E77004DF009 /* konamops.c in Sources */,
 				FEF15D992351A9E0004DF009 /* 7zCrc.c in Sources */,
 				FEF157A423519D86004DF009 /* d_warpwarp.cpp in Sources */,
 				FEF1556823519D84004DF009 /* gal_stars.cpp in Sources */,
@@ -7183,7 +7186,6 @@
 				FEF154D423519D84004DF009 /* d_hyperpac.cpp in Sources */,
 				FEF1463C23519C84004DF009 /* atarimo.cpp in Sources */,
 				FEF15C542351A43C004DF009 /* conc.cpp in Sources */,
-				FEF158F623519E76004DF009 /* tms34010_newdasm.cpp in Sources */,
 				FEF1542C23519D83004DF009 /* d_segag80v.cpp in Sources */,
 				FEF156FA23519D85004DF009 /* d_starwars.cpp in Sources */,
 				FEF1576C23519D86004DF009 /* d_kangaroo.cpp in Sources */,
@@ -7203,7 +7205,6 @@
 				FEF155C623519D84004DF009 /* d_taitol.cpp in Sources */,
 				FEF1571023519D85004DF009 /* d_seicross.cpp in Sources */,
 				FEF15A532351A2B8004DF009 /* pngerror.c in Sources */,
-				FEF1595223519E77004DF009 /* m68k_in.c in Sources */,
 				FEF146BF23519CCC004DF009 /* llander.cpp in Sources */,
 				FEF1551623519D84004DF009 /* d_yunsung8.cpp in Sources */,
 				FEF1533523519D82004DF009 /* d_thunderx.cpp in Sources */,
@@ -7272,7 +7273,6 @@
 				FEAAC52D1DC6FD04008ED3AD /* burn.cpp in Sources */,
 				FEF1537F23519D83004DF009 /* d_thunderj.cpp in Sources */,
 				FEF1565623519D85004DF009 /* d_snk.cpp in Sources */,
-				FEF15B452351A360004DF009 /* hq_shared32.cpp in Sources */,
 				FEF1529323519D82004DF009 /* d_deco156.cpp in Sources */,
 				FEF152C923519D82004DF009 /* d_gijoe.cpp in Sources */,
 				FEF155AC23519D84004DF009 /* d_tunit.cpp in Sources */,
@@ -7318,7 +7318,6 @@
 				FEF155C223519D84004DF009 /* d_taitoh.cpp in Sources */,
 				FEF1531D23519D82004DF009 /* d_timeplt.cpp in Sources */,
 				FEF146D723519CCC004DF009 /* pokey.cpp in Sources */,
-				FEF153A323519D83004DF009 /* ctv_make.cpp in Sources */,
 				FEF1464423519C84004DF009 /* mermaid.cpp in Sources */,
 				FEF1568A23519D85004DF009 /* d_firetrap.cpp in Sources */,
 				FEF153C323519D83004DF009 /* pce.cpp in Sources */,
@@ -7329,7 +7328,6 @@
 				FEF1534B23519D82004DF009 /* d_bottom9.cpp in Sources */,
 				FEF156E023519D85004DF009 /* d_argus.cpp in Sources */,
 				FEF1533723519D82004DF009 /* d_gradius3.cpp in Sources */,
-				FEF1590C23519E76004DF009 /* arm7core.c in Sources */,
 				FEAAC5371DC6FD04008ED3AD /* load.cpp in Sources */,
 				FEF1577E23519D86004DF009 /* d_tbowl.cpp in Sources */,
 				FEF15B8A2351A360004DF009 /* cd_interface.cpp in Sources */,
@@ -7397,7 +7395,6 @@
 				FEF1548223519D83004DF009 /* d_powerins.cpp in Sources */,
 				FEF1565C23519D85004DF009 /* d_megasys1.cpp in Sources */,
 				FEAAC6D71DC6FDF0008ED3AD /* upd7759.cpp in Sources */,
-				FEF1596223519E77004DF009 /* mips3_x64.cpp in Sources */,
 				FEF1578023519D86004DF009 /* d_canyon.cpp in Sources */,
 				FEF15D7E2351A49D004DF009 /* tchar.cpp in Sources */,
 				FEF1552023519D84004DF009 /* d_tekipaki.cpp in Sources */,
@@ -7443,7 +7440,6 @@
 				FEF1551823519D84004DF009 /* d_welltris.cpp in Sources */,
 				FEF15A5D2351A2B8004DF009 /* pngwtran.c in Sources */,
 				FEF1528B23519D82004DF009 /* d_dec8.cpp in Sources */,
-				FEF1594A23519E77004DF009 /* m68kfpu.c in Sources */,
 				FEF154DC23519D84004DF009 /* d_vmetal.cpp in Sources */,
 				FEF157D823519D86004DF009 /* d_berzerk.cpp in Sources */,
 				FEF152BF23519D82004DF009 /* timeplt_snd.cpp in Sources */,
@@ -7571,7 +7567,6 @@
 				FEF15DA92351A9E0004DF009 /* Xz.c in Sources */,
 				FEF1539D23519D83004DF009 /* cpsr.cpp in Sources */,
 				FEF157B223519D86004DF009 /* d_skyfox.cpp in Sources */,
-				FEF1595023519E77004DF009 /* m68kmake.c in Sources */,
 				FEF1579223519D86004DF009 /* d_tempest.cpp in Sources */,
 				FEF153C723519D83004DF009 /* d_sg1000.cpp in Sources */,
 				FEF1466A23519C84004DF009 /* tms9928a.cpp in Sources */,
@@ -7656,6 +7651,7 @@
 				FEF1570423519D85004DF009 /* d_quizo.cpp in Sources */,
 				FEF156B423519D85004DF009 /* d_citycon.cpp in Sources */,
 				FEF1550C23519D84004DF009 /* d_news.cpp in Sources */,
+				FEF15DCD2351CEE3004DF009 /* m68kcpu.c in Sources */,
 				FEF154C023519D83004DF009 /* d_sandscrp.cpp in Sources */,
 				FEF1554223519D84004DF009 /* toa_gp9001.cpp in Sources */,
 				FEF1535F23519D82004DF009 /* d_aliens.cpp in Sources */,
@@ -7692,6 +7688,7 @@
 				FEF153FE23519D83004DF009 /* pgm_asic27a_type2.cpp in Sources */,
 				FEF152B323519D82004DF009 /* d_bwing.cpp in Sources */,
 				FEF15CE12351A43C004DF009 /* gamc.cpp in Sources */,
+				FEF15DC92351CE7A004DF009 /* m68kops.c in Sources */,
 				FEF155DA23519D84004DF009 /* d_mexico86.cpp in Sources */,
 				FEF1464E23519C84004DF009 /* 6821pia.cpp in Sources */,
 				FEF1533123519D82004DF009 /* d_hexion.cpp in Sources */,
@@ -7705,7 +7702,6 @@
 				FEF1577C23519D86004DF009 /* d_djboy.cpp in Sources */,
 				FEF152E723519D82004DF009 /* d_hyperspt.cpp in Sources */,
 				FEF1549223519D83004DF009 /* d_go2000.cpp in Sources */,
-				FEF15B4D2351A360004DF009 /* hq3xs.cpp in Sources */,
 				FEF156B023519D85004DF009 /* d_capbowl.cpp in Sources */,
 				FEF145DA23519BE5004DF009 /* burn_shift.cpp in Sources */,
 				FEF1465823519C84004DF009 /* atariic.cpp in Sources */,
@@ -7799,7 +7795,6 @@
 				FEF1528923519D82004DF009 /* d_dblewing.cpp in Sources */,
 				FEF152A723519D82004DF009 /* d_brkthru.cpp in Sources */,
 				FEF153EC23519D83004DF009 /* snes_spc700.cpp in Sources */,
-				FEF1591423519E76004DF009 /* tblh6280.c in Sources */,
 				FEF1536B23519D83004DF009 /* d_atarig1.cpp in Sources */,
 				FEF1530723519D82004DF009 /* konamigx.cpp in Sources */,
 				FEF1564023519D85004DF009 /* d_williams.cpp in Sources */,
@@ -7819,6 +7814,7 @@
 				FEAAC6CB1DC6FDF0008ED3AD /* k007232.cpp in Sources */,
 				FEF1526D23519D82004DF009 /* d_simpl156.cpp in Sources */,
 				FEF1559823519D84004DF009 /* neogeo.cpp in Sources */,
+				FEF15DC12351C49C004DF009 /* dynhuff.cpp in Sources */,
 				FEF155A023519D84004DF009 /* neo_upd4990a.cpp in Sources */,
 				FEF146C923519CCC004DF009 /* ymf262.cpp in Sources */,
 				FEF157B423519D86004DF009 /* d_himesiki.cpp in Sources */,
@@ -7868,7 +7864,6 @@
 				FEF153C123519D83004DF009 /* cps_pal.cpp in Sources */,
 				FEF15A4A2351A2B8004DF009 /* gzclose.c in Sources */,
 				FEF155BA23519D84004DF009 /* tc0360pri.cpp in Sources */,
-				FEF1594C23519E77004DF009 /* m68kcpu.c in Sources */,
 				FEF1538723519D83004DF009 /* d_gauntlet.cpp in Sources */,
 				FEF1567623519D85004DF009 /* d_ettrivia.cpp in Sources */,
 				FEF15DA12351A9E0004DF009 /* BraIA64.c in Sources */,
@@ -7876,7 +7871,6 @@
 				FEF1565023519D85004DF009 /* d_pengadvb.cpp in Sources */,
 				FEF1545023519D83004DF009 /* smsrender.cpp in Sources */,
 				FEF15A352351A2B7004DF009 /* deflate.c in Sources */,
-				FEF1593C23519E77004DF009 /* mcs51ops.c in Sources */,
 				FEF1578E23519D86004DF009 /* d_safarir.cpp in Sources */,
 				FEF1529B23519D82004DF009 /* d_progolf.cpp in Sources */,
 				FEAAC6D61DC6FDF0008ED3AD /* sn76496.cpp in Sources */,
@@ -7935,12 +7929,10 @@
 				FEF15CE72351A43C004DF009 /* unzip.c in Sources */,
 				FEF1540E23519D83004DF009 /* d_bankp.cpp in Sources */,
 				FEF157AA23519D86004DF009 /* d_psychic5.cpp in Sources */,
-				FEF158F023519E76004DF009 /* tms34010_dasm.cpp in Sources */,
 				FEF155AA23519D84004DF009 /* midwunit.cpp in Sources */,
 				FEF1548023519D83004DF009 /* d_pipedrm.cpp in Sources */,
 				FEAAC5361DC6FD04008ED3AD /* hiscore.cpp in Sources */,
 				FEF1464623519C84004DF009 /* atarivad.cpp in Sources */,
-				FEF1594E23519E77004DF009 /* m68kdasm.c in Sources */,
 				FEF157CE23519D86004DF009 /* d_aeroboto.cpp in Sources */,
 				FEF1574823519D86004DF009 /* d_invaders.cpp in Sources */,
 				FEF146DD23519CCC004DF009 /* sp0250.cpp in Sources */,
@@ -8032,13 +8024,11 @@
 				FEF157BE23519D86004DF009 /* d_flipjack.cpp in Sources */,
 				FEF1557623519D84004DF009 /* cave_palette.cpp in Sources */,
 				FEF156DC23519D85004DF009 /* d_carjmbre.cpp in Sources */,
-				FEF1540223519D83004DF009 /* pgm_sprite_create.cpp in Sources */,
 				FEF1542E23519D83004DF009 /* d_ybrd.cpp in Sources */,
 				FEF1572A23519D86004DF009 /* d_pbaction.cpp in Sources */,
 				FEF1540C23519D83004DF009 /* d_msx.cpp in Sources */,
 				FEF158EE23519E76004DF009 /* arm_intf.cpp in Sources */,
 				FEF156E623519D85004DF009 /* d_tail2nose.cpp in Sources */,
-				FEF159AA23519E77004DF009 /* konamtbl.c in Sources */,
 				FEF156A823519D85004DF009 /* d_gng.cpp in Sources */,
 				FEF155FA23519D84004DF009 /* tc0280grd.cpp in Sources */,
 				FEAAC5411DC6FD10008ED3AD /* timekpr.cpp in Sources */,
@@ -8195,6 +8185,7 @@
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
+					"-DUSE_FILE32API",
 				);
 				SDKROOT = macosx;
 				WARNING_CFLAGS = (
@@ -8207,6 +8198,11 @@
 					"-Wno-writable-strings",
 					"-Wno-unused-variable",
 					"-Wno-parentheses-equality",
+					"-Wno-c++11-narrowing",
+					"-Wno-constant-conversion",
+					"-Wno-tautological-constant-out-of-range-compare",
+					"-Wno-absolute-value",
+					"-Wno-deprecated-register",
 				);
 			};
 			name = Debug;
@@ -8251,6 +8247,7 @@
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
+					"-DUSE_FILE32API",
 				);
 				SDKROOT = macosx;
 				WARNING_CFLAGS = (
@@ -8263,6 +8260,11 @@
 					"-Wno-writable-strings",
 					"-Wno-unused-variable",
 					"-Wno-parentheses-equality",
+					"-Wno-c++11-narrowing",
+					"-Wno-constant-conversion",
+					"-Wno-tautological-constant-out-of-range-compare",
+					"-Wno-absolute-value",
+					"-Wno-deprecated-register",
 				);
 			};
 			name = Release;
@@ -8294,6 +8296,7 @@
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
+					"-DUSE_FILE32API",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.akop.fbx.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = FinalBurnX;
@@ -8328,6 +8331,7 @@
 					"-DUSE_SPEEDHACKS",
 					"-DINLINE=\"static inline\"",
 					"-DSH2_INLINE=\"static inline\"",
+					"-DUSE_FILE32API",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.akop.fbx.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = FinalBurnX;

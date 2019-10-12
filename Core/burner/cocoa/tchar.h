@@ -37,7 +37,7 @@ typedef wchar_t _TCHAR;
 typedef char	TCHAR;
 typedef char	_TCHAR;
 
-#define wcslen(void)
+//#define wcslen(void)
 
 #define _tcslen     strlen
 #define _tcscpy     strcpy
@@ -56,6 +56,8 @@ typedef char	_TCHAR;
 #define _tcsicmp    strcasecmp
 #define _tcsnicmp   strncasecmp
 #define _tcstol     strtol
+#define _tcsrchr    strrchr
+#define _tcsstr     strstr
 
 #define _tcsstr     strstr
 
