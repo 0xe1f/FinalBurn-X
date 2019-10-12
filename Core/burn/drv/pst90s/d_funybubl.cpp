@@ -37,7 +37,7 @@ static UINT8 DrvRecalc;
 static UINT8 soundlatch;
 static INT32 nDrvRomBank;
 static INT32 nDrvVidRAMBank;
-static INT32 	     nDrvOkiBank;
+static INT32 nDrvOkiBank;
 
 static struct BurnInputInfo FunybublInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 coin"	},
@@ -172,7 +172,7 @@ static void funybubl_set_oki_bank(INT32 data)
 {
 	nDrvOkiBank = data & 1;
 
-	MSM6295ROM = DrvSndROM + nDrvOkiBank * 0x40000;
+	MSM6295SetBank(0, DrvSndROM + (nDrvOkiBank * 0x40000), 0x00000, 0x3ffff);
 }
 
 void __fastcall funybubl_out(UINT16 port, UINT8 data)
@@ -190,11 +190,7 @@ void __fastcall funybubl_out(UINT16 port, UINT8 data)
 		case 0x03:
 			soundlatch = data;
 
-			ZetClose();
-			ZetOpen(1);
-			ZetRaiseIrq(0);
-			ZetClose();
-			ZetOpen(0);
+			ZetSetIRQLine(1, 0, CPU_IRQSTATUS_AUTO);
 		return;
 
 		case 0x06:
@@ -212,7 +208,7 @@ void __fastcall funybubl_sound_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x9800:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -222,7 +218,7 @@ UINT8 __fastcall funybubl_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0x9800:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0xa000:
 			return soundlatch;
@@ -275,7 +271,6 @@ static INT32 MemIndex()
 	DrvZ80ROM0	= Next; Next += 0x040000;
 	DrvZ80ROM1	= Next; Next += 0x008000;
 
-	MSM6295ROM 	= Next;
 	DrvSndROM	= Next; Next += 0x080000;
 
 	DrvGfxROM0	= Next; Next += 0x200000;
@@ -396,8 +391,6 @@ static INT32 DrvExit()
 
 	BurnFree (AllMem);
 
-	MSM6295ROM = NULL;
-
 	return 0;
 }
 
@@ -489,7 +482,7 @@ static INT32 DrvFrame()
 		ZetOpen(0);
 		nSegment = (nCyclesTotal[0] - nCyclesDone[0]) / (nInterleave - i);
 		nCyclesDone[0] += ZetRun(nSegment);
-		if (i == (nInterleave - 1)) ZetRaiseIrq(0);
+		if (i == (nInterleave - 1)) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		ZetClose();
 
 		ZetOpen(1);
@@ -509,7 +502,7 @@ static INT32 DrvFrame()
 	return 0;
 }
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -517,7 +510,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029697;
 	}
 
-	if (nAction & ACB_MEMORY_RAM) {	
+	if (nAction & ACB_MEMORY_RAM) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -529,7 +522,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		ZetScan(nAction);
 
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 
 		SCAN_VAR(soundlatch);
 		SCAN_VAR(nDrvOkiBank);
@@ -539,8 +532,10 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 
 	if (nAction & ACB_WRITE) {
 		funybubl_set_oki_bank(nDrvOkiBank);
+		ZetOpen(0);
 		funybubl_set_rom_bank(nDrvRomBank);
 		funybubl_set_vidram_bank(nDrvVidRAMBank);
+		ZetClose();
 	}
 
 	return 0;
@@ -579,7 +574,7 @@ struct BurnDriver BurnDrvFunybubl = {
 	"Funny Bubble\0", NULL, "In Chang Electronic Co", "misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, funybublRomInfo, funybublRomName, NULL, NULL, FunybublInputInfo, FunybublDIPInfo,
+	NULL, funybublRomInfo, funybublRomName, NULL, NULL, NULL, NULL, FunybublInputInfo, FunybublDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	320, 224, 4, 3
 };
@@ -618,7 +613,7 @@ struct BurnDriver BurnDrvFunybubc = {
 	"Funny Bubble (Comad version)\0", NULL, "Comad Industry Co Ltd", "misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, funybubcRomInfo, funybubcRomName, NULL, NULL, FunybublInputInfo, FunybublDIPInfo,
+	NULL, funybubcRomInfo, funybubcRomName, NULL, NULL, NULL, NULL, FunybublInputInfo, FunybublDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	320, 224, 4, 3
 };

@@ -74,7 +74,7 @@ static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
 
-	SekSetIRQLine(2, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(2, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall korokoroReadByte(UINT32 sekAddress)
@@ -455,7 +455,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -566,11 +566,11 @@ static INT32 DrvInit()
 		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(CaveTileRAM[0],	0x100000, 0x107FFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,	0x180000, 0x187FFF, SM_RAM);
-		SekMapMemory(CavePalSrc,	0x200000, 0x207FFF, SM_RAM);
-		SekMapMemory(Ram01,		0x300000, 0x30FFFF, SM_RAM);
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(CaveTileRAM[0],	0x100000, 0x107FFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,	0x180000, 0x187FFF, MAP_RAM);
+		SekMapMemory(CavePalSrc,	0x200000, 0x207FFF, MAP_RAM);
+		SekMapMemory(Ram01,		0x300000, 0x30FFFF, MAP_RAM);
 
 		SekSetReadWordHandler(0, 	korokoroReadWord);
 		SekSetReadByteHandler(0, 	korokoroReadByte);
@@ -587,7 +587,7 @@ static INT32 DrvInit()
 	CaveSpriteInit(1, 0x300000);
 	CaveTileInitLayer(0, 0x200000, 4, 0x4400);
 
-	YMZ280BInit(16934400, &TriggerSoundIRQ);
+	YMZ280BInit(16934400, &TriggerSoundIRQ, 0x100000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
@@ -646,11 +646,11 @@ static INT32 crushermInit()
 		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(CaveTileRAM[0],	0x100000, 0x107FFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,	0x180000, 0x187FFF, SM_RAM);
-		SekMapMemory(CavePalSrc,	0x200000, 0x207FFF, SM_RAM);
-		SekMapMemory(Ram01,		0x340000, 0x34FFFF, SM_RAM);
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(CaveTileRAM[0],	0x100000, 0x107FFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,	0x180000, 0x187FFF, MAP_RAM);
+		SekMapMemory(CavePalSrc,	0x200000, 0x207FFF, MAP_RAM);
+		SekMapMemory(Ram01,		0x340000, 0x34FFFF, MAP_RAM);
 
 		SekSetReadWordHandler(0, 	korokoroReadWord);
 		SekSetReadByteHandler(0, 	korokoroReadByte);
@@ -667,7 +667,7 @@ static INT32 crushermInit()
 	CaveSpriteInit(1, 0x400000);
 	CaveTileInitLayer(0, 0x200000, 4, 0x4400);
 
-	YMZ280BInit(16934400, &TriggerSoundIRQ);
+	YMZ280BInit(16934400, &TriggerSoundIRQ, 0x200000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
@@ -700,7 +700,7 @@ struct BurnDriver BurnDrvKorokoro = {
 	"Koro Koro Quest (Japan)\0", NULL, "Takumi", "Cave",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_MISC, 0,
-	NULL, korokoroRomInfo, korokoroRomName, NULL, NULL, KorokoroInputInfo, KorokoroDIPInfo,
+	NULL, korokoroRomInfo, korokoroRomName, NULL, NULL, NULL, NULL, KorokoroInputInfo, KorokoroDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 240, 4, 3
 };
@@ -727,8 +727,8 @@ struct BurnDriver BurnDrvCrusherm = {
 	"crusherm", NULL, NULL, NULL, "1999",
 	"Crusher Makochan (Japan)\0", NULL, "Takumi", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_MISC, 0,
-	NULL, crushermRomInfo, crushermRomName, NULL, NULL, KorokoroInputInfo, KorokoroDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_MINIGAMES, 0,
+	NULL, crushermRomInfo, crushermRomName, NULL, NULL, NULL, NULL, KorokoroInputInfo, KorokoroDIPInfo,
 	crushermInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 240, 4, 3
 };

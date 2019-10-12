@@ -1,3 +1,6 @@
+// license:BSD-3-Clause
+// copyright-holders:Fabio Priuli,Acho A. Tang, R. Belmont
+
 // K051960
 
 #include "tiles_generic.h"
@@ -11,9 +14,12 @@ static UINT8 *K051960Ram = NULL;
 static UINT8 K051960SpriteRomBank[3];
 INT32 K051960ReadRoms;
 static INT32 K051960RomOffset;
-static UINT32 K051960RomMask;
 static UINT8 *K051960Rom;
+static UINT32 K051960RomMask;
+static UINT8 *K051960RomExp;
+static UINT32 K051960RomExpMask;
 static UINT8 blank_tile[0x100];
+static INT32 nBpp = 0;
 
 static INT32 nSpriteXOffset;
 static INT32 nSpriteYOffset;
@@ -21,7 +27,7 @@ static INT32 nSpriteYOffset;
 typedef void (*K051960_Callback)(INT32 *Code, INT32 *Colour, INT32 *Priority, INT32 *Shadow);
 static K051960_Callback K051960Callback;
 
-void K051960SpritesRender(UINT8 *pSrc, INT32 Priority)
+void K051960SpritesRender(INT32 min_priority, INT32 max_priority)
 {
 #define NUM_SPRITES 128
 	INT32 Offset, PriCode;
@@ -31,7 +37,10 @@ void K051960SpritesRender(UINT8 *pSrc, INT32 Priority)
 
 	for (Offset = 0; Offset < 0x400; Offset += 8) {
 		if (K051960Ram[Offset] & 0x80) {
-			SortedList[K051960Ram[Offset] & 0x7f] = Offset;
+			if (max_priority == -1) /* draw front to back when using priority buffer */
+				SortedList[(K051960Ram[Offset] & 0x7f) ^ 0x7f] = Offset;
+			else
+				SortedList[K051960Ram[Offset] & 0x7f] = Offset;
 		}
 	}
 
@@ -52,9 +61,13 @@ void K051960SpritesRender(UINT8 *pSrc, INT32 Priority)
 		Shadow = Colour & 0x80;
 		K051960Callback(&Code, &Colour, &Pri, &Shadow);
 
-		if (Priority != -1) {
-			if (Pri != Priority) continue; // not the best way to go about this...
-		}
+		if (max_priority != -1)
+			if (Pri < min_priority || Pri > max_priority)
+				continue;
+
+		if (Pri == 1 && (nSpriteEnable & 2) == 0) continue;
+		if (Pri == 2 && (nSpriteEnable & 4) == 0) continue;
+		if (Pri == 3 && (nSpriteEnable & 8) == 0) continue;
 
 		Size = (K051960Ram[Offset + 1] & 0xe0) >> 5;
 		w = Width[Size];
@@ -89,26 +102,24 @@ void K051960SpritesRender(UINT8 *pSrc, INT32 Priority)
 					INT32 c = Code;
 
 					sx = ox + 16 * x;
-					if (xFlip) c += xOffset[(w - 1 - x)];
+					if (xFlip) c += xOffset[(w - 1 - x) & 7];
 					else c += xOffset[x];
-					if (yFlip) c += yOffset[(h - 1 - y)];
+					if (yFlip) c += yOffset[(h - 1 - y) & 7];
 					else c += yOffset[y];
 					
 					sx &= 0x1ff;
 					sx -= 104;
 					sx -= nSpriteXOffset;
-					
-					if (xFlip) {
-						if (yFlip) {
-							Render16x16Tile_Mask_FlipXY_Clip(pTransDraw, c, sx, sy, Colour, 4, 0, 0, pSrc);
-						} else {
-							Render16x16Tile_Mask_FlipX_Clip(pTransDraw, c, sx, sy, Colour, 4, 0, 0, pSrc);
-						}
+
+					c &= K051960RomExpMask;
+
+					if (Shadow) {
+						konami_render_zoom_shadow_tile(K051960RomExp, c, nBpp, Colour, sx, sy, xFlip, yFlip, 16, 16, 0x10000, 0x10000, (max_priority ==-1) ? Pri:0xffffffff, 0);
 					} else {
-						if (yFlip) {
-							Render16x16Tile_Mask_FlipY_Clip(pTransDraw, c, sx, sy, Colour, 4, 0, 0, pSrc);
+						if (max_priority == -1) {
+							konami_draw_16x16_prio_tile(K051960RomExp, c, nBpp, Colour, sx, sy, xFlip, yFlip, Pri);
 						} else {
-							Render16x16Tile_Mask_Clip(pTransDraw, c, sx, sy, Colour, 4, 0, 0, pSrc);
+							konami_draw_16x16_tile(K051960RomExp, c, nBpp, Colour, sx, sy, xFlip, yFlip);
 						}
 					}
 				}
@@ -127,16 +138,26 @@ void K051960SpritesRender(UINT8 *pSrc, INT32 Priority)
 
 					sx = ox + ((xZoom * x + (1 << 11)) >> 12);
 					zw = (ox + ((xZoom * (x + 1) + (1 << 11)) >> 12)) - sx;
-					if (xFlip) c += xOffset[(w - 1 - x)];
+					if (xFlip) c += xOffset[(w - 1 - x) & 7];
 					else c += xOffset[x];
-					if (yFlip) c += yOffset[(h - 1 - y)];
+					if (yFlip) c += yOffset[(h - 1 - y) & 7];
 					else c += yOffset[y];
-					
+
 					sx &= 0x1ff;
 					sx -= 104;
 					sx -= nSpriteXOffset;
 
-					RenderZoomedTile(pTransDraw, pSrc, c, Colour << 4 /*assume 4 bpp*/, 0, sx, sy, xFlip, yFlip, 16, 16, zw << 12, zh << 12);
+					c &= K051960RomExpMask;
+
+					if (Shadow) {
+						konami_render_zoom_shadow_tile(K051960RomExp, c, nBpp, Colour, sx, sy, xFlip, yFlip, 16, 16, zw << 12, zh << 12, (max_priority ==-1) ? Pri:0xffffffff, 0);
+					} else {
+						if (max_priority == -1) {
+							konami_draw_16x16_priozoom_tile(K051960RomExp, c, nBpp, Colour, 0, sx, sy, xFlip, yFlip, 16, 16, zw << 12, zh << 12, Pri);
+						} else {
+							konami_draw_16x16_zoom_tile(K051960RomExp, c, nBpp, Colour, 0, sx, sy, xFlip, yFlip, 16, 16, zw << 12, zh << 12);
+						}
+					}
 				}
 			}
 		}		
@@ -176,6 +197,31 @@ void K051960Write(UINT32 Offset, UINT8 Data)
 	K051960Ram[Offset] = Data;
 }
 
+
+UINT8 K052109_051960_r(INT32 offset)
+{
+	if (K052109RMRDLine == 0)
+	{
+		if (offset >= 0x3800 && offset < 0x3808)
+			return K051937Read(offset - 0x3800);
+		else if (offset < 0x3c00)
+			return K052109Read(offset);
+		else
+			return K051960Read(offset - 0x3c00);
+	}
+	else return K052109Read(offset);
+}
+
+void K052109_051960_w(INT32 offset, INT32 data)
+{
+	if (offset >= 0x3800 && offset < 0x3808)
+		K051937Write(offset - 0x3800,data);
+	else if (offset < 0x3c00)
+		K052109Write(offset,         data);
+	else
+		K051960Write(offset - 0x3c00,data);
+}
+
 void K051960SetCallback(void (*Callback)(INT32 *Code, INT32 *Colour, INT32 *Priority, INT32 *Shadow))
 {
 	K051960Callback = Callback;
@@ -198,21 +244,41 @@ void K051960Reset()
 	K051960_spriteflip = 0;
 }
 
-void K051960Init(UINT8* pRomSrc, UINT32 RomMask)
+void K051960GfxDecode(UINT8 *src, UINT8 *dst, INT32 len)
+{
+	INT32 Plane[4]  = { STEP4(0, 8) };
+	INT32 XOffs[16] = { STEP8(0, 1), STEP8(256, 1) };
+	INT32 YOffs[16] = { STEP8(0,32), STEP8(512,32) };
+
+	GfxDecode(len >> 7, 4, 16, 16, Plane, XOffs, YOffs, 0x400, src, dst);
+}
+
+void K051960Init(UINT8* pRomSrc, UINT8* pRomSrcExp, UINT32 RomMask)
 {
 	nSpriteXOffset = nSpriteYOffset = 0;
 
 	K051960Ram = (UINT8*)BurnMalloc(0x400);
 	
 	K051960RomMask = RomMask;
+	K051960RomExpMask = (RomMask * 2) / (16 * 16);
 	
 	K051960Rom = pRomSrc;
+	K051960RomExp = pRomSrcExp;
 	
 	KonamiIC_K051960InUse = 1;
 
 	memset (blank_tile, 0, 0x100);
 
 	nSpriteXOffset = nSpriteYOffset = 0;
+
+	KonamiAllocateBitmaps();
+
+	nBpp = 4;
+}
+
+void K051960SetBpp(INT32 bpp)
+{
+	nBpp = bpp;
 }
 
 void K051960Exit()
@@ -222,7 +288,8 @@ void K051960Exit()
 	K051960Callback = NULL;
 	K051960RomMask = 0;
 	K051960Rom = NULL;
-	
+	K051960RomExpMask = 0;
+	K051960RomExp = NULL;
 	memset(K051960SpriteRomBank, 0, 3);
 	K051960ReadRoms = 0;
 	K051960RomOffset = 0;

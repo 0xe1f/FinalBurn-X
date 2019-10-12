@@ -45,7 +45,7 @@ static UINT8 DrvJoy2[8];
 static UINT8 DrvJoy3[8];
 static UINT8 DrvDips[3];
 static UINT8 DrvReset;
-static UINT16 DrvInputs[3];
+static UINT8 DrvInputs[3];
 
 static struct BurnInputInfo AngelkdsInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 coin"	},
@@ -404,21 +404,7 @@ static INT32 DrvDoReset()
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 MemIndex()
@@ -700,7 +686,7 @@ static INT32 DrvInit(INT32 game)
 	ZetSetInHandler(main_to_sound_in_port);
 	ZetClose();
 
-	BurnYM2203Init(2, 4000000, &DrvFMIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(2, 4000000, &DrvFMIRQHandler, 0);
 	BurnTimerAttachZet(4000000);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.45, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.65, BURN_SND_ROUTE_BOTH);
@@ -867,7 +853,7 @@ static INT32 DrvFrame()
 
 		ZetOpen(0);
 		nCyclesDone[0] += ZetRun(nSegment);
-		if (i == (nInterleave - 1)) ZetRaiseIrq(0);
+		if (i == (nInterleave - 1)) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		ZetClose();
 
 		ZetOpen(1);
@@ -937,36 +923,36 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // Angel Kids (Japan)
 
 static struct BurnRomInfo angelkdsRomDesc[] = {
-	{ "11428.c10",		0x8000, 0x90daacd2, 1 | BRF_PRG | BRF_ESS }, //  0 Z80 #0 Code
-	{ "11424.c1",		0x8000, 0xb55997f6, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "11425.c2",		0x8000, 0x299359de, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "11426.c3",		0x8000, 0x5fad8bd3, 1 | BRF_PRG | BRF_ESS }, //  3
-	{ "11427.c4",		0x8000, 0xef920c74, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "epr-11428.c10",	0x8000, 0x90daacd2, 1 | BRF_PRG | BRF_ESS }, //  0 Z80 #0 Code
+	{ "epr-11424.c1",	0x8000, 0xb55997f6, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "epr-11425.c2",	0x8000, 0x299359de, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "epr-11426.c3",	0x8000, 0x5fad8bd3, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "epr-11427.c4",	0x8000, 0xef920c74, 1 | BRF_PRG | BRF_ESS }, //  4
 
-	{ "11429.d4",		0x8000, 0x0ca50a66, 2 | BRF_PRG | BRF_ESS }, //  5 Z80 #1 Code
+	{ "epr-11429.d4",	0x8000, 0x0ca50a66, 2 | BRF_PRG | BRF_ESS }, //  5 Z80 #1 Code
 
-	{ "11446",		0x8000, 0x45052470, 3 | BRF_GRA },           //  6 Text Tiles
+	{ "epr-11446",		0x8000, 0x45052470, 3 | BRF_GRA },           //  6 Text Tiles
 
-	{ "11448.h7",		0x8000, 0x05dab626, 4 | BRF_GRA },           //  7 Sprites
-	{ "11447.f7",		0x8000, 0xb3afc5b3, 4 | BRF_GRA },           //  8
+	{ "epr-11448.h7",	0x8000, 0x05dab626, 4 | BRF_GRA },           //  7 Sprites
+	{ "epr-11447.f7",	0x8000, 0xb3afc5b3, 4 | BRF_GRA },           //  8
 
-	{ "11437",		0x8000, 0xa520b628, 5 | BRF_GRA },           //  9 Background (Top) Tiles
-	{ "11436",		0x8000, 0x469ab216, 5 | BRF_GRA },           // 10
-	{ "11435",		0x8000, 0xb0f8c245, 5 | BRF_GRA },           // 11
-	{ "11434",		0x8000, 0xcbde81f5, 5 | BRF_GRA },           // 12
-	{ "11433",		0x8000, 0xb63fa414, 5 | BRF_GRA },           // 13
-	{ "11432",		0x8000, 0x00dc747b, 5 | BRF_GRA },           // 14
-	{ "11431",		0x8000, 0xac2025af, 5 | BRF_GRA },           // 15
-	{ "11430",		0x8000, 0xd640f89e, 5 | BRF_GRA },           // 16
+	{ "epr-11437",		0x8000, 0xa520b628, 5 | BRF_GRA },           //  9 Background (Top) Tiles
+	{ "epr-11436",		0x8000, 0x469ab216, 5 | BRF_GRA },           // 10
+	{ "epr-11435",		0x8000, 0xb0f8c245, 5 | BRF_GRA },           // 11
+	{ "epr-11434",		0x8000, 0xcbde81f5, 5 | BRF_GRA },           // 12
+	{ "epr-11433",		0x8000, 0xb63fa414, 5 | BRF_GRA },           // 13
+	{ "epr-11432",		0x8000, 0x00dc747b, 5 | BRF_GRA },           // 14
+	{ "epr-11431",		0x8000, 0xac2025af, 5 | BRF_GRA },           // 15
+	{ "epr-11430",		0x8000, 0xd640f89e, 5 | BRF_GRA },           // 16
 
-	{ "11445",		0x8000, 0xa520b628, 6 | BRF_GRA },           // 17 Background (Bottom) Tiles
-	{ "11444",		0x8000, 0x469ab216, 6 | BRF_GRA },           // 18
-	{ "11443",		0x8000, 0xb0f8c245, 6 | BRF_GRA },           // 19
-	{ "11442",		0x8000, 0xcbde81f5, 6 | BRF_GRA },           // 20
-	{ "11441",		0x8000, 0xb63fa414, 6 | BRF_GRA },           // 21
-	{ "11440",		0x8000, 0x00dc747b, 6 | BRF_GRA },           // 22
-	{ "11439",		0x8000, 0xac2025af, 6 | BRF_GRA },           // 23
-	{ "11438",		0x8000, 0xd640f89e, 6 | BRF_GRA },           // 24
+	{ "epr-11445",		0x8000, 0xa520b628, 6 | BRF_GRA },           // 17 Background (Bottom) Tiles
+	{ "epr-11444",		0x8000, 0x469ab216, 6 | BRF_GRA },           // 18
+	{ "epr-11443",		0x8000, 0xb0f8c245, 6 | BRF_GRA },           // 19
+	{ "epr-11442",		0x8000, 0xcbde81f5, 6 | BRF_GRA },           // 20
+	{ "epr-11441",		0x8000, 0xb63fa414, 6 | BRF_GRA },           // 21
+	{ "epr-11440",		0x8000, 0x00dc747b, 6 | BRF_GRA },           // 22
+	{ "epr-11439",		0x8000, 0xac2025af, 6 | BRF_GRA },           // 23
+	{ "epr-11438",		0x8000, 0xd640f89e, 6 | BRF_GRA },           // 24
 
 	{ "63s081n.u5",		0x0020, 0x36b98627, 7 | BRF_OPT },           // 25 PROM
 };
@@ -983,8 +969,8 @@ struct BurnDriver BurnDrvAngelkds = {
 	"angelkds", NULL, NULL, NULL, "1988",
 	"Angel Kids (Japan)\0", NULL, "Sega / Nasco?", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_SEGA_MISC, GBF_MISC, 0,
-	NULL, angelkdsRomInfo, angelkdsRomName, NULL, NULL, AngelkdsInputInfo, AngelkdsDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_SEGA_MISC, GBF_BREAKOUT, 0,
+	NULL, angelkdsRomInfo, angelkdsRomName, NULL, NULL, NULL, NULL, AngelkdsInputInfo, AngelkdsDIPInfo,
 	angelkdsInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x100,
 	240, 256, 3, 4
 };
@@ -993,27 +979,27 @@ struct BurnDriver BurnDrvAngelkds = {
 // Space Position (Japan)
 
 static struct BurnRomInfo spcpostnRomDesc[] = {
-	{ "epr10125.c10",	0x8000, 0xbffd38c6, 1 | BRF_PRG | BRF_ESS }, //  0 Z80 #0 Code
-	{ "epr10120.c1",	0x8000, 0xd6399f99, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "epr10121.c2",	0x8000, 0xd4861560, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "epr10122.c3",	0x8000, 0x7a1bff1b, 1 | BRF_PRG | BRF_ESS }, //  3
-	{ "epr10123.c4",	0x8000, 0x6aed2925, 1 | BRF_PRG | BRF_ESS }, //  4
-	{ "epr10124.c5",	0x8000, 0xa1d7ae6b, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "epr-10125.c10",	0x8000, 0xbffd38c6, 1 | BRF_PRG | BRF_ESS }, //  0 Z80 #0 Code
+	{ "epr-10120.c1",	0x8000, 0xd6399f99, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "epr-10121.c2",	0x8000, 0xd4861560, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "epr-10122.c3",	0x8000, 0x7a1bff1b, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "epr-10123.c4",	0x8000, 0x6aed2925, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "epr-10124.c5",	0x8000, 0xa1d7ae6b, 1 | BRF_PRG | BRF_ESS }, //  5
 
-	{ "epr10126.d4",	0x8000, 0xab17f852, 2 | BRF_PRG | BRF_ESS }, //  6 Z80 #1 Code
+	{ "epr-10126.d4",	0x8000, 0xab17f852, 2 | BRF_PRG | BRF_ESS }, //  6 Z80 #1 Code
 
-	{ "epr10133.17",	0x8000, 0x642e6609, 3 | BRF_GRA },           //  7 Text Tiles
+	{ "epr-10133.17",	0x8000, 0x642e6609, 3 | BRF_GRA },           //  7 Text Tiles
 
-	{ "epr10135.19",	0x8000, 0x0685c4fa, 4 | BRF_GRA },           //  8 Sprites
-	{ "epr10134.18",	0x8000, 0xc674ff88, 4 | BRF_GRA },           //  9
+	{ "epr-10135.19",	0x8000, 0x0685c4fa, 4 | BRF_GRA },           //  8 Sprites
+	{ "epr-10134.18",	0x8000, 0xc674ff88, 4 | BRF_GRA },           //  9
 
-	{ "epr10132.16",	0x8000, 0x2df8b1bd, 5 | BRF_GRA },           // 10 Background (Top) Tiles
-	{ "epr10131.15",	0x8000, 0xde223817, 5 | BRF_GRA },           // 11
-	{ "epr10130.14",	0x8000, 0xb68fcb36, 5 | BRF_GRA },           // 12
+	{ "epr-10132.16",	0x8000, 0x2df8b1bd, 5 | BRF_GRA },           // 10 Background (Top) Tiles
+	{ "epr-10131.15",	0x8000, 0xde223817, 5 | BRF_GRA },           // 11
+	{ "epr-10130.14",	0x8000, 0xb68fcb36, 5 | BRF_GRA },           // 12
 
-	{ "epr10129.08",	0x8000, 0xa6f21023, 6 | BRF_GRA },           // 13 Background (Bottom) Tiles
-	{ "epr10128.07",	0x8000, 0xde223817, 6 | BRF_GRA },           // 14
-	{ "epr10127.06",	0x8000, 0xb68fcb36, 6 | BRF_GRA },           // 15
+	{ "epr-10129.08",	0x8000, 0xa6f21023, 6 | BRF_GRA },           // 13 Background (Bottom) Tiles
+	{ "epr-10128.07",	0x8000, 0xde223817, 6 | BRF_GRA },           // 14
+	{ "epr-10127.06",	0x8000, 0xb68fcb36, 6 | BRF_GRA },           // 15
 
 	{ "63s081n.u5",		0x0020, 0x36b98627, 0 | BRF_OPT },           // 16 PROM
 };
@@ -1031,7 +1017,7 @@ struct BurnDriver BurnDrvSpcpostn = {
 	"Space Position (Japan)\0", NULL, "Sega / Nasco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_SEGA_MISC, GBF_RACING, 0,
-	NULL, spcpostnRomInfo, spcpostnRomName, NULL, NULL, SpcpostnInputInfo, SpcpostnDIPInfo,
+	NULL, spcpostnRomInfo, spcpostnRomName, NULL, NULL, NULL, NULL, SpcpostnInputInfo, SpcpostnDIPInfo,
 	spcpostnInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x100,
 	240, 256, 3, 4
 };

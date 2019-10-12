@@ -38,7 +38,7 @@ static UINT16 DrvInputs[3];
 static UINT8 DrvReset;
 
 static UINT32 *priority;
-static INT32 nPreviousDip;
+static INT32 single_screen = 0;
 
 static struct BurnInputInfo BackfireInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
@@ -69,6 +69,7 @@ static struct BurnInputInfo BackfireInputList[] = {
 
 	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
 	{"Service",		BIT_DIGITAL,	DrvJoy3 + 2,	"service"	},
+	{"Service Mode",		BIT_DIGITAL,	DrvJoy3 + 3,	"diag"	},
 	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 };
 
@@ -76,20 +77,16 @@ STDINPUTINFO(Backfire)
 
 static struct BurnDIPInfo BackfireDIPList[]=
 {
-	{0x1a, 0xff, 0xff, 0x08, NULL			},
+	{0x1b, 0xff, 0xff, 0x00, NULL			},
 
-	{0   , 0xfe, 0   ,    2, "Service Mode"		},
-	{0x1a, 0x01, 0x08, 0x08, "Off"			},
-	{0x1a, 0x01, 0x08, 0x00, "On"			},
-
-	{0   , 0xfe, 0   ,    2, "Single Screen (Hack)"	},
-	{0x1a, 0x01, 0x80, 0x00, "Off"			},
-	{0x1a, 0x01, 0x80, 0x80, "On"			},
+	{0   , 0xfe, 0   ,    2, "Screen Width"		},
+	{0x1b, 0x01, 0x01, 0x00, "Single"			},
+	{0x1b, 0x01, 0x01, 0x01, "Double"			},
 };
 
 STDDIPINFO(Backfire)
 
-void backfire_write_byte(UINT32 address, UINT8 data)
+static void backfire_write_byte(UINT32 address, UINT8 data)
 {
 	Write16Byte(((UINT8*)deco16_pf_control[0]),	0x100000, 0x10001f) // 16-bit
 	Write16Byte(deco16_pf_ram[0],		0x110000, 0x111fff) // 16-bit
@@ -114,7 +111,7 @@ void backfire_write_byte(UINT32 address, UINT8 data)
 	}
 }
 
-void backfire_write_long(UINT32 address, UINT32 data)
+static void backfire_write_long(UINT32 address, UINT32 data)
 {
 	Write16Long(((UINT8*)deco16_pf_control[0]),	0x100000, 0x10001f) // 16-bit
 	Write16Long(deco16_pf_ram[0],		0x110000, 0x111fff) // 16-bit
@@ -151,7 +148,7 @@ void backfire_write_long(UINT32 address, UINT32 data)
 	}
 }
 
-UINT8 backfire_read_byte(UINT32 address)
+static UINT8 backfire_read_byte(UINT32 address)
 {
 	Read16Byte(((UINT8*)deco16_pf_control[0]),	0x100000, 0x10001f) // 16-bit
 	Read16Byte(deco16_pf_ram[0],		0x110000, 0x111fff) // 16-bit
@@ -177,7 +174,7 @@ UINT8 backfire_read_byte(UINT32 address)
 	return 0;
 }
 
-UINT32 backfire_read_long(UINT32 address)
+static UINT32 backfire_read_long(UINT32 address)
 {
 	Read16Long(((UINT8*)deco16_pf_control[0]),	0x100000, 0x10001f) // 16-bit
 	Read16Long(deco16_pf_ram[0],		0x110000, 0x111fff) // 16-bit
@@ -260,6 +257,24 @@ static INT32 MemIndex()
 	return 0;
 }
 
+static void backfire_check_eeprominit()
+{
+	// eeprom settings: defaults & set to single screen mode
+	UINT8 BackfireNV[0x80] = {
+		0x49,0x46,0x45,0x52,0xb0,0x60,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x07,0x9d,
+		0x0f,0x1a,0x24,0x15,0x00,0x00,0x22,0x71,0x01,0x05,0x14,0x13,0x00,0x00,0x23,0x32,
+		0x04,0x01,0x10,0x01,0x00,0x00,0x22,0x43,0x09,0x0d,0x13,0x14,0x00,0x00,0x20,0x54,
+		0x01,0x04,0x01,0x14,0x00,0x00,0x24,0x25,0x09,0x17,0x0c,0x0c,0x00,0x00,0x22,0x76,
+		0x0f,0x1a,0x24,0x15,0x00,0x00,0x03,0x60,0x01,0x05,0x14,0x13,0x00,0x00,0x11,0x60,
+		0x04,0x01,0x10,0x01,0x00,0x00,0x11,0x20,0x09,0x0d,0x13,0x14,0x00,0x00,0x20,0x54,
+		0x01,0x04,0x01,0x14,0x00,0x00,0x05,0x50,0x09,0x17,0x0c,0x0c,0x00,0x00,0x11,0x30,
+		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+	};
+
+	if (!EEPROMAvailable())
+		EEPROMFill(BackfireNV, 0, 128);
+}
+
 static INT32 DrvDoReset()
 {
 	memset (AllRam, 0, RamEnd - AllRam);
@@ -272,6 +287,8 @@ static INT32 DrvDoReset()
 
 	EEPROMReset();
 
+	backfire_check_eeprominit();
+
 	deco16Reset();
 
 	return 0;
@@ -283,24 +300,6 @@ static INT32 backfire_bank_callback( INT32 bank )
 	bank = (bank & 1) | ((bank & 4) >> 1) | ((bank & 2) << 1);
 
 	return bank * 0x1000;
-}
-
-static void sprite_decode(UINT8 *gfx, INT32 len)
-{
-	INT32 Plane[4] = { 16, 0, 24, 8 };
-	INT32 XOffs[16] = { 512,513,514,515,516,517,518,519, 0, 1, 2, 3, 4, 5, 6, 7 };
-	INT32 YOffs[16] = { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32,  8*32, 9*32,10*32,11*32,12*32,13*32,14*32,15*32};
-
-	UINT8 *tmp = (UINT8*)BurnMalloc(len);
-	if (tmp == NULL) {
-		return;
-	}
-
-	memcpy (tmp, gfx, len);
-
-	GfxDecode((len * 2) / 0x100, 4, 16, 16, Plane, XOffs, YOffs, 0x400, tmp, gfx);
-
-	BurnFree (tmp);
 }
 
 static void decode_samples()
@@ -319,7 +318,6 @@ static void decode_samples()
 static void pCommonSpeedhackCallback()
 {
 	ArmIdleCycles(1120);
-	//bprintf (0, _T("idle skip triggered!\n"));
 }
 
 static INT32 DrvInit(UINT32 speedhack)
@@ -349,11 +347,11 @@ static INT32 DrvInit(UINT32 speedhack)
 
 		if (BurnLoadRom(DrvGfxROM2 + 0x000000,  4, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM3 + 0x000001,  5, 2)) return 1;
-		if (BurnLoadRom(DrvGfxROM3 + 0x000000,  6, 2)) return 1;
+		if (BurnLoadRom(DrvGfxROM3 + 0x000000,  5, 2)) return 1;
+		if (BurnLoadRom(DrvGfxROM3 + 0x000001,  6, 2)) return 1;
 
-	//	if (BurnLoadRom(DrvGfxROM4 + 0x000001,  7, 2)) return 1;
-	//	if (BurnLoadRom(DrvGfxROM4 + 0x000000,  8, 2)) return 1;
+	//	if (BurnLoadRom(DrvGfxROM4 + 0x000000,  7, 2)) return 1;
+	//	if (BurnLoadRom(DrvGfxROM4 + 0x000001,  8, 2)) return 1;
 
 		memset (DrvSndROM, 0xff, 0x400000);
 		if (BurnLoadRom(DrvSndROM  + 0x000000,  9, 1)) return 1;
@@ -368,19 +366,19 @@ static INT32 DrvInit(UINT32 speedhack)
 		deco16_tile_decode(DrvGfxROM0, DrvGfxROM0, 0x400000, 1);
 		deco16_tile_decode(DrvGfxROM2, DrvGfxROM2, 0x100000, 0);
 
-		sprite_decode(DrvGfxROM3, 0x400000);
-	//	sprite_decode(DrvGfxROM4, 0x400000);
+		deco16_sprite_decode(DrvGfxROM3, 0x400000);
+	//	deco16_sprite_decode(DrvGfxROM4, 0x400000);
 
 		decode_samples();
 	}
 
-	ArmInit(1);
+	ArmInit(0);
 	ArmOpen(0);
-	ArmMapMemory(DrvArmROM,		0x000000, 0x0fffff, ARM_ROM);
-	ArmMapMemory(DrvPalRAM,		0x160000, 0x161fff, ARM_RAM);
-	ArmMapMemory(DrvArmRAM,		0x170000, 0x177fff, ARM_RAM);
-	ArmMapMemory(DrvSprRAM0,	0x184000, 0x185fff, ARM_RAM);
-	ArmMapMemory(DrvSprRAM1,	0x18c000, 0x18dfff, ARM_RAM);
+	ArmMapMemory(DrvArmROM,		0x000000, 0x0fffff, MAP_ROM);
+	ArmMapMemory(DrvPalRAM,		0x160000, 0x161fff, MAP_RAM);
+	ArmMapMemory(DrvArmRAM,		0x170000, 0x177fff, MAP_RAM);
+	ArmMapMemory(DrvSprRAM0,	0x184000, 0x185fff, MAP_RAM);
+	ArmMapMemory(DrvSprRAM1,	0x18c000, 0x18dfff, MAP_RAM);
 	ArmSetWriteByteHandler(backfire_write_byte);
 	ArmSetWriteLongHandler(backfire_write_long);
 	ArmSetReadByteHandler(backfire_read_byte);
@@ -406,9 +404,28 @@ static INT32 DrvInit(UINT32 speedhack)
 	deco16_set_graphics(DrvGfxROM0, 0x800000, DrvGfxROM1, 0x800000, DrvGfxROM2, 0x200000);
 	deco16_set_global_offsets(0, 8);
 
-	GenericTilesInit();
+	if (DrvDips[0] & 1) { // double
+		//bprintf(0, _T("Double screen.\n"));
+		BurnDrvSetVisibleSize(640, 240);
+		BurnDrvSetAspect(8, 3);
+		Reinitialise();
+		GenericTilesInit(); // create pTransDraw w/ new size
+		DrvTmpBitmap0 = DrvTmpBitmap_p;
 
-	nPreviousDip = DrvDips[0] & 0x80;
+		YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
+		YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
+	} else {
+		//bprintf(0, _T("Single screen.\n"));
+		single_screen = 1;
+		BurnDrvSetVisibleSize(320, 240);
+		BurnDrvSetAspect(4, 3);
+		Reinitialise();
+		GenericTilesInit(); // create pTransDraw w/ new size
+		DrvTmpBitmap0 = pTransDraw;
+
+		YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_BOTH);
+		YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_BOTH);
+	}
 
 	DrvDoReset();
 
@@ -429,6 +446,8 @@ static INT32 DrvExit()
 	deco16Exit();
 
 	BurnFree (AllMem);
+
+	single_screen = 0;
 
 	return 0;
 }
@@ -522,25 +541,12 @@ static void draw_sprites(UINT16 *dest, UINT8 *ram, UINT8 *gfx, INT32 coloff)
 
 static INT32 DrvDraw()
 {
-	if ((DrvDips[0] & 0x80) && nPreviousDip == 0) { // single screen
-		DrvTmpBitmap0 = pTransDraw;
-		BurnDrvSetVisibleSize(320, 240);
-		BurnDrvSetAspect(4, 3);
-		Reinitialise();
-	} else if (!(DrvDips[0] & 0x80) && nPreviousDip == 0x80) { // two screens
-		DrvTmpBitmap0 = DrvTmpBitmap_p;
-		BurnDrvSetVisibleSize(640, 240);
-		BurnDrvSetAspect(8, 3);
-		Reinitialise();
-	}
-	nPreviousDip = DrvDips[0] & 0x80;
-
 	simpl156_palette_recalc();
 
 	deco16_pf12_update();
 	deco16_pf34_update();
 
-	if (nPreviousDip == 0) nScreenWidth = 320;
+	nScreenWidth = 320;
 
 	// left
 	{
@@ -562,7 +568,8 @@ static INT32 DrvDraw()
 	}
 
 	// right
-	if (nPreviousDip == 0) {
+	if (!single_screen)
+	{
 		for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
 			DrvTmpBitmap1[i] = 0x500;
 		}
@@ -621,9 +628,7 @@ static INT32 DrvFrame()
 			DrvInputs[2] ^= (DrvJoy3[i] & 1) << i;
 		}
 
-		DrvInputs[2] |= DrvDips[0] & 0x0008;
-
-		if (DrvDips[0] & 0x80) DrvInputs[1] |= 0x80;
+		DrvInputs[2] = (DrvInputs[2] & ~0x8) | ((DrvJoy3[3]^1) << 3);
 	}
 
 	INT32 nTotalCycles = 28000000 / 60;
@@ -631,7 +636,7 @@ static INT32 DrvFrame()
 	ArmOpen(0);
 	deco16_vblank = 0x10;
 	ArmRun(nTotalCycles - 2240);
-	ArmSetIRQLine(ARM_IRQ_LINE, ARM_HOLD_LINE);
+	ArmSetIRQLine(ARM_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 	deco16_vblank = 0x00;
 	ArmRun(2240);
 	ArmClose();
@@ -664,9 +669,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_DRIVER_DATA) {
-		ArmScan(nAction, pnMin);
+		ArmScan(nAction);
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		deco16Scan();
 	}
@@ -713,7 +718,7 @@ struct BurnDriver BurnDrvBackfire = {
 	"Backfire! (set 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_RACING, 0,
-	NULL, backfireRomInfo, backfireRomName, NULL, NULL, BackfireInputInfo, BackfireDIPInfo,
+	NULL, backfireRomInfo, backfireRomName, NULL, NULL, NULL, NULL, BackfireInputInfo, BackfireDIPInfo,
 	backfireInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	640, 240, 8, 3
 };
@@ -753,7 +758,7 @@ struct BurnDriverD BurnDrvBackfirea = {
 	"Backfire! (set 2)\0", "Set inputs to \"Joystick\" in test mode", "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_RACING, 0,
-	NULL, backfireaRomInfo, backfireaRomName, NULL, NULL, BackfireInputInfo, BackfireDIPInfo,
+	NULL, backfireaRomInfo, backfireaRomName, NULL, NULL, NULL, NULL, BackfireInputInfo, BackfireDIPInfo,
 	backfireaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	640, 240, 8, 3
 };

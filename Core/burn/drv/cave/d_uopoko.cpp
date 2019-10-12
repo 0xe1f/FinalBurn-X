@@ -62,7 +62,7 @@ STDINPUTINFO(uopoko)
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall uopokoReadByte(UINT32 sekAddress)
@@ -441,7 +441,7 @@ static INT32 LoadRoms()
 
 	// Load YMZ280B data
 	BurnLoadRom(YMZ280BROM, 4, 1);
-	
+
 	BurnLoadRom(DefaultEEPROM, 5, 1);
 
 	return 0;
@@ -468,7 +468,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -512,13 +512,13 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,					0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],		0x500000, 0x507FFF, SM_RAM);
+		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,					0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],		0x500000, 0x507FFF, MAP_RAM);
 
-		SekMapMemory(CavePalSrc,			0x800000, 0x80FFFF, SM_ROM);	// Palette RAM (write goes through handler)
-		SekMapHandler(1,					0x800000, 0x80FFFF, SM_WRITE);	//
+		SekMapMemory(CavePalSrc,			0x800000, 0x80FFFF, MAP_ROM);	// Palette RAM (write goes through handler)
+		SekMapHandler(1,					0x800000, 0x80FFFF, MAP_WRITE);	//
 
 		SekSetReadWordHandler(0, uopokoReadWord);
 		SekSetReadByteHandler(0, uopokoReadByte);
@@ -538,7 +538,7 @@ static INT32 DrvInit()
 	CaveSpriteInit(1, 0x800000);
 	CaveTileInitLayer(0, 0x400000, 8, 0x4000);
 
-	YMZ280BInit(16934400, &TriggerSoundIRQ);
+	YMZ280BInit(16934400, &TriggerSoundIRQ, 0x200000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
@@ -554,13 +554,13 @@ static struct BurnRomInfo uopokoRomDesc[] = {
 	{ "u26.int",      0x080000, 0xb445c9ac, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "u25.int",      0x080000, 0xa1258482, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u33.bin",      0x400000, 0x5D142Ad2, BRF_GRA },			 //  2 Sprite data
+	{ "cave_cv-02_u33.u33", 	0x400000, 0x5d142ad2, BRF_GRA }, //  2 Sprite data
 
-	{ "u49.bin",      0x400000, 0x12FB11BB, BRF_GRA },			 //  3 Layer 0 Tile data
+	{ "cave_cv-02_u49.u49",     0x400000, 0x12fb11bb, BRF_GRA }, //  3 Layer 0 Tile data
 
-	{ "u4.bin",       0x200000, 0xA2D0D755, BRF_SND },			 //  4 YMZ280B (AD)PCM data
+	{ "cave_cv-02_u4.u4",       0x200000, 0xa2d0d755, BRF_SND }, //  4 YMZ280B (AD)PCM data
 	
-	{ "eeprom-uopoko.bin", 0x0080, 0xf4a24b95, BRF_ESS | BRF_PRG },
+	{ "eeprom-uopoko.bin", 		0x0080, 0xf4a24b95, BRF_ESS | BRF_PRG },
 };
 
 
@@ -571,13 +571,13 @@ static struct BurnRomInfo uopokojRomDesc[] = {
 	{ "u26.bin",      0x080000, 0xE7EEC050, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "u25.bin",      0x080000, 0x68CB6211, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u33.bin",      0x400000, 0x5D142Ad2, BRF_GRA },			 //  2 Sprite data
+	{ "cave_cv-02_u33.u33", 	0x400000, 0x5d142ad2, BRF_GRA }, //  2 Sprite data
 
-	{ "u49.bin",      0x400000, 0x12FB11BB, BRF_GRA },			 //  3 Layer 0 Tile data
+	{ "cave_cv-02_u49.u49",     0x400000, 0x12fb11bb, BRF_GRA }, //  3 Layer 0 Tile data
 
-	{ "u4.bin",       0x200000, 0xA2D0D755, BRF_SND },			 //  4 YMZ280B (AD)PCM data
+	{ "cave_cv-02_u4.u4",       0x200000, 0xa2d0d755, BRF_SND }, //  4 YMZ280B (AD)PCM data
 	
-	{ "eeprom-uopoko.bin", 0x0080, 0xf4a24b95, BRF_ESS | BRF_PRG },
+	{ "eeprom-uopoko.bin", 		0x0080, 0xf4a24b95, BRF_ESS | BRF_PRG },
 };
 
 
@@ -589,7 +589,7 @@ struct BurnDriver BurnDrvUoPoko = {
 	"Puzzle Uo Poko (International, ver. 98/02/06)\0", NULL, "Cave / Jaleco", "Cave",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_PUZZLE, 0,
-	NULL, uopokoRomInfo, uopokoRomName, NULL, NULL, uopokoInputInfo, NULL,
+	NULL, uopokoRomInfo, uopokoRomName, NULL, NULL, NULL, NULL, uopokoInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 240, 4, 3
 };
@@ -599,7 +599,7 @@ struct BurnDriver BurnDrvUoPokoj = {
 	"Puzzle Uo Poko (Japan, ver. 98/02/06)\0", NULL, "Cave / Jaleco", "Cave",
 	L"\u30D1\u30BA\u30EB \u9B5A\u30DD\u30B3 \u3046\u304A\u307D\u3053 (Japan, ver. 98/02/06)\0Puzzle Uo Poko\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_PUZZLE, 0,
-	NULL, uopokojRomInfo, uopokojRomName, NULL, NULL, uopokoInputInfo, NULL,
+	NULL, uopokojRomInfo, uopokojRomName, NULL, NULL, NULL, NULL, uopokoInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 240, 4, 3
 };

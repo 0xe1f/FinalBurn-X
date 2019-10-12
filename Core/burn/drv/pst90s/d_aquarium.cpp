@@ -202,7 +202,7 @@ void __fastcall aquarium_sound_out(UINT16 port, UINT8 data)
 		return;
 
 		case 0x02:
-			MSM6295Command(0, BITSWAP08(data, 0, 1, 2, 3, 4, 5, 6, 7));
+			MSM6295Write(0, BITSWAP08(data, 0, 1, 2, 3, 4, 5, 6, 7));
 		return;
 
 		case 0x06:
@@ -220,10 +220,10 @@ UINT8 __fastcall aquarium_sound_in(UINT16 port)
 	switch (port & 0xff)
 	{
 		case 0x01:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x02:
-			return BITSWAP08(MSM6295ReadStatus(0), 0, 1, 2, 3, 4, 5, 6, 7);
+			return BITSWAP08(MSM6295Read(0), 0, 1, 2, 3, 4, 5, 6, 7);
 
 		case 0x04:
 			return *soundlatch;
@@ -235,9 +235,9 @@ UINT8 __fastcall aquarium_sound_in(UINT16 port)
 void aquariumYM2151IrqHandler(INT32 Irq)
 {
 	if (Irq) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xff, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
 }
 
@@ -394,13 +394,13 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(DrvMidRAM,		0xc00000, 0xc00fff, SM_RAM);
-	SekMapMemory(DrvBakRAM,		0xc01000, 0xc01fff, SM_RAM);
-	SekMapMemory(DrvTxtRAM,		0xc02000, 0xc03fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0xc80000, 0xc81fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0xd00000, 0xd00fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(DrvMidRAM,		0xc00000, 0xc00fff, MAP_RAM);
+	SekMapMemory(DrvBakRAM,		0xc01000, 0xc01fff, MAP_RAM);
+	SekMapMemory(DrvTxtRAM,		0xc02000, 0xc03fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0xc80000, 0xc81fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0xd00000, 0xd00fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0xff0000, 0xffffff, MAP_RAM);
 	SekSetWriteByteHandler(0,	aquarium_write_byte);
 	SekSetWriteWordHandler(0,	aquarium_write_word);
 	SekSetReadByteHandler(0,	aquarium_read_byte);
@@ -681,7 +681,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		nSegment = nBurnSoundLen - nSoundBufferPos;
@@ -721,8 +721,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -735,24 +735,24 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 }
 
 
-// Aquarium (Japan)
+// Aquarium (US)
 
 static struct BurnRomInfo aquariumRomDesc[] = {
-	{ "aquar3",	0x080000, 0x344509a1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "aquar3.13h",	0x080000, 0xf197991e, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
 
-	{ "aquar5",	0x040000, 0xfa555be1, 2 | BRF_PRG | BRF_ESS }, //  1 Z80 Code
+	{ "excellent_5.10c",	0x040000, 0xfa555be1, 2 | BRF_PRG | BRF_ESS }, //  1 Z80 Code
 
-	{ "aquar1",	0x080000, 0x575df6ac, 3 | BRF_GRA },           //  2 Midground Tiles
-	{ "aquar6",	0x020000, 0x9065b146, 3 | BRF_GRA },           //  3
+	{ "excellent_1.15b",	0x080000, 0x575df6ac, 3 | BRF_GRA },           //  2 Midground Tiles
+	{ "excellent_6.15d",	0x020000, 0x9065b146, 3 | BRF_GRA },           //  3
 
-	{ "aquar2",	0x020000, 0xaa071b05, 4 | BRF_GRA },           //  6 Foreground Tiles
+	{ "excellent_2.17e",	0x020000, 0xaa071b05, 4 | BRF_GRA },           //  6 Foreground Tiles
 
-	{ "aquarf1",	0x100000, 0x14758b3c, 5 | BRF_GRA },           //  7 Sprites
+	{ "d23c8000.1f",	0x100000, 0x14758b3c, 5 | BRF_GRA },           //  7 Sprites
 
-	{ "aquar8",	0x080000, 0x915520c4, 6 | BRF_GRA },           //  4 Background Tiles
-	{ "aquar7",	0x020000, 0xb96b2b82, 6 | BRF_GRA },           //  5
+	{ "excellent_8.14g",	0x080000, 0x915520c4, 6 | BRF_GRA },           //  4 Background Tiles
+	{ "excellent_7.17g",	0x020000, 0xb96b2b82, 6 | BRF_GRA },           //  5
 
-	{ "aquar4",	0x080000, 0x9a4af531, 7 | BRF_SND },           //  8 MSM6295 Samples
+	{ "excellent_4.7d",	0x080000, 0x9a4af531, 7 | BRF_SND },           //  8 MSM6295 Samples
 };
 
 STD_ROM_PICK(aquarium)
@@ -760,10 +760,44 @@ STD_ROM_FN(aquarium)
 
 struct BurnDriver BurnDrvAquarium = {
 	"aquarium", NULL, NULL, NULL, "1996",
-	"Aquarium (Japan)\0", NULL, "Excellent System", "Miscellaneous",
+	"Aquarium (US)\0", NULL, "Excellent System", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, aquariumRomInfo, aquariumRomName, NULL, NULL, AquariumInputInfo, AquariumDIPInfo,
+	NULL, aquariumRomInfo, aquariumRomName, NULL, NULL, NULL, NULL, AquariumInputInfo, AquariumDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	320, 256, 4, 3
+};
+
+
+// Aquarium (Japan)
+
+static struct BurnRomInfo aquariumjRomDesc[] = {
+	{ "excellent_3.13h",	0x080000, 0x344509a1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+
+	{ "excellent_5.10c",	0x040000, 0xfa555be1, 2 | BRF_PRG | BRF_ESS }, //  1 Z80 Code
+
+	{ "excellent_1.15b",	0x080000, 0x575df6ac, 3 | BRF_GRA },           //  2 Midground Tiles
+	{ "excellent_6.15d",	0x020000, 0x9065b146, 3 | BRF_GRA },           //  3
+
+	{ "excellent_2.17e",	0x020000, 0xaa071b05, 4 | BRF_GRA },           //  6 Foreground Tiles
+
+	{ "d23c8000.1f",	0x100000, 0x14758b3c, 5 | BRF_GRA },           //  7 Sprites
+
+	{ "excellent_8.14g",	0x080000, 0x915520c4, 6 | BRF_GRA },           //  4 Background Tiles
+	{ "excellent_7.17g",	0x020000, 0xb96b2b82, 6 | BRF_GRA },           //  5
+
+	{ "excellent_4.7d",	0x080000, 0x9a4af531, 7 | BRF_SND },           //  8 MSM6295 Samples
+};
+
+STD_ROM_PICK(aquariumj)
+STD_ROM_FN(aquariumj)
+
+struct BurnDriver BurnDrvAquariumj = {
+	"aquariumj", "aquarium", NULL, NULL, "1996",
+	"Aquarium (Japan)\0", NULL, "Excellent System", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, aquariumjRomInfo, aquariumjRomName, NULL, NULL, NULL, NULL, AquariumInputInfo, AquariumDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 256, 4, 3
 };

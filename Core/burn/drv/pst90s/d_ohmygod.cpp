@@ -1,3 +1,6 @@
+// FB Alpha Oh My God! driver module
+// Based on MAME driver by Nicola Salmoria
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
@@ -308,7 +311,7 @@ UINT16 __fastcall OhmygodReadWord(UINT32 a)
 		}
 
 		case 0xb00000: {
-			return 0xfff0 | MSM6295ReadStatus(0);
+			return 0xfff0 | MSM6295Read(0);
 		}
 
 		case 0xc00000: {
@@ -408,7 +411,7 @@ void __fastcall OhmygodWriteByte(UINT32 a, UINT8 d)
 		}
 
 		case 0xb00001: {
-			MSM6295Command(0, d);
+			MSM6295Write(0, d);
 			return;
 		}
 	}
@@ -483,14 +486,14 @@ INT32 OhmygodInit()
 	// Setup the 68000 emulation
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(OhmygodRom           , 0x000000, 0x07ffff, SM_ROM  );
-	SekMapMemory(OhmygodRam + 0x000000, 0x300000, 0x303fff, SM_RAM  );
-	SekMapMemory(OhmygodVideoRam      , 0x304000, 0x307fff, SM_RAM  );
-	SekMapMemory(OhmygodRam + 0x004000, 0x308000, 0x30ffff, SM_RAM  );
-	SekMapMemory(OhmygodPaletteRam    , 0x600000, 0x607fff, SM_WRITE);
-	SekMapMemory(OhmygodSpriteRam     , 0x700000, 0x703fff, SM_RAM  );
-	SekMapMemory(OhmygodRam + 0x00c000, 0x704000, 0x707fff, SM_RAM  );
-	SekMapMemory(OhmygodRam + 0x010000, 0x708000, 0x70ffff, SM_RAM  );
+	SekMapMemory(OhmygodRom           , 0x000000, 0x07ffff, MAP_ROM  );
+	SekMapMemory(OhmygodRam + 0x000000, 0x300000, 0x303fff, MAP_RAM  );
+	SekMapMemory(OhmygodVideoRam      , 0x304000, 0x307fff, MAP_RAM  );
+	SekMapMemory(OhmygodRam + 0x004000, 0x308000, 0x30ffff, MAP_RAM  );
+	SekMapMemory(OhmygodPaletteRam    , 0x600000, 0x607fff, MAP_WRITE);
+	SekMapMemory(OhmygodSpriteRam     , 0x700000, 0x703fff, MAP_RAM  );
+	SekMapMemory(OhmygodRam + 0x00c000, 0x704000, 0x707fff, MAP_RAM  );
+	SekMapMemory(OhmygodRam + 0x010000, 0x708000, 0x70ffff, MAP_RAM  );
 	SekSetReadWordHandler(0, OhmygodReadWord);
 	SekSetWriteWordHandler(0, OhmygodWriteWord);
 	SekSetReadByteHandler(0, OhmygodReadByte);
@@ -607,12 +610,14 @@ INT32 OhmygodCalcPalette()
 	return 0;
 }
 
-void OhmygodDraw()
+INT32 OhmygodDraw()
 {
 	OhmygodCalcPalette();
 	OhmygodRenderCharLayer();
 	OhmygodRenderSpriteLayer();
 	BurnTransferCopy(OhmygodPalette);
+
+	return 0;
 }
 
 INT32 OhmygodFrame()
@@ -625,7 +630,7 @@ INT32 OhmygodFrame()
 
 	SekOpen(0);
 	SekRun(12000000 / 60);
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 	SekClose();
 	do_watchtick();
 	if (pBurnDraw) OhmygodDraw();
@@ -653,7 +658,7 @@ static INT32 OhmygodScan(INT32 nAction,INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);					// Scan 68000
 
-		MSM6295Scan(0, nAction);			// Scan OKIM6295
+		MSM6295Scan(nAction, pnMin);			// Scan OKIM6295
 
 		// Scan critical driver variables
 		SCAN_VAR(OhmygodInput);
@@ -678,8 +683,8 @@ struct BurnDriver BurnDrvOhmygod = {
 	"Oh My God!\0", NULL, "Atlus", "Miscellaneous",
 	L"Oh my God! (Japan)\0Oh my god! \u30AA\u30FC\u30DE\u30A4\u30AC\u30A1\u30FC\uFF01\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, OhmygodRomInfo, OhmygodRomName, NULL, NULL, OhmygodInputInfo, OhmygodDIPInfo,
-	OhmygodInit, OhmygodExit, OhmygodFrame, NULL, OhmygodScan,
+	NULL, OhmygodRomInfo, OhmygodRomName, NULL, NULL, NULL, NULL, OhmygodInputInfo, OhmygodDIPInfo,
+	OhmygodInit, OhmygodExit, OhmygodFrame, OhmygodDraw, OhmygodScan,
 	NULL, 0x800, 320, 240, 4, 3
 };
 
@@ -688,7 +693,7 @@ struct BurnDriver BurnDrvNaname = {
 	"Naname de Magic!\0", NULL, "Atlus", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, NanameRomInfo, NanameRomName, NULL, NULL, OhmygodInputInfo, NanameDIPInfo,
-	OhmygodInit, OhmygodExit, OhmygodFrame, NULL, OhmygodScan,
+	NULL, NanameRomInfo, NanameRomName, NULL, NULL, NULL, NULL, OhmygodInputInfo, NanameDIPInfo,
+	OhmygodInit, OhmygodExit, OhmygodFrame, OhmygodDraw, OhmygodScan,
 	NULL, 0x800, 320, 240, 4, 3
 };

@@ -103,7 +103,7 @@ static UINT8* pFCU2SpriteBuffer;
 static UINT16** pFCU2SpriteQueue[16];
 static UINT16** pFCU2SpriteQueueData = NULL;
 
-//static INT32 nFCU2SpriteXOffset, nFCU2SpriteYOffset;
+INT32 nFCU2SpriteXOffset = 0, nFCU2SpriteYOffset = 0;
 
 static void FCU2PrepareSprites()
 {
@@ -145,9 +145,9 @@ static void FCU2RenderSpriteQueue(INT32 nPriority)
 		nSpriteXSize = ((((UINT16*)FCU2RAMSize)[s] >> 0) & 0x0F);
 		nSpriteYSize = ((((UINT16*)FCU2RAMSize)[s] >> 4) & 0x0F);
 
-		nSpriteXPos = (pSpriteInfo[2] >> 7) + 0;//nFCU2SpriteXOffset;
+		nSpriteXPos = (pSpriteInfo[2] >> 7) + nFCU2SpriteXOffset;
 		nSpriteXPos &= 0x01FF;
-		nSpriteYPos = (pSpriteInfo[3] >> 7) + 0;//nFCU2SpriteYOffset;
+		nSpriteYPos = (pSpriteInfo[3] >> 7) + nFCU2SpriteYOffset;
 		nSpriteYPos &= 0x01FF;
 
 		if (Hellfire) nSpriteYPos -= 16;
@@ -224,7 +224,8 @@ static void BCU2QueueLayer(UINT16* pTilemap, INT32 nXPos, INT32 nYPos)
 			nTileNumber = pTilemap[nTileRow + nTileColumn + 1];
 			nTileAttrib = pTilemap[nTileRow + nTileColumn];
 
-			if (!(nTileNumber & 0x8000) && (nTileAttrib & 0xF000)) {
+			// Rallybik uses hidden tiles to do the background fades on the titlescreen.
+			if ((!(nTileNumber & 0x8000) && (nTileAttrib & 0xF000)) || Rallybik) {
 				pBCU2TileQueue[nTileAttrib >> 12]->nTileAttrib = (nTileAttrib << 16) | nTileNumber;
 				pBCU2TileQueue[nTileAttrib >> 12]->nTileXPos = (x << 3) - (nXPos & 7);
 				pBCU2TileQueue[nTileAttrib >> 12]->nTileYPos = (y << 3) - (nYPos & 7);
@@ -430,6 +431,9 @@ INT32 ToaExitBCU2()
 	nLayer2YOffset = 0;
 	nLayer3YOffset = 0;
 
+	nFCU2SpriteXOffset = 0;
+	nFCU2SpriteYOffset = 0;
+
 	BurnFree(pBCU2TileQueueData);
 	BurnFree(BCU2TileAttrib);
 	BurnFree(pFCU2SpriteQueueData);
@@ -439,3 +443,31 @@ INT32 ToaExitBCU2()
 	return 0;
 }
 
+INT32 ToaScanBCU2(INT32 nAction, INT32* pnMin)
+{
+    if (nAction & ACB_VOLATILE) {		// Scan volatile data
+        if (pnMin) {
+            *pnMin = 0x029496;
+        }
+
+        SCAN_VAR(BCU2Pointer);
+        SCAN_VAR(FCU2Pointer);
+        SCAN_VAR(BCU2Reg);
+        SCAN_VAR(ToaOpaquePriority);
+        SCAN_VAR(nLayer0XOffset);
+        SCAN_VAR(nLayer1XOffset);
+        SCAN_VAR(nLayer2XOffset);
+        SCAN_VAR(nLayer3XOffset);
+        SCAN_VAR(nLayer0YOffset);
+        SCAN_VAR(nLayer1YOffset);
+        SCAN_VAR(nLayer2YOffset);
+        SCAN_VAR(nLayer3YOffset);
+        SCAN_VAR(nBCU2TileXOffset);
+        SCAN_VAR(nBCU2TileYOffset);
+        SCAN_VAR(nSpriteXOffset);
+        SCAN_VAR(nSpriteYOffset);
+        SCAN_VAR(nSpritePriority);
+    }
+
+    return 0;
+}

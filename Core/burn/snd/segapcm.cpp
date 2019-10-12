@@ -1,5 +1,9 @@
+// Based on MAME sources by Hiromitsu Shioya, Olivier Galibert
+/*********************************************************/
+/*    SEGA 16ch 8bit PCM                                 */
+/*********************************************************/
+
 #include "burnint.h"
-#include "burn_sound.h"
 #include "segapcm.h"
 
 #define MAX_CHIPS		2
@@ -66,7 +70,7 @@ static void SegaPCMUpdateOne(INT32 nChip, INT32 nLength)
 
 void SegaPCMUpdate(INT16* pSoundBuf, INT32 nLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMUpdate called without init\n"));
 #endif
 
@@ -114,8 +118,8 @@ void SegaPCMUpdate(INT16* pSoundBuf, INT32 nLength)
 			nRightSample = BURN_SND_CLIP(nRightSample);
 		}
 		
-		pSoundBuf[0] += nLeftSample;
-		pSoundBuf[1] += nRightSample;
+		pSoundBuf[0] = BURN_SND_CLIP(pSoundBuf[0] + nLeftSample);
+		pSoundBuf[1] = BURN_SND_CLIP(pSoundBuf[1] + nRightSample);
 		pSoundBuf += 2;
 	}
 }
@@ -159,7 +163,7 @@ void SegaPCMInit(INT32 nChip, INT32 clock, INT32 bank, UINT8 *pPCMData, INT32 PC
 
 void SegaPCMSetRoute(INT32 nChip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMSetRoute called without init\n"));
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("SegaPCMSetRoute called with invalid index %i\n"), nIndex);
 	if (nChip > nNumChips) bprintf(PRINT_ERROR, _T("SegaPCMSetRoute called with invalid chip %i\n"), nChip);
@@ -171,9 +175,11 @@ void SegaPCMSetRoute(INT32 nChip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void SegaPCMExit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMExit called without init\n"));
 #endif
+
+	if (!DebugSnd_SegaPCMInitted) return;
 
 	for (INT32 i = 0; i < nNumChips + 1; i++) {
 		BurnFree(Chip[i]);
@@ -186,9 +192,9 @@ void SegaPCMExit()
 	DebugSnd_SegaPCMInitted = 0;
 }
 
-INT32 SegaPCMScan(INT32 nAction,INT32 *pnMin)
+void SegaPCMScan(INT32 nAction, INT32 *pnMin)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMScan called without init\n"));
 #endif
 
@@ -197,25 +203,23 @@ INT32 SegaPCMScan(INT32 nAction,INT32 *pnMin)
 	if (pnMin != NULL) {
 		*pnMin = 0x029719;
 	}
-	
-	for (INT32 i = 0; i < nNumChips + 1; i++) {
-		if (nAction & ACB_DRIVER_DATA) {
-			ScanVar(Chip[i]->low, 16 * sizeof(UINT8), "SegaPCMlow");
-		
+
+	if (nAction & ACB_DRIVER_DATA) {
+		for (INT32 i = 0; i < nNumChips + 1; i++) {
+			ScanVar(Chip[i]->low, sizeof(Chip[i]->low), "SegaPCMlow");
+
 			memset(&ba, 0, sizeof(ba));
 			ba.Data	  = Chip[i]->ram;
-			ba.nLen	  = 0x800;
-			ba.szName = "SegaPCMRAM";	
+			ba.nLen	  = sizeof(Chip[i]->ram);
+			ba.szName = "SegaPCMRAM";
 			BurnAcb(&ba);
 		}
 	}
-	
-	return 0;
 }
 
 UINT8 SegaPCMRead(INT32 nChip, UINT32 Offset)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMRead called without init\n"));
 	if (nChip > nNumChips) bprintf(PRINT_ERROR, _T("SegaPCMRead called with invalid chip %i\n"), nChip);
 #endif
@@ -225,7 +229,7 @@ UINT8 SegaPCMRead(INT32 nChip, UINT32 Offset)
 
 void SegaPCMWrite(INT32 nChip, UINT32 Offset, UINT8 Data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SegaPCMInitted) bprintf(PRINT_ERROR, _T("SegaPCMWrite called without init\n"));
 	if (nChip > nNumChips) bprintf(PRINT_ERROR, _T("SegaPCMWrite called with invalid chip %i\n"), nChip);
 #endif

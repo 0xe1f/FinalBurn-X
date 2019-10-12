@@ -1,33 +1,28 @@
-/*
-TO DO!
-
-// column scroll needs improved does 'size' (16/8) sized columns rather than 1pxl
-// this affects boogie wings
-// why is mutant fight's scrolling off in title?
-
-1   Double Wings                MBE     102     52              141             104
-*/
-
-
-
 #include "tiles_generic.h"
 #include "bitswap.h"
+#include "deco146.h"
+#include "deco16ic.h"
 
 static INT32 deco16_layer_size[4];
+static INT32 deco16_layer_height[4];
 static INT32 deco16_layer_size_select[4];
 
 static INT32 (*deco16_bank_callback[4])(const INT32 bank);
 
 static INT32 deco16_pf_colorbank[4];
 static INT32 deco16_pf_colormask[4];
-static INT32 deco16_pf_transmask[4];
+
+static UINT8 *deco16_graphics_transtab[4] = { NULL, NULL, NULL, NULL };
 
 static INT32 deco16_pf_bank[4];
 
 static INT32 deco16_pf_gfx_bank[4]; // (1/2) 8x8, 16x16, (2/3) 8x8, 16x16
 
-static UINT16 deco16_scroll_x[4][ 512]; // 512
-static UINT16 deco16_scroll_y[4][1024]; // 1024
+static UINT16 deco16_scroll_x[4][512];	// 512  (rowscroll)
+static UINT16 deco16_scroll_y[4][1024];	// 1024 (colscroll)
+
+static INT32 deco16_scroll_rows[4];
+static INT32 deco16_scroll_cols[4];
 
 static INT32 deco16_enable_rowscroll[4];
 static INT32 deco16_enable_colscroll[4];
@@ -35,17 +30,21 @@ static INT32 deco16_enable_colscroll[4];
 static INT32 deco16_global_x_offset = 0;
 static INT32 deco16_global_y_offset = 0;
 
+static INT32 deco16_yscroll[4];
+static INT32 deco16_xscroll[4];
+
 static INT32 deco16_scroll_offset[4][2][2]; // tmap, size, x, y
 
-static UINT16 transmask[4][2];
+static UINT8 transmask[4][3][0x100];
 
-INT32 deco16_graphics_mask[3];
+static INT32 deco16_graphics_mask[4];
+static INT32 deco16_graphics_size[4];
 
 UINT8 *deco16_graphics[3];
 
 UINT16 *deco16_pf_control[2];
 UINT8 *deco16_pf_ram[4] = { NULL, NULL, NULL, NULL };
-UINT8 *deco16_pf_rowscroll[4];//4 or 2?
+UINT8 *deco16_pf_rowscroll[4];
 
 UINT16 deco16_priority;
 
@@ -53,6 +52,9 @@ UINT8 *deco16_prio_map;
 UINT8 *deco16_sprite_prio_map; // boogwing
 
 INT32 deco16_vblank;
+
+INT32 deco16_music_tempofix; // set after deco16SoundInit(), fixes tempo issues in darkseal, vaportrail, and cbuster
+INT32 deco16_dragngun_kludge;
 
 void deco16ProtScan();
 void deco16ProtReset();
@@ -62,7 +64,6 @@ INT32 deco16_get_tilemap_size(INT32 tmap)
 	return deco16_layer_size_select[tmap];
 }
 
-// painfully unfast.
 void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri)
 {
 	gfx += code * 0x100;
@@ -87,10 +88,9 @@ void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, 
 
 			if (pri != -1) {
 				INT32 bpriority = deco16_prio_map[(sy * 512) + sx];
-	
+
 				if (spri == -1) {
 					if ((pri & (1 << (bpriority & 0x1f))) || (bpriority & 0x80)) continue;
-					deco16_prio_map[sy * 512 + sx] |= 0x80; // right?
 				} else {
 					if (pri <= bpriority || spri <= deco16_sprite_prio_map[sy * 512 + sx]) continue;
 					deco16_sprite_prio_map[sy * 512 + sx] = spri;
@@ -107,6 +107,76 @@ void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, 
 	}
 }
 
+void deco16_draw_prio_sprite_nitrobal(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri)
+{
+	gfx += code * 0x100;
+
+	INT32 flip = 0;
+	if (flipx) flip |= 0x0f;
+	if (flipy) flip |= 0xf0;
+
+	sy -= deco16_global_y_offset;
+	sx -= deco16_global_x_offset;
+
+	for (INT32 yy = 0; yy < 16; yy++, sy++) {
+
+		if (sy < 0 || sy >= nScreenHeight) continue;
+
+		for (INT32 xx = 0; xx < 16; xx++, sx++) {
+			if (sx < 0 || sx >= nScreenWidth) continue;
+
+			INT32 pxl = gfx[((yy * 16) + xx) ^ flip];
+
+			if (!pxl) continue;
+
+			if (pri != -1) {
+				INT32 bpriority = deco16_prio_map[(sy * 512) + sx];
+
+				if (pri > bpriority && spri > deco16_sprite_prio_map[sy * 512 + sx]) {
+					dest[sy * nScreenWidth + sx] = pxl | color;
+					deco16_prio_map[sy * 512 + sx] |= pri; // right?
+				}
+				deco16_sprite_prio_map[sy * 512 + sx] |= spri;
+			}
+		}
+
+		sx -= 16;
+	}
+}
+
+// draw sprite, write prio, but don't check prio
+void deco16_draw_prio_sprite_dumb(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri)
+{
+	gfx += code * 0x100;
+
+	INT32 flip = 0;
+	if (flipx) flip |= 0x0f;
+	if (flipy) flip |= 0xf0;
+
+	sy -= deco16_global_y_offset;
+	sx -= deco16_global_x_offset;
+
+	for (INT32 yy = 0; yy < 16; yy++, sy++) {
+
+		if (sy < 0 || sy >= nScreenHeight) continue;
+
+		for (INT32 xx = 0; xx < 16; xx++, sx++) {
+			if (sx < 0 || sx >= nScreenWidth) continue;
+
+			INT32 pxl = gfx[((yy * 16) + xx) ^ flip];
+
+			if (!pxl) continue;
+
+			dest[sy * nScreenWidth + sx] = pxl | color;
+
+			if (pri  != -1) deco16_prio_map[sy * 512 + sx] |= pri; // right?
+			if (spri != -1) deco16_sprite_prio_map[sy * 512 + sx] |= spri;
+		}
+
+		sx -= 16;
+	}
+}
+
 void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri)
 {
 	deco16_draw_prio_sprite(dest, gfx, code, color, sx, sy, flipx, flipy, pri, -1);
@@ -116,11 +186,18 @@ static inline UINT32 alpha_blend(UINT32 d, UINT32 s, UINT32 p)
 {
 	INT32 a = 256 - p;
 
-	return (((((s & 0xff00ff) * p) + ((d & 0xff00ff) * a)) & 0xff00ff00) |
-		((((s & 0x00ff00) * p) + ((d & 0x00ff00) * a)) & 0x00ff0000)) >> 8;
+	return (((((s & 0xff00ff) * p) + ((d & 0xff00ff) * a)) & 0xff00ff00) +
+		((((s & 0x00ff00) * p) + ((d & 0x00ff00) * a)) & 0x00ff0000)) / 256;
 }
 
+// normal
 void deco16_draw_alphaprio_sprite(UINT32 *palette, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri, INT32 alpha)
+{
+	deco16_draw_alphaprio_sprite(palette, gfx, code, color, sx, sy, flipx, flipy, pri, spri, alpha, 0);
+}
+
+// w/dumb-mode parameter for wizdfire
+void deco16_draw_alphaprio_sprite(UINT32 *palette, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri, INT32 alpha, INT32 dumb_mode)
 {
 	if (alpha == 0) return;
 
@@ -148,13 +225,21 @@ void deco16_draw_alphaprio_sprite(UINT32 *palette, UINT8 *gfx, INT32 code, INT32
 
 			INT32 bpriority = deco16_prio_map[(sy * 512) + sx];
 
-			if (spri == -1) {
-				if ((pri & (1 << (bpriority & 0x1f))) || (bpriority & 0x80)) continue;
-				deco16_prio_map[sy * 512 + sx] |= 0x80; // right?
+			if (dumb_mode) { // used by wizdfire
+				if (pri  != -1) {
+					if (bpriority == 0xff) continue;
+					deco16_prio_map[sy * 512 + sx] |= pri;
+				}
+				//if (spri != -1) deco16_sprite_prio_map[sy * 512 + sx] |= spri;
 			} else {
-				if (pri <= bpriority || spri <= deco16_sprite_prio_map[sy * 512 + sx]) continue;
-				deco16_sprite_prio_map[sy * 512 + sx] = spri;
-				deco16_prio_map[sy * 512 + sx] = pri; // right?
+				if (spri == -1) {
+					if ((pri & (1 << (bpriority & 0x1f))) || (bpriority & 0x80)) continue;
+					deco16_prio_map[sy * 512 + sx] |= 0x80; // right?
+				} else {
+					if (pri <= bpriority || spri <= deco16_sprite_prio_map[sy * 512 + sx]) continue;
+					deco16_sprite_prio_map[sy * 512 + sx] = spri;
+					deco16_prio_map[sy * 512 + sx] = pri;
+				}
 			}
 
 			if (alpha == 0xff) {
@@ -184,9 +269,9 @@ void deco16_palette_recalculate(UINT32 *palette, UINT8 *pal)
 
 void deco16_tile_decode(UINT8 *src, UINT8 *dst, INT32 len, INT32 type)
 {
-	INT32 Plane[4]  = { ((len / 2) * 8) + 8, ((len / 2) * 8) + 0, 0x00008, 0x00000 };
-	INT32 XOffs[16] = { 32*8+0, 32*8+1, 32*8+2, 32*8+3, 32*8+4, 32*8+5, 32*8+6, 32*8+7,	0, 1, 2, 3, 4, 5, 6, 7 };
-	INT32 YOffs[16] = { 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16, 8*16, 9*16, 10*16, 11*16, 12*16, 13*16, 14*16, 15*16 };
+	INT32 Plane[4]  = { ((len / 2) * 8) + 8, ((len / 2) * 8) + 0, 8, 0 };
+	INT32 XOffs[16] = { STEP8(256,1), STEP8(0,1) };
+	INT32 YOffs[16] = { STEP16(0,16) };
 
 	INT32 Plane1[8] = { 0x100000*8+8, 0x100000*8, 0x40000*8+8, 0x40000*8, 0xc0000*8+8, 0xc0000*8, 8, 0 };
 
@@ -211,8 +296,8 @@ void deco16_tile_decode(UINT8 *src, UINT8 *dst, INT32 len, INT32 type)
 void deco16_sprite_decode(UINT8 *gfx, INT32 len)
 {
 	INT32 Plane[4] = { 24,8,16,0 };
-	INT32 XOffs[16] = { 512,513,514,515,516,517,518,519, 0, 1, 2, 3, 4, 5, 6, 7 };
-	INT32 YOffs[16] = { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32,  8*32, 9*32,10*32,11*32,12*32,13*32,14*32,15*32};
+	INT32 XOffs[16] = { STEP8(512,1), STEP8(0, 1) };
+	INT32 YOffs[16] = { STEP16(0,32)};
 
 	UINT8 *tmp = (UINT8*)BurnMalloc(len);
 	if (tmp == NULL) {
@@ -225,52 +310,59 @@ void deco16_sprite_decode(UINT8 *gfx, INT32 len)
 
 	BurnFree (tmp);
 }
- 
-void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags)
+
+INT32 deco16_layer_enabled(INT32 tmap)
 {
-	INT32 size		= deco16_layer_size_select[tmap];
-	if (size == -1) return;
+	UINT8 control0 = deco16_pf_control[tmap >> 1][5] >> ((tmap & 1) << 3) & 0xff;
+	return (control0 & 0x80);
+}
 
-	INT32 control		= deco16_pf_control[tmap / 2][6];
+void deco16_draw_layer_by_line(INT32 draw_start, INT32 draw_end, INT32 tmap, UINT16 *dest, INT32 flags)
+{
+	UINT8 control0 = deco16_pf_control[tmap >> 1][5] >> ((tmap & 1) << 3) & 0xff;
+	if (~control0 & 0x80) return; // layer disabled
+
+	INT32 size	= deco16_layer_size_select[tmap];
+	if (size == -1) return; // layer disabled (from pf_update, only for tmap 0, 1?)
+
+	INT32 control	= deco16_pf_control[tmap / 2][6];
 	if (tmap & 1) control >>= 8; 
-
-//	INT32 control0		= deco16_pf_control[tmap / 2][5];
-//	if (tmap & 1) control0 >>= 8; 
-//	if ((control0 & 0x80) == 0) return; // layer disable bit
 
 	INT32 select = (tmap & 2) + ((tmap < 2) ? size : 0);
 
 	size = size ? 16 : 8;
 
-	INT32 bpp = (flags & 0x100000) ? 8 : 4;
-	if (flags & 0x200000) bpp = 5;
+	INT32 bpp = (flags & DECO16_LAYER_8BITSPERPIXEL) ? 8 : ((flags & DECO16_LAYER_5BITSPERPIXEL) ? 5 : 4);
+	
+	INT32 deco16_captaven = flags & DECO16_LAYER_CAPTAVEN;
 
-	UINT8 *gfx = deco16_graphics[select];
+	UINT8 *gfx	= deco16_graphics[select];
+	UINT8 *transtab	= deco16_graphics_transtab[select];
 	INT32 gfxmask	= deco16_graphics_mask[select];
 
 	UINT16 *vram	= (UINT16 *)deco16_pf_ram[tmap];
 
-	INT32 tmask		= transmask[tmap][(flags & 0x00100) >> 8];
-	if (flags & 0x10000) tmask = 0; // opaque!
+	UINT8 t_mask	= (flags & DECO16_LAYER_OPAQUE) ? 2 : 0;
+	UINT8 *tmask	= transmask[tmap][t_mask ? t_mask : ((flags & DECO16_LAYER_TRANSMASK0) >> 8)];
 
-	INT32 priority		= flags & 0x000ff;
+	INT32 priority	= DECO16_LAYER_PRIORITY(flags);
 
-	INT32 tilebank		= deco16_pf_bank[tmap];
-	INT32 colmask		= deco16_pf_colormask[tmap];
-	INT32 colbank		= deco16_pf_colorbank[tmap] >> bpp;
+	INT32 tilebank	= deco16_pf_bank[tmap];
+	INT32 colmask	= deco16_pf_colormask[tmap];
+	INT32 colbank	= deco16_pf_colorbank[tmap] >> bpp;
 
-	INT32 hmask = (32 * size) - 1;
-	INT32 wmask		= (deco16_layer_size[tmap] * size) - 1;
-	INT32 shift = (wmask & 0x100) ? 6 : 5;
-	INT32 smask = size - 1;
+	INT32 hmask	= (deco16_layer_height[tmap] * size) - 1;
+	INT32 wmask	= (deco16_layer_size[tmap] * size) - 1;
+	INT32 shift	= (wmask & 0x100) ? 6 : 5;
+	INT32 smask	= size - 1;
 
-	for (INT32 y = 0; y < nScreenHeight; y++)
+	for (INT32 y = draw_start; y < draw_end; y++)
 	{
-		INT32 xoff = deco16_scroll_x[tmap][y] & wmask;
+		INT32 xoff = deco16_scroll_x[tmap][((y + deco16_yscroll[tmap] + deco16_global_y_offset)&hmask)/deco16_scroll_rows[tmap]] & wmask;
 
 		for (INT32 x = 0; x < nScreenWidth + size; x+=size)
 		{
-			INT32 yoff = deco16_scroll_y[tmap][x] & hmask;
+			INT32 yoff = deco16_scroll_y[tmap][((x + xoff) & wmask)/deco16_scroll_cols[tmap]] & hmask;
 
 			INT32 yy = (y + yoff) & hmask;
 			INT32 xx = (x + xoff) & wmask;
@@ -280,7 +372,7 @@ void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags)
 
 			INT32 ofst;
 			if (size == 8) {
-				ofst = (row << shift) | (col);
+				ofst = (row << shift) | col;
 			} else {
 				ofst = (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5) + ((row & 0x20) << 6);
 			}
@@ -296,10 +388,21 @@ void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags)
 				flipy = control & 0x02;
 				color &= 0x07;
 			}
-	
-			code = ((code & 0xfff) | tilebank) & gfxmask;
-			color = (color & colmask) + colbank;
-			
+
+			if (deco16_captaven) {
+				code = ((code & 0x3fff) | tilebank) & gfxmask;
+				color = ((color & colmask) + colbank) >> 2;
+			} else {
+				code = ((code & 0xfff) | tilebank) & gfxmask;
+				color = (color & colmask) + colbank;
+			}
+
+			if (t_mask == 0) {
+				if (transtab[code]) {
+					continue;
+				}
+			}
+
 			{
 				color <<= bpp;
 
@@ -317,14 +420,19 @@ void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags)
 
 					INT32 pxl = src[xxx^flipx];
 
-					if ((tmask & (1 << pxl))) continue;
+					if (tmask[pxl]) continue;
 
-					dest[y * nScreenWidth + xxx + sx] = pxl | color;
+					dest[y * nScreenWidth + xxx + sx] = pxl + color;
 					deco16_prio_map[y * 512 + xxx + sx] = priority;
 				}
 			}
 		}
 	}
+}
+
+void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags)
+{
+	deco16_draw_layer_by_line(0, nScreenHeight, tmap, dest, flags);
 }
 
 void deco16_set_bank_callback(INT32 tmap, INT32 (*callback)(const INT32 bank))
@@ -344,7 +452,7 @@ void deco16_set_color_mask(INT32 tmap, INT32 mask)
 
 void deco16_set_transparency_mask(INT32 tmap, INT32 mask)
 {
-	deco16_pf_transmask[tmap & 3] = mask;
+	tmap = mask; // kill warnings
 }
 
 void deco16_set_gfxbank(INT32 tmap, INT32 small, INT32 big)
@@ -361,9 +469,15 @@ void deco16_set_global_offsets(INT32 x, INT32 y)
 
 static void set_transmask(INT32 tmap, INT32 tmask0, INT32 tmask1)
 {
-	transmask[tmap][0] = tmask0;
-	transmask[tmap][1] = tmask1;
-}	
+	memset (transmask[tmap][0], 0, 0x100);
+	memset (transmask[tmap][1], 0, 0x100);
+	memset (transmask[tmap][2], 0, 0x100);
+
+	for (INT32 i = 0; i < 16; i++) {
+		transmask[tmap][0][i] = (tmask0 & (1 << i)) ? 1 : 0;
+		transmask[tmap][1][i] = (tmask1 & (1 << i)) ? 1 : 0;
+	}
+}
 
 static void set_graphics_mask(INT32 gfx, INT32 len)
 {
@@ -376,11 +490,37 @@ static void set_graphics_mask(INT32 gfx, INT32 len)
 	deco16_graphics_mask[gfx] = b - 1;
 }
 
+void deco16_create_transtable(INT32 select, INT32 trans)
+{
+	if (deco16_graphics_transtab[select] != NULL) return;
+
+	INT32 size = (select ? 16 : 8);
+	INT32 entries = deco16_graphics_mask[select] + 1;
+	deco16_graphics_transtab[select] = (UINT8*)BurnMalloc(entries);
+
+	memset (deco16_graphics_transtab[select], 1, entries);
+
+	for (INT32 i = 0; i < deco16_graphics_size[select]; i+=size*size)
+	{
+		for (INT32 j = 0; j < size*size; j++)
+		{
+			if (deco16_graphics[select][i+j] != trans)
+			{
+				deco16_graphics_transtab[select][i/(size*size)] = 0;
+				i|=size-1;
+				break;
+			}
+		}
+	}
+}
+
 void deco16_set_graphics(INT32 num, UINT8 *gfx, INT32 len, INT32 size /*tile size*/)
 {
 	deco16_graphics[num] = gfx;
 
 	set_graphics_mask(num, len / (size * size));
+
+	deco16_create_transtable(num, 0);
 }
 
 void deco16_set_graphics(UINT8 *gfx0, INT32 len0, UINT8 *gfx1, INT32 len1, UINT8 *gfx2, INT32 len2)
@@ -392,6 +532,14 @@ void deco16_set_graphics(UINT8 *gfx0, INT32 len0, UINT8 *gfx1, INT32 len1, UINT8
 	set_graphics_mask(0, len0 / (8 * 8));
 	set_graphics_mask(1, len1 / (16 * 16));
 	set_graphics_mask(2, len2 / (16 * 16));
+
+	deco16_graphics_size[0] = len0;
+	deco16_graphics_size[1] = len1;
+	deco16_graphics_size[2] = len2;
+
+	deco16_create_transtable(0, 0);
+	deco16_create_transtable(1, 0);
+	deco16_create_transtable(2, 0);
 }
 
 void deco16_clear_prio_map()
@@ -419,21 +567,21 @@ void deco16Init(INT32 no_pf34, INT32 split, INT32 full_width)
 
 	memset (deco16_scroll_offset, 0, 4 * 2 * 2 * sizeof(INT32));
 
-	deco16_pf_ram[0] = (UINT8*)BurnMalloc(0x2000); // ok
+	deco16_pf_ram[0] = (UINT8*)BurnMalloc(0x2000);
 	deco16_pf_ram[1] = (UINT8*)BurnMalloc(0x2000);
 
-	deco16_pf_rowscroll[0] = (UINT8*)BurnMalloc(0x1000);// plenty
-	deco16_pf_rowscroll[1] = (UINT8*)BurnMalloc(0x1000);
+	deco16_pf_rowscroll[0] = (UINT8*)BurnMalloc(0x2000);
+	deco16_pf_rowscroll[1] = (UINT8*)BurnMalloc(0x2000);
 
-	deco16_pf_control[0]	= (UINT16*)BurnMalloc(0x10); //1/2
-	deco16_pf_control[1]	= (UINT16*)BurnMalloc(0x10); //3/4
+	deco16_pf_control[0]	= (UINT16*)BurnMalloc(0x10); // 1/2
+	deco16_pf_control[1]	= (UINT16*)BurnMalloc(0x10); // 3/4
 
 	if (no_pf34 == 0) {
-		deco16_pf_ram[2] = (UINT8*)BurnMalloc(0x2000); // right?
+		deco16_pf_ram[2] = (UINT8*)BurnMalloc(0x2000);
 		deco16_pf_ram[3] = (UINT8*)BurnMalloc(0x2000);
 
-		deco16_pf_rowscroll[2] = (UINT8*)BurnMalloc(0x1000); // right?
-		deco16_pf_rowscroll[3] = (UINT8*)BurnMalloc(0x1000);
+		deco16_pf_rowscroll[2] = (UINT8*)BurnMalloc(0x2000);
+		deco16_pf_rowscroll[3] = (UINT8*)BurnMalloc(0x2000);
 	}
 
 	deco16_prio_map = (UINT8*)BurnMalloc(512 * 256); // priority map
@@ -445,14 +593,17 @@ void deco16Init(INT32 no_pf34, INT32 split, INT32 full_width)
 	deco16_bank_callback[3] = NULL;
 
 	deco16_layer_size[0] = 64;
-	deco16_layer_size[1] = full_width ? 64 : 32;
-	deco16_layer_size[2] = (!no_pf34) ? (full_width ? 64 : 32) : 0;
-	deco16_layer_size[3] = (!no_pf34) ? (full_width ? 64 : 32) : 0;
+	deco16_layer_size[1] = (full_width & 1) ? 64 : 32;
 
-	deco16_pf_transmask[0] = 15;
-	deco16_pf_transmask[1] = 15;
-	deco16_pf_transmask[2] = 15;
-	deco16_pf_transmask[3] = 15;
+	INT32 pf34_width = (full_width & 1) ^ ((full_width >> 1) & 1);
+
+	deco16_layer_size[2] = (!no_pf34) ? (pf34_width ? 64 : 32) : 0;
+	deco16_layer_size[3] = (!no_pf34) ? (pf34_width ? 64 : 32) : 0;
+
+	deco16_layer_height[0] = (full_width & 4) ? 64 : 32;
+	deco16_layer_height[1] = 32;
+	deco16_layer_height[2] = 32;
+	deco16_layer_height[3] = 32;
 
 	deco16_pf_colormask[0] = 15;
 	deco16_pf_colormask[1] = 15;
@@ -482,6 +633,8 @@ void deco16Init(INT32 no_pf34, INT32 split, INT32 full_width)
 	deco16_global_y_offset = 0;
 
 	deco16_priority = 0;
+
+	deco16_dragngun_kludge = 0;
 }
 
 void deco16Reset()
@@ -506,22 +659,33 @@ void deco16Reset()
 
 	deco16_priority = 0;
 
-	deco16ProtReset();
+	if (deco_146_104_inuse)
+		deco_146_104_reset();
 }
 
 void deco16Exit()
 {
-	BurnFree(deco16_prio_map);
+	BurnFree (deco16_prio_map);
 
 	BurnFree (deco16_sprite_prio_map);
 
 	for (INT32 i = 0; i < 4; i++) {
 		BurnFree (deco16_pf_rowscroll[i]);
+		deco16_pf_rowscroll[i] = NULL;
 		BurnFree (deco16_pf_ram[i]);
+		deco16_pf_ram[i] = NULL;
 	}
-	
-	BurnFree (deco16_pf_control[0]);	
+
+	BurnFree (deco16_pf_control[0]);
 	BurnFree (deco16_pf_control[1]);
+
+	if (deco_146_104_inuse)
+		deco_146_104_exit();
+
+	if (deco16_graphics_transtab[0]) BurnFree(deco16_graphics_transtab[0]);
+	if (deco16_graphics_transtab[1]) BurnFree(deco16_graphics_transtab[1]);
+	if (deco16_graphics_transtab[2]) BurnFree(deco16_graphics_transtab[2]);
+	if (deco16_graphics_transtab[3]) BurnFree(deco16_graphics_transtab[3]);
 }
 
 static void pf_update(INT32 tmap, INT32 scrollx, INT32 scrolly, UINT16 *rowscroll, INT32 control0, INT32 control1)
@@ -534,12 +698,15 @@ static void pf_update(INT32 tmap, INT32 scrollx, INT32 scrolly, UINT16 *rowscrol
 		}
 	}
 
+	if (deco16_layer_size_select[tmap] == -1) return; // don't bother
+
 	deco16_enable_rowscroll[tmap] = 0;
 	deco16_enable_colscroll[tmap] = 0;
 
-	if (rowscroll == NULL) return;
+	deco16_yscroll[tmap] = scrolly;
+	deco16_xscroll[tmap] = scrollx;
 
-	if ((control1 & 0x40) == 0x40) // row scroll
+	if ((control1 & 0x40) == 0x40 && rowscroll != NULL) // row scroll
 	{
 		INT32 size = deco16_layer_size_select[tmap] ? 16 : 8;
 
@@ -555,26 +722,37 @@ static void pf_update(INT32 tmap, INT32 scrollx, INT32 scrolly, UINT16 *rowscrol
 			if (rows == 0) rows = 1;
 		}
 
-		if (rows != 1) deco16_enable_rowscroll[tmap] = 1;
+		if (rows != 1) deco16_enable_colscroll[tmap] = 1;
 
 		INT32 rsize = rownum / rows;
+
+		// Dragon Gun st.3 boss scene bug kludge
+		INT32 roffset = 0; // for dragngun's silly bug @ st.3 boss
+
+		if (deco16_dragngun_kludge && tmap == 2 && rsize == 1) {
+			UINT16 *vram	= (UINT16 *)deco16_pf_ram[tmap];
+
+			if (vram[2] == 0x1076 && vram[3] == 0x1076) { // this is our scene!
+				roffset = 0x20;
+			}
+		}
+		// end of kludge.
+
+		deco16_scroll_rows[tmap] = rsize;
 
 		INT32 xscroll = scrollx + deco16_global_x_offset + deco16_scroll_offset[tmap][size/16][0];
 
 		for (INT32 r = 0; r < rows; r++) {
-			for (INT32 p = rsize * r; p < (rsize * r) + rsize; p++) {
-				deco16_scroll_x[tmap][(p - deco16_global_y_offset) & 0x1ff] = xscroll + BURN_ENDIAN_SWAP_INT16(rowscroll[r]);
-			}
+			deco16_scroll_x[tmap][r & 0x1ff] = xscroll + BURN_ENDIAN_SWAP_INT16(rowscroll[r + roffset]);
 		}
 
 		if (~control1 & 0x20) {
-			for (INT32 r = 0; r < 1024; r++) {
-				deco16_scroll_y[tmap][r] = scrolly + deco16_global_y_offset;
-			}
+			deco16_scroll_cols[tmap] = 0x8000;
+			deco16_scroll_y[tmap][0] = (scrolly + deco16_global_y_offset) & 0x1ff;
 		}
 	}
 
-	if ((control1 & 0x20) == 0x20) // column scroll
+	if ((control1 & 0x20) == 0x20 && rowscroll != NULL) // column scroll
 	{
 		INT32 size = deco16_layer_size_select[tmap] ? 16 : 8;
 
@@ -595,18 +773,17 @@ static void pf_update(INT32 tmap, INT32 scrollx, INT32 scrolly, UINT16 *rowscrol
 
 		INT32 rsize = colnum / cols;
 
+		deco16_scroll_cols[tmap] = rsize;
+
 		for (INT32 r = 0; r < cols; r++) {
-			for (INT32 p = rsize * r; p < (rsize * r) + rsize; p++) {
-				deco16_scroll_y[tmap][p] = scrolly + BURN_ENDIAN_SWAP_INT16(rowscroll[(r & mask) + 0x200]) + deco16_global_y_offset;
-			}
+			deco16_scroll_y[tmap][r] = (scrolly + BURN_ENDIAN_SWAP_INT16(rowscroll[(r & mask) + 0x200]) + deco16_global_y_offset);
 		}
 
 		if (~control1 & 0x40) {
 			INT32 xscroll = scrollx + deco16_global_x_offset + deco16_scroll_offset[tmap][size/16][0];
 
-			for (INT32 r = 0; r < 512; r++) {
-				deco16_scroll_x[tmap][(r - deco16_global_y_offset) & 0x1ff] = xscroll;
-			}
+			deco16_scroll_rows[tmap] = 0x8000;
+			deco16_scroll_x[tmap][0] = xscroll;
 		}
 	}
 
@@ -614,15 +791,14 @@ static void pf_update(INT32 tmap, INT32 scrollx, INT32 scrolly, UINT16 *rowscrol
 	{
 		INT32 size = deco16_layer_size_select[tmap] ? 16 : 8;
 
-		for (INT32 r = 0; r < 1024; r++) {
-			deco16_scroll_y[tmap][r] = scrolly + deco16_global_y_offset;
-		}
+		deco16_scroll_rows[tmap] = 0x8000;
+		deco16_scroll_cols[tmap] = 0x8000;
+
+		deco16_scroll_y[tmap][0] = (scrolly + deco16_global_y_offset) & 0x1ff;
 
 		INT32 xscroll = scrollx + deco16_global_x_offset + deco16_scroll_offset[tmap][size/16][0];
 
-		for (INT32 r = 0; r < 512; r++) {
-			deco16_scroll_x[tmap][(r - deco16_global_y_offset) & 0x1ff] = xscroll;
-		}
+		deco16_scroll_x[tmap][0] = xscroll;
 	}	
 }
 
@@ -644,24 +820,32 @@ void deco16_pf34_update()
 	pf_update(3, deco16_pf_control[1][3], deco16_pf_control[1][4], (UINT16 *)deco16_pf_rowscroll[3], deco16_pf_control[1][5] >> 8  , deco16_pf_control[1][6] >> 8);
 }
 
+void deco16_pf3_update()
+{
+	if (deco16_bank_callback[2]) deco16_pf_bank[2] = deco16_bank_callback[2](deco16_pf_control[1][7] & 0xff);
+	if (deco16_bank_callback[3]) deco16_pf_bank[3] = deco16_bank_callback[3](deco16_pf_control[1][7] >> 8);
+
+	pf_update(2, deco16_pf_control[1][1], deco16_pf_control[1][2], (UINT16 *)deco16_pf_rowscroll[2], deco16_pf_control[1][5] & 0xff, deco16_pf_control[1][6] & 0xff);
+}
+
 void deco16Scan()
 {
 	struct BurnArea ba;
 
 	{
-		char name[128];
+		char name[32];
 
 		for (INT32 i = 0; i < 4; i++) {
 			if (deco16_pf_ram[i] == NULL) continue;
 
-		//	memset(&ba, 0, sizeof(ba));
+			memset(&ba, 0, sizeof(ba));
 			ba.Data	  = deco16_pf_ram[i];
 			ba.nLen	  = 0x2000;
 			sprintf (name, "Deco16ic RAM %d", i);
 			ba.szName = name;
 			BurnAcb(&ba);
 
-		//	memset(&ba, 0, sizeof(ba));
+			memset(&ba, 0, sizeof(ba));
 			ba.Data	  = deco16_pf_rowscroll[i];
 			ba.nLen	  = 0x1000;
 			sprintf (name, "Deco16ic Rowscroll %d", i);
@@ -683,9 +867,10 @@ void deco16Scan()
 
 		SCAN_VAR(deco16_priority);
 		SCAN_VAR(deco16_vblank);
-	}
 
-	deco16ProtScan();
+		if (deco_146_104_inuse)
+			deco_146_104_scan();
+	}
 }
 
 
@@ -703,34 +888,16 @@ void deco16Scan()
 #include "msm6295.h"
 
 static INT32 deco16_sound_enable[4]; // ym2203, ym2151, msm6295 0, msm6295 1
-static INT32 deco16_sound_cpuclock = 0;
+INT32 deco16_sound_cpuclock = 0;
 
 INT32 deco16_soundlatch;
 
 static void deco16YM2151IrqHandler(INT32 state)
 {
 #ifdef ENABLE_HUC6280
-	h6280SetIRQLine(1, state ? H6280_IRQSTATUS_ACK : H6280_IRQSTATUS_NONE);
+	h6280SetIRQLine(1, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 #else
 	state = state;
-#endif
-}
-
-static INT32 deco16SynchroniseStream(INT32 nSoundRate)
-{
-#ifdef ENABLE_HUC6280
-	return (INT64)h6280TotalCycles() * nSoundRate / deco16_sound_cpuclock;
-#else
-	return 0 * nSoundRate;
-#endif
-}
-
-static double deco16GetTime()
-{
-#ifdef ENABLE_HUC6280
-	return (double)h6280TotalCycles() / (deco16_sound_cpuclock * 1.0);
-#else
-	return 0;
 #endif
 }
 
@@ -757,19 +924,21 @@ static void deco16_sound_write(UINT32 address, UINT8 data)
 
 		case 0x120000:
 		case 0x120001:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 
 		case 0x130000:
 		case 0x130001:
 			if (deco16_sound_enable[3]) {
-				MSM6295Command(1, data);
+				MSM6295Write(1, data);
 			}
 		return;
 
 		case 0x1fec00:
 		case 0x1fec01:
 #ifdef ENABLE_HUC6280
+			if (deco16_music_tempofix) return;
+
 			h6280_timer_w(address & 1, data);
 #endif
 		return;
@@ -803,23 +972,23 @@ static UINT8 deco16_sound_read(UINT32 address)
 			return 0xff; 
 
 		case 0x110001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x120000:
 		case 0x120001:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0x130000:
 		case 0x130001:
 			if (deco16_sound_enable[3]) {
-				return MSM6295ReadStatus(1);
+				return MSM6295Read(1);
 			}
 			return 0;
 
 		case 0x140000:
 		case 0x140001:
 #ifdef ENABLE_HUC6280
-			h6280SetIRQLine(0, H6280_IRQSTATUS_NONE);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_NONE);
 #endif
 			return deco16_soundlatch;
 	}
@@ -837,8 +1006,8 @@ void deco16SoundReset()
 
 	if (deco16_sound_enable[0]) BurnYM2151Reset();
 	if (deco16_sound_enable[1]) BurnYM2203Reset();
-	if (deco16_sound_enable[2]) MSM6295Reset(0);
-	if (deco16_sound_enable[3]) MSM6295Reset(1);
+	if (deco16_sound_enable[2] ||
+		deco16_sound_enable[3]) MSM6295Reset();
 
 	deco16_soundlatch = 0;
 }
@@ -848,8 +1017,8 @@ void deco16SoundInit(UINT8 *rom, UINT8 *ram, INT32 huc_clock, INT32 ym2203, void
 #ifdef ENABLE_HUC6280
 	h6280Init(0);
 	h6280Open(0);
-	h6280MapMemory(rom, 	0x000000, 0x00ffff, H6280_ROM);
-	h6280MapMemory(ram,	0x1f0000, 0x1f1fff, H6280_RAM);
+	h6280MapMemory(rom, 	0x000000, 0x00ffff, MAP_ROM);
+	h6280MapMemory(ram,	0x1f0000, 0x1f1fff, MAP_RAM);
 	h6280SetWriteHandler(deco16_sound_write);
 	h6280SetReadHandler(deco16_sound_read);
 	h6280Close();
@@ -873,7 +1042,7 @@ void deco16SoundInit(UINT8 *rom, UINT8 *ram, INT32 huc_clock, INT32 ym2203, void
 	}
 
 	if (ym2203) {
-		BurnYM2203Init(1, 4027500, NULL, deco16SynchroniseStream, deco16GetTime, 0);
+		BurnYM2203Init(1, 4027500, NULL, 1);
 #ifdef ENABLE_HUC6280
 		BurnTimerAttachH6280(deco16_sound_cpuclock);
 #endif
@@ -886,6 +1055,8 @@ void deco16SoundInit(UINT8 *rom, UINT8 *ram, INT32 huc_clock, INT32 ym2203, void
 		MSM6295Init(1, msmclk1 / 132, 1);
 		MSM6295SetRoute(1, msmvol1, BURN_SND_ROUTE_BOTH);
 	}
+
+	deco16_music_tempofix = 0;
 }
 
 void deco16SoundExit()
@@ -896,8 +1067,8 @@ void deco16SoundExit()
 
 	if (deco16_sound_enable[0]) BurnYM2151Exit();
 	if (deco16_sound_enable[1]) BurnYM2203Exit();
-	if (deco16_sound_enable[2]) MSM6295Exit(0);
-	if (deco16_sound_enable[3]) MSM6295Exit(1);
+	if (deco16_sound_enable[2] ||
+		deco16_sound_enable[3]) MSM6295Exit();
 
 	MSM6295ROM = NULL;
 
@@ -907,27 +1078,27 @@ void deco16SoundExit()
 	deco16_sound_enable[3] = 0;
 
 	deco16_sound_cpuclock = 0;
+	deco16_music_tempofix = 0;
 }
 
 void deco16SoundUpdate(INT16 *buf, INT32 len)
 {
 	if (deco16_sound_enable[0]) BurnYM2151Render(buf, len);
 //	if (deco16_sound_enable[1]) BurnYM2203Update(buf, len);
-	if (deco16_sound_enable[2]) MSM6295Render(0, buf, len);
-	if (deco16_sound_enable[3]) MSM6295Render(1, buf, len);
+	if (deco16_sound_enable[2] ||
+		deco16_sound_enable[3]) MSM6295Render(buf, len);
 }
 
 void deco16SoundScan(INT32 nAction, INT32 *pnMin)
 {
 	if (nAction & ACB_DRIVER_DATA) {
-		h6280CpuScan(nAction);
+		h6280Scan(nAction);
 	
 		SCAN_VAR(deco16_soundlatch);
 		
-		if (deco16_sound_enable[0]) BurnYM2151Scan(nAction);
+		if (deco16_sound_enable[0]) BurnYM2151Scan(nAction, pnMin);
 		if (deco16_sound_enable[1]) BurnYM2203Scan(nAction, pnMin);
-		if (deco16_sound_enable[2]) MSM6295Scan(0, nAction);
-		if (deco16_sound_enable[3]) MSM6295Scan(1, nAction);
+		if (deco16_sound_enable[2]) MSM6295Scan(nAction, pnMin);
 	}
 }
 
@@ -1747,1491 +1918,5 @@ void deco156_decrypt(UINT8 *src, INT32 len)
 
 	BurnFree(buf);
 }
-
-
-
-//---------------------------------------------------------------------------------------------------
-// protection code 
-//  should probably be in own file
-
-UINT16 *deco16_prot_ram;
-UINT16 *deco16_prot_inputs;
-UINT16 *deco16_buffer_ram;
-
-#define DECO_PORT(p) (prot_ram[p/2])
-
-static INT32 deco16_buffer_ram_selected=0;
-static INT32 deco16_xor=0;
-static INT32 deco16_mask=0xffff;
-static INT32 decoprot_last_write=0;
-static INT32 decoprot_last_write_val=0;
-
-static INT32 mutantf_port_0e_hack=0, mutantf_port_6a_hack=0,mutantf_port_e8_hack=0;
-
-void deco16ProtReset()
-{
-	deco16_buffer_ram_selected = 0;
-	deco16_xor = 0;
-	deco16_mask = 0xffff;
-	decoprot_last_write = 0;
-	decoprot_last_write_val = 0;
-	mutantf_port_0e_hack = 0;
-	mutantf_port_6a_hack = 0;
-	mutantf_port_e8_hack = 0;
-}
-
-
-void deco16ProtScan()
-{
-	SCAN_VAR(deco16_buffer_ram_selected);
-	SCAN_VAR(deco16_xor);
-	SCAN_VAR(deco16_mask);
-	SCAN_VAR(decoprot_last_write);
-	SCAN_VAR(deco16_vblank);
-	SCAN_VAR(decoprot_last_write_val);
-	SCAN_VAR(mutantf_port_0e_hack);
-	SCAN_VAR(mutantf_port_6a_hack);
-	SCAN_VAR(mutantf_port_e8_hack);
-}
-
-void deco16_66_prot_w(INT32 offset, UINT16 data, INT32 mask) /* Mutant Fighter */
-{
-	offset = (offset & 0x7ff) / 2;
-
-	if (mask == 0xffff) {
-		deco16_prot_ram[offset] = data;
-	} else if (mask == 0xff00) {
-		deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | (data & ~mask);
-	} else {
-		deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | ((data << 8) & ~mask);
-	}
-
-#if 0
-	if (offset == (0x64 / 2))
-	{
-		soundlatch = data;
-	//	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE); // huc6280
-		return;
-	}
-#endif
-
-	/* See below */
-	if (offset==(0xe/2))
-		mutantf_port_0e_hack=data;
-	else
-		mutantf_port_0e_hack=0x800;
-
-	if (offset==(0x6a/2))
-		mutantf_port_6a_hack=data;
-	else
-		mutantf_port_6a_hack=0x2866;
-
-	if (offset==(0xe8/2))
-		mutantf_port_e8_hack=data;
-	else
-		mutantf_port_e8_hack=0x2401;
-}
-
-UINT16 deco16_66_prot_r(INT32 offset) /* Mutant Fighter */
-{
-	offset = (offset & 0x7ff) / 2;
-
-	if (offset!=0xe/2)
-		mutantf_port_0e_hack=0x0800;
-	if (offset!=0x6a/2)
-		mutantf_port_6a_hack=0x2866;
-
-	switch (offset*2) {
-		case 0xac: /* Dip switches */
-			return deco16_prot_inputs[2];
-		case 0xc2: /* Dip switches */
-			return (deco16_prot_inputs[2]) ^ deco16_prot_ram[0x2c/2];
-		case 0x46: /* Coins */
-			return ((deco16_prot_inputs[1] & 0x07) | (deco16_vblank & 0x08)) ^ deco16_prot_ram[0x2c/2];
-		case 0x50: /* Player 1 & 2 input ports */
-			return deco16_prot_inputs[0];
-		case 0x63c: /* Player 1 & 2 input ports */
-			return deco16_prot_inputs[0] ^ deco16_prot_ram[0x2c/2];
-
-		case 0x5f4:
-			return deco16_prot_ram[0x18/2];
-		case 0x7e8:
-			return deco16_prot_ram[0x58/2];
-		case 0x1c8:
-			return deco16_prot_ram[0x6a/2];
-		case 0x10:
-			return deco16_prot_ram[0xc/2];
-		case 0x672:
-			return deco16_prot_ram[0x72/2];
-		case 0x5ea:
-			return deco16_prot_ram[0xb8/2];
-		case 0x1e8:
-			return deco16_prot_ram[0x2/2];
-		case 0xf6:
-			return deco16_prot_ram[0x42/2];
-		case 0x692:
-			return deco16_prot_ram[0x2e/2];
-		case 0x63a:
-			return deco16_prot_ram[0x88/2];
-		case 0x7a:
-			return deco16_prot_ram[0xe/2];
-		case 0x40e:
-			return deco16_prot_ram[0x7a/2];
-		case 0x602:
-			return deco16_prot_ram[0x92/2];
-		case 0x5d4:
-			return deco16_prot_ram[0x34/2];
-		case 0x6fa:
-			return deco16_prot_ram[0x4/2];
-		case 0x3dc:
-			return deco16_prot_ram[0xaa/2];
-		case 0x444:
-			return deco16_prot_ram[0xb0/2];
-		case 0x102:
-			return deco16_prot_ram[0xa2/2];
-		case 0x458:
-			return deco16_prot_ram[0xb6/2];
-		case 0x2a6:
-			return deco16_prot_ram[0xe8/2];
-		case 0x626:
-			return deco16_prot_ram[0xf4/2];
-		case 0x762:
-			return deco16_prot_ram[0x82/2];
-		case 0x308:
-			return deco16_prot_ram[0x38/2];
-		case 0x1e6:
-			return deco16_prot_ram[0x1e/2];
-		case 0x566:
-			return deco16_prot_ram[0xa4/2];
-		case 0x5b6:
-			return deco16_prot_ram[0xe4/2];
-		case 0x77c:
-			return deco16_prot_ram[0xfa/2];
-		case 0x4ba:
-			return deco16_prot_ram[0xdc/2];
-
-		case 0x1e:
-			return deco16_prot_ram[0xf4/2] ^ deco16_prot_ram[0x2c/2];
-		case 0x18e:
-			return ((deco16_prot_ram[0x1e/2]&0x000f)<<12) | ((deco16_prot_ram[0x1e/2]&0x0ff0)>>0) | ((deco16_prot_ram[0x1e/2]&0xf000)>>12);
-		case 0x636:
-			return ((deco16_prot_ram[0x18/2]&0x00ff)<<8) | ((deco16_prot_ram[0x18/2]&0x0f00)>>4) | ((deco16_prot_ram[0x18/2]&0xf000)>>12);
-		case 0x7d4:
-			return ((deco16_prot_ram[0xc/2]&0x0ff0)<<4) | ((deco16_prot_ram[0xc/2]&0x000c)<<2) | ((deco16_prot_ram[0xc/2]&0x0003)<<6);
-		case 0x542:
-			return ((deco16_prot_ram[0x92/2]&0x00ff)<<8) ^ deco16_prot_ram[0x2c/2];
-		case 0xb0:
-			return (((deco16_prot_ram[0xc/2]&0x000f)<<12) | ((deco16_prot_ram[0xc/2]&0x00f0)<<4) | ((deco16_prot_ram[0xc/2]&0xff00)>>8)) ^ deco16_prot_ram[0x2c/2];
-		case 0x4:
-			return (((deco16_prot_ram[0x18/2]&0x00f0)<<8) | ((deco16_prot_ram[0x18/2]&0x0003)<<10) | ((deco16_prot_ram[0x18/2]&0x000c)<<6)) & (~deco16_prot_ram[0x36/2]);
-
-		case 0xe: /* On real hardware this value only seems to persist for 1 read or write, then reverts to 0800.  Hmm */
-			{
-				INT32 ret=mutantf_port_0e_hack;
-				mutantf_port_0e_hack=0x800;
-				return ret;
-			}
-
-		case 0x6a: /* On real hardware this value only seems to persist for 1 read or write, then reverts to 0x2866.  Hmm */
-			{
-				INT32 ret=mutantf_port_6a_hack;
-				mutantf_port_6a_hack=0x2866;
-				return ret;
-			}
-
-		case 0xe8: /* On real hardware this value only seems to persist for 1 read or write, then reverts to 0x2401.  Hmm */
-			{
-				INT32 ret=mutantf_port_e8_hack;
-				mutantf_port_e8_hack=0x2401;
-				return ret;
-			}
-
-		case 0xaa: /* ??? */
-			return 0xc080;
-
-		case 0x42: /* Strange, but consistent */
-			return deco16_prot_ram[0x2c/2]^0x5302;
-
-		case 0x48: /* Correct for test data, but I wonder if the 0x1800 is from an address, not a constant */
-			return (0x1800) & (~deco16_prot_ram[0x36/2]);
-
-		case 0x52:
-			return (0x2188) & (~deco16_prot_ram[0x36/2]);
-
-		case 0x82:
-			return ((0x0022 ^ deco16_prot_ram[0x2c/2])) & (~deco16_prot_ram[0x36/2]);
-
-		case 0xc:
-			return 0x2000;
-	}
-
-	return 0;
-}
-
-void deco16_60_prot_w(INT32 offset, UINT16 data, INT32 mask)
-{
-	deco16_66_prot_w(offset, data, mask);
-}
-
-UINT16 deco16_60_prot_r(INT32 offset) /* Edward Randy */
-{
-	offset = (offset & 0x7ff)/2;
-
-	switch (offset<<1) {
-		/* Video registers */
-		case 0x32a: /* Moved to 0x140006 on INT32 */
-			return deco16_prot_ram[0x80/2];
-		case 0x380: /* Moved to 0x140008 on INT32 */
-			return deco16_prot_ram[0x84/2];
-		case 0x63a: /* Moved to 0x150002 on INT32 */
-			return deco16_prot_ram[0x88/2];
-		case 0x42a: /* Moved to 0x150004 on INT32 */
-			return deco16_prot_ram[0x8c/2];
-		case 0x030: /* Moved to 0x150006 on INT32 */
-			return deco16_prot_ram[0x90/2];
-		case 0x6b2: /* Moved to 0x150008 on INT32 */
-			return deco16_prot_ram[0x94/2];
-
-		case 0x6fa:
-			return deco16_prot_ram[0x4/2];
-		case 0xe4:
-			return (deco16_prot_ram[0x4/2]&0xf000)|((deco16_prot_ram[0x4/2]&0x00ff)<<4)|((deco16_prot_ram[0x4/2]&0x0f00)>>8);
-
-		case 0x390:
-			return deco16_prot_ram[0x2c/2];
-		case 0x3b2:
-			return deco16_prot_ram[0x3c/2];
-		case 0x440:
-			return deco16_prot_ram[0x3e/2];
-
-		case 0x6fc:
-			return deco16_prot_ram[0x66/2];
-
-		case 0x15a:
-			return deco16_prot_ram[0xa0/2];
-		case 0x102:
-			return deco16_prot_ram[0xa2/2];
-		case 0x566:
-			return deco16_prot_ram[0xa4/2];
-		case 0xd2:
-			return deco16_prot_ram[0xa6/2];
-		case 0x4a6:
-			return deco16_prot_ram[0xa8/2];
-		case 0x3dc:
-			return deco16_prot_ram[0xaa/2];
-		case 0x2a0:
-			return deco16_prot_ram[0xac/2];
-		case 0x392:
-			return deco16_prot_ram[0xae/2];
-		case 0x444:
-			return deco16_prot_ram[0xb0/2];
-
-		case 0x5ea:
-			return deco16_prot_ram[0xb8/2];
-		case 0x358:
-			return deco16_prot_ram[0xba/2];
-		case 0x342:
-			return deco16_prot_ram[0xbc/2];
-		case 0x3c:
-			return deco16_prot_ram[0xbe/2];
-		case 0x656:
-			return deco16_prot_ram[0xc0/2];
-		case 0x18c:
-			return deco16_prot_ram[0xc2/2];
-		case 0x370:
-			return deco16_prot_ram[0xc4/2];
-		case 0x5c6:
-			return deco16_prot_ram[0xc6/2];
-
-			/* C8 written but not read */
-
-		case 0x248:
-			return deco16_prot_ram[0xd0/2];
-		case 0x1ea:
-			return deco16_prot_ram[0xd2/2];
-		case 0x4cc:
-			return deco16_prot_ram[0xd4/2];
-		case 0x724:
-			return deco16_prot_ram[0xd6/2];
-		case 0x578:
-			return deco16_prot_ram[0xd8/2];
-		case 0x63e:
-			return deco16_prot_ram[0xda/2];
-		case 0x4ba:
-			return deco16_prot_ram[0xdc/2];
-		case 0x1a:
-			return deco16_prot_ram[0xde/2];
-		case 0x120:
-			return deco16_prot_ram[0xe0/2];
-		case 0x7c2: /* (Not checked for mask/xor but seems standard) */
-			return deco16_prot_ram[0x50/2];
-
-		/* memcpy selectors, transfer occurs in interrupt */
-		case 0x32e: return deco16_prot_ram[4]; /* src msb */
-		case 0x6d8: return deco16_prot_ram[5]; /* src lsb */
-		case 0x010: return deco16_prot_ram[6]; /* dst msb */
-		case 0x07a: return deco16_prot_ram[7]; /* src lsb */
-
-		case 0x37c: return deco16_prot_ram[8]; /* src msb */
-		case 0x250: return deco16_prot_ram[9];
-		case 0x04e: return deco16_prot_ram[10];
-		case 0x5ba: return deco16_prot_ram[11];
-		case 0x5f4: return deco16_prot_ram[12]; /* length */
-
-		case 0x38c: return deco16_prot_ram[13]; /* src msb */
-		case 0x02c: return deco16_prot_ram[14];
-		case 0x1e6: return deco16_prot_ram[15];
-		case 0x3e4: return deco16_prot_ram[16];
-		case 0x174: return deco16_prot_ram[17]; /* length */
-
-		/* Player 1 & 2 controls, read in IRQ then written *back* to protection device */
-		case 0x50: /* written to 9e byte */
-			return deco16_prot_inputs[0];
-		case 0x6f8: /* written to 76 byte */
-			return (deco16_prot_inputs[0]>>8)|(deco16_prot_inputs[0]<<8); /* byte swap IN0 */
-
-		case 0x5c: /* After coin insert, high 0x8000 bit set starts game */
-			return deco16_prot_ram[0x3b];
-		case 0x3a6: /* Top byte OR'd with above, masked to 7 */
-			return deco16_prot_ram[0x9e/2];
-		case 0xc6:
-			return ((deco16_prot_ram[0x9e/2]&0xff00)>>8) | ((deco16_prot_ram[0x9e/2]&0x00ff)<<8);
-
-		case 0xac: /* Dip switches */
-			return deco16_prot_inputs[2];
-		case 0xc2:
-			return deco16_prot_inputs[2] ^ deco16_prot_ram[0x2c/2];
-
-		case 0x5d4: /* The state of the dips last frame */
-			return deco16_prot_ram[0x34/2];
-
-		case 0x7bc:
-			return ((deco16_prot_ram[0x76/2]&0xff00)>>8) | ((deco16_prot_ram[0x76/2]&0x00ff)<<8);
-
-		case 0x2f6: /* Stage clear flag */
-			return (((deco16_prot_ram[0]&0xfff0)>>0) | ((deco16_prot_ram[0]&0x000c)>>2) | ((deco16_prot_ram[0]&0x0003)<<2)) & (~deco16_prot_ram[0x36/2]);
-
-		case 0x76a: /* Coins */
-			return (deco16_prot_inputs[1] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x284: /* Bit shifting with inverted mask register */
-			return (((deco16_prot_ram[0x40/2]&0xfff0)>>0) | ((deco16_prot_ram[0x40/2]&0x0007)<<1) | ((deco16_prot_ram[0x40/2]&0x0008)>>3)) & (~deco16_prot_ram[0x36/2]);
-		case 0x6c4: /* Bit shifting with inverted mask register */
-			return (((deco16_prot_ram[0x54/2]&0xf000)>>4) | ((deco16_prot_ram[0x54/2]&0x0f00)>>4) | ((deco16_prot_ram[0x54/2]&0x00f0)>>4) | ((deco16_prot_ram[0x54/2]&0x0003)<<14) | ((deco16_prot_ram[0x54/2]&0x000c)<<10)) & (~deco16_prot_ram[0x36/2]);
-		case 0x33e: /* Bit shifting with inverted mask register */
-			return (((deco16_prot_ram[0x56/2]&0xff00)>>0) | ((deco16_prot_ram[0x56/2]&0x00f0)>>4) | ((deco16_prot_ram[0x56/2]&0x000f)<<4)) & (~deco16_prot_ram[0x36/2]);
-		case 0x156: /* Bit shifting with inverted mask register */
-			return (((deco16_prot_ram[0x58/2]&0xfff0)>>4) | ((deco16_prot_ram[0x58/2]&0x000e)<<11) | ((deco16_prot_ram[0x58/2]&0x0001)<<15)) & (~deco16_prot_ram[0x36/2]);
-		case 0x286: /* Bit shifting with inverted mask register */
-			return (((deco16_prot_ram[0x6a/2]&0x00f0)<<4) | ((deco16_prot_ram[0x6a/2]&0x0f00)<<4) | ((deco16_prot_ram[0x6a/2]&0x0007)<<5) | ((deco16_prot_ram[0x6a/2]&0x0008)<<1)) & (~deco16_prot_ram[0x36/2]);
-
-		case 0x7d6: /* XOR IN0 */
-			return deco16_prot_inputs[0] ^ deco16_prot_ram[0x2c/2];
-		case 0x4b4:
-			return ((deco16_prot_ram[0x32/2]&0x00f0)<<8) | ((deco16_prot_ram[0x32/2]&0x000e)<<7) | ((deco16_prot_ram[0x32/2]&0x0001)<<11);
-	}
-
-	return 0;
-}
-
-UINT16 deco16_104_cninja_prot_r(INT32 offset)
-{
-	switch (offset & 0x3fe) {
-		case 0x80: /* Master level control */
-			return deco16_prot_ram[0];
-
-		case 0xde: /* Restart position control */
-			return deco16_prot_ram[1];
-
-		case 0xe6: /* The number of credits in the system. */
-			return deco16_prot_ram[2];
-
-		case 0x86: /* End of game check.  See 0x1814 */
-			return deco16_prot_ram[3];
-
-		/* Video registers */
-		case 0x5a: /* Moved to 0x140000 on INT32 */
-			return deco16_prot_ram[8];
-		case 0x84: /* Moved to 0x14000a on INT32 */
-			return deco16_prot_ram[9];
-		case 0x20: /* Moved to 0x14000c on INT32 */
-			return deco16_prot_ram[10];
-		case 0x72: /* Moved to 0x14000e on INT32 */
-			return deco16_prot_ram[11];
-		case 0xdc: /* Moved to 0x150000 on INT32 */
-			return deco16_prot_ram[12];
-		case 0x6e: /* Moved to 0x15000a on INT32 */
-			return deco16_prot_ram[13]; /* Not used on bootleg */
-		case 0x6c: /* Moved to 0x15000c on INT32 */
-			return deco16_prot_ram[14];
-		case 0x08: /* Moved to 0x15000e on INT32 */
-			return deco16_prot_ram[15];
-
-		case 0x36: /* Dip switches */
-			return deco16_prot_inputs[2];
-
-		case 0x1c8: /* Coins */
-			return (deco16_prot_inputs[1] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x22c: /* Player 1 & 2 input ports */
-			return deco16_prot_inputs[0];
-	}
-
-	return ~0;
-}
-
-UINT16 deco16_146_funkyjet_prot_r(INT32 offset)
-{
-	offset = (offset & 0x7fe) / 2;
-
-	switch (offset)
-	{
-		case 0x00c >> 1:
-			return deco16_prot_inputs[0];
-
-		case 0x0be >> 1:
-			return deco16_prot_ram[0x106>>1];
-
-		case 0x11e >> 1:
-			return deco16_prot_ram[0x500>>1];
-
-		case 0x148 >> 1:
-			return deco16_prot_ram[0x70e>>1];
-
-		case 0x192 >>1:
-			return ((deco16_prot_ram[0x78e>>1]<<0)&0xf000);
-
-		case 0x1da >> 1:
-			return deco16_prot_ram[0x100>>1];
-
-		case 0x21c >> 1:
-			return deco16_prot_ram[0x504>>1];
-
-		case 0x226 >> 1:
-			return deco16_prot_ram[0x58c>>1];
-
-		case 0x24c >> 1:
-			return deco16_prot_ram[0x78e>>1];
-
-		case 0x250 >> 1:
-			return deco16_prot_ram[0x304>>1];
-
-		case 0x27c >>1:
-			return ((deco16_prot_ram[0x70e>>1]>>4)&0x0fff) | ((deco16_prot_ram[0x70e>>1]&0x0001)<<15) | ((deco16_prot_ram[0x70e>>1]&0x000e)<<11);
-
-		case 0x2d4 >> 1:
-			return deco16_prot_ram[0x102>>1];
-
-		case 0x2d8 >> 1:
-			return deco16_prot_ram[0x502>>1];
-
-		case 0x382 >> 1:
-			return deco16_prot_inputs[2];
-
-		case 0x3a6 >> 1:
-			return deco16_prot_ram[0x104>>1];
-
-		case 0x3a8 >> 1:
-			return deco16_prot_ram[0x500>>1];
-
-		case 0x3e8 >> 1:
-			return (deco16_prot_ram[0x50c>>1] >> 8) ^ 0xffff;
-
-		case 0x4e4 >> 1:
-			return deco16_prot_ram[0x702>>1];
-
-		case 0x562 >> 1:
-			return deco16_prot_ram[0x18e>>1];
-
-		case 0x56c >> 1:
-			return deco16_prot_ram[0x50c>>1];
-
-		case 0x5be >> 1:
-			return ((deco16_prot_ram[0x70e>>1]<<4)&0xff00) | (deco16_prot_ram[0x70e>>1]&0x000f);
-
-		case 0x5ca >> 1:
-			return ((deco16_prot_ram[0x78e>>1]>>4)&0xff00) | (deco16_prot_ram[0x78e>>1]&0x000f) | ((deco16_prot_ram[0x78e>>1]<<8)&0xf000);
-
-		case 0x688 >> 1:
-			return deco16_prot_ram[0x300>>1];
-
-		case 0x778 >> 1: {
-			return (deco16_prot_inputs[1] & 0x07) | (deco16_vblank & 0x08);
-		}
-
-		case 0x788 >> 1:
-			return deco16_prot_ram[0x700>>1];
-
-		case 0x7d4 >> 1:
-			return 0x10;
-	}
-
-	return ~0;
-}
-
-
-
-
-void deco16_104_rohga_prot_w(INT32 offset, UINT16 data, INT32 mask)
-{
-	offset = (offset & 0x7ff) / 2;
-
-	if (deco16_buffer_ram_selected) {
-		if (mask == 0xffff) {
-			deco16_buffer_ram[offset] = data;
-		} else if (mask == 0xff00) {
-			deco16_buffer_ram[offset] = (deco16_buffer_ram[offset] & mask) | (data & ~mask);
-		} else {
-			deco16_buffer_ram[offset] = (deco16_buffer_ram[offset] & mask) | ((data << 8) & ~mask);
-		}
-	} else {
-		if (mask == 0xffff) {
-			deco16_prot_ram[offset] = data;
-		} else if (mask == 0xff00) {
-			deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | (data & ~mask);
-		} else {
-			deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | ((data << 8) & ~mask);
-		}
-	}
-
-	if (offset==0x42/2)
-		deco16_xor = data;
-
-	if (offset==0xee/2)
-		deco16_mask = data;
-}
-
-UINT16 deco16_104_rohga_prot_r(INT32 offset)
-{
-	offset = (offset & 0x7ff) / 2;
-
-	const UINT16 * prot_ram=deco16_buffer_ram_selected ? deco16_buffer_ram : deco16_prot_ram;
-
-	switch (offset) {
-		case 0x88/2: /* Player 1 & 2 input ports */
-			return deco16_prot_inputs[0];
-		case 0x36c/2:
-			return (deco16_prot_inputs[1] & 0x7)|(deco16_vblank & 0x08);
-		case 0x44c/2:
-			return ((deco16_prot_inputs[1] & 0x7)<<13)|((deco16_vblank & 0x8)<<9);
-		case 0x292/2: /* Dips */
-			return deco16_prot_inputs[2];
-
-		case 0x44/2:
-			return ((((DECO_PORT(0x2c)&0x000f)<<12)) ^ deco16_xor) & (~deco16_mask);
-		case 0x282/2:
-			return ((DECO_PORT(0x26)&0x000f)<<12) & (~deco16_mask);
-		case 0xd4/2:
-			return ((DECO_PORT(0x6e)&0x0ff0)<<4) | ((DECO_PORT(0x6e)&0x000e)<<3) | ((DECO_PORT(0x6e)&0x0001)<<7);
-		case 0x5a2/2:
-			return (((DECO_PORT(0x24)&0xff00)>>4) | ((DECO_PORT(0x24)&0x000f)<<0) | ((DECO_PORT(0x24)&0x00f0)<<8)) & (~deco16_mask);
-		case 0x570/2:
-			return (((DECO_PORT(0x24)&0xf0f0)>>0) | ((DECO_PORT(0x24)&0x000f)<<8)) ^ deco16_xor;
-		case 0x32e/2:
-			return (((DECO_PORT(0x46)&0xf000)>>0) | ((DECO_PORT(0x46)&0x00ff)<<4)) & (~deco16_mask);
-		case 0x4dc/2:
-			return ((DECO_PORT(0x62)&0x00ff)<<8);
-		case 0x1be/2:
-			return ((((DECO_PORT(0xc2)&0x0ff0)<<4) | ((DECO_PORT(0xc2)&0x0003)<<6) | ((DECO_PORT(0xc2)&0x000c)<<2)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x420/2:
-			return ((DECO_PORT(0x2e)&0xf000)>>4) | ((DECO_PORT(0x2e)&0x0f00)<<4) | ((DECO_PORT(0x2e)&0x00f0)>>4) | ((DECO_PORT(0x2e)&0x000f)<<4);
-
-		case 0x390/2:
-			return DECO_PORT(0x2c);
-
-		case 0x756/2:
-			return ((DECO_PORT(0x60)&0xfff0)>>4) | ((DECO_PORT(0x60)&0x0007)<<13) | ((DECO_PORT(0x60)&0x0008)<<9);
-		case 0x424/2:
-			return ((DECO_PORT(0x60)&0xf000)>>4) | ((DECO_PORT(0x60)&0x0f00)<<4) | ((DECO_PORT(0x60)&0x00f0)>>0) | ((DECO_PORT(0x60)&0x000f)<<0);
-
-		case 0x156/2:
-			return (((DECO_PORT(0xde)&0xff00)<<0) | ((DECO_PORT(0xde)&0x000f)<<4) | ((DECO_PORT(0xde)&0x00f0)>>4)) & (~deco16_mask);
-		case 0xa8/2:
-			return (((DECO_PORT(0xde)&0xff00)>>4) | ((DECO_PORT(0xde)&0x000f)<<0) | ((DECO_PORT(0xde)&0x00f0)<<8)) & (~deco16_mask);
-		case 0x64a/2:
-			return (((DECO_PORT(0xde)&0xfff0)>>4) | ((DECO_PORT(0xde)&0x000c)<<10) | ((DECO_PORT(0xde)&0x0003)<<14)) & (~deco16_mask);
-
-		case 0x16e/2:
-			return DECO_PORT(0x6a);
-
-		case 0x39c/2:
-			return (DECO_PORT(0x6a)&0x00ff) | ((DECO_PORT(0x6a)&0xf000)>>4) | ((DECO_PORT(0x6a)&0x0f00)<<4);
-		case 0x212/2:
-			return (((DECO_PORT(0x6e)&0xff00)>>4) | ((DECO_PORT(0x6e)&0x00f0)<<8) | ((DECO_PORT(0x6e)&0x000f)<<0)) ^ deco16_xor;
-
-		case 0x70a/2:
-			return (((DECO_PORT(0xde)&0x00f0)<<8) | ((DECO_PORT(0xde)&0x0007)<<9) | ((DECO_PORT(0xde)&0x0008)<<5)) ^ deco16_xor;
-
-		case 0x7a0/2:
-			return (DECO_PORT(0x6e)&0x00ff) | ((DECO_PORT(0x6e)&0xf000)>>4) | ((DECO_PORT(0x6e)&0x0f00)<<4);
-		case 0x162/2:
-			return DECO_PORT(0x6e);
-
-		case 0x384/2:
-			return ((DECO_PORT(0xdc)&0xf000)>>12) | ((DECO_PORT(0xdc)&0x0ff0)<<4) | ((DECO_PORT(0xdc)&0x000c)<<2) | ((DECO_PORT(0xdc)&0x0003)<<6);
-
-		case 0x302/2:
-			return DECO_PORT(0x24);
-		case 0x334/2:
-			return DECO_PORT(0x30);
-		case 0x34c/2:
-			return DECO_PORT(0x3c);
-
-		case 0x514/2:
-			return (((DECO_PORT(0x32)&0x0ff0)<<4) | ((DECO_PORT(0x32)&0x000c)<<2) | ((DECO_PORT(0x32)&0x0003)<<6)) & (~deco16_mask);
-
-		case 0x34e/2:
-			return ((DECO_PORT(0xde)&0x0ff0)<<4) | ((DECO_PORT(0xde)&0xf000)>>8) | ((DECO_PORT(0xde)&0x000f)<<0);
-		case 0x722/2:
-			return (((DECO_PORT(0xdc)&0x0fff)<<4) ^ deco16_xor) & (~deco16_mask);
-		case 0x574/2:
-			return ((((DECO_PORT(0xdc)&0xfff0)>>0) | ((DECO_PORT(0xdc)&0x0003)<<2) | ((DECO_PORT(0xdc)&0x000c)>>2)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x5ae/2:
-			return DECO_PORT(0xdc);
-		case 0x410/2:
-			return DECO_PORT(0xde);
-		case 0x340/2:
-			return ((DECO_PORT(0x90)&0xfff0) | ((DECO_PORT(0x90)&0x7)<<1) | ((DECO_PORT(0x90)&0x8)>>3)) ^ deco16_xor;
-		case 0x4a4/2:
-			return (((DECO_PORT(0xce)&0x0ff0) | ((DECO_PORT(0xce)&0xf000)>>12) | ((DECO_PORT(0xce)&0x000f)<<12)) ^ deco16_xor) & (~deco16_mask);
-		case 0x256/2:
-			return ((((DECO_PORT(0xce)&0xf000)>>12) | ((DECO_PORT(0xce)&0x0fff)<<4))) & (~deco16_mask);
-		case 0x79a/2:
-			return (((DECO_PORT(0xc8)&0xfff0)>>4) | ((DECO_PORT(0xc8)&0x0008)<<9) | ((DECO_PORT(0xc8)&0x0007)<<13)) ^ deco16_xor;
-
-		case 0x65e/2:
-			return DECO_PORT(0x9c);
-		case 0x79c/2:
-			return ((DECO_PORT(0xc6)&0xf000) | ((DECO_PORT(0xc6)&0x00ff)<<4) | ((DECO_PORT(0xc6)&0x0f00)>>8)) & (~deco16_mask);
-		case 0x15e/2:
-			return (((DECO_PORT(0x98)&0x0ff0)<<4) | ((DECO_PORT(0x98)&0xf000)>>12) | ((DECO_PORT(0x98)&0x0003)<<6) | ((DECO_PORT(0x98)&0x000c)<<2)) ^ deco16_xor;
-		case 0x6e4/2:
-			return DECO_PORT(0x98);
-		case 0x1e/2:
-			return ((((DECO_PORT(0xc4)&0xf000)>>4) | ((DECO_PORT(0xc4)&0x0f00)<<4) | ((DECO_PORT(0xc4)&0x00ff)<<0)) ^ deco16_xor) & (~deco16_mask);
-		case 0x23a/2:
-			return ((((DECO_PORT(0x86)&0xfff0)>>0) | ((DECO_PORT(0x86)&0x0003)<<2) | ((DECO_PORT(0x86)&0x000c)>>2)) ^ deco16_xor);
-		case 0x6e/2:
-			return ((((DECO_PORT(0x96)&0xf000)>>8) | ((DECO_PORT(0x96)&0x0f0f)<<0) | ((DECO_PORT(0x96)&0x00f0)<<8)) ^ deco16_xor);
-		case 0x3a2/2:
-			return ((((DECO_PORT(0x94)&0xf000)>>8) | ((DECO_PORT(0x94)&0x0f00)>>8) | ((DECO_PORT(0x94)&0x00f0)<<8) | ((DECO_PORT(0x94)&0x000e)<<7) | ((DECO_PORT(0x94)&0x0001)<<11)) ^ deco16_xor);// & (~deco16_mask);
-		case 0x4a6/2:
-			return ((DECO_PORT(0x8c)&0xff00)>>0) | ((DECO_PORT(0x8c)&0x00f0)>>4) | ((DECO_PORT(0x8c)&0x000f)<<4);
-		case 0x7b0/2:
-			return DECO_PORT(0x80);
-		case 0x5aa/2:
-			return ((((DECO_PORT(0x98)&0x0f00)>>8) | ((DECO_PORT(0x98)&0xf000)>>8) | ((DECO_PORT(0x98)&0x00f0)<<8) | ((DECO_PORT(0x98)&0x000e)<<7) | ((DECO_PORT(0x98)&0x0001)<<11)) ^ deco16_xor) & (~deco16_mask);
-		case 0x662/2:
-			return DECO_PORT(0x8c);
-		case 0x624/2:
-			return DECO_PORT(0x9a);
-		case 0x2c/2:
-			return (((DECO_PORT(0x82)&0x0f0f)>>0) | ((DECO_PORT(0x82)&0xf000)>>8) | ((DECO_PORT(0x82)&0x00f0)<<8)) & (~deco16_mask);
-
-		case 0x1b4/2:
-			return ((DECO_PORT(0xcc)&0x00f0)<<4) | ((DECO_PORT(0xcc)&0x000f)<<12);
-
-		case 0x7ce/2:
-			return ((DECO_PORT(0x80)&0x000e)<<11) | ((DECO_PORT(0x80)&0x0001)<<15);
-		case 0x41a/2:
-			return ((((DECO_PORT(0x84)&0x00f0)<<8) | ((DECO_PORT(0x84)&0xf000)>>8) | ((DECO_PORT(0x84)&0x0f00)>>8) | ((DECO_PORT(0x84)&0x0003)<<10) | ((DECO_PORT(0x84)&0x000c)<<6)) ^ deco16_xor);
-		case 0x168/2:
-			return ((((DECO_PORT(0x84)&0x0ff0)<<4) | ((DECO_PORT(0x84)&0x000e)<<3) | ((DECO_PORT(0x84)&0x0001)<<5))) & (~deco16_mask);
-		case 0x314/2:
-			return ((((DECO_PORT(0x84)&0x0ff0)<<4) | ((DECO_PORT(0x84)&0x000e)<<3) | ((DECO_PORT(0x84)&0x0001)<<5)));
-		case 0x5e2/2:
-			return ((((DECO_PORT(0x84)&0x00f0)<<8) | ((DECO_PORT(0x84)&0x000e)<<7) | ((DECO_PORT(0x84)&0x0001)<<9)));
-		case 0x72a/2:
-			return ((((DECO_PORT(0x86)&0xfff0)>>4) | ((DECO_PORT(0x86)&0x0003)<<14) | ((DECO_PORT(0x86)&0x000c)<<10)) ^ deco16_xor) & (~deco16_mask);
-		case 0x178/2:
-			return (((DECO_PORT(0x88)&0x00ff)<<8) | ((DECO_PORT(0x88)&0xff00)>>8)) & (~deco16_mask);
-		case 0x40e/2:
-			return ((((DECO_PORT(0x8a)&0xf000)>>0) | ((DECO_PORT(0x8a)&0x00ff)<<4)) ^ deco16_xor) & (~deco16_mask);
-		case 0x248/2:
-			return ((((DECO_PORT(0x8c)&0xff00)>>8) | ((DECO_PORT(0x8c)&0x00f0)<<4) | ((DECO_PORT(0x8c)&0x000f)<<12)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x27e/2:
-			return ((((DECO_PORT(0x94)&0x00f0)<<8)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x22c/2:
-			return ((DECO_PORT(0xc4)&0x00f0)<<8);
-		case 0x77e/2:
-			return ((DECO_PORT(0x62)&0xf000)>>12) | ((DECO_PORT(0x62)&0x0ff0)<<0) | ((DECO_PORT(0x62)&0x000f)<<12);
-		case 0xc/2:
-			return ((DECO_PORT(0xd6)&0xf000)>>12) | ((DECO_PORT(0xd6)&0x0fff)<<4);
-
-		case 0x90/2:
-			return DECO_PORT(0x44);
-		case 0x246/2:
-			return ((((DECO_PORT(0x48)&0xff00)>>8) | ((DECO_PORT(0x48)&0x00f0)<<8) | ((DECO_PORT(0x48)&0x0f00)>>8) | ((DECO_PORT(0x48)&0x0003)<<10) | ((DECO_PORT(0x48)&0x000c)<<6)) ^ deco16_xor);
-		case 0x546/2:
-			return (((DECO_PORT(0x62)&0xf0f0)>>0) | ((DECO_PORT(0x62)&0x000f)<<8)) & (~deco16_mask);
-		case 0x2e2/2:
-			return ((DECO_PORT(0xc6)&0x000e)<<11) | ((DECO_PORT(0xc6)&0x0001)<<15);
-		case 0x3c0/2:
-			return DECO_PORT(0x22);
-		case 0x4b8/2:
-			return (((DECO_PORT(0x46)&0xf000)>>12) | ((DECO_PORT(0x46)&0x0f00)>>4) | ((DECO_PORT(0x46)&0x00ff)<<8)) ^ deco16_xor;
-		case 0x65c/2:
-			return ((((DECO_PORT(0x44)&0xf000)>>12) | ((DECO_PORT(0x44)&0x0fff)<<4)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x32a/2:
-			return ((((DECO_PORT(0xc0)&0x0ff0)<<4) | ((DECO_PORT(0xc0)&0x000e)<<3) | ((DECO_PORT(0xc0)&0x0001)<<7))) & (~deco16_mask);// ^ deco16_xor;
-		case 0x8/2:
-			return ((((DECO_PORT(0x94)&0xfff0)<<0) | ((DECO_PORT(0x94)&0x000e)>>1) | ((DECO_PORT(0x94)&0x0001)<<3))) & (~deco16_mask);// ^ deco16_xor;
-		case 0x456/2:
-			return (((DECO_PORT(0x26)&0xfff0)<<0) | ((DECO_PORT(0x26)&0x0007)<<1) | ((DECO_PORT(0x26)&0x0008)>>3));// ^ deco16_xor;
-		case 0x190/2:
-			return ((((DECO_PORT(0x44)&0xf000)<<0) | ((DECO_PORT(0x44)&0x00ff)<<4))) & (~deco16_mask);// ^ deco16_xor;
-		case 0x3f2/2:
-			return ((((DECO_PORT(0x48)&0x000f)<<12) | ((DECO_PORT(0x48)&0x00f0)<<4))) & (~deco16_mask);// ^ deco16_xor;
-		case 0x2be/2:
-			return ((DECO_PORT(0x40)&0x00ff)<<8);
-
-		case 0x19e/2:
-			return ((((DECO_PORT(0x3c)&0xf000)>>12) | ((DECO_PORT(0x3c)&0x0f00)<<4) | ((DECO_PORT(0x3c)&0x00f0)>>0) | ((DECO_PORT(0x3c)&0x000f)<<8)) ^ deco16_xor) & (~deco16_mask);
-		case 0x2a2/2:
-			return ((((DECO_PORT(0x44)&0xff00)>>8) | ((DECO_PORT(0x44)&0x00f0)<<8) | ((DECO_PORT(0x44)&0x000e)<<7) | ((DECO_PORT(0x44)&0x0001)<<11)) ^ deco16_xor) & (~deco16_mask);
-		case 0x748/2:
-			return (((DECO_PORT(0x44)&0xfff0)<<0) | ((DECO_PORT(0x44)&0x000e)>>1) | ((DECO_PORT(0x44)&0x0001)<<3));// & (~deco16_mask);
-		case 0x686/2:
-			return (((DECO_PORT(0x46)&0xf000)>>4) | ((DECO_PORT(0x46)&0x0f00)>>8) | ((DECO_PORT(0x46)&0x00f0)<<8) | ((DECO_PORT(0x46)&0x000f)<<4));// & (~deco16_mask);
-		case 0x4c4/2:
-			return ((DECO_PORT(0x3c)&0x000f)<<12) & (~deco16_mask);
-		case 0x538/2:
-			return ((DECO_PORT(0x3c)&0x000f)<<12);
-		case 0x63a/2:
-			return ((DECO_PORT(0x3c)&0x000f)<<12);
-		case 0x348/2:
-			return ((((DECO_PORT(0x44)&0xf000)>>12) | ((DECO_PORT(0x44)&0x0ff0)<<4) | ((DECO_PORT(0x44)&0x000e)<<3) | ((DECO_PORT(0x44)&0x0001)<<7))) ^ deco16_xor;// & (~deco16_mask);
-		case 0x200/2:
-			return (((DECO_PORT(0xa0)&0xfff0)>>4) | ((DECO_PORT(0xa0)&0x0007)<<13) | ((DECO_PORT(0xa0)&0x0008)<<9));// & (~deco16_mask);
-		case 0x254/2:
-			return ((((DECO_PORT(0x7e)&0x0ff0)<<4) | ((DECO_PORT(0x7e)&0x000c)<<2) | ((DECO_PORT(0x7e)&0x0003)<<6))) ^ deco16_xor;// & (~deco16_mask);
-		case 0x182/2:
-			return ((DECO_PORT(0x46)&0xf000)<<0) | ((DECO_PORT(0x46)&0x0f00)>>8) | ((DECO_PORT(0x46)&0x00f0)>>0) | ((DECO_PORT(0x46)&0x000f)<<8);
-		case 0x58/2:
-			return DECO_PORT(0x46);
-		case 0x48e/2:
-			return ((((DECO_PORT(0x46)&0xf000)>>12) | ((DECO_PORT(0x46)&0x0f00)>>4) | ((DECO_PORT(0x46)&0x00f0)<<4) | ((DECO_PORT(0x46)&0x000f)<<12)));// /*^ deco16_xor*/) & (~deco16_mask);
-
-		case 0x4ba/2:
-			return (((DECO_PORT(0x24)&0xf000)>>12) | ((DECO_PORT(0x24)&0x0ff0)<<4) | ((DECO_PORT(0x24)&0x000c)<<2) | ((DECO_PORT(0x24)&0x0003)<<6)) & (~deco16_mask);
-		case 0x92/2:
-			return (((DECO_PORT(0x3c)&0xfff0)>>0) | ((DECO_PORT(0x3c)&0x0007)<<1) | ((DECO_PORT(0x3c)&0x0008)>>3));
-		case 0x1f0/2:
-			return ((((DECO_PORT(0xa2)&0xf000)>>12) | ((DECO_PORT(0xa2)&0x0f00)>>4) | ((DECO_PORT(0xa2)&0x00ff)<<8)) ^ deco16_xor) & (~deco16_mask);
-		case 0x24e/2:
-			return ((((DECO_PORT(0x46)&0xf000)>>8) | ((DECO_PORT(0x46)&0x0f00)>>0) | ((DECO_PORT(0x46)&0x00f0)>>4) | ((DECO_PORT(0x46)&0x000f)<<12)) ^ deco16_xor);// & (~deco16_mask);
-		case 0x594/2:
-			return ((((DECO_PORT(0x40)&0x00f0)<<8) | ((DECO_PORT(0x40)&0x000c)<<6) | ((DECO_PORT(0x40)&0x0003)<<10)) ^ deco16_xor);// & (~deco16_mask);
-
-		case 0x7e2/2:
-			return ((((DECO_PORT(0x96)&0xf000)<<0) | ((DECO_PORT(0x96)&0x00f0)<<4) | ((DECO_PORT(0x96)&0x000f)<<4))) ^ deco16_xor;// | ((DECO_PORT(0x96)&0x0001)<<7));// ^ deco16_xor);// & (~deco16_mask);
-		case 0x18c/2:
-			return (((DECO_PORT(0x22)&0xfff0)>>4) | ((DECO_PORT(0x22)&0x000e)<<11) | ((DECO_PORT(0x22)&0x0001)<<15));// ^ deco16_xor);// & (~deco16_mask);
-		case 0x1fa/2:
-			return ((((DECO_PORT(0x26)&0xf000)>>8) | ((DECO_PORT(0x26)&0x0f00)<<0) | ((DECO_PORT(0x26)&0x00f0)>>4) | ((DECO_PORT(0x26)&0x000f)<<12))) ^ deco16_xor;// & (~deco16_mask);
-		case 0x70e/2:
-			return ((((DECO_PORT(0x26)&0x0ff0)<<4) | ((DECO_PORT(0x26)&0x000c)<<2) | ((DECO_PORT(0x26)&0x0003)<<6))) ^ deco16_xor;// & (~deco16_mask);
-		case 0x33a/2:
-			return DECO_PORT(0x60) & (~deco16_mask);
-		case 0x1e2/2:
-			return ((DECO_PORT(0xd0)&0xf000)>>12) | ((DECO_PORT(0xd0)&0x0f00)>>4) | ((DECO_PORT(0xd0)&0x00ff)<<8);
-		case 0x3f4/2:
-			return DECO_PORT(0x6e)<<4;
-
-		case 0x2ae/2:
-			return ((DECO_PORT(0x9c)&0xf000)<<0) | ((DECO_PORT(0x9c)&0x0ff0)>>4) | ((DECO_PORT(0x9c)&0x000f)<<8);// & (~deco16_mask);
-		case 0x96/2:
-			return ((((DECO_PORT(0x22)&0xff00)>>8) | ((DECO_PORT(0x22)&0x00f0)<<8) | ((DECO_PORT(0x22)&0x000e)<<7) | ((DECO_PORT(0x22)&0x0001)<<11)) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x33e/2:
-			return (((DECO_PORT(0x0)&0xf000)>>12) | ((DECO_PORT(0x0)&0x0f00)>>4) | ((DECO_PORT(0x0)&0x00f0)<<4) | ((DECO_PORT(0x0)&0x000f)<<12)) & (~deco16_mask);
-
-		case 0x6c4/2: /* Reads from here flip buffers */
-			deco16_buffer_ram_selected^=1;
-			// Flip occurs AFTER this data has been calculated
-			return ((DECO_PORT(0x66)&0xf0f0) | ((DECO_PORT(0x66)&0x000f)<<8)) & (~deco16_mask);
-		case 0x700/2: /* Reads from here flip buffers */
-			deco16_buffer_ram_selected^=1;
-			return (((DECO_PORT(0x66)&0xf000)>>4) | ((DECO_PORT(0x66)&0x00f0)<<8)) ^ deco16_xor;
-		case 0x444/2:
-			deco16_buffer_ram_selected^=1;
-			return ((DECO_PORT(0x66)&0x00f0)<<8) | ((DECO_PORT(0x66)&0x0007)<<9)  | ((DECO_PORT(0x66)&0x0008)<<5);
-		case 0x2d0/2:
-			deco16_buffer_ram_selected^=1;
-			return (((DECO_PORT(0x66)&0xf000)>>4) | ((DECO_PORT(0x66)&0x00f0)<<8)) ^ deco16_xor;
-		case 0x2b8/2:
-			deco16_buffer_ram_selected^=1;
-			return ((DECO_PORT(0x66)&0x00f0)<<8) ^ deco16_xor;
-		case 0x294/2:
-			deco16_buffer_ram_selected^=1;
-			return ((DECO_PORT(0x66)&0x000f)<<12);
-		case 0x1e8/2:
-			deco16_buffer_ram_selected^=1;
-			return 0; // todo
-
-		case 0x49c/2:
-			return (((DECO_PORT(0x6c)&0x00f0)<<8) ^ deco16_xor) & (~deco16_mask);
-
-		case 0x44e/2:
-			return (((DECO_PORT(0x44)&0x00f0)<<4) | ((DECO_PORT(0x44)&0x000f)<<12)) ^ deco16_xor;
-		case 0x3ca/2:
-			return (((DECO_PORT(0x1e)&0xfff0)>>4) | ((DECO_PORT(0x1e)&0x0003)<<14) | ((DECO_PORT(0x1e)&0x000c)<<10)) ^ deco16_xor;
-		case 0x2ac/2:
-			return DECO_PORT(0x1e);
-		case 0x3c/2:
-			return (((DECO_PORT(0x1e)&0x0003)<<14) | ((DECO_PORT(0x1e)&0x000c)<<10)) & (~deco16_mask);
-		case 0x174/2:
-			return (((DECO_PORT(0x1e)&0xff00)>>8) | ((DECO_PORT(0x1e)&0x00f0)<<8) | ((DECO_PORT(0x1e)&0x0007)<<9) | ((DECO_PORT(0x1e)&0x0008)<<5)) & (~deco16_mask);
-		case 0x34a/2:
-			return (((DECO_PORT(0x4)&0xff00)>>0) | ((DECO_PORT(0x4)&0x00f0)>>4) | ((DECO_PORT(0x4)&0x000f)<<4)) & (~deco16_mask);
-		case 0x324/2:
-			return (((DECO_PORT(0x6)&0xf000)>>12) | ((DECO_PORT(0x6)&0x0ff0)<<4) | ((DECO_PORT(0x6)&0x0007)<<5) | ((DECO_PORT(0x6)&0x0008)<<1));
-		case 0x344/2:
-			return (((DECO_PORT(0x8)&0xf000)>>8) | ((DECO_PORT(0x8)&0x0f00)>>8) | ((DECO_PORT(0x8)&0x00f0)<<4) | ((DECO_PORT(0x8)&0x000f)<<12));
-		case 0x72/2:
-			return ((((DECO_PORT(0xa)&0xf000)>>8) | ((DECO_PORT(0xa)&0x0ff0)<<4) | ((DECO_PORT(0xa)&0x000f)>>0))) & (~deco16_mask);
-		case 0x36e/2:
-			return ((((DECO_PORT(0xc)&0xf000)>>0) | ((DECO_PORT(0xc)&0x0ff0)>>4) | ((DECO_PORT(0xc)&0x000f)<<8))) & (~deco16_mask);
-
-		case 0x590/2:
-			return ((((DECO_PORT(0xe)&0xfff0)>>4) | ((DECO_PORT(0xe)&0x000e)<<11) | ((DECO_PORT(0xe)&0x0001)<<15))) ^ deco16_xor;
-		case 0x7b6/2:
-			return ((((DECO_PORT(0x2)&0xf000)>>8) | ((DECO_PORT(0x2)&0x0ff0)<<4) | ((DECO_PORT(0x2)&0x000f)<<0)) ^ deco16_xor) & (~deco16_mask);
-		case 0x588/2:
-			return ((((DECO_PORT(0x4)&0xff00)>>4) | ((DECO_PORT(0x4)&0x00f0)<<8) | ((DECO_PORT(0x4)&0x000f)<<0)) ^ deco16_xor) & (~deco16_mask);
-		case 0x1f6/2:
-			return (((DECO_PORT(0x6)&0xf000)>>12) | ((DECO_PORT(0x6)&0x0ff0)<<4) | ((DECO_PORT(0x6)&0x0007)<<5) | ((DECO_PORT(0x6)&0x0008)<<1)) ^ deco16_xor;
-		case 0x4c0/2:
-			return (((DECO_PORT(0x8)&0xf000)>>4) | ((DECO_PORT(0x8)&0x0f00)<<4) | ((DECO_PORT(0x8)&0x00f0)>>4) | ((DECO_PORT(0x8)&0x000f)<<4)) & (~deco16_mask);
-		case 0x63e/2:
-			return ((((DECO_PORT(0xa)&0x0ff0)<<4) | ((DECO_PORT(0xa)&0xf000)>>12) | ((DECO_PORT(0xa)&0x0003)<<6) | ((DECO_PORT(0xa)&0x000c)<<2)));
-		case 0x7cc/2:
-			return ((((DECO_PORT(0xc)&0xfff0)>>4) | ((DECO_PORT(0xc)&0x000e)<<11) | ((DECO_PORT(0xc)&0x0001)<<15)) ^ deco16_xor) & (~deco16_mask);
-		case 0x1bc/2:
-			return (((DECO_PORT(0xe)&0xf000)>>12) | ((DECO_PORT(0xe)&0x0f00)>>4) | ((DECO_PORT(0xe)&0x00ff)<<8)) & (~deco16_mask);
-
-		case 0x780/2:
-			return DECO_PORT(0xb8);
-
-		case 0x454/2:
-			return (((DECO_PORT(0x82)&0xf000)>>8) | ((DECO_PORT(0x82)&0x0f00)>>0) | ((DECO_PORT(0x82)&0x00f0)>>4) | ((DECO_PORT(0x82)&0x000f)<<12)) ^ deco16_xor;
-		case 0x53e/2:
-			return ((DECO_PORT(0x9e)&0x0003)<<14) | ((DECO_PORT(0x9e)&0x000c)<<10);
-		case 0x250/2:
-			return (((DECO_PORT(0x62)&0xf0f0)<<0) | ((DECO_PORT(0x62)&0x0f00)>>8)  | ((DECO_PORT(0x62)&0x000f)<<8)) & (~deco16_mask);
-
-
-		case 0x150/2: /* Shared */
-			return DECO_PORT(0x7e);
-		case 0x10e/2: /* Schmeizr Robo only */
-			return DECO_PORT(0x7c);
-		case 0x56a/2: /* Schmeizr Robo only */
-			return (((DECO_PORT(0x7c)&0xfff0)>>4) | ((DECO_PORT(0x7c)&0x000e)<<11) | ((DECO_PORT(0x7c)&0x0001)<<15)) & (~deco16_mask);
-		case 0x39a/2: /* Schmeizr Robo only */
-			return ((((DECO_PORT(0x7e)&0xfff0)>>4) | ((DECO_PORT(0x7e)&0x000e)<<11) | ((DECO_PORT(0x7e)&0x0001)<<15)) ^ deco16_xor) & (~deco16_mask);
-		case 0x188/2: /* Schmeizr Robo only */
-			return (((deco16_mask&0x0003)<<6) | ((deco16_mask&0x000c)<<2) | ((deco16_mask&0x00f0)<<4) | ((deco16_mask&0x0f00)<<4)) & (~deco16_mask);
-		case 0x3cc/2: /* Schmeizr Robo only */
-			return deco16_mask;
-		case 0x4a/2: /* Schmeizr Robo only */
-			return DECO_PORT(0x9e) & (~deco16_mask);
-		case 0x7e8/2: /* Schmeizr Robo only */
-			return DECO_PORT(0x4a) ^ deco16_xor;
-		case 0xfc/2: /* Schmeizr Robo only */
-			return DECO_PORT(0x4a);
-		case 0x38c/2: /* Schmeizr Robo only */
-			return DECO_PORT(0x28);
-		case 0x28/2: /* Schmeizr Robo only  */
-			return DECO_PORT(0x58);
-	}
-
-	return 0;
-}
-
-UINT16 deco16_104_prot_r(INT32 offset) /* Wizard Fire */
-{
-	offset = (offset & 0x7ff)/2;
-
-	switch (offset<<1) {
-		case 0x110: /* Player input */
-			return deco16_prot_inputs[0];
-
-		case 0x36c: /* Coins */
-		case 0x334: /* Probably also, c6, 2c0, 2e0, 4b2, 46a, 4da, rohga is 44c */
-			return (deco16_prot_inputs[1] & 0x7) | (deco16_vblank & 0x08);
-		case 0x0dc:
-			return ((deco16_prot_inputs[1] & 0x7) | (deco16_vblank & 0x08))<<4;
-
-		case 0x494: /* Dips */
-			return deco16_prot_inputs[2];
-
-		case 0x244:
-			return deco16_prot_ram[0];
-		case 0x7cc:
-			return ((deco16_prot_ram[0]&0x000f)<<12) | ((deco16_prot_ram[0]&0x00f0)<<4) | ((deco16_prot_ram[0]&0x0f00)>>4) | ((deco16_prot_ram[0]&0xf000)>>12);
-		case 0x0c0:
-			return (((deco16_prot_ram[0]&0x000e)>>1) | ((deco16_prot_ram[0]&0x0001)<<3))<<12;
-		case 0x188:
-			return (((deco16_prot_ram[0]&0x000e)>>1) | ((deco16_prot_ram[0]&0x0001)<<3))<<12;
-		case 0x65e:
-			return (((deco16_prot_ram[0]&0x000c)>>2) | ((deco16_prot_ram[0]&0x0003)<<2))<<12;
-		case 0x5ce:
-			return ((deco16_prot_ram[0]<<8)&0xf000) | ((deco16_prot_ram[0]&0xe)<<7) | ((deco16_prot_ram[0]&0x1)<<11);
-		case 0x61a:
-			return (deco16_prot_ram[0]<<8)&0xff00;
-
-		case 0x496:
-			return deco16_prot_ram[0x110/2];
-		case 0x40a:
-			return ((deco16_prot_ram[0x110/2]&0x000f)<<12) | ((deco16_prot_ram[0x110/2]&0x00f0)>>4) | ((deco16_prot_ram[0x110/2]&0x0f00)<<0) | ((deco16_prot_ram[0x110/2]&0xf000)>>8);
-		case 0x1e8:
-			return ((deco16_prot_ram[0x110/2]&0x00ff)<<8) | ((deco16_prot_ram[0x110/2]&0xff00)>>8);
-		case 0x4bc:
-			return ((deco16_prot_ram[0x110/2]&0x0ff0)<<4) | ((deco16_prot_ram[0x110/2]&0x0003)<<6) | ((deco16_prot_ram[0x110/2]&0x000c)<<2);
-		case 0x46e:
-			return ((deco16_prot_ram[0x110/2]&0xfff0)<<0) | ((deco16_prot_ram[0x110/2]&0x0007)<<1) | ((deco16_prot_ram[0x110/2]&0x0008)>>3);
-		case 0x264:
-			return ((deco16_prot_ram[0x110/2]&0x000f)<<8) | ((deco16_prot_ram[0x110/2]&0x00f0)>>0) | ((deco16_prot_ram[0x110/2]&0x0f00)<<4);
-		case 0x172:
-			return ((deco16_prot_ram[0x110/2]&0x000f)<<4) | ((deco16_prot_ram[0x110/2]&0x00f0)<<4) | ((deco16_prot_ram[0x110/2]&0xf000)<<0);
-
-		case 0x214:
-			return deco16_prot_ram[0x280/2];
-		case 0x52e:
-			return ((deco16_prot_ram[0x280/2]&0x000f)<<8) | ((deco16_prot_ram[0x280/2]&0x00f0)>>0) | ((deco16_prot_ram[0x280/2]&0x0f00)>>8) | ((deco16_prot_ram[0x280/2]&0xf000)>>0);
-		case 0x07a:
-			return ((deco16_prot_ram[0x280/2]&0x000f)<<8) | ((deco16_prot_ram[0x280/2]&0x00f0)>>0) | ((deco16_prot_ram[0x280/2]&0x0f00)>>8) | ((deco16_prot_ram[0x280/2]&0xf000)>>0);
-		case 0x360:
-			return ((deco16_prot_ram[0x280/2]&0x000f)<<8) | ((deco16_prot_ram[0x280/2]&0x00f0)>>0) | ((deco16_prot_ram[0x280/2]&0x0f00)>>8) | ((deco16_prot_ram[0x280/2]&0xf000)>>0);
-		case 0x4dc:
-			return ((deco16_prot_ram[0x280/2]&0x0ff0)<<4) | ((deco16_prot_ram[0x280/2]&0x0007)<<5) | ((deco16_prot_ram[0x280/2]&0x0008)<<1);
-		case 0x3a8:
-			return ((deco16_prot_ram[0x280/2]&0x000e)<<3) | ((deco16_prot_ram[0x280/2]&0x0001)<<7) | ((deco16_prot_ram[0x280/2]&0x0ff0)<<4) | ((deco16_prot_ram[0x280/2]&0xf000)>>12);
-		case 0x2f6:
-			return ((deco16_prot_ram[0x280/2]&0xff00)>>8) | ((deco16_prot_ram[0x280/2]&0x00f0)<<8) | ((deco16_prot_ram[0x280/2]&0x000c)<<6) | ((deco16_prot_ram[0x280/2]&0x0003)<<10);
-
-		case 0x7e4:
-			return (deco16_prot_ram[0x290/2]&0x00f0)<<8;
-
-		case 0x536:
-			return ((deco16_prot_ram[0x2b0/2]&0x000f)<<8) | ((deco16_prot_ram[0x2b0/2]&0x00f0)<<0) | ((deco16_prot_ram[0x2b0/2]&0x0f00)<<4) | ((deco16_prot_ram[0x2b0/2]&0xf000)>>12);
-
-		case 0x0be:
-			return ((deco16_prot_ram[0x370/2]&0x000f)<<4) | ((deco16_prot_ram[0x370/2]&0x00f0)<<4) | ((deco16_prot_ram[0x370/2]&0x0f00)>>8) | ((deco16_prot_ram[0x370/2]&0xf000)>>0);
-
-		case 0x490:
-			return (deco16_prot_ram[0x3c0/2]&0xfff0) | ((deco16_prot_ram[0x3c0/2]&0x0007)<<1) | ((deco16_prot_ram[0x3c0/2]&0x0008)>>3);
-
-		case 0x710:
-			return (deco16_prot_ram[0x430/2]&0xfff0) | ((deco16_prot_ram[0x430/2]&0x0007)<<1) | ((deco16_prot_ram[0x430/2]&0x0008)>>3);
-
-		case 0x22a:
-			return ((deco16_prot_ram[0x5a0/2]&0xff00)>>8) | ((deco16_prot_ram[0x5a0/2]&0x00f0)<<8) | ((deco16_prot_ram[0x5a0/2]&0x0001)<<11) | ((deco16_prot_ram[0x5a0/2]&0x000e)<<7);
-
-		case 0x626:
-			return ((deco16_prot_ram[0x5b0/2]&0x000f)<<8) | ((deco16_prot_ram[0x5b0/2]&0x00f0)<<8) | ((deco16_prot_ram[0x5b0/2]&0x0f00)>>4) | ((deco16_prot_ram[0x5b0/2]&0xf000)>>12);
-
-		case 0x444:
-			return deco16_prot_ram[0x604/2]; //rohga
-
-		case 0x5ac:
-			return ((deco16_prot_ram[0x6e0/2]&0xfff0)>>4) | ((deco16_prot_ram[0x6e0/2]&0x0007)<<13) | ((deco16_prot_ram[0x6e0/2]&0x0008)<<9);
-
-		case 0x650:
-			return ((deco16_prot_ram[0x7d0/2]&0xfff0)>>4) | ((deco16_prot_ram[0x7d0/2]&0x000f)<<12);
-
-		case 0x4ac:
-			return ((deco16_prot_ram[0x460/2]&0x0007)<<13) | ((deco16_prot_ram[0x460/2]&0x0008)<<9);
-	}
-
-	return 0;
-}
-
-
-
-
-
-
-static void deco16_146_core_prot_w(INT32 offset, INT32 data, INT32 mask)
-{
-	const INT32 writeport=offset;
-	const INT32 sndport=0x260;
-	const INT32 xorport=0x340;
-	const INT32 maskport=0x6c0;
-	if (writeport == sndport)
-	{
-//		soundlatch_w(space, 0, data & 0xff);
-//		cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
-		return;
-	}
-
-	if (writeport==xorport)
-		deco16_xor = data; //COMBINE_DATA(&deco16_xor);
-	if (writeport==maskport)
-		deco16_mask = data; //COMBINE_DATA(&deco16_mask);
-
-	offset >>= 1;
-
-	if (deco16_buffer_ram_selected) {
-		if (mask == 0xffff) {
-			deco16_buffer_ram[offset] = data;
-		} else if (mask == 0xff00) {
-			deco16_buffer_ram[offset] = (deco16_buffer_ram[offset] & mask) | (data & ~mask);
-		} else {
-			deco16_buffer_ram[offset] = (deco16_buffer_ram[offset] & mask) | ((data << 8) & ~mask);
-		}
-	} else {
-		if (mask == 0xffff) {
-			deco16_prot_ram[offset] = data;
-		} else if (mask == 0xff00) {
-			deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | (data & ~mask);
-		} else {
-			deco16_prot_ram[offset] = (deco16_prot_ram[offset] & mask) | ((data << 8) & ~mask);
-		}
-	}
-}
-
-static UINT16 deco16_146_core_prot_r(INT32 offset)
-{
-	UINT16 val;
-	const UINT16 * prot_ram=deco16_buffer_ram_selected ? deco16_buffer_ram : deco16_prot_ram;
-
-	switch (offset)
-	{
-	case 0x582: /* Player 1 & Player 2 */
-		return deco16_prot_inputs[0];
-	case 0x04c: /* Coins/VBL */
-		return (deco16_prot_inputs[1] & 0x07) | (deco16_vblank & 0x08);
-	case 0x672: /* Dip switches */
-		return deco16_prot_inputs[2];
-
-	case 0x13a:
-		return ((DECO_PORT(0x190)&0x00f0)<<8) | ((DECO_PORT(0x190)&0x0003)<<10) | ((DECO_PORT(0x190)&0x000c)<<6);
-
-	case 0x53c:
-		return ((DECO_PORT(0x30)&0x0ff0)<<4) | ((DECO_PORT(0x30)&0xf000)>>8);
-
-	case 0x6c:
-		return ((DECO_PORT(0x370)&0x00ff)<<8);
-
-	case 0xa:
-		return ((DECO_PORT(0x310)&0x0fff)<<4);
-
-	case 0x4f6:
-		return ((DECO_PORT(0x20)&0x00f0)<<8) | ((DECO_PORT(0x20)&0x0007)<<9) | ((DECO_PORT(0x20)&0x0008)<<5);
-
-	case 0xea:
-		return ((DECO_PORT(0x1c0)&0xf000)<<0) | ((DECO_PORT(0x1c0)&0x00ff)<<4);
-
-	case 0x12e:
-		return ((DECO_PORT(0x1f0)&0xf000)>>4) | ((DECO_PORT(0x1f0)&0x0f00)<<4) | ((DECO_PORT(0x1f0)&0x00f0)>>4) | ((DECO_PORT(0x1f0)&0x000f)<<4);
-
-	case 0x316:
-		return ((DECO_PORT(0x290)&0xf000)>>4) | ((DECO_PORT(0x290)&0x0f00)<<4) | ((DECO_PORT(0x290)&0x00ff)<<0);
-
-	case 0x3c6:
-		return ((DECO_PORT(0x170)&0xfff0)<<0) | ((DECO_PORT(0x170)&0x000e)>>1) | ((DECO_PORT(0x170)&0x0001)<<3);
-
-	case 0x4d0:
-		return ((DECO_PORT(0x20)&0x00f0)<<8) | ((DECO_PORT(0x20)&0x0007)<<9) | ((DECO_PORT(0x20)&0x0008)<<5);
-
-	case 0x53a:
-		return ((DECO_PORT(0x370)&0xffff)<<0);
-
-	case 0x552:
-		return ((DECO_PORT(0x240)&0xfff0)<<0) | ((DECO_PORT(0x240)&0x0007)<<1) | ((DECO_PORT(0x240)&0x0008)>>3);
-
-	case 0x54c:
-		return ((DECO_PORT(0x2f0)&0x00ff)<<8);
-
-	case 0x5da:
-		return ((DECO_PORT(0x130)&0x00f0)<<8) | ((DECO_PORT(0x130)&0x000e)<<7) | ((DECO_PORT(0x130)&0x0001)<<11);
-
-	case 0x6be:
-		return ((DECO_PORT(0x150)&0xf000)>>12) | ((DECO_PORT(0x150)&0x0ff0)<<0) | ((DECO_PORT(0x150)&0x000f)<<12);
-
-	case 0x70a:
-		return ((DECO_PORT(0x1d0)&0x0ff0)<<4) | ((DECO_PORT(0x1d0)&0x0003)<<6) | ((DECO_PORT(0x1d0)&0x000c)<<2);
-
-	case 0x7e0:
-		return ((DECO_PORT(0x2b0)&0xfff0)<<0) | ((DECO_PORT(0x2b0)&0x0003)<<2) | ((DECO_PORT(0x2b0)&0x000c)>>2);
-
-	case 0x1de:
-		return ((DECO_PORT(0x1b0)&0x0ff0)<<4) | ((DECO_PORT(0x1b0)&0x000e)<<3) | ((DECO_PORT(0x1b0)&0x0001)<<7);
-
-	/*********************************************************************************/
-
-//  case 0x582: return input_port_read(space->machine, "IN0"); /* IN0 */
-//  case 0x672: return input_port_read(space->machine, "IN1"); /* IN1 */
-//  case 0x04c: return eeprom_read_bit(devtag_get_device(space->machine, "eeprom"));
-
-	case 0x468:
-		val=DECO_PORT(0x570);
-		val=((val&0x0003)<<6) | ((val&0x000c)<<2) | ((val&0x00f0)<<4) | ((val&0x0f00)<<4) | ((val&0xf000)>>12);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x1ea:
-		val=DECO_PORT(0x570);
-		val=((val&0x0003)<<10) | ((val&0x000c)<<6) | ((val&0x00f0)<<8) | ((val&0x0f00)>>8) | ((val&0xf000)>>8);
-		return val ^ deco16_xor;
-
-	case 0x7b6:
-		val=((DECO_PORT(0))&0xffff);
-		val=((val&0x000c)>>2) | ((val&0x0003)<<2) | ((val&0xfff0)<<0);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x01c:
-		val=((DECO_PORT(0))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)<<4) | ((val&0x0f00)>>8) | ((val&0xf000)>>8);
-		return val ^ deco16_xor;
-
-	case 0x1e0:
-		val=((DECO_PORT(0))&0xffff);
-		val=((val&0x000e)<<3) | ((val&0x0001)<<7) | ((val&0x00f0)<<4) | ((val&0x0f00)<<4) | ((val&0xf000)>>12);
-		return val ^ deco16_xor;
-
-	case 0x1d4:
-		val=((DECO_PORT(0))&0xffff);
-		val=((val&0x000f)<<0) | ((val&0x00f0)<<4) | ((val&0x0f00)<<4) | ((val&0xf000)>>8);
-		return val;
-
-	case 0x0c0:
-		val=((DECO_PORT(0x280))&0xffff);
-		val=((val&0x000f)<<4) | ((val&0x00f0)>>4) | ((val&0x0f00)<<4) | ((val&0xf000)>>4);
-		return val ^ deco16_xor;
-
-	case 0x794:
-		val=((DECO_PORT(0x280))&0xffff);
-		val=((val&0x0007)<<1) | ((val&0xfff0)>>0) | ((val&0x0008)>>3);
-		return val ^ deco16_xor;
-
-	case 0x30:
-		val=DECO_PORT(0x5e0);
-		val=((val&0x0007)<<13) | ((val&0x0008)<<9); /* Bottom bits are masked out before XOR */
-		return val ^ deco16_xor;
-
-	case 0x422:
-		val=((DECO_PORT(0x3d0))&0xffff);
-		val=((val&0x0007)<<1) | ((val&0xfff0)>>0) | ((val&0x0008)>>3);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x558:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000f)<<0) | ((val&0x00f0)<<8) | ((val&0x0f00)>>0) | ((val&0xf000)>>8);
-		return val;
-
-	case 0x3e:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000f)<<4) | ((val&0x00f0)>>4) | ((val&0x0f00)<<4) | ((val&0xf000)>>4);
-		return val & (~deco16_mask);
-
-	case 0x328:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000e)<<3) | ((val&0x0001)<<7) | ((val&0x00f0)<<4) | ((val&0xf000)>>12) | ((val&0x0f00)<<4);
-		return val ^ deco16_xor;
-
-	case 0x476:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000f)<<0) | ((val&0x00f0)<<8) | ((val&0xff00)>>4);
-		return val;
-
-	case 0x50a:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)>>4) | ((val&0x0f00)<<0) | ((val&0xf000)>>8);
-		return val;
-
-	case 0x5ae:
-		val=((DECO_PORT(0x210))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)>>4) | ((val&0x0f00)>>0) | ((val&0xf000)>>8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x1ae:
-		val=((DECO_PORT(0x3d0))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)<<4);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x7a4:
-		val=((DECO_PORT(0x620))&0xffff);
-		val=((val&0x000f)<<4) | ((val&0x00f0)<<4) | ((val&0x0f00)>>8) | ((val&0xf000)>>0);
-		return val;
-
-	case 0x2c4:
-		val=((DECO_PORT(0x410))&0xffff);
-		val=((val&0x00ff)<<8) | ((val&0xff00)>>8);
-		return val ^ deco16_xor;
-
-	case 0x76: /* Bitshifted XOR, with additional inverse mask on final output */
-		val=((DECO_PORT(0x2a0))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)<<4) | ((val&0x0f00)>>8) | ((val&0xf000)>>8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x714: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x2a0))&0xffff);
-		val=((val&0x0003)<<14) | ((val&0x000c)<<10) | ((val&0xfff0)>>4);
-		return val & (~deco16_mask);
-
-	case 0x642:
-		val=((DECO_PORT(0x2a0))&0xffff);
-		val=((val&0xf000)>>4) | ((val&0x0f00)>>8)| ((val&0x00f0)<<8) | ((val&0x000f)<<4);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x49a: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x580))&0xffff);
-		val=((val&0x000f)<<4) | ((val&0x00f0)>>4) | ((val&0xff00)>>0);
-		return val & (~deco16_mask);
-
-	case 0x49c: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x580))&0xffff);
-		val=((val&0x000e)<<7) | ((val&0x00f0)<<8) | ((val&0x0001)<<11);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x584: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x580))&0xffff);
-		val=((val&0xff00)>>8) | ((val&0x00f0)<<8) | ((val&0x0008)<<5) | ((val&0x0007)<<9);
-		return val & (~deco16_mask);
-
-	case 0x614: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x580))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)<<4) | ((val&0x0f00)>>4) | ((val&0xf000)>>12);
-		return val & (~deco16_mask);
-
-	case 0x162: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0xe0))&0xffff);
-		val=((val&0x0fff)<<4);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x18:
-		val=((DECO_PORT(0x230))&0xffff);
-		val=((val&0xfff0)>>4) | ((val&0x0007)<<13) | ((val&0x0008)<<9);
-		return val ^ deco16_xor;
-
-	case 0x7f6: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x230))&0xffff);
-		val=((val&0x000f)<<12) | ((val&0x00f0)<<4);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x1a0: /* Bitshifting with inverse mask on final output */
-		val=((DECO_PORT(0x230))&0xffff);
-		val=((val&0xff00)>>8) | ((val&0x00f0)<<8) | ((val&0x0003)<<10) | ((val&0x000c)<<6);
-		return val & (~deco16_mask);
-
-	case 0x4f8:
-		val=((DECO_PORT(0x2d0))&0xffff);
-		val=((val&0x0fff)<<4);
-		return val;
-
-	case 0x1d6:
-		val=((DECO_PORT(0xa0))&0xffff);
-		val=((val&0x0fff)<<4);
-		return val ^ deco16_xor;
-
-	case 0x254:
-		val=((DECO_PORT(0x320))&0xffff);
-		val=((val&0x0f00)<<4) | ((val&0x00f0)<<0) | ((val&0x000f)<<8);
-		return val & (~deco16_mask);
-
-	case 0x2ea:
-		val=((DECO_PORT(0x320))&0xffff);
-		val=((val&0x00ff)<<8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x21e:
-		val=((DECO_PORT(0x2f0))&0xffff);
-		val=((val&0xfff0)<<0) | ((val&0x0007)<<1) | ((val&0x0008)>>3);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x7b0:
-		val=((DECO_PORT(0x2f0))&0xffff);
-		val=((val&0xfff0)>>4) | ((val&0x0007)<<13) | ((val&0x0008)<<9);
-		return val ^ deco16_xor;
-
-	case 0x7da:
-		val=((DECO_PORT(0x2f0))&0xffff);
-		val=((val&0xff00)>>8) | ((val&0x000f)<<12) | ((val&0x00f0)<<4);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x280:
-		val=((DECO_PORT(0x2d0))&0xffff);
-		val=((val&0x000f)<<8) | ((val&0x00f0)<<8) | ((val&0xf000)>>12) | ((val&0x0f00)>>4);
-		return val ^ deco16_xor;
-
-	case 0x416:
-		val=((DECO_PORT(0x2e0))&0xffff);
-		val=((val&0x000f)<<8) | ((val&0x00f0)>>4) | ((val&0xf000)>>0) | ((val&0x0f00)>>4);
-		return val;
-
-
-	case 0xac:
-		val=((DECO_PORT(0x350))&0xffff);
-		val=((val&0x000f)<<4) | ((val&0x00f0)<<4) | ((val&0xf000)>>0) | ((val&0x0f00)>>8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x2c2:
-		val=((DECO_PORT(0x2e0))&0xffff);
-		val=((val&0xf000)<<0) | ((val&0x0ff0)>>4) | ((val&0x000f)<<8);
-		return val;
-
-	case 0x450:
-		val=((DECO_PORT(0x440))&0xffff);
-		val=((val&0xff00)>>8) | ((val&0x00f0)<<4) | ((val&0x000f)<<12);
-		return val;
-
-	case 0x504:
-		val=((DECO_PORT(0x440))&0xffff);
-		val=((val&0x000c)<<2) | ((val&0x0003)<<6)| ((val&0x0ff0)<<4);
-		return val ^ deco16_xor;
-
-	case 0xfe:
-		val=((DECO_PORT(0x440))&0xffff);
-		val=((val&0x0fff)<<4);
-		return val;
-
-	// 1c0 swap address
-	case 0x1c0:
-		deco16_buffer_ram_selected^=1;
-		return 0;
-
-	case 0x0e2:
-		deco16_buffer_ram_selected^=1;
-		val=((DECO_PORT(0x6c0))&0xffff);
-		return val ^ deco16_xor;
-
-	case 0x444:
-		val=((DECO_PORT(0xa0))&0xffff);
-		val=((val&0xfff0)>>4) | ((val&0x0007)<<13) | ((val&0x0008)<<9);
-		return val & (~deco16_mask);
-
-	case 0x46a:
-		val=((DECO_PORT(0x10))&0xffff);
-		val=((val&0xff00)>>8) | ((val&0x00f0)<<8)| ((val&0x0007)<<9) | ((val&0x0008)<<5);
-		return val;
-
-	case 0x80:
-		return DECO_PORT(0xe0);
-
-	case 0xb2:
-		val=((DECO_PORT(0x280))&0xffff);
-		val=((val&0x00f0)<<8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x250:
-		val=((DECO_PORT(0x160))&0xffff);
-		val=((val&0xf000)>>12) | ((val&0x0f00)<<4)| ((val&0x00f0)<<4) | ((val&0x000e)<<3) | ((val&0x0001)<<7);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x306:
-		val=((DECO_PORT(0x160))&0xffff);
-		val=((val&0x00f0)<<8) | ((val&0xf000)>>4);
-		return (val ^ deco16_xor);
-
-	case 0x608:
-		val=((DECO_PORT(0x160))&0xffff);
-		val=((val&0xf000)>>4) | ((val&0x0f00)>>4)| ((val&0x00f0)<<8) | ((val&0x000f)<<0);
-		return val & (~deco16_mask);
-
-	case 0x52e:
-		val=((DECO_PORT(0x160))&0xffff);
-		val=((val&0xf000)>>4) | ((val&0x0f00)<<4)| ((val&0x00f0)<<0) | ((val&0x000f)<<0);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x67a:
-		val=((DECO_PORT(0x390))&0xffff);
-		val=((val&0xf000)>>8) | ((val&0x0ff0)<<4)| ((val&0x000f)<<0);
-		return val;
-
-	case 0x6c2:
-		val=((DECO_PORT(0x390))&0xffff);
-		val=((val&0x00f0)<<8) | ((val&0x000c)<<6)| ((val&0x0003)<<10);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x3d8:
-		val=((DECO_PORT(0x7e0))&0xffff);
-		val=((val&0xf000)>>8) | ((val&0x0ff0)<<4)| ((val&0x000f)<<0);
-		return val & (~deco16_mask);
-
-	case 0x244:
-		val=((DECO_PORT(0x760))&0xffff);
-		val=((val&0x0f00)<<4) | ((val&0x00f0)>>0)| ((val&0x000f)<<8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x7e8:
-		val=((DECO_PORT(0x390))&0xffff);
-		val=((val&0x0f00)<<4) | ((val&0xf000)>>4)| ((val&0x00ff)>>0);
-		return (val ^ deco16_xor);
-
-	case 0x276:
-		val=((DECO_PORT(0x7e0))&0xffff);
-		val=((val&0x00ff)<<8);
-		return (val ^ deco16_xor) & (~deco16_mask);
-
-	case 0x540:
-		val=((DECO_PORT(0x530))&0xffff);
-		val=((val&0x00f0)<<8) | ((val&0x0007)<<9) | ((val&0x0008)<<5);
-		return val & (~deco16_mask);
-
-	case 0x5c2:
-		val=((DECO_PORT(0x7e0))&0xffff);
-		val=((val&0xf000)>>12) | ((val&0x0ff0)<<4)| ((val&0x000c)<<2)| ((val&0x0003)<<6);
-		return val;
-
-	case 0x15c:
-		val=((DECO_PORT(0x230))&0xffff);
-		val=((val&0xff00)<<0) | ((val&0x000f)<<4) | ((val&0x00f0)>>4);
-		return (val ^ deco16_xor);
-
-	case 0x2c:
-		val=((DECO_PORT(0x390))&0xffff);
-		val=((val&0x00ff)<<8);
-		return val & (~deco16_mask);
-	}
-
-	return 0;
-}
-
-
-void deco16_146_nitroball_prot_w(INT32 offset, UINT16 data, INT32 mask)
-{
-	offset = BITSWAP16((offset & 0x7fe), 0, 0, 0, 0, 0, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-	deco16_146_core_prot_w(offset, data, mask);
-}
-
-UINT16 deco16_146_nitroball_prot_r(INT32 offset)
-{
-	offset = BITSWAP16((offset & 0x7fe), 0, 0, 0, 0, 0, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-	return deco16_146_core_prot_r(offset);
-}
-
-
-void deco16_146_fghthist_prot_w(INT32 offset, UINT32 data, UINT32 mem_mask)
-{
-	offset = BITSWAP16(offset << 1, 0, 0, 0, 0, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5, 0);
-
-	decoprot_last_write = offset;
-	decoprot_last_write_val = data >> 16;
-
-	deco16_146_core_prot_w(offset, data >> 16, mem_mask >> 16);
-}
-
-UINT32 deco16_146_fghthist_prot_r(INT32 offset)
-{
-	offset = BITSWAP16(offset << 1, 0, 0, 0, 0, 0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5, 0);
-
-	if (decoprot_last_write==offset)
-	{
-		decoprot_last_write=-1;
-		return (decoprot_last_write_val<<16)|0xffff;
-	}
-
-	decoprot_last_write=-1;
-
-	return (deco16_146_core_prot_r(offset)<<16)|0xffff;
-}
-
-
 
 

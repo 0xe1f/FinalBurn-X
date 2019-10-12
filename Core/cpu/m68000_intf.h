@@ -75,6 +75,7 @@ typedef INT32 (__fastcall *pSekResetCallback)();
 typedef INT32 (__fastcall *pSekRTECallback)();
 typedef INT32 (__fastcall *pSekIrqCallback)(INT32 irq);
 typedef INT32 (__fastcall *pSekCmpCallback)(UINT32 val, INT32 reg);
+typedef INT32 (__fastcall *pSekTASCallback)();
 
 extern INT32 nSekCycles[SEK_MAX], nSekCPUType[SEK_MAX];
 
@@ -96,6 +97,7 @@ struct SekExt {
 	pSekRTECallback RTECallback;
 	pSekIrqCallback IrqCallback;
 	pSekCmpCallback CmpCallback;
+	pSekTASCallback TASCallback;
 };
 
 #define SEK_DEF_READ_WORD(i, a) { UINT16 d; d = (UINT16)(pSekExt->ReadByte[i](a) << 8); d |= (UINT16)(pSekExt->ReadByte[i]((a) + 1)); return d; }
@@ -132,21 +134,38 @@ void SekSetCyclesScanline(INT32 nCycles);
 void SekClose();
 void SekOpen(const INT32 i);
 INT32 SekGetActive();
+INT32 SekShouldInterrupt();
+void SekBurnUntilInt();
 
 #define SEK_IRQSTATUS_NONE (0x0000)
 #define SEK_IRQSTATUS_AUTO (0x2000)
 #define SEK_IRQSTATUS_ACK  (0x1000)
 
-void SekSetIRQLine(const INT32 line, const INT32 status);
+void SekSetIRQLine(const INT32 line, INT32 status);
+void SekSetIRQLine(INT32 nCPU, const INT32 line, INT32 status);
+void SekSetVIRQLine(const INT32 line, INT32 nstatus);
+void SekSetVIRQLine(INT32 nCPU, const INT32 line, INT32 status);
+
 void SekReset();
+void SekReset(INT32 nCPU);
 
 void SekRunEnd();
 void SekRunAdjust(const INT32 nCycles);
 INT32 SekRun(const INT32 nCycles);
+INT32 SekRun(INT32 nCPU, INT32 nCycles);
+void SekSetRESETLine(INT32 nStatus);
+void SekSetRESETLine(INT32 nCPU, INT32 nStatus);
+INT32 SekGetRESETLine();
+INT32 SekGetRESETLine(INT32 nCPU);
+
+void SekSetHALT(INT32 nStatus);
+void SekSetHALT(INT32 nCPU, INT32 nStatus);
+INT32 SekGetHALT();
+INT32 SekGetHALT(INT32 nCPU);
 
 inline static INT32 SekIdle(INT32 nCycles)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	extern UINT8 DebugCPU_SekInitted;
 	if (!DebugCPU_SekInitted) bprintf(PRINT_ERROR, (TCHAR*)_T("SekIdle called without init\n"));
 	if (nSekActive == -1) bprintf(PRINT_ERROR, (TCHAR*)_T("SekIdle called when no CPU open\n"));
@@ -159,7 +178,7 @@ inline static INT32 SekIdle(INT32 nCycles)
 
 inline static INT32 SekSegmentCycles()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	extern UINT8 DebugCPU_SekInitted;
 	if (!DebugCPU_SekInitted) bprintf(PRINT_ERROR, (TCHAR*)_T("SekSegmentCycles called without init\n"));
 	if (nSekActive == -1) bprintf(PRINT_ERROR, (TCHAR*)_T("SekSegmentCycles called when no CPU open\n"));
@@ -172,13 +191,15 @@ inline static INT32 SekSegmentCycles()
 #endif
 }
 
-#if defined FBA_DEBUG
+INT32 SekTotalCycles(INT32 nCPU);
+
+#if defined FBNEO_DEBUG
 static INT32 SekTotalCycles()
 #else
 inline static INT32 SekTotalCycles()
 #endif
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	extern UINT8 DebugCPU_SekInitted;
 	if (!DebugCPU_SekInitted) bprintf(PRINT_ERROR, (TCHAR*)_T("SekTotalCycles called without init\n"));
 	if (nSekActive == -1) bprintf(PRINT_ERROR, (TCHAR*)_T("SekTotalCycles called when no CPU open\n"));
@@ -193,7 +214,7 @@ inline static INT32 SekTotalCycles()
 
 inline static INT32 SekCurrentScanline()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	extern UINT8 DebugCPU_SekInitted;
 	if (!DebugCPU_SekInitted) bprintf(PRINT_ERROR, (TCHAR*)_T("SekCurrentScanline called without init\n"));
 	if (nSekActive == -1) bprintf(PRINT_ERROR, (TCHAR*)_T("SekCurrentScanline called when no CPU open\n"));
@@ -202,12 +223,6 @@ inline static INT32 SekCurrentScanline()
 	return SekTotalCycles() / nSekCyclesScanline;
 }
 
-// SekMemory types:
-#define SM_READ  (1)
-#define SM_WRITE (2)
-#define SM_FETCH (4)
-#define SM_ROM (SM_READ | SM_FETCH)
-#define SM_RAM (SM_READ | SM_WRITE | SM_FETCH)
 
 // Map areas of memory
 INT32 SekMapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType);
@@ -226,8 +241,19 @@ INT32 SekSetResetCallback(pSekResetCallback pCallback);
 INT32 SekSetRTECallback(pSekRTECallback pCallback);
 INT32 SekSetIrqCallback(pSekIrqCallback pCallback);
 INT32 SekSetCmpCallback(pSekCmpCallback pCallback);
+INT32 SekSetTASCallback(pSekTASCallback pCallback);
 
 // Get a CPU's PC
-INT32 SekGetPC(INT32 n);
+UINT32 SekGetPC(INT32 n);
+UINT32 SekGetPPC(INT32);
 
 INT32 SekScan(INT32 nAction);
+
+
+UINT8 SekCheatRead(UINT32 a); // cheat core
+
+extern struct cpu_core_config SekConfig;
+
+// depreciate this and use BurnTimerAttach directly!
+#define BurnTimerAttachSek(clock)	\
+	BurnTimerAttach(&SekConfig, clock)

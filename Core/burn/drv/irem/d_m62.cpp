@@ -1,12 +1,16 @@
+// FB Alpha Irem M62 system driver
+// Based on MAME driver by smf and David Haywood
+
 #include "tiles_generic.h"
 #include "z80_intf.h"
-#include "m6800_intf.h"
-#include "msm5205.h"
 
-#include "driver.h"
-extern "C" {
- #include "ay8910.h"
-}
+#include "irem_sound.h"
+
+#define USE_SAMPLE_HACK // allow use of sampled drumkit on Kid Niki, Spelunker 1 & 2, Battle-Road, Horizon
+
+#ifdef USE_SAMPLE_HACK
+#include "samples.h"
+#endif
 
 static UINT8 M62InputPort0[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
 static UINT8 M62InputPort1[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -14,6 +18,8 @@ static UINT8 M62InputPort2[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
 static UINT8 M62Dip[2]              = {0, 0};
 static UINT8 M62Input[3]            = {0x00, 0x00, 0x00};
 static UINT8 M62Reset               = 0;
+static INT32 M62Z80BankAddress      = 0;
+static INT32 M62Z80BankAddress2     = 0;
 
 static UINT32  M62Z80RomSize          = 0;
 static UINT32  M62PromSize            = 0;
@@ -35,15 +41,13 @@ static UINT8 *M62SpriteRam          = NULL;
 static UINT8 *M62CharRam            = NULL;
 static UINT8 *M62ScrollRam          = NULL;
 static UINT8 *M62Z80Ram             = NULL;
-static UINT8 *M62M6803Ram           = NULL;
+
 static UINT8 *M62Tiles              = NULL;
 static UINT8 *M62Sprites            = NULL;
 static UINT8 *M62Chars              = NULL;
 static UINT8 *M62PromData           = NULL;
 static UINT8 *M62TempRom            = NULL;
-static UINT32  *M62Palette            = NULL;
-static INT16* pFMBuffer;
-static INT16* pAY8910Buffer[6];
+static UINT32 *M62Palette           = NULL;
 
 static INT32 M62BackgroundHScroll;
 static INT32 M62BackgroundVScroll;
@@ -51,13 +55,10 @@ static INT32 M62CharHScroll;
 static INT32 M62CharVScroll;
 static INT32 M62FlipScreen;
 static INT32 M62SpriteHeightPromOffset;
-static UINT8 M62SoundLatch;
-static UINT8 M62Port1;
-static UINT8 M62Port2;
-static UINT8 M62SlaveMSM5205VClckReset;
+
 static UINT32 M62PaletteEntries;
-static UINT32 M62Z80Clock;
-static UINT32 M62M6803Clock;
+static INT32 M62Z80Clock = 0;
+static INT32 M62M6803Clock = 0;
 static UINT8 M62BankControl[2];
 static UINT8 Ldrun2BankSwap;
 static UINT8 Ldrun3TopBottomMask;
@@ -67,20 +68,7 @@ static INT32 M62BgxTileDim = 0;
 static INT32 M62BgyTileDim = 0;
 static INT32 M62CharxTileDim = 0;
 static INT32 M62CharyTileDim = 0;
-
-typedef void (*M62Render)();
-static M62Render M62RenderFunction;
-static void KungfumDraw();
-static void BattroadDraw();
-static void LdrunDraw();
-static void Ldrun3Draw();
-static void Ldrun4Draw();
-static void LotlotDraw();
-static void KidnikiDraw();
-static void SpelunkrDraw();
-static void Spelunk2Draw();
-static void YoujyudnDraw();
-static void HorizonDraw();
+static UINT32 bHasSamples = 0;
 
 typedef void (*M62ExtendTileInfo)(INT32*, INT32*, INT32*, INT32*);
 static M62ExtendTileInfo M62ExtendTileInfoFunction;
@@ -102,9 +90,6 @@ static void LotlotExtendChar(INT32* Code, INT32* Colour, INT32*, INT32*);
 static void SpelunkrExtendChar(INT32* Code, INT32* Colour, INT32*, INT32*);
 static void YoujyudnExtendChar(INT32* Code, INT32* Colour, INT32*, INT32*);
 
-static INT32 nCyclesDone[2], nCyclesTotal[2];
-static INT32 nCyclesSegment;
-
 static struct BurnInputInfo M62InputList[] =
 {
 	{"Coin 1"            , BIT_DIGITAL  , M62InputPort0 + 3, "p1 coin"   },
@@ -118,7 +103,7 @@ static struct BurnInputInfo M62InputList[] =
 	{"Right"             , BIT_DIGITAL  , M62InputPort1 + 0, "p1 right"  },
 	{"Fire 1"            , BIT_DIGITAL  , M62InputPort1 + 7, "p1 fire 1" },
 	{"Fire 2"            , BIT_DIGITAL  , M62InputPort1 + 5, "p1 fire 2" },
-	
+
 	{"Up (Cocktail)"     , BIT_DIGITAL  , M62InputPort2 + 3, "p2 up"     },
 	{"Down (Cocktail)"   , BIT_DIGITAL  , M62InputPort2 + 2, "p2 down"   },
 	{"Left (Cocktail)"   , BIT_DIGITAL  , M62InputPort2 + 1, "p2 left"   },
@@ -263,7 +248,7 @@ static inline void M62MakeInputs()
 	{0x13, 0x00, 0x04, 0x04, NULL                     },			\
 	{0x12, 0x82, 0xc0, 0x00, "1 Coin  6 Plays"        },			\
 	{0x13, 0x00, 0x04, 0x04, NULL                     },			\
-	
+
 #define IREM_Z80_COINAGE_TYPE5										\
 	{0   , 0xfe, 0   , 16  , "Coinage"                },			\
 	{0x12, 0x02, 0xf0, 0x00, "8 Coins 1 Play"         },			\
@@ -328,51 +313,51 @@ static struct BurnDIPInfo KungfumDIPList[]=
 	{0   , 0xfe, 0   , 2  ,  "Difficulty"             },
 	{0x12, 0x01, 0x01, 0x01, "Easy"                   },
 	{0x12, 0x01, 0x01, 0x00, "Hard"                   },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "Energy Loss"            },
 	{0x12, 0x01, 0x02, 0x02, "Slow"                   },
 	{0x12, 0x01, 0x02, 0x00, "Fast"                   },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
 	{0x12, 0x01, 0x0c, 0x04, "4"                      },
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
-	
-	IREM_Z80_COINAGE_TYPE3	
-	
+
+	IREM_Z80_COINAGE_TYPE3
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Slow Motion Mode"       },
 	{0x13, 0x01, 0x08, 0x08, "Off"                    },
 	{0x13, 0x01, 0x08, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Level Selection Mode"   },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Kungfum)
@@ -382,44 +367,44 @@ static struct BurnDIPInfo BattroadDIPList[]=
 	// Default Values
 	{0x12, 0xff, 0xff, 0xff, NULL                     },
 	{0x13, 0xff, 0xff, 0xfd, NULL                     },
-	
+
 	// Dip 1
 	{0   , 0xfe, 0   , 4  ,  "Fuel Decrease"          },
 	{0x12, 0x01, 0x03, 0x03, "Slow"                   },
 	{0x12, 0x01, 0x03, 0x02, "Medium"                 },
 	{0x12, 0x01, 0x03, 0x01, "Fast"                   },
 	{0x12, 0x01, 0x03, 0x00, "Fastest"                },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "Difficulty"             },
 	{0x12, 0x01, 0x04, 0x04, "Easy"                   },
 	{0x12, 0x01, 0x04, 0x00, "Hard"                   },
-	
+
 	IREM_Z80_COINAGE_TYPE3
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Battroad)
@@ -436,43 +421,43 @@ static struct BurnDIPInfo LdrunDIPList[]=
 	{0x12, 0x01, 0x03, 0x02, "Medium"                 },
 	{0x12, 0x01, 0x03, 0x01, "Fast"                   },
 	{0x12, 0x01, 0x03, 0x00, "Fastest"                },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
 	{0x12, 0x01, 0x0c, 0x04, "4"                      },
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
-	
+
 	IREM_Z80_COINAGE_TYPE3
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Level Selection Mode"   },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Ldrun)
@@ -482,52 +467,52 @@ static struct BurnDIPInfo Ldrun2DIPList[]=
 	// Default Values
 	{0x12, 0xff, 0xff, 0xff, NULL                     },
 	{0x13, 0xff, 0xff, 0xfd, NULL                     },
-	
+
 	// Dip 1
 	{0   , 0xfe, 0   , 2  ,  "Timer"                  },
 	{0x12, 0x01, 0x01, 0x01, "Slow"                   },
 	{0x12, 0x01, 0x01, 0x00, "Fast"                   },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "Game Speed"             },
 	{0x12, 0x01, 0x02, 0x00, "Low"                    },
 	{0x12, 0x01, 0x02, 0x02, "High"                   },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
 	{0x12, 0x01, 0x0c, 0x04, "4"                      },
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
-	
+
 	IREM_Z80_COINAGE_TYPE3
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Level Selection Mode"   },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Ldrun2)
@@ -537,52 +522,52 @@ static struct BurnDIPInfo Ldrun4DIPList[]=
 	// Default Values
 	{0x12, 0xff, 0xff, 0xff, NULL                     },
 	{0x13, 0xff, 0xff, 0xff, NULL                     },
-	
+
 	// Dip 1
 	{0   , 0xfe, 0   , 2  ,  "Timer"                  },
 	{0x12, 0x01, 0x01, 0x01, "Slow"                   },
 	{0x12, 0x01, 0x01, 0x00, "Fast"                   },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "2 Players Game"         },
 	{0x12, 0x01, 0x02, 0x00, "1 Credit"               },
 	{0x12, 0x01, 0x02, 0x02, "2 Credits"              },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "1 Player Lives"         },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
 	{0x12, 0x01, 0x0c, 0x04, "4"                      },
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
-	
+
 	IREM_Z80_COINAGE_TYPE3
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "2 Players Lives"        },
 	{0x13, 0x01, 0x02, 0x02, "5"                      },
 	{0x13, 0x01, 0x02, 0x00, "6"                      },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Allow 2 Player Game"    },
 	{0x13, 0x01, 0x10, 0x00, "Off"                    },
 	{0x13, 0x01, 0x10, 0x10, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Level Selection Mode"   },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Ldrun4)
@@ -599,43 +584,43 @@ static struct BurnDIPInfo LotlotDIPList[]=
 	{0x12, 0x01, 0x03, 0x02, "Slow"                   },
 	{0x12, 0x01, 0x03, 0x01, "Fast"                   },
 	{0x12, 0x01, 0x03, 0x00, "Very Fast"              },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "1"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "2"                      },
 	{0x12, 0x01, 0x0c, 0x04, "3"                      },
 	{0x12, 0x01, 0x0c, 0x00, "4"                      },
-	
+
 	IREM_Z80_COINAGE_TYPE4
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Demo Sounds"            },
 	{0x13, 0x01, 0x08, 0x08, "Off"                    },
 	{0x13, 0x01, 0x08, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Lotlot)
@@ -652,49 +637,49 @@ static struct BurnDIPInfo KidnikiDIPList[]=
 	{0x12, 0x01, 0x03, 0x03, "3"                      },
 	{0x12, 0x01, 0x03, 0x01, "4"                      },
 	{0x12, 0x01, 0x03, 0x00, "5"                      },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "Difficulty"             },
 	{0x12, 0x01, 0x04, 0x04, "Normal"                 },
 	{0x12, 0x01, 0x04, 0x00, "Hard"                   },
-	
+
 	{0   , 0xfe, 0   , 2  ,  "Bonus Life"             },
 	{0x12, 0x01, 0x08, 0x08, "50000"                  },
 	{0x12, 0x01, 0x08, 0x00, "80000"                  },
-	
+
 	IREM_Z80_COINAGE_TYPE4
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Game Repeats"           },
 	{0x13, 0x01, 0x08, 0x08, "Off"                    },
 	{0x13, 0x01, 0x08, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Allow Continue"         },
 	{0x13, 0x01, 0x10, 0x00, "Off"                    },
 	{0x13, 0x01, 0x10, 0x10, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Kidniki)
@@ -711,7 +696,7 @@ static struct BurnDIPInfo SpelunkrDIPList[]=
 	{0x12, 0x01, 0x03, 0x02, "Medium"                 },
 	{0x12, 0x01, 0x03, 0x01, "Fast"                   },
 	{0x12, 0x01, 0x03, 0x00, "Fastest"                },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
@@ -719,39 +704,39 @@ static struct BurnDIPInfo SpelunkrDIPList[]=
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
 
 	IREM_Z80_COINAGE_TYPE4
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Allow Continue"         },
 	{0x13, 0x01, 0x08, 0x08, "Off"                    },
 	{0x13, 0x01, 0x08, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Teleport"               },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Spelunkr)
@@ -768,7 +753,7 @@ static struct BurnDIPInfo Spelunk2DIPList[]=
 	{0x12, 0x01, 0x03, 0x02, "Medium"                 },
 	{0x12, 0x01, 0x03, 0x01, "Fast"                   },
 	{0x12, 0x01, 0x03, 0x00, "Fastest"                },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x0c, 0x08, "2"                      },
 	{0x12, 0x01, 0x0c, 0x0c, "3"                      },
@@ -776,39 +761,39 @@ static struct BurnDIPInfo Spelunk2DIPList[]=
 	{0x12, 0x01, 0x0c, 0x00, "5"                      },
 
 	IREM_Z80_COINAGE_TYPE4
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Allow Continue"         },
 	{0x13, 0x01, 0x08, 0x00, "Off"                    },
 	{0x13, 0x01, 0x08, 0x08, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Demo Sounds"            },
 	{0x13, 0x01, 0x10, 0x00, "Off"                    },
 	{0x13, 0x01, 0x10, 0x10, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Spelunk2)
@@ -818,48 +803,48 @@ static struct BurnDIPInfo YoujyudnDIPList[]=
 	// Default Values
 	{0x12, 0xff, 0xff, 0xff, NULL                     },
 	{0x13, 0xff, 0xff, 0xfd, NULL                     },
-	
+
 	// Dip 1
 	{0   , 0xfe, 0   , 4  ,  "Lives"                  },
 	{0x12, 0x01, 0x03, 0x02, "2"                      },
 	{0x12, 0x01, 0x03, 0x03, "3"                      },
 	{0x12, 0x01, 0x03, 0x01, "4"                      },
 	{0x12, 0x01, 0x03, 0x00, "5"                      },
-	
+
 	IREM_Z80_COINAGE_TYPE4
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Bonus Life"             },
 	{0x13, 0x01, 0x08, 0x08, "20000 60000"            },
 	{0x13, 0x01, 0x08, 0x00, "40000 80000"            },
-	
+
 	{0   , 0xfe, 0   , 2   , "Demo Sounds"            },
 	{0x13, 0x01, 0x10, 0x00, "Off"                    },
 	{0x13, 0x01, 0x10, 0x10, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Level Selection Mode"   },
 	{0x13, 0x01, 0x20, 0x20, "Off"                    },
 	{0x13, 0x01, 0x20, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Youjyudn)
@@ -876,43 +861,43 @@ static struct BurnDIPInfo HorizonDIPList[]=
 	{0x12, 0x01, 0x03, 0x03, "3"                      },
 	{0x12, 0x01, 0x03, 0x01, "4"                      },
 	{0x12, 0x01, 0x03, 0x02, "5"                      },
-	
+
 	{0   , 0xfe, 0   , 4  ,  "Bonus Life"             },
 	{0x12, 0x01, 0x0c, 0x00, "100 and 80k"            },
 	{0x12, 0x01, 0x0c, 0x0c, "40k and every 80k"      },
 	{0x12, 0x01, 0x0c, 0x08, "60k and every 100k"     },
 	{0x12, 0x01, 0x0c, 0x04, "80k and every 120k"     },
-	
+
 	IREM_Z80_COINAGE_TYPE5
-	
+
 	// Dip 2
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x13, 0x01, 0x01, 0x01, "Off"                    },
 	{0x13, 0x01, 0x01, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Cabinet"                },
 	{0x13, 0x01, 0x02, 0x00, "Upright"                },
 	{0x13, 0x01, 0x02, 0x02, "Cocktail"               },
-	
+
 	{0   , 0xfe, 0   , 2   , "Coin Mode"              },
 	{0x13, 0x01, 0x04, 0x04, "Mode 1"                 },
 	{0x13, 0x01, 0x04, 0x00, "Mode 2"                 },
-	
+
 	{0   , 0xfe, 0   , 2   , "Freeze"                 },
 	{0x13, 0x01, 0x08, 0x08, "Off"                    },
 	{0x13, 0x01, 0x08, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Frame Advance"          },
 	{0x13, 0x01, 0x10, 0x10, "Off"                    },
 	{0x13, 0x01, 0x10, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Invulnerability"        },
 	{0x13, 0x01, 0x40, 0x40, "Off"                    },
 	{0x13, 0x01, 0x40, 0x00, "On"                     },
-	
+
 	{0   , 0xfe, 0   , 2   , "Service Mode"           },
 	{0x13, 0x01, 0x80, 0x80, "Off"                    },
-	{0x13, 0x01, 0x80, 0x00, "On"                     },	
+	{0x13, 0x01, 0x80, 0x00, "On"                     },
 };
 
 STDDIPINFO(Horizon)
@@ -920,15 +905,15 @@ STDDIPINFO(Horizon)
 static struct BurnRomInfo KungfumRomDesc[] = {
 	{ "a-4e-c.bin",           0x04000, 0xb6e2d083, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "a-4d-c.bin",           0x04000, 0x7532918e, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "a-3e-.bin",            0x02000, 0x58e87ab0, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "a-3f-.bin",            0x02000, 0xc81e31ea, BRF_ESS | BRF_PRG }, //  3
 	{ "a-3h-.bin",            0x02000, 0xd99fb995, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "g-4c-a.bin",           0x02000, 0x6b2cc9c8, BRF_GRA },	    //  5	Characters
 	{ "g-4d-a.bin",           0x02000, 0xc648f558, BRF_GRA },	    //  6
 	{ "g-4e-a.bin",           0x02000, 0xfbe9276e, BRF_GRA },	    //  7
-	
+
 	{ "b-4k-.bin",            0x02000, 0x16fb5150, BRF_GRA },	    //  8	Sprites
 	{ "b-4f-.bin",            0x02000, 0x67745a33, BRF_GRA },	    //  9
 	{ "b-4l-.bin",            0x02000, 0xbd1c2261, BRF_GRA },	    //  10
@@ -941,7 +926,7 @@ static struct BurnRomInfo KungfumRomDesc[] = {
 	{ "b-4e-.bin",            0x02000, 0xc77b87d4, BRF_GRA },	    //  17
 	{ "b-4d-.bin",            0x02000, 0x6a70615f, BRF_GRA },	    //  18
 	{ "b-4a-.bin",            0x02000, 0x6189d626, BRF_GRA },	    //  19
-	
+
 	{ "g-1j-.bin",            0x00100, 0x668e6bca, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "b-1m-.bin",            0x00100, 0x76c05a9c, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "g-1f-.bin",            0x00100, 0x964b6495, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -958,21 +943,21 @@ STD_ROM_FN(Kungfum)
 static struct BurnRomInfo KungfumdRomDesc[] = {
 	{ "snx_a-4e-d",           0x04000, 0xfc330a46, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "snx_a-4d-d",           0x04000, 0x1b2fd32f, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "snx_a-3d-b",           0x04000, 0x85ca7956, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "snx_a-3f-b",           0x04000, 0x3ef1100a, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "g-4c-a.bin",           0x02000, 0x6b2cc9c8, BRF_GRA },	    //  4	Characters
 	{ "g-4d-a.bin",           0x02000, 0xc648f558, BRF_GRA },	    //  5
 	{ "g-4e-a.bin",           0x02000, 0xfbe9276e, BRF_GRA },	    //  6
-	
+
 	{ "snx_b-4k-b",           0x04000, 0x85591db2, BRF_GRA },	    //  7	Sprites
 	{ "snx_b-4f-b",           0x04000, 0xed719d7b, BRF_GRA },	    //  8
 	{ "snx_b-3n-b",           0x04000, 0x05fcce8b, BRF_GRA },	    //  9
 	{ "snx_b-4n-b",           0x04000, 0xdc675003, BRF_GRA },	    //  10
 	{ "snx_b-4c-b",           0x04000, 0x1df11d81, BRF_GRA },	    //  11
-	{ "snx_b-4e-b",           0x04000, 0x2d3b69dd, BRF_GRA },	    //  12	
-	
+	{ "snx_b-4e-b",           0x04000, 0x2d3b69dd, BRF_GRA },	    //  12
+
 	{ "g-1j-.bin",            0x00100, 0x668e6bca, BRF_GRA },	    //  13	PROM (Tile Palette Red Component)
 	{ "b-1m-.bin",            0x00100, 0x76c05a9c, BRF_GRA },	    //  14	PROM (Sprite Palette Red Component)
 	{ "g-1f-.bin",            0x00100, 0x964b6495, BRF_GRA },	    //  15	PROM (Tile Palette Green Component)
@@ -989,15 +974,15 @@ STD_ROM_FN(Kungfumd)
 static struct BurnRomInfo SpartanxRomDesc[] = {
 	{ "a-4e-c-j.bin",         0x04000, 0x32a0a9a6, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "a-4d-c-j.bin",         0x04000, 0x3173ea78, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "a-3e-.bin",            0x02000, 0x58e87ab0, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "a-3f-.bin",            0x02000, 0xc81e31ea, BRF_ESS | BRF_PRG }, //  3
 	{ "a-3h-.bin",            0x02000, 0xd99fb995, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "g-4c-a-j.bin",         0x02000, 0x8af9c5a6, BRF_GRA },	    //  5	Characters
 	{ "g-4d-a-j.bin",         0x02000, 0xb8300c72, BRF_GRA },	    //  6
 	{ "g-4e-a-j.bin",         0x02000, 0xb50429cd, BRF_GRA },	    //  7
-	
+
 	{ "b-4k-.bin",            0x02000, 0x16fb5150, BRF_GRA },	    //  8	Sprites
 	{ "b-4f-.bin",            0x02000, 0x67745a33, BRF_GRA },	    //  9
 	{ "b-4l-.bin",            0x02000, 0xbd1c2261, BRF_GRA },	    //  10
@@ -1010,7 +995,7 @@ static struct BurnRomInfo SpartanxRomDesc[] = {
 	{ "b-4e-.bin",            0x02000, 0xc77b87d4, BRF_GRA },	    //  17
 	{ "b-4d-.bin",            0x02000, 0x6a70615f, BRF_GRA },	    //  18
 	{ "b-4a-.bin",            0x02000, 0x6189d626, BRF_GRA },	    //  19
-	
+
 	{ "g-1j-.bin",            0x00100, 0x668e6bca, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "b-1m-.bin",            0x00100, 0x76c05a9c, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "g-1f-.bin",            0x00100, 0x964b6495, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -1027,15 +1012,15 @@ STD_ROM_FN(Spartanx)
 static struct BurnRomInfo KungfubRomDesc[] = {
 	{ "c5.5h",                0x04000, 0x5d8e791d, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "c4.5k",                0x04000, 0x4000e2b8, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "a-3e-.bin",            0x02000, 0x58e87ab0, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "a-3f-.bin",            0x02000, 0xc81e31ea, BRF_ESS | BRF_PRG }, //  3
 	{ "a-3h-.bin",            0x02000, 0xd99fb995, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "g-4c-a.bin",           0x02000, 0x6b2cc9c8, BRF_GRA },	    //  5	Characters
 	{ "g-4d-a.bin",           0x02000, 0xc648f558, BRF_GRA },	    //  6
 	{ "g-4e-a.bin",           0x02000, 0xfbe9276e, BRF_GRA },	    //  7
-	
+
 	{ "b-4k-.bin",            0x02000, 0x16fb5150, BRF_GRA },	    //  8	Sprites
 	{ "b-4f-.bin",            0x02000, 0x67745a33, BRF_GRA },	    //  9
 	{ "b-4l-.bin",            0x02000, 0xbd1c2261, BRF_GRA },	    //  10
@@ -1048,7 +1033,7 @@ static struct BurnRomInfo KungfubRomDesc[] = {
 	{ "b-4e-.bin",            0x02000, 0xc77b87d4, BRF_GRA },	    //  17
 	{ "b-4d-.bin",            0x02000, 0x6a70615f, BRF_GRA },	    //  18
 	{ "b-4a-.bin",            0x02000, 0x6189d626, BRF_GRA },	    //  19
-	
+
 	{ "tbp24s10-main-1c.bin", 0x00100, 0x668e6bca, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "tbp24s10-gfx-1r.bin",  0x00100, 0x76c05a9c, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "tbp24s10-main-1a.bin", 0x00100, 0x964b6495, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -1082,15 +1067,15 @@ STD_ROM_FN(Kungfub)
 static struct BurnRomInfo Kungfub2RomDesc[] = {
 	{ "kf4",                  0x04000, 0x3f65313f, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "kf5",                  0x04000, 0x9ea325f3, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "a-3e-.bin",            0x02000, 0x58e87ab0, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "a-3f-.bin",            0x02000, 0xc81e31ea, BRF_ESS | BRF_PRG }, //  3
 	{ "a-3h-.bin",            0x02000, 0xd99fb995, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "g-4c-a.bin",           0x02000, 0x6b2cc9c8, BRF_GRA },	    //  5	Characters
 	{ "g-4d-a.bin",           0x02000, 0xc648f558, BRF_GRA },	    //  6
 	{ "g-4e-a.bin",           0x02000, 0xfbe9276e, BRF_GRA },	    //  7
-	
+
 	{ "b-4k-.bin",            0x02000, 0x16fb5150, BRF_GRA },	    //  8	Sprites
 	{ "b-4f-.bin",            0x02000, 0x67745a33, BRF_GRA },	    //  9
 	{ "b-4l-.bin",            0x02000, 0xbd1c2261, BRF_GRA },	    //  10
@@ -1103,7 +1088,7 @@ static struct BurnRomInfo Kungfub2RomDesc[] = {
 	{ "b-4e-.bin",            0x02000, 0xc77b87d4, BRF_GRA },	    //  17
 	{ "b-4d-.bin",            0x02000, 0x6a70615f, BRF_GRA },	    //  18
 	{ "b-4a-.bin",            0x02000, 0x6189d626, BRF_GRA },	    //  19
-	
+
 	{ "g-1j-.bin",            0x00100, 0x668e6bca, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "b-1m-.bin",            0x00100, 0x76c05a9c, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "g-1f-.bin",            0x00100, 0x964b6495, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -1120,22 +1105,22 @@ STD_ROM_FN(Kungfub2)
 static struct BurnRomInfo Kungfub3RomDesc[] = {
 	{ "5.bin",                0x04000, 0x5d8e791d, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "4.bin",                0x04000, 0x4000e2b8, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "1.bin",                0x02000, 0x58e87ab0, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
 	{ "2.bin",                0x02000, 0xc81e31ea, BRF_ESS | BRF_PRG }, //  3
 	{ "3.bin",                0x02000, 0xd99fb995, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "6.bin",                0x02000, 0x6b2cc9c8, BRF_GRA },	    //  4	Characters
 	{ "7.bin",                0x02000, 0xc648f558, BRF_GRA },	    //  5
 	{ "8.bin",                0x02000, 0xfbe9276e, BRF_GRA },	    //  6
-	
+
 	{ "14.bin",               0x04000, 0x85591db2, BRF_GRA },	    //  7	Sprites
 	{ "13.bin",               0x04000, 0xed719d7b, BRF_GRA },	    //  8
 	{ "16.bin",               0x04000, 0x05fcce8b, BRF_GRA },	    //  9
 	{ "15.bin",               0x04000, 0xdc675003, BRF_GRA },	    //  10
 	{ "11.bin",               0x04000, 0x1df11d81, BRF_GRA },	    //  11
-	{ "12.bin",               0x04000, 0x2d3b69dd, BRF_GRA },	    //  12	
-	
+	{ "12.bin",               0x04000, 0x2d3b69dd, BRF_GRA },	    //  12
+
 	{ "g-1j-.bin",            0x00100, 0x668e6bca, BRF_GRA },	    //  13	PROM (Tile Palette Red Component)
 	{ "b-1m-.bin",            0x00100, 0x76c05a9c, BRF_GRA },	    //  14	PROM (Sprite Palette Red Component)
 	{ "g-1f-.bin",            0x00100, 0x964b6495, BRF_GRA },	    //  15	PROM (Tile Palette Green Component)
@@ -1160,25 +1145,25 @@ static struct BurnRomInfo BattroadRomDesc[] = {
 	{ "br-c-7b",              0x02000, 0x0b31b90b, BRF_ESS | BRF_PRG }, //  7
 	{ "br-c-7a",              0x02000, 0xec3b0080, BRF_ESS | BRF_PRG }, //  8
 	{ "br-c-7k",              0x02000, 0xedc75f7f, BRF_ESS | BRF_PRG }, //  9
-	
+
 	{ "br-a-3e",              0x02000, 0xa7140871, BRF_ESS | BRF_PRG }, //  10	M6803 Program Code
 	{ "br-a-3f",              0x02000, 0x1bb51b30, BRF_ESS | BRF_PRG }, //  11
 	{ "br-a-3h",              0x02000, 0xafb3e083, BRF_ESS | BRF_PRG }, //  12
-	
+
 	{ "br-c-6h",              0x02000, 0xca50841c, BRF_GRA },	    //  13	Tiles
 	{ "br-c-6n",              0x02000, 0x7d53163a, BRF_GRA },	    //  14
 	{ "br-c-6k",              0x02000, 0x5951e12a, BRF_GRA },	    //  15
-	
+
 	{ "br-b-4k.a",            0x02000, 0xd3c5e85b, BRF_GRA },	    //  16	Sprites
 	{ "br-b-4f.a",            0x02000, 0x4354232a, BRF_GRA },	    //  17
 	{ "br-b-3n.a",            0x02000, 0x2668dbef, BRF_GRA },	    //  18
 	{ "br-b-4n.a",            0x02000, 0xc719a324, BRF_GRA },	    //  19
 	{ "br-b-4c.a",            0x02000, 0x0b3193bf, BRF_GRA },	    //  20
 	{ "br-b-4e.a",            0x02000, 0x3662e8fb, BRF_GRA },	    //  21
-	
+
 	{ "br-c-1b",              0x02000, 0x8088911e, BRF_GRA },	    //  22	Chars
 	{ "br-c-1c",              0x02000, 0x3d78b653, BRF_GRA },	    //  23
-	
+
 	{ "br-c-3j",              0x00100, 0xaceaed79, BRF_GRA },	    //  24	PROM (Tile Palette Red Component)
 	{ "br-b-1m",              0x00100, 0x3bd30c7d, BRF_GRA },	    //  25	PROM (Sprite Palette Red Component)
 	{ "br-c-3l",              0x00100, 0x7cf6f380, BRF_GRA },	    //  26	PROM (Tile Palette Green Component)
@@ -1198,18 +1183,18 @@ static struct BurnRomInfo LdrunRomDesc[] = {
 	{ "lr-a-4d",              0x02000, 0x96f20473, BRF_ESS | BRF_PRG }, //  1
 	{ "lr-a-4b",              0x02000, 0xb041c4a9, BRF_ESS | BRF_PRG }, //  2
 	{ "lr-a-4a",              0x02000, 0x645e42aa, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "lr-a-3f",              0x02000, 0x7a96accd, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "lr-a-3h",              0x02000, 0x3f7f3939, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "lr-e-2d",              0x02000, 0x24f9b58d, BRF_GRA },	    //  6	Characters
 	{ "lr-e-2j",              0x02000, 0x43175e08, BRF_GRA },	    //  7
 	{ "lr-e-2f",              0x02000, 0xe0317124, BRF_GRA },	    //  8
-	
+
 	{ "lr-b-4k",              0x02000, 0x8141403e, BRF_GRA },	    //  9	Sprites
 	{ "lr-b-3n",              0x02000, 0x55154154, BRF_GRA },	    //  10
 	{ "lr-b-4c",              0x02000, 0x924e34d0, BRF_GRA },	    //  11
-	
+
 	{ "lr-e-3m",              0x00100, 0x53040416, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "lr-b-1m",              0x00100, 0x4bae1c25, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "lr-e-3l",              0x00100, 0x67786037, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -1228,18 +1213,18 @@ static struct BurnRomInfo LdrunaRomDesc[] = {
 	{ "lr-a-4d",              0x02000, 0x96f20473, BRF_ESS | BRF_PRG }, //  1
 	{ "roma4b",               0x02000, 0x3c464bad, BRF_ESS | BRF_PRG }, //  2
 	{ "roma4a",               0x02000, 0x899df8e0, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "lr-a-3f",              0x02000, 0x7a96accd, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "lr-a-3h",              0x02000, 0x3f7f3939, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "lr-e-2d",              0x02000, 0x24f9b58d, BRF_GRA },	    //  6	Characters
 	{ "lr-e-2j",              0x02000, 0x43175e08, BRF_GRA },	    //  7
 	{ "lr-e-2f",              0x02000, 0xe0317124, BRF_GRA },	    //  8
-	
+
 	{ "lr-b-4k",              0x02000, 0x8141403e, BRF_GRA },	    //  9	Sprites
 	{ "lr-b-3n",              0x02000, 0x55154154, BRF_GRA },	    //  10
 	{ "lr-b-4c",              0x02000, 0x924e34d0, BRF_GRA },	    //  11
-	
+
 	{ "lr-e-3m",              0x00100, 0x53040416, BRF_GRA },	    //  20	PROM (Tile Palette Red Component)
 	{ "lr-b-1m",              0x00100, 0x4bae1c25, BRF_GRA },	    //  21	PROM (Sprite Palette Red Component)
 	{ "lr-e-3l",              0x00100, 0x67786037, BRF_GRA },	    //  22	PROM (Tile Palette Green Component)
@@ -1260,22 +1245,22 @@ static struct BurnRomInfo Ldrun2RomDesc[] = {
 	{ "lr2-a-4a",             0x02000, 0x470cc8a1, BRF_ESS | BRF_PRG }, //  3
 	{ "lr2-h-1c.a",           0x02000, 0x7ebcadbc, BRF_ESS | BRF_PRG }, //  4
 	{ "lr2-h-1d.a",           0x02000, 0x64cbb7f9, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "lr2-a-3e",             0x02000, 0x853f3898, BRF_ESS | BRF_PRG }, //  6	M6803 Program Code
 	{ "lr2-a-3f",             0x02000, 0x7a96accd, BRF_ESS | BRF_PRG }, //  7
 	{ "lr2-a-3h",             0x02000, 0x2a0e83ca, BRF_ESS | BRF_PRG }, //  8
-	
+
 	{ "lr2-h-1e",             0x02000, 0x9d63a8ff, BRF_GRA },	    //  9	Characters
 	{ "lr2-h-1j",             0x02000, 0x40332bbd, BRF_GRA },	    //  10
 	{ "lr2-h-1h",             0x02000, 0x9404727d, BRF_GRA },	    //  11
-	
+
 	{ "lr2-b-4k",             0x02000, 0x79909871, BRF_GRA },	    //  12	Sprites
 	{ "lr2-b-4f",             0x02000, 0x06ba1ef4, BRF_GRA },	    //  13
 	{ "lr2-b-3n",             0x02000, 0x3cc5893f, BRF_GRA },	    //  14
 	{ "lr2-b-4n",             0x02000, 0x49c12f42, BRF_GRA },	    //  15
 	{ "lr2-b-4c",             0x02000, 0xfbe6d24c, BRF_GRA },	    //  16
 	{ "lr2-b-4e",             0x02000, 0x75172d1f, BRF_GRA },	    //  17
-	
+
 	{ "lr2-h-3m",             0x00100, 0x2c5d834b, BRF_GRA },	    //  18	PROM (Tile Palette Red Component)
 	{ "lr2-b-1m",             0x00100, 0x4ec9bb3d, BRF_GRA },	    //  19	PROM (Sprite Palette Red Component)
 	{ "lr2-h-3l",             0x00100, 0x3ae69aca, BRF_GRA },	    //  20	PROM (Tile Palette Green Component)
@@ -1293,21 +1278,21 @@ static struct BurnRomInfo Ldrun3RomDesc[] = {
 	{ "lr3a4eb.bin",          0x04000, 0x09affc47, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "lr3a4db.bin",          0x04000, 0x23a02178, BRF_ESS | BRF_PRG }, //  1
 	{ "lr3a4bb.bin",          0x04000, 0x3d501a1a, BRF_ESS | BRF_PRG }, //  2
-	
+
 	{ "lr3-a-3d",             0x04000, 0x28be68cd, BRF_ESS | BRF_PRG }, //  3	M6803 Program Code
 	{ "lr3-a-3f",             0x04000, 0xcb7186b7, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "lr3-n-2a",             0x04000, 0xf9b74dee, BRF_GRA },	    //  5	Characters
 	{ "lr3-n-2c",             0x04000, 0xfef707ba, BRF_GRA },	    //  6
 	{ "lr3-n-2b",             0x04000, 0xaf3d27b9, BRF_GRA },	    //  7
-	
+
 	{ "lr3b4kb.bin",          0x04000, 0x21ecd8c5, BRF_GRA },	    //  8	Sprites
 	{ "snxb4fb.bin",          0x04000, 0xed719d7b, BRF_GRA },	    //  9
 	{ "lr3b3nb.bin",          0x04000, 0xda8cffab, BRF_GRA },	    //  10
 	{ "snxb4nb.bin",          0x04000, 0xdc675003, BRF_GRA },	    //  11
 	{ "snxb4cb.bin",          0x04000, 0x585aa244, BRF_GRA },	    //  12
 	{ "snxb4eb.bin",          0x04000, 0x2d3b69dd, BRF_GRA },	    //  13
-	
+
 	{ "lr3-n-2l",             0x00100, 0xe880b86b, BRF_GRA },	    //  14	PROM (Tile Palette Red Component)
 	{ "lr3-b-1m",             0x00100, 0xf02d7167, BRF_GRA },	    //  15	PROM (Sprite Palette Red Component)
 	{ "lr3-n-2k",             0x00100, 0x047ee051, BRF_GRA },	    //  16	PROM (Tile Palette Green Component)
@@ -1326,18 +1311,18 @@ static struct BurnRomInfo Ldrun3jRomDesc[] = {
 	{ "lr3-a-4e",             0x04000, 0x5b334e8e, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "lr3-a-4d.a",           0x04000, 0xa84bc931, BRF_ESS | BRF_PRG }, //  1
 	{ "lr3-a-4b.a",           0x04000, 0xbe09031d, BRF_ESS | BRF_PRG }, //  2
-	
+
 	{ "lr3-a-3d",             0x04000, 0x28be68cd, BRF_ESS | BRF_PRG }, //  3	M6803 Program Code
 	{ "lr3-a-3f",             0x04000, 0xcb7186b7, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "lr3-n-2a",             0x04000, 0xf9b74dee, BRF_GRA },	    //  5	Characters
 	{ "lr3-n-2c",             0x04000, 0xfef707ba, BRF_GRA },	    //  6
 	{ "lr3-n-2b",             0x04000, 0xaf3d27b9, BRF_GRA },	    //  7
-	
+
 	{ "lr3-b-4k",             0x04000, 0x63f070c7, BRF_GRA },	    //  8	Sprites
 	{ "lr3-b-3n",             0x04000, 0xeab7ad91, BRF_GRA },	    //  9
 	{ "lr3-b-4c",             0x04000, 0x1a460a46, BRF_GRA },	    //  10
-	
+
 	{ "lr3-n-2l",             0x00100, 0xe880b86b, BRF_GRA },	    //  11	PROM (Tile Palette Red Component)
 	{ "lr3-b-1m",             0x00100, 0xf02d7167, BRF_GRA },	    //  12	PROM (Sprite Palette Red Component)
 	{ "lr3-n-2k",             0x00100, 0x047ee051, BRF_GRA },	    //  13	PROM (Tile Palette Green Component)
@@ -1356,21 +1341,21 @@ static struct BurnRomInfo Ldrun4RomDesc[] = {
 	{ "lr4-a-4e",             0x04000, 0x5383e9bf, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "lr4-a-4d.c",           0x04000, 0x298afa36, BRF_ESS | BRF_PRG }, //  1
 	{ "lr4-v-4k",             0x08000, 0x8b248abd, BRF_ESS | BRF_PRG }, //  2
-	
+
 	{ "lr4-a-3d",             0x04000, 0x86c6d445, BRF_ESS | BRF_PRG }, //  3	M6803 Program Code
 	{ "lr4-a-3f",             0x04000, 0x097c6c0a, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "lr4-v-2b",             0x04000, 0x4118e60a, BRF_GRA },	    //  5	Characters
 	{ "lr4-v-2d",             0x04000, 0x542bb5b5, BRF_GRA },	    //  6
 	{ "lr4-v-2c",             0x04000, 0xc765266c, BRF_GRA },	    //  7
-	
+
 	{ "lr4-b-4k",             0x04000, 0xe7fe620c, BRF_GRA },	    //  8	Sprites
 	{ "lr4-b-4f",             0x04000, 0x6f0403db, BRF_GRA },	    //  9
 	{ "lr4-b-3n",             0x04000, 0xad1fba1b, BRF_GRA },	    //  10
 	{ "lr4-b-4n",             0x04000, 0x0e568fab, BRF_GRA },	    //  11
 	{ "lr4-b-4c",             0x04000, 0x82c53669, BRF_GRA },	    //  12
 	{ "lr4-b-4e",             0x04000, 0x767a1352, BRF_GRA },	    //  13
-	
+
 	{ "lr4-v-1m",             0x00100, 0xfe51bf1d, BRF_GRA },	    //  14	PROM (Tile Palette Red Component)
 	{ "lr4-b-1m",             0x00100, 0x5d8d17d0, BRF_GRA },	    //  15	PROM (Sprite Palette Red Component)
 	{ "lr4-v-1n",             0x00100, 0xda0658e5, BRF_GRA },	    //  16	PROM (Tile Palette Green Component)
@@ -1388,21 +1373,21 @@ STD_ROM_FN(Ldrun4)
 static struct BurnRomInfo LotlotRomDesc[] = {
 	{ "lot-a-4e",             0x04000, 0x2913d08f, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "lot-a-4d",             0x04000, 0x0443095f, BRF_ESS | BRF_PRG }, //  1
-	
+
 	{ "lot-a-3h",             0x02000, 0x0781cee7, BRF_ESS | BRF_PRG }, //  2	M6803 Program Code
-	
+
 	{ "lot-k-4a",             0x02000, 0x1b3695f4, BRF_GRA },	    //  3	Tiles
 	{ "lot-k-4c",             0x02000, 0xbd2b0730, BRF_GRA },	    //  4
 	{ "lot-k-4b",             0x02000, 0x930ddd55, BRF_GRA },	    //  5
-	
+
 	{ "lot-b-4k",             0x02000, 0xfd27cb90, BRF_GRA },	    //  6	Sprites
 	{ "lot-b-3n",             0x02000, 0xbd486fff, BRF_GRA },	    //  7
 	{ "lot-b-4c",             0x02000, 0x3026ee6c, BRF_GRA },	    //  8
-	
+
 	{ "lot-k-4p",             0x02000, 0x3b7d95ba, BRF_GRA },	    //  9	Characters
 	{ "lot-k-4l",             0x02000, 0xf98dca1f, BRF_GRA },	    //  10
 	{ "lot-k-4n",             0x02000, 0xf0cd76a5, BRF_GRA },	    //  11
-	
+
 	{ "lot-k-2f",             0x00100, 0xb820a05e, BRF_GRA },	    //  12	PROM (Tile Palette Red Component)
 	{ "lot-b-1m",             0x00100, 0xc146461d, BRF_GRA },	    //  13	PROM (Sprite Palette Red Component)
 	{ "lot-k-2l",             0x00100, 0xac3e230d, BRF_GRA },	    //  14	PROM (Char Palette Red Component)
@@ -1426,15 +1411,15 @@ static struct BurnRomInfo KidnikiRomDesc[] = {
 	{ "dr03.4cd",             0x04000, 0xdba20934, BRF_ESS | BRF_PRG }, //  1
 	{ "ky_t-8k-g.bin",        0x08000, 0xdbc42f31, BRF_ESS | BRF_PRG }, //  2
 	{ "dr12.8l",              0x10000, 0xc0b255fd, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "dr00.3a",              0x04000, 0x458309f7, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "dr01.3cd",             0x04000, 0xe66897bd, BRF_ESS | BRF_PRG }, //  5
 	{ "dr02.3f",              0x04000, 0xf9e31e26, BRF_ESS | BRF_PRG }, //  6
-	
+
 	{ "dr06.2b",              0x08000, 0x4d9a970f, BRF_GRA },	    //  7	Tiles
 	{ "dr07.2dc",             0x08000, 0xab59a4c4, BRF_GRA },	    //  8
 	{ "dr05.2a",              0x08000, 0x2e6dad0c, BRF_GRA },	    //  9
-	
+
 	{ "dr21.4k",              0x04000, 0xa06cea9a, BRF_GRA },	    //  10	Sprites
 	{ "dr19.4f",              0x04000, 0xb34605ad, BRF_GRA },	    //  11
 	{ "dr22.4l",              0x04000, 0x41303de8, BRF_GRA },	    //  12
@@ -1447,7 +1432,7 @@ static struct BurnRomInfo KidnikiRomDesc[] = {
 	{ "dr18.4e",              0x04000, 0xedb7f25b, BRF_GRA },	    //  19
 	{ "dr17.4dc",             0x04000, 0x4fb87868, BRF_GRA },	    //  20
 	{ "dr15.4a",              0x04000, 0xe0b88de5, BRF_GRA },	    //  21
-	
+
 	{ "dr08.4l",              0x04000, 0x32d50643, BRF_GRA },	    //  22	Characters
 	{ "dr09.4m",              0x04000, 0x17df6f95, BRF_GRA },	    //  23
 	{ "dr10.4n",              0x04000, 0x820ce252, BRF_GRA },	    //  24
@@ -1471,15 +1456,15 @@ static struct BurnRomInfo KidnikiuRomDesc[] = {
 	{ "dr03.4cd",             0x04000, 0xdba20934, BRF_ESS | BRF_PRG }, //  1
 	{ "dr11.8k",              0x08000, 0x04d82d93, BRF_ESS | BRF_PRG }, //  2
 	{ "dr12.8l",              0x10000, 0xc0b255fd, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "dr00.3a",              0x04000, 0x458309f7, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "dr01.3cd",             0x04000, 0xe66897bd, BRF_ESS | BRF_PRG }, //  5
 	{ "dr02.3f",              0x04000, 0xf9e31e26, BRF_ESS | BRF_PRG }, //  6
-	
+
 	{ "dr06.2b",              0x08000, 0x4d9a970f, BRF_GRA },	    //  7	Tiles
 	{ "dr07.2dc",             0x08000, 0xab59a4c4, BRF_GRA },	    //  8
 	{ "dr05.2a",              0x08000, 0x2e6dad0c, BRF_GRA },	    //  9
-	
+
 	{ "dr21.4k",              0x04000, 0xa06cea9a, BRF_GRA },	    //  10	Sprites
 	{ "dr19.4f",              0x04000, 0xb34605ad, BRF_GRA },	    //  11
 	{ "dr22.4l",              0x04000, 0x41303de8, BRF_GRA },	    //  12
@@ -1492,7 +1477,7 @@ static struct BurnRomInfo KidnikiuRomDesc[] = {
 	{ "dr18.4e",              0x04000, 0xedb7f25b, BRF_GRA },	    //  19
 	{ "dr17.4dc",             0x04000, 0x4fb87868, BRF_GRA },	    //  20
 	{ "dr15.4a",              0x04000, 0xe0b88de5, BRF_GRA },	    //  21
-	
+
 	{ "dr08.4l",              0x04000, 0x32d50643, BRF_GRA },	    //  22	Characters
 	{ "dr09.4m",              0x04000, 0x17df6f95, BRF_GRA },	    //  23
 	{ "dr10.4n",              0x04000, 0x820ce252, BRF_GRA },	    //  24
@@ -1516,11 +1501,11 @@ static struct BurnRomInfo YanchamrRomDesc[] = {
 	{ "ky_a-4d-.bin",         0x04000, 0x401af828, BRF_ESS | BRF_PRG }, //  1
 	{ "ky_t-8k-.bin",         0x08000, 0xe967de88, BRF_ESS | BRF_PRG }, //  2
 	{ "ky_t-8l-.bin",         0x08000, 0xa929110b, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "ky_a-3a-.bin",         0x04000, 0xcb365f3b, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "dr01.3cd",             0x04000, 0xe66897bd, BRF_ESS | BRF_PRG }, //  5
 	{ "dr02.3f",              0x04000, 0xf9e31e26, BRF_ESS | BRF_PRG }, //  6
-	
+
 	{ "ky_t-2c-.bin",         0x08000, 0xcb9761fc, BRF_GRA },	    //  7	Tiles
 	{ "ky_t-2d-.bin",         0x08000, 0x59732741, BRF_GRA },	    //  8
 	{ "ky_t-2a-.bin",         0x08000, 0x0370fd82, BRF_GRA },	    //  9
@@ -1560,11 +1545,11 @@ static struct BurnRomInfo LitheroRomDesc[] = {
 	{ "4.bin",                0x08000, 0x80903766, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "11.bin",               0x08000, 0x7a1ef8cb, BRF_ESS | BRF_PRG }, //  1
 	{ "12.bin",               0x08000, 0xa929110b, BRF_ESS | BRF_PRG }, //  2
-	
+
 	{ "ky_a-3a-.bin",         0x04000, 0xcb365f3b, BRF_ESS | BRF_PRG }, //  3	M6803 Program Code
 	{ "dr01.3cd",             0x04000, 0xe66897bd, BRF_ESS | BRF_PRG }, //  4
 	{ "dr02.3f",              0x04000, 0xf9e31e26, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "7.bin",                0x08000, 0xb55e8d19, BRF_GRA },	    //  6	Tiles
 	{ "6.bin",                0x08000, 0x7bbbb209, BRF_GRA },	    //  7
 	{ "5.bin",                0x08000, 0x0370fd82, BRF_GRA },	    //  8
@@ -1599,28 +1584,28 @@ static struct BurnRomInfo SpelunkrRomDesc[] = {
 	{ "spra.4d",              0x04000, 0xbb4faa4f, BRF_ESS | BRF_PRG }, //  1
 	{ "sprm.7c",              0x04000, 0xfb6197e2, BRF_ESS | BRF_PRG }, //  2
 	{ "sprm.7b",              0x04000, 0x26bb25a4, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "spra.3d",              0x04000, 0x4110363c, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "spra.3f",              0x04000, 0x67a9d2e6, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "sprm.1d",              0x04000, 0x4ef7ae89, BRF_GRA },	    //  6	Tiles
 	{ "sprm.1e",              0x04000, 0xa3755180, BRF_GRA },	    //  7
 	{ "sprm.3c",              0x04000, 0xb4008e6a, BRF_GRA },	    //  8
 	{ "sprm.3b",              0x04000, 0xf61cf012, BRF_GRA },	    //  9
 	{ "sprm.1c",              0x04000, 0x58b21c76, BRF_GRA },	    //  10
 	{ "sprm.1b",              0x04000, 0xa95cb3e5, BRF_GRA },	    //  11
-	
+
 	{ "sprb.4k",              0x04000, 0xe7f0e861, BRF_GRA },	    //  12	Sprites
 	{ "sprb.4f",              0x04000, 0x32663097, BRF_GRA },	    //  13
 	{ "sprb.3p",              0x04000, 0x8fbaf373, BRF_GRA },	    //  14
 	{ "sprb.4p",              0x04000, 0x37069b76, BRF_GRA },	    //  15
 	{ "sprb.4c",              0x04000, 0xcfe46a88, BRF_GRA },	    //  16
 	{ "sprb.4e",              0x04000, 0x11c48979, BRF_GRA },	    //  17
-	
+
 	{ "sprm.4p",              0x04000, 0x4dfe2e63, BRF_GRA },	    //  18	Characters
 	{ "sprm.4l",              0x04000, 0x239f2cd4, BRF_GRA },	    //  19
 	{ "sprm.4m",              0x04000, 0xd6d07d70, BRF_GRA },	    //  20
-	
+
 	{ "sprm.2k",              0x00100, 0xfd8fa991, BRF_GRA },	    //  21	PROM (Tile Palette Red Component)
 	{ "sprb.1m",              0x00100, 0x8d8cccad, BRF_GRA },	    //  22	PROM (Sprite Palette Red Component)
 	{ "sprm.2j",              0x00100, 0x0e3890b4, BRF_GRA },	    //  23	PROM (Tile Palette Green Component)
@@ -1640,28 +1625,28 @@ static struct BurnRomInfo SpelunkrjRomDesc[] = {
 	{ "spr_a4dd.bin",         0x04000, 0xe7c0cbce, BRF_ESS | BRF_PRG }, //  1
 	{ "spr_m7cc.bin",         0x04000, 0x57598a36, BRF_ESS | BRF_PRG }, //  2
 	{ "spr_m7bd.bin",         0x04000, 0xecf5137f, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "spra.3d",              0x04000, 0x4110363c, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
 	{ "spra.3f",              0x04000, 0x67a9d2e6, BRF_ESS | BRF_PRG }, //  5
-	
+
 	{ "sprm.1d",              0x04000, 0x4ef7ae89, BRF_GRA },	    //  6	Tiles
 	{ "sprm.1e",              0x04000, 0xa3755180, BRF_GRA },	    //  7
 	{ "sprm.3c",              0x04000, 0xb4008e6a, BRF_GRA },	    //  8
 	{ "sprm.3b",              0x04000, 0xf61cf012, BRF_GRA },	    //  9
 	{ "sprm.1c",              0x04000, 0x58b21c76, BRF_GRA },	    //  10
 	{ "sprm.1b",              0x04000, 0xa95cb3e5, BRF_GRA },	    //  11
-	
+
 	{ "sprb.4k",              0x04000, 0xe7f0e861, BRF_GRA },	    //  12	Sprites
 	{ "sprb.4f",              0x04000, 0x32663097, BRF_GRA },	    //  13
 	{ "sprb.3p",              0x04000, 0x8fbaf373, BRF_GRA },	    //  14
 	{ "sprb.4p",              0x04000, 0x37069b76, BRF_GRA },	    //  15
 	{ "sprb.4c",              0x04000, 0xcfe46a88, BRF_GRA },	    //  16
 	{ "sprb.4e",              0x04000, 0x11c48979, BRF_GRA },	    //  17
-	
+
 	{ "sprm.4p",              0x04000, 0x4dfe2e63, BRF_GRA },	    //  18	Characters
 	{ "sprm.4l",              0x04000, 0x239f2cd4, BRF_GRA },	    //  19
 	{ "sprm.4m",              0x04000, 0xd6d07d70, BRF_GRA },	    //  20
-	
+
 	{ "sprm.2k",              0x00100, 0xfd8fa991, BRF_GRA },	    //  21	PROM (Tile Palette Red Component)
 	{ "sprb.1m",              0x00100, 0x8d8cccad, BRF_GRA },	    //  22	PROM (Sprite Palette Red Component)
 	{ "sprm.2j",              0x00100, 0x0e3890b4, BRF_GRA },	    //  23	PROM (Tile Palette Green Component)
@@ -1682,35 +1667,35 @@ static struct BurnRomInfo Spelunk2RomDesc[] = {
 	{ "sp2-r.7d",             0x08000, 0x558837ea, BRF_ESS | BRF_PRG }, //  2
 	{ "sp2-r.7c",             0x08000, 0x4b380162, BRF_ESS | BRF_PRG }, //  3
 	{ "sp2-r.7b",             0x04000, 0x7709a1fe, BRF_ESS | BRF_PRG }, //  4
-	
+
 	{ "sp2-a.3d",             0x04000, 0x839ec7e2, BRF_ESS | BRF_PRG }, //  5	M6803 Program Code
 	{ "sp2-a.3f",             0x04000, 0xad3ce898, BRF_ESS | BRF_PRG }, //  6
-	
+
 	{ "sp2-r.1d",             0x08000, 0xc19fa4c9, BRF_GRA },	    //  7	Tiles
 	{ "sp2-r.3b",             0x08000, 0x366604af, BRF_GRA },	    //  8
 	{ "sp2-r.1b",             0x08000, 0x3a0c4d47, BRF_GRA },	    //  9
-	
+
 	{ "sp2-b.4k",             0x04000, 0x6cb67a17, BRF_GRA },	    //  10	Sprites
 	{ "sp2-b.4f",             0x04000, 0xe4a1166f, BRF_GRA },	    //  11
 	{ "sp2-b.3n",             0x04000, 0xf59e8b76, BRF_GRA },	    //  12
 	{ "sp2-b.4n",             0x04000, 0xfa65bac9, BRF_GRA },	    //  13
 	{ "sp2-b.4c",             0x04000, 0x1caf7013, BRF_GRA },	    //  14
 	{ "sp2-b.4e",             0x04000, 0x780a463b, BRF_GRA },	    //  15
-	
+
 	{ "sp2-r.4l",             0x04000, 0x6a4b2d8b, BRF_GRA },	    //  16	Characters
 	{ "sp2-r.4m",             0x04000, 0xe1368b61, BRF_GRA },	    //  17
 	{ "sp2-r.4p",             0x04000, 0xfc138e13, BRF_GRA },	    //  18
-	
+
 	{ "sp2-r.1k",             0x00200, 0x31c1bcdc, BRF_GRA },	    //  19	PROM (Char Palette Red and Green Component)
 	{ "sp2-r.2k",             0x00100, 0x1cf5987e, BRF_GRA },	    //  20	PROM (Char Palette Blue Component)
 	{ "sp2-r.2j",             0x00100, 0x1acbe2a5, BRF_GRA },	    //  21	PROM (Char Palette Blue Component)
 	{ "sp2-b.1m",             0x00100, 0x906104c7, BRF_GRA },	    //  22	PROM (Sprite Palette Red Component)
 	{ "sp2-b.1n",             0x00100, 0x5a564c06, BRF_GRA },	    //  23	PROM (Sprite Palette Green Component)
 	{ "sp2-b.1l",             0x00100, 0x8f4a2e3c, BRF_GRA },	    //  24	PROM (Sprite Palette Blue Component)
-	{ "sp2-b.5p",             0x00020, 0xcd126f6a, BRF_GRA },	    //  25	PROM (Sprite Height)	
+	{ "sp2-b.5p",             0x00020, 0xcd126f6a, BRF_GRA },	    //  25	PROM (Sprite Height)
 	{ "sp2-b.6f",             0x00100, 0x34d88d3c, BRF_GRA },	    //  26	PROM (Video Timing)
 	{ "sp2-r.8j",             0x00200, 0x875cc442, BRF_OPT },	    //  27	PROM (Unknown)
-	
+
 	{ "ampal16r4a-sp2-r-3h.bin", 0x00104, 0x00000000, BRF_OPT | BRF_NODUMP },	    //  28	PAL
 };
 
@@ -1722,20 +1707,20 @@ static struct BurnRomInfo YoujyudnRomDesc[] = {
 	{ "yju_a4db.bin",         0x04000, 0xc169be13, BRF_ESS | BRF_PRG }, //  1
 	{ "yju_p4cb.0",           0x04000, 0x60baf3b1, BRF_ESS | BRF_PRG }, //  2
 	{ "yju_p4eb.1",           0x04000, 0x8d0521f8, BRF_ESS | BRF_PRG }, //  3
-	
+
 	{ "yju_a3fb.bin",         0x04000, 0xe15c8030, BRF_ESS | BRF_PRG }, //  4	M6803 Program Code
-	
+
 	{ "yju_p3bb.0",           0x08000, 0xc017913c, BRF_GRA },	    //  5	Tiles
 	{ "yju_p1bb.1",           0x08000, 0x94627523, BRF_GRA },	    //  6
 	{ "yju_p1cb.2",           0x08000, 0x6a378c56, BRF_GRA },	    //  7
-	
+
 	{ "yju_b4ka.00",          0x04000, 0x1bbb864a, BRF_GRA },	    //  8	Sprites
 	{ "yju_b4fa.01",          0x04000, 0x14b4dd24, BRF_GRA },	    //  9
 	{ "yju_b3na.10",          0x04000, 0x68879321, BRF_GRA },	    //  10
 	{ "yju_b4na.11",          0x04000, 0x2860a68b, BRF_GRA },	    //  11
 	{ "yju_b4ca.20",          0x04000, 0xab365829, BRF_GRA },	    //  12
 	{ "yju_b4ea.21",          0x04000, 0xb36c31e4, BRF_GRA },	    //  13
-	
+
 	{ "yju_p4lb.2",           0x04000, 0x87878d9b, BRF_GRA },	    //  14	Characters
 	{ "yju_p4mb.1",           0x04000, 0x1e1a0d09, BRF_GRA },	    //  15
 	{ "yju_p4pb.0",           0x04000, 0xb4ab520b, BRF_GRA },	    //  16
@@ -1749,7 +1734,7 @@ static struct BurnRomInfo YoujyudnRomDesc[] = {
 	{ "yju_b-5p.bpr",         0x00020, 0x2095e6a3, BRF_GRA },	    //  23	PROM (Sprite Height)
 	{ "yju_b-6f.bpr",         0x00100, 0x82c20d12, BRF_GRA },	    //  24	PROM (Video Timing)
 	{ "yju_p-8d.bpr",         0x00200, 0x6cef0fbd, BRF_OPT },	    //  25	PROM (Unknown)
-	
+
 	{ "yju_b-pal16r4a-8m.pal", 0x00104, 0x3ece8e61, BRF_OPT },	    //  26	PAL
 };
 
@@ -1760,13 +1745,13 @@ static struct BurnRomInfo HorizonRomDesc[] = {
 	{ "hrza-4e",              0x04000, 0x98b96ba2, BRF_ESS | BRF_PRG }, //  0	Z80 Program Code
 	{ "hrza-4d",              0x04000, 0x06b06ac7, BRF_ESS | BRF_PRG }, //  1
 	{ "hrza-4b",              0x04000, 0x39c0bd02, BRF_ESS | BRF_PRG }, //  2
-	
+
 	{ "hrza-3f",              0x04000, 0x7412c99f, BRF_ESS | BRF_PRG }, //  3	M6803 Program Code
-	
+
 	{ "hrzd-4d",              0x02000, 0xb93ed581, BRF_GRA },	    //  4	Tiles
 	{ "hrzd-4c",              0x02000, 0x1cf73b53, BRF_GRA },	    //  5
 	{ "hrzd-4a",              0x02000, 0xeace8d53, BRF_GRA },	    //  6
-	
+
 	{ "hrzb-4k.00",           0x04000, 0x11d2f3a1, BRF_GRA },	    //  7	Sprites
 	{ "hrzb-4f.01",           0x04000, 0x356902ea, BRF_GRA },	    //  8
 	{ "hrzb-3n.10",           0x04000, 0x87078a02, BRF_GRA },	    //  9
@@ -1790,7 +1775,7 @@ STD_ROM_FN(Horizon)
 static INT32 M62MemIndex()
 {
 	UINT8 *Next; Next = Mem;
-	
+
 	if (!M62BgxTileDim) M62BgxTileDim = 8;
 	if (!M62BgyTileDim) M62BgyTileDim = 8;
 	if (!M62CharxTileDim) M62CharxTileDim = 8;
@@ -1798,25 +1783,23 @@ static INT32 M62MemIndex()
 	if (!M62SpriteRamSize) M62SpriteRamSize = 0x100;
 
 	M62Z80Rom              = Next; Next += M62Z80RomSize;
-	M62M6803Rom            = Next; Next += 0x0c000;
+	M62M6803Rom            = Next; Next += 0x10000;
 
 	RamStart               = Next;
-	
+
 	M62SpriteRam           = Next; Next += M62SpriteRamSize;
-	M62TileRam             = Next; Next += 0x02000;
-	if (M62CharRamSize)   M62CharRam   = Next; Next += M62CharRamSize;
-	if (M62ScrollRamSize) M62ScrollRam = Next; Next += M62ScrollRamSize;
+	M62TileRam             = Next; Next += 0x12000;
+	if (M62CharRamSize)   { M62CharRam   = Next; Next += M62CharRamSize; }
+	if (M62ScrollRamSize) { M62ScrollRam = Next; Next += M62ScrollRamSize; }
 	M62Z80Ram              = Next; Next += 0x01000;
-	M62M6803Ram            = Next; Next += 0x00080;
 
 	RamEnd                 = Next;
 
 	M62Tiles               = Next; Next += M62NumTiles * M62BgxTileDim * M62BgyTileDim;
 	M62Sprites             = Next; Next += M62NumSprites * 16 * 16;
-	if (M62NumChars) M62Chars = Next; Next += M62NumChars * M62CharxTileDim * M62CharyTileDim;
+	if (M62NumChars) { M62Chars = Next; Next += M62NumChars * M62CharxTileDim * M62CharyTileDim; }
 	M62Palette             = (UINT32*)Next; Next += M62PaletteEntries * sizeof(UINT32);
 	M62PromData            = Next; Next += M62PromSize;
-	pFMBuffer              = (INT16*)Next; Next += nBurnSoundLen * 6 * sizeof(INT16);
 
 	MemEnd                 = Next;
 
@@ -1828,33 +1811,31 @@ static INT32 M62DoReset()
 	ZetOpen(0);
 	ZetReset();
 	ZetClose();
-	
-	M6803Reset();
-	
-	AY8910Reset(0);
-	AY8910Reset(1);
-	
-	MSM5205Reset();
-	
+
+	IremSoundReset();
+
+#ifdef USE_SAMPLE_HACK
+	BurnSampleReset();
+#endif
+
+	M62Z80BankAddress = 0;
+	M62Z80BankAddress2 = 0;
 	M62BackgroundHScroll = 0;
 	M62BackgroundVScroll = 0;
 	M62CharHScroll = 0;
 	M62CharVScroll = 0;
 	M62FlipScreen = 0;
-	M62SoundLatch = 0;
-	M62Port1 = 0;
-	M62Port2 = 0;
-	M62SlaveMSM5205VClckReset = 0;
+
 	M62BankControl[0] = M62BankControl[1] = 0;
 	Ldrun2BankSwap = 0;
 	Ldrun3TopBottomMask = 0;
 	KidnikiBackgroundBank = 0;
 	SpelunkrPaletteBank = 0;
-	
+
 	return 0;
 }
 
-UINT8 __fastcall M62Z80Read(UINT16 a)
+static UINT8 __fastcall M62Z80Read(UINT16 a)
 {
 	switch (a) {
 		default: {
@@ -1865,10 +1846,10 @@ UINT8 __fastcall M62Z80Read(UINT16 a)
 	return 0;
 }
 
-void __fastcall M62Z80Write(UINT16 a, UINT8 d)
+static void __fastcall M62Z80Write(UINT16 a, UINT8 d)
 {
 	if (a <= 0xbfff) return;
-	
+
 	switch (a) {
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write => %04X, %02X\n"), a, d);
@@ -1876,7 +1857,7 @@ void __fastcall M62Z80Write(UINT16 a, UINT8 d)
 	}
 }
 
-UINT8 __fastcall KungfumZ80Read(UINT16 a)
+static UINT8 __fastcall KungfumZ80Read(UINT16 a)
 {
 	switch (a) {
 		case 0xf000:
@@ -1886,7 +1867,7 @@ UINT8 __fastcall KungfumZ80Read(UINT16 a)
 			// ???
 			return 0;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Read => %04X\n"), a);
 		}
@@ -1895,40 +1876,40 @@ UINT8 __fastcall KungfumZ80Read(UINT16 a)
 	return 0;
 }
 
-void __fastcall KungfumZ80Write(UINT16 a, UINT8 d)
+static void __fastcall KungfumZ80Write(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xa000: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0xb000: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write => %04X, %02X\n"), a, d);
 		}
 	}
 }
 
-UINT8 __fastcall Ldrun3Z80Read(UINT16 a)
+static UINT8 __fastcall Ldrun3Z80Read(UINT16 a)
 {
 	switch (a) {
 		case 0xc800: {
 			return 0x05;
 		}
-		
+
 		case 0xcc00: {
 			return 0x07;
 		}
-		
+
 		case 0xcfff: {
 			return 0x07;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Read => %04X\n"), a);
 		}
@@ -1937,124 +1918,124 @@ UINT8 __fastcall Ldrun3Z80Read(UINT16 a)
 	return 0;
 }
 
-void __fastcall Ldrun4Z80Write(UINT16 a, UINT8 d)
+static void __fastcall Ldrun4Z80Write(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xc800: {
-			INT32 BankAddress = 0x8000 + ((d & 0x01) * 0x4000);
-			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + BankAddress);
-			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + BankAddress);
+			M62Z80BankAddress = 0x8000 + ((d & 0x01) * 0x4000);
+			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
 			return;
 		}
-			
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write => %04X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall SpelunkrZ80Write(UINT16 a, UINT8 d)
+static void __fastcall SpelunkrZ80Write(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xd000: {
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0xd001: {
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0xd002: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0xd003: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0xd004: {
-			INT32 BankAddress = 0x8000 + ((d & 0x03) * 0x2000);
-			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + BankAddress);
-			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + BankAddress);
+			M62Z80BankAddress = 0x8000 + ((d & 0x03) * 0x2000);
+			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
 			return;
 		}
-		
+
 		case 0xd005: {
 			SpelunkrPaletteBank = d & 0x01;
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write => %04X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall Spelunk2Z80Write(UINT16 a, UINT8 d)
+static void __fastcall Spelunk2Z80Write(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xd000: {
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0xd001: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0xd002: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (((d & 0x02) >> 1) << 8);
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0x00ff) | ((d & 0x01) << 8);
 			SpelunkrPaletteBank = (d & 0x0c) >> 2;
 			return;
 		}
-		
+
 		case 0xd003: {
-			INT32 BankAddress1 = 0x18000 + (((d & 0xc0) >> 6) * 0x1000);
-			INT32 BankAddress2 = 0x08000 + (((d & 0x3c) >> 2) * 0x1000);
-			ZetMapArea(0x8000, 0x8fff, 0, M62Z80Rom + BankAddress1);
-			ZetMapArea(0x8000, 0x8fff, 2, M62Z80Rom + BankAddress1);
-			ZetMapArea(0x9000, 0x9fff, 0, M62Z80Rom + BankAddress2);
-			ZetMapArea(0x9000, 0x9fff, 2, M62Z80Rom + BankAddress2);
+			M62Z80BankAddress = 0x18000 + (((d & 0xc0) >> 6) * 0x1000);
+			M62Z80BankAddress2 = 0x08000 + (((d & 0x3c) >> 2) * 0x1000);
+			ZetMapArea(0x8000, 0x8fff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0x8fff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x9000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress2);
+			ZetMapArea(0x9000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress2);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write => %04X, %02X\n"), a, d);
 		}
 	}
 }
 
-UINT8 __fastcall M62Z80PortRead(UINT16 a)
+static UINT8 __fastcall M62Z80PortRead(UINT16 a)
 {
 	a &= 0xff;
-	
+
 	switch (a) {
 		case 0x00: {
 			return 0xff - M62Input[0];
 		}
-		
+
 		case 0x01: {
 			return 0xff - M62Input[1];
 		}
-		
+
 		case 0x02: {
 			return 0xff - M62Input[2];
 		}
-		
+
 		case 0x03: {
 			return M62Dip[0];
 		}
-		
+
 		case 0x04: {
 			return M62Dip[1];
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Read => %02X\n"), a);
 		}
@@ -2063,76 +2044,72 @@ UINT8 __fastcall M62Z80PortRead(UINT16 a)
 	return 0;
 }
 
-void __fastcall M62Z80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall M62Z80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	switch (a) {
 		case 0x00: {
-			if ((d & 0x80) == 0) {
-				M62SoundLatch = d & 0x7f;
-			} else {
-				M6803SetIRQLine(M6803_IRQ_LINE, M6803_IRQSTATUS_ACK);
-			}
+			IremSoundWrite(d);
 			return;
 		}
-		
+
 		case 0x01: {
 			d ^= ~M62Dip[1] & 0x01;
 			M62FlipScreen = d & 0x01;
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall BattroadZ80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall BattroadZ80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80: {
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x81: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0x82: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x83: {
-			INT32 BankAddress = 0x8000 + ((d & 0x0f) * 0x2000);
-			ZetMapArea(0xa000, 0xbfff, 0, M62Z80Rom + BankAddress);
-			ZetMapArea(0xa000, 0xbfff, 2, M62Z80Rom + BankAddress);
+			M62Z80BankAddress = 0x8000 + ((d & 0x0f) * 0x2000);
+			ZetMapArea(0xa000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0xa000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-UINT8 __fastcall Ldrun2Z80PortRead(UINT16 a)
+static UINT8 __fastcall Ldrun2Z80PortRead(UINT16 a)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x04) return M62Z80PortRead(a);
-	
+
 	switch (a) {
 		case 0x80: {
 			if (Ldrun2BankSwap) {
@@ -2144,7 +2121,7 @@ UINT8 __fastcall Ldrun2Z80PortRead(UINT16 a)
 			}
 			return 0;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Read => %02X\n"), a);
 		}
@@ -2153,28 +2130,28 @@ UINT8 __fastcall Ldrun2Z80PortRead(UINT16 a)
 	return 0;
 }
 
-void __fastcall Ldrun2Z80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall Ldrun2Z80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80:
 		case 0x81: {
 			static const INT32 Banks[30] = { 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1 };
 			INT32 Offset = a - 0x80;
-			
+
 			M62BankControl[Offset] = d;
-			
+
 			if (Offset == 0x00) {
 				if (d >= 1 && d <= 30) {
-					INT32 BankAddress = 0x8000 + (Banks[d - 1] * 0x2000);
-					ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + BankAddress);
-					ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + BankAddress);
+					M62Z80BankAddress = 0x8000 + (Banks[d - 1] * 0x2000);
+					ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+					ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
 				}
 			} else {
 				if (M62BankControl[0] == 0x01 && d == 0x0d) {
@@ -2185,81 +2162,81 @@ void __fastcall Ldrun2Z80PortWrite(UINT16 a, UINT8 d)
 			}
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall Ldrun3Z80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall Ldrun3Z80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80: {
 			M62BackgroundVScroll = (M62BackgroundVScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x81: {
 			Ldrun3TopBottomMask = d & 0x01;
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall Ldrun4Z80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall Ldrun4Z80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80: {
 			// ???
 			return;
 		}
-		
+
 		case 0x81: {
 			// ???
 			return;
 		}
-		
+
 		case 0x82: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0x83: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-UINT8 __fastcall KidnikiZ80PortRead(UINT16 a)
+static UINT8 __fastcall KidnikiZ80PortRead(UINT16 a)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x04) return M62Z80PortRead(a);
-	
+
 	switch (a) {
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Read => %02X\n"), a);
@@ -2269,186 +2246,85 @@ UINT8 __fastcall KidnikiZ80PortRead(UINT16 a)
 	return 0;
 }
 
-void __fastcall KidnikiZ80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall KidnikiZ80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x81: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0x82: {
 			M62CharVScroll = (M62CharVScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x83: {
 			M62CharVScroll = (M62CharVScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0x84: {
 			KidnikiBackgroundBank = d & 0x01;
 			return;
 		}
-		
+
 		case 0x85: {
-			INT32 BankAddress = 0x8000 + ((d & 0x0f) * 0x2000);
-			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + BankAddress);
-			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + BankAddress);
+			M62Z80BankAddress = 0x8000 + ((d & 0x0f) * 0x2000);
+			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
 }
 
-void __fastcall YoujyudnZ80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall YoujyudnZ80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	if (a <= 0x01) {
 		M62Z80PortWrite(a, d);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x80: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0x00ff) | (d << 8);
 			return;
 		}
-		
+
 		case 0x81: {
 			M62BackgroundHScroll = (M62BackgroundHScroll & 0xff00) | d;
 			return;
 		}
-		
+
 		case 0x83: {
-			INT32 BankAddress = 0x8000 + ((d & 0x01) * 0x4000);
-			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + BankAddress);
-			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + BankAddress);
+			M62Z80BankAddress = 0x8000 + ((d & 0x01) * 0x4000);
+			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
-}
-
-UINT8 M62M6803ReadByte(UINT16 a)
-{
-	if (a <= 0x001f) {
-		return m6803_internal_registers_r(a);
-	}
-	
-	if (a >= 0x0080 && a <= 0x00ff) {
-		return M62M6803Ram[a - 0x0080];
-	}
-
-	bprintf(PRINT_NORMAL, _T("M6803 Read Byte -> %04X\n"), a);
-	
-	return 0;
-}
-
-void M62M6803WriteByte(UINT16 a, UINT8 d)
-{
-	if (a <= 0x001f) {
-		m6803_internal_registers_w(a, d);
-		return;
-	}
-	
-	if (a >= 0x0080 && a <= 0x00ff) {
-		M62M6803Ram[a - 0x0080] = d;
-		return;
-	}
-	
-	switch (a) {
-		case 0x0800: {
-			M6803SetIRQLine(M6803_IRQ_LINE, M6803_IRQSTATUS_NONE);
-			return;
-		}
-		
-		case 0x0801: {
-			MSM5205DataWrite(0, d);
-			return;
-		}
-		
-		case 0x0802: {
-			MSM5205DataWrite(1, d);
-			return;
-		}
-	}
-	
-	bprintf(PRINT_NORMAL, _T("M6803 Write Byte -> %04X, %02X\n"), a, d);
-}
-
-UINT8 M62M6803ReadPort(UINT16 a)
-{
-	switch (a) {
-		case M6803_PORT1: {
-  			if (M62Port2 & 0x08) return AY8910Read(0);
-			if (M62Port2 & 0x10) return AY8910Read(1);
-			return 0xff;
-		}
-		
-		case M6803_PORT2: {
-			return 0;
-		}
-	}
-	
-	bprintf(PRINT_NORMAL, _T("M6803 Read Port -> %04X\n"), a);
-	
-	return 0;
-}
-
-void M62M6803WritePort(UINT16 a, UINT8 d)
-{
-	switch (a) {
-		case M6803_PORT1: {
-			M62Port1 = d;
-			return;
-		}
-		
-		case M6803_PORT2: {
-			if ((M62Port2 & 0x01) && !(d & 0x01)) {
-				if (M62Port2 & 0x04) {
-					if (M62Port2 & 0x08) {
-						AY8910Write(0, 0, M62Port1);
-					}
-					if (M62Port2 & 0x10) {
-						AY8910Write(1, 0, M62Port1);
-					}
-				} else {
-					if (M62Port2 & 0x08) {
-						AY8910Write(0, 1, M62Port1);
-					}
-					if (M62Port2 & 0x10) {
-						AY8910Write(1, 1, M62Port1);
-					}
-				}
-			}
-			
-			M62Port2 = d;
-			return;
-		}
-	}
-	
-	bprintf(PRINT_NORMAL, _T("M6803 Write Port -> %04X, %02X\n"), a, d);
 }
 
 static INT32 Tile1024PlaneOffsets[3]       = { 0x20000, 0x10000, 0 };
@@ -2476,69 +2352,63 @@ static INT32 YoujyudnTilePlaneOffsets[3]   = { 0x40000, 0x20000, 0 };
 static INT32 YoujyudnTileXOffsets[8]       = { 0, 1, 2, 3, 4, 5, 6, 7 };
 static INT32 YoujyudnTileYOffsets[16]      = { 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120 };
 
-UINT8 M62SoundLatchRead(UINT32)
+static void AY8910_1PortAWrite(UINT8 data)
 {
-	return M62SoundLatch;
-}
+	if (data == 0xff) {
+		//bprintf(0, _T("M62 Analog drumkit init.\n"));
+		return;
+	}
 
-static void AY8910_0PortBWrite(UINT32, UINT32 d)
-{
-	MSM5205PlaymodeWrite(0, (d >> 2) & 0x07);
-	MSM5205PlaymodeWrite(1, ((d >> 2) & 0x04) | 0x03);
-	
-	MSM5205ResetWrite(0, d & 0x01);
-	MSM5205ResetWrite(1, d & 0x02);
-}
-
-inline static INT32 M62SynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)((double)ZetTotalCycles() * nSoundRate / M62Z80Clock);
-}
-
-static void M62MSM5205Vck0()
-{
-	M6803SetIRQLine(M6803_INPUT_LINE_NMI, M6803_IRQSTATUS_AUTO);
-	M62SlaveMSM5205VClckReset = 1;
+	if (data > 0) {
+		if (data & 0x01) // bass drum
+			BurnSamplePlay(2);
+		if (data & 0x02) // snare drum
+			BurnSamplePlay(1);
+		if (data & 0x04) // open hat
+			BurnSamplePlay(3);
+		if (data & 0x08) // closed hat
+			BurnSamplePlay(0);
+	}
 }
 
 static INT32 M62MemInit()
 {
 	INT32 nLen;
-	
+
 	M62PaletteEntries = BurnDrvGetPaletteEntries();
-	
+
 	Mem = NULL;
 	M62MemIndex();
 	nLen = MemEnd - (UINT8 *)0;
 	if ((Mem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(Mem, 0, nLen);
 	M62MemIndex();
-	
+
 	return 0;
 }
 
 static INT32 KungfumLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x06000,  2, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  4, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  2, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  3, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000,  4, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  7, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  8, 1); if (nRet != 0) return 1;
@@ -2554,7 +2424,7 @@ static INT32 KungfumLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x16000, 19, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 20, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 21, 1); if (nRet != 0) return 1;
@@ -2564,33 +2434,33 @@ static INT32 KungfumLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 25, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 26, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 27, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 KungfumdLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  2, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  2, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  3, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  4, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  6, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  7, 1); if (nRet != 0) return 1;
@@ -2600,7 +2470,7 @@ static INT32 KungfumdLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 11, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 12, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 13, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 14, 1); if (nRet != 0) return 1;
@@ -2612,32 +2482,32 @@ static INT32 KungfumdLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00620, 20, 1); if (nRet != 0) return 1;
 
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 Kungfub3LoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x06000,  2, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  4, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  2, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  3, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000,  4, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  7, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  8, 1); if (nRet != 0) return 1;
@@ -2647,7 +2517,7 @@ static INT32 Kungfub3LoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 12, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 13, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 15, 1); if (nRet != 0) return 1;
@@ -2659,14 +2529,14 @@ static INT32 Kungfub3LoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00620, 21, 1); if (nRet != 0) return 1;
 
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 BattroadLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x0c000);
 
 	// Load Z80 Program Roms
@@ -2680,19 +2550,19 @@ static INT32 BattroadLoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x0e000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x10000,  8, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x14000,  9, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x06000, 10, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000, 11, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000, 12, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0a000, 10, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000, 11, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000, 12, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 13, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 15, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 16, 1); if (nRet != 0) return 1;
@@ -2702,13 +2572,13 @@ static INT32 BattroadLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 20, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x0a000, 21, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, BattroadSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 22, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000, 23, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumChars, 2, M62CharxTileDim, M62CharyTileDim, BattroadCharPlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 24, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 25, 1); if (nRet != 0) return 1;
@@ -2719,16 +2589,16 @@ static INT32 BattroadLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00600, 30, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 31, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00720, 32, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 LdrunLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x06000);
 
 	// Load Z80 Program Roms
@@ -2736,25 +2606,25 @@ static INT32 LdrunLoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x02000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  2, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x06000,  3, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  5, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  4, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000,  5, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x06000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  8, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x06000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  9, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000, 10, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 11, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, LdrunSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 12, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 13, 1); if (nRet != 0) return 1;
@@ -2764,16 +2634,16 @@ static INT32 LdrunLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 17, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 19, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 Ldrun2LoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x0c000);
 
 	// Load Z80 Program Roms
@@ -2783,19 +2653,19 @@ static INT32 Ldrun2LoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x06000,  3, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  4, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x0a000,  5, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x06000,  6, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  7, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  8, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  6, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  7, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000,  8, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  9, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000, 10, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 11, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 12, 1); if (nRet != 0) return 1;
@@ -2805,7 +2675,7 @@ static INT32 Ldrun2LoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 16, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x0a000, 17, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, BattroadSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 19, 1); if (nRet != 0) return 1;
@@ -2815,34 +2685,34 @@ static INT32 Ldrun2LoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 23, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 24, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 25, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 Ldrun3LoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  3, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  4, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000,  7, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile2048PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  8, 1); if (nRet != 0) return 1;
@@ -2852,7 +2722,7 @@ static INT32 Ldrun3LoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 12, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 13, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 15, 1); if (nRet != 0) return 1;
@@ -2862,41 +2732,41 @@ static INT32 Ldrun3LoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 19, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 20, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 21, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 Ldrun3jLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x0c000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  3, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  4, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000,  7, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile2048PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x0c000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  8, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  9, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 10, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, BattroadSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 11, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 12, 1); if (nRet != 0) return 1;
@@ -2906,68 +2776,68 @@ static INT32 Ldrun3jLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 16, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 17, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 18, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 LotlotLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x06000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x0a000,  2, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0e000,  2, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x06000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  3, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  4, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  5, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, LotlotPlaneOffsets, LotlotXOffsets, LotlotYOffsets, 0x100, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x06000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  8, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, LdrunSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x06000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  9, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000, 10, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 11, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, LotlotPlaneOffsets, LotlotXOffsets, LotlotYOffsets, 0x100, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 12, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 13, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62PromData + 0x00200, 14, 1); if (nRet != 0) return 1;	
+	nRet = BurnLoadRom(M62PromData + 0x00200, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00300, 15, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00400, 16, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62PromData + 0x00500, 17, 1); if (nRet != 0) return 1;	
+	nRet = BurnLoadRom(M62PromData + 0x00500, 17, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00700, 19, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00800, 20, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00900, 21, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00920, 22, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 KidnikiLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x30000);
 
 	// Load Z80 Program Roms
@@ -2976,19 +2846,19 @@ static INT32 KidnikiLoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x10000,  3, 1); if (nRet != 0) return 1;
 	memcpy(M62Z80Rom + 0x20000, M62Z80Rom + 0x18000, 0x8000);
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x00000,  4, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  5, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  6, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  4, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  5, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  6, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000,  8, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x10000,  9, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile4096PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 10, 1); if (nRet != 0) return 1;
@@ -3004,14 +2874,14 @@ static INT32 KidnikiLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x28000, 20, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x2c000, 21, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KidnikiSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 22, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 23, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 24, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, KidnikiPlaneOffsets, KidnikiXOffsets, KidnikiYOffsets, 0x80, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 25, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 26, 1); if (nRet != 0) return 1;
@@ -3021,35 +2891,35 @@ static INT32 KidnikiLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 30, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 31, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 32, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 LitheroLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x30000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x10000,  2, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x00000,  3, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  4, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  5, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  3, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  5, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  6, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x10000,  8, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile4096PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  9, 1); if (nRet != 0) return 1;
@@ -3059,14 +2929,14 @@ static INT32 LitheroLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x20000, 13, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x28000, 14, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KidnikiSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x30000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 15, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 16, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 17, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, KidnikiPlaneOffsets, KidnikiXOffsets, KidnikiYOffsets, 0x80, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 19, 1); if (nRet != 0) return 1;
@@ -3076,16 +2946,16 @@ static INT32 LitheroLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 23, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 24, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 25, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 SpelunkrLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
@@ -3093,11 +2963,11 @@ static INT32 SpelunkrLoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x0c000,  3, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  4, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  5, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  5, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  6, 1); if (nRet != 0) return 1;
@@ -3107,7 +2977,7 @@ static INT32 SpelunkrLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 10, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 11, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile4096PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 12, 1); if (nRet != 0) return 1;
@@ -3117,7 +2987,7 @@ static INT32 SpelunkrLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 16, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 17, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x18000);
 	UINT8 *pTemp = (UINT8*)BurnMalloc(0x18000);
@@ -3150,7 +3020,7 @@ static INT32 SpelunkrLoadRoms()
 	memcpy(M62TempRom + 0xb800, pTemp + 0xb800, 0x800);
 	BurnFree(pTemp);
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, Spelunk2PlaneOffsets, Spelunk2XOffsets, Spelunk2YOffsets, 0x40, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 21, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 22, 1); if (nRet != 0) return 1;
@@ -3160,16 +3030,16 @@ static INT32 SpelunkrLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 26, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 27, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 28, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 Spelunk2LoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
@@ -3178,18 +3048,18 @@ static INT32 Spelunk2LoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x10000,  3, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x18000,  4, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x04000,  5, 1); if (nRet != 0) return 1;
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  6, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  5, 1); if (nRet != 0) return 1;
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  6, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  7, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000,  8, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x10000,  9, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile4096PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 10, 1); if (nRet != 0) return 1;
@@ -3199,7 +3069,7 @@ static INT32 Spelunk2LoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 15, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x18000);
 	UINT8 *pTemp = (UINT8*)BurnMalloc(0x18000);
@@ -3232,7 +3102,7 @@ static INT32 Spelunk2LoadRoms()
 	memcpy(M62TempRom + 0xb800, pTemp + 0xb800, 0x800);
 	BurnFree(pTemp);
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, Spelunk2PlaneOffsets, Spelunk2XOffsets, Spelunk2YOffsets, 0x40, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 19, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00200, 20, 1); if (nRet != 0) return 1;
@@ -3242,16 +3112,16 @@ static INT32 Spelunk2LoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00600, 24, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00700, 25, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00720, 26, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 YoujyudnLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
@@ -3259,10 +3129,10 @@ static INT32 YoujyudnLoadRoms()
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x0c000,  3, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  4, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  4, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	UINT8 *pTemp = (UINT8*)BurnMalloc(0x18000);
@@ -3274,7 +3144,7 @@ static INT32 YoujyudnLoadRoms()
 	memcpy(M62TempRom + 0x8000, pTemp + 0x14000, 0x4000);
 	BurnFree(pTemp);
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, YoujyudnTilePlaneOffsets, YoujyudnTileXOffsets, YoujyudnTileYOffsets, 0x80, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  8, 1); if (nRet != 0) return 1;
@@ -3284,14 +3154,14 @@ static INT32 YoujyudnLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 12, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 13, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load and decode the chars
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000, 14, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000, 15, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x08000, 16, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumChars, 3, M62CharxTileDim, M62CharyTileDim, KidnikiPlaneOffsets, KidnikiXOffsets, KidnikiYOffsets, 0x80, M62TempRom, M62Chars);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 17, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 18, 1); if (nRet != 0) return 1;
@@ -3301,33 +3171,33 @@ static INT32 YoujyudnLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 22, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 23, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 24, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static INT32 HorizonLoadRoms()
 {
 	INT32 nRet = 0;
-	
+
 	M62TempRom = (UINT8 *)BurnMalloc(0x18000);
 
 	// Load Z80 Program Roms
 	nRet = BurnLoadRom(M62Z80Rom   + 0x00000,  0, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x04000,  1, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62Z80Rom   + 0x08000,  2, 1); if (nRet != 0) return 1;
-	
+
 	// Load M6803 Program Roms
-	nRet = BurnLoadRom(M62M6803Rom + 0x08000,  3, 1); if (nRet != 0) return 1;
-		
+	nRet = BurnLoadRom(M62M6803Rom + 0x0c000,  3, 1); if (nRet != 0) return 1;
+
 	// Load and decode the tiles
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  4, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x02000,  5, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x04000,  6, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumTiles, 3, M62BgxTileDim, M62BgyTileDim, Tile1024PlaneOffsets, TileXOffsets, TileYOffsets, 0x40, M62TempRom, M62Tiles);
-	
+
 	// Load and decode the sprites
 	memset(M62TempRom, 0, 0x18000);
 	nRet = BurnLoadRom(M62TempRom  + 0x00000,  7, 1); if (nRet != 0) return 1;
@@ -3337,7 +3207,7 @@ static INT32 HorizonLoadRoms()
 	nRet = BurnLoadRom(M62TempRom  + 0x10000, 11, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62TempRom  + 0x14000, 12, 1); if (nRet != 0) return 1;
 	GfxDecode(M62NumSprites, 3, 16, 16, KungfumSpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, M62TempRom, M62Sprites);
-	
+
 	// Load the Proms
 	nRet = BurnLoadRom(M62PromData + 0x00000, 13, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00100, 14, 1); if (nRet != 0) return 1;
@@ -3347,16 +3217,16 @@ static INT32 HorizonLoadRoms()
 	nRet = BurnLoadRom(M62PromData + 0x00500, 18, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00600, 19, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(M62PromData + 0x00620, 20, 1); if (nRet != 0) return 1;
-	
+
 	BurnFree(M62TempRom);
-	
+
 	return 0;
 }
 
 static void M62MachineInit()
 {
 //	BurnSetRefreshRate(55.0);
-	
+
 	ZetInit(0);
 	ZetOpen(0);
 	ZetSetReadHandler(M62Z80Read);
@@ -3375,60 +3245,70 @@ static void M62MachineInit()
 	ZetMapArea(0xe000, 0xefff, 1, M62Z80Ram   );
 	ZetMapArea(0xe000, 0xefff, 2, M62Z80Ram   );
 	ZetClose();
-	
-	M6803Init(1);
-	M6803MapMemory(M62M6803Rom, 0x4000, 0xffff, M6803_ROM);
-	M6803SetReadHandler(M62M6803ReadByte);
-	M6803SetWriteHandler(M62M6803WriteByte);
-	M6803SetReadPortHandler(M62M6803ReadPort);
-	M6803SetWritePortHandler(M62M6803WritePort);
-	
-	pAY8910Buffer[0] = pFMBuffer + nBurnSoundLen * 0;
-	pAY8910Buffer[1] = pFMBuffer + nBurnSoundLen * 1;
-	pAY8910Buffer[2] = pFMBuffer + nBurnSoundLen * 2;
-	pAY8910Buffer[3] = pFMBuffer + nBurnSoundLen * 3;
-	pAY8910Buffer[4] = pFMBuffer + nBurnSoundLen * 4;
-	pAY8910Buffer[5] = pFMBuffer + nBurnSoundLen * 5;
 
-	MSM5205Init(0, M62SynchroniseStream, 384000, M62MSM5205Vck0, MSM5205_S96_4B, 1);
-	MSM5205Init(1, M62SynchroniseStream, 384000, NULL, MSM5205_SEX_4B, 1);
-	MSM5205SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
-	MSM5205SetRoute(1, 0.50, BURN_SND_ROUTE_BOTH);
-	
-	AY8910Init(0, 894886, nBurnSoundRate, &M62SoundLatchRead, NULL, NULL, &AY8910_0PortBWrite);
-	AY8910Init(1, 894886, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910SetAllRoutes(0, 0.50, BURN_SND_ROUTE_BOTH);
-	AY8910SetAllRoutes(1, 0.50, BURN_SND_ROUTE_BOTH);
-	
-	GenericTilesInit();
-	
-	M62Z80Clock = 4000000;
+    if (M62Z80Clock == 0) M62Z80Clock = 4000000;
 	M62M6803Clock = 894886;
-	
+
+	IremSoundInit(M62M6803Rom, 1, M62Z80Clock, AY8910_1PortAWrite);
+	MSM5205SetRoute(0, 0.20, BURN_SND_ROUTE_BOTH);
+	MSM5205SetRoute(1, 0.20, BURN_SND_ROUTE_BOTH);
+	AY8910SetAllRoutes(0, 0.15, BURN_SND_ROUTE_BOTH);
+    AY8910SetAllRoutes(1, 0.15, BURN_SND_ROUTE_BOTH);
+    AY8910SetBuffered(ZetTotalCycles, M62Z80Clock);
+
+#ifdef USE_SAMPLE_HACK
+	BurnUpdateProgress(0.0, _T("Loading samples..."), 0);
+	bBurnSampleTrimSampleEnd = 1;
+	BurnSampleInit(1);
+	BurnSampleSetAllRoutesAllSamples(0.40, BURN_SND_ROUTE_BOTH);
+    bHasSamples = BurnSampleGetStatus(0) != -1;
+
+	if (!bHasSamples) { // Samples not found
+		BurnSampleSetAllRoutesAllSamples(0.00, BURN_SND_ROUTE_BOTH);
+	} else {
+		bprintf(0, _T("Using TR606 Drumkit samples!\n"));
+		// Hat
+		BurnSampleSetRoute(0, BURN_SND_SAMPLE_ROUTE_1, 0.11, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetRoute(0, BURN_SND_SAMPLE_ROUTE_2, 0.11, BURN_SND_ROUTE_BOTH);
+		// Snare
+		BurnSampleSetRoute(1, BURN_SND_SAMPLE_ROUTE_1, 0.40, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetRoute(1, BURN_SND_SAMPLE_ROUTE_2, 0.40, BURN_SND_ROUTE_BOTH);
+		// Kick
+		BurnSampleSetRoute(2, BURN_SND_SAMPLE_ROUTE_1, 0.40, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetRoute(2, BURN_SND_SAMPLE_ROUTE_2, 0.40, BURN_SND_ROUTE_BOTH);
+		// Open Hat
+		BurnSampleSetRoute(3, BURN_SND_SAMPLE_ROUTE_1, 0.11, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetRoute(3, BURN_SND_SAMPLE_ROUTE_2, 0.11, BURN_SND_ROUTE_BOTH);
+	}
+#endif
+
+	GenericTilesInit();
+
 	M62SpriteHeightPromOffset = (M62PaletteEntries & 0xf00) * 3;
 }
 
 static INT32 KungfumMachineInit()
 {
+	M62Z80Clock = 3072000;
+
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetReadHandler(KungfumZ80Read);
 	ZetSetWriteHandler(KungfumZ80Write);
 	ZetClose();
-	
-	M62Z80Clock = 3072000;
-	M62RenderFunction = KungfumDraw;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 BattroadMachineInit()
 {
+	M62Z80Clock = 3072000;
+
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetOutHandler(BattroadZ80PortWrite);
 	ZetMapArea(0xa000, 0xbfff, 0, M62Z80Rom + 0x8000);
@@ -3437,15 +3317,12 @@ static INT32 BattroadMachineInit()
 	ZetMapArea(0xc800, 0xcfff, 1, M62CharRam        );
 	ZetMapArea(0xc800, 0xcfff, 2, M62CharRam        );
 	ZetClose();
-	
-	M62Z80Clock = 3072000;
 
-	M62RenderFunction = BattroadDraw;
 	M62ExtendTileInfoFunction = BattroadExtendTile;
 	M62ExtendCharInfoFunction = BattroadExtendChar;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
@@ -3453,94 +3330,89 @@ static INT32 LdrunMachineInit()
 {
 	M62MachineInit();
 
-	M62RenderFunction = LdrunDraw;
 	M62ExtendTileInfoFunction = LdrunExtendTile;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 Ldrun2MachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetInHandler(Ldrun2Z80PortRead);
 	ZetSetOutHandler(Ldrun2Z80PortWrite);
 	ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + 0x8000);
 	ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + 0x8000);
 	ZetClose();
-	
-	M62RenderFunction = LdrunDraw;
+
 	M62ExtendTileInfoFunction = Ldrun2ExtendTile;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 Ldrun3MachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetReadHandler(Ldrun3Z80Read);
 	ZetSetOutHandler(Ldrun3Z80PortWrite);
 	ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + 0x8000);
 	ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + 0x8000);
 	ZetClose();
-	
-	M62RenderFunction = Ldrun3Draw;
+
 	M62ExtendTileInfoFunction = Ldrun2ExtendTile;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 Ldrun4MachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetWriteHandler(Ldrun4Z80Write);
 	ZetSetOutHandler(Ldrun4Z80PortWrite);
 	ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + 0x8000);
 	ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + 0x8000);
 	ZetClose();
-	
-	M62RenderFunction = Ldrun4Draw;
+
 	M62ExtendTileInfoFunction = Ldrun4ExtendTile;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 LotlotMachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetMapArea(0xa000, 0xafff, 0, M62CharRam);
 	ZetMapArea(0xa000, 0xafff, 1, M62CharRam);
 	ZetMapArea(0xa000, 0xafff, 2, M62CharRam);
 	ZetClose();
-	
-	M62RenderFunction = LotlotDraw;
+
 	M62ExtendTileInfoFunction = LotlotExtendTile;
 	M62ExtendCharInfoFunction = LotlotExtendChar;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 KidnikiMachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetInHandler(KidnikiZ80PortRead);
 	ZetSetOutHandler(KidnikiZ80PortWrite);
@@ -3553,20 +3425,21 @@ static INT32 KidnikiMachineInit()
 	ZetMapArea(0xd000, 0xdfff, 1, M62CharRam        );
 	ZetMapArea(0xd000, 0xdfff, 2, M62CharRam        );
 	ZetClose();
-	
-	M62RenderFunction = KidnikiDraw;
+
 	M62ExtendTileInfoFunction = KidnikiExtendTile;
 	M62ExtendCharInfoFunction = LotlotExtendChar;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 SpelunkrMachineInit()
 {
+	M62Z80Clock = 5000000; // needs a little boost or the top bg tiles don't scroll right. weird. -dink
+
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetWriteHandler(SpelunkrZ80Write);
 	ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + 0x8000);
@@ -3581,20 +3454,19 @@ static INT32 SpelunkrMachineInit()
 	ZetMemCallback(0xd000, 0xdfff, 1);
 	ZetMemCallback(0xd000, 0xdfff, 2);
 	ZetClose();
-	
-	M62RenderFunction = SpelunkrDraw;
+
 	M62ExtendTileInfoFunction = SpelunkrExtendTile;
 	M62ExtendCharInfoFunction = SpelunkrExtendChar;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 Spelunk2MachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetWriteHandler(Spelunk2Z80Write);
 	ZetMapArea(0x8000, 0x8fff, 0, M62Z80Rom + 0x18000);
@@ -3611,22 +3483,23 @@ static INT32 Spelunk2MachineInit()
 	ZetMemCallback(0xd000, 0xdfff, 1);
 	ZetMemCallback(0xd000, 0xdfff, 2);
 	ZetClose();
-	
-	M62RenderFunction = Spelunk2Draw;
+
 	M62ExtendTileInfoFunction = Spelunk2ExtendTile;
 	M62ExtendCharInfoFunction = SpelunkrExtendChar;
-	
+
 	M62SpriteHeightPromOffset = 0x700;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 YoujyudnMachineInit()
 {
+	M62Z80Clock = 3072000;
+
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetSetOutHandler(YoujyudnZ80PortWrite);
 	ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + 0x8000);
@@ -3638,22 +3511,19 @@ static INT32 YoujyudnMachineInit()
 	ZetMemCallback(0xd800, 0xdfff, 1);
 	ZetMemCallback(0xd800, 0xdfff, 2);
 	ZetClose();
-	
-	M62RenderFunction = YoujyudnDraw;
+
 	M62ExtendTileInfoFunction = YoujyudnExtendTile;
 	M62ExtendCharInfoFunction = YoujyudnExtendChar;
-	
-	M62Z80Clock = 3072000;
 
 	M62DoReset();
-	
+
 	return 0;
 }
 
 static INT32 HorizonMachineInit()
 {
 	M62MachineInit();
-	
+
 	ZetOpen(0);
 	ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + 0x8000);
 	ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + 0x8000);
@@ -3664,12 +3534,11 @@ static INT32 HorizonMachineInit()
 	ZetMapArea(0xc800, 0xc83f, 1, M62ScrollRam      );
 	ZetMapArea(0xc800, 0xc83f, 2, M62ScrollRam      );
 	ZetClose();
-		
-	M62RenderFunction = HorizonDraw;
+
 	M62ExtendTileInfoFunction = HorizonExtendTile;
-	
+
 	M62DoReset();
-	
+
 	return 0;
 }
 
@@ -3679,7 +3548,7 @@ static INT32 KungfumInit()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x400;
 	M62NumSprites = 0x400;
-	
+
 	if (M62MemInit()) return 1;
 	if (KungfumLoadRoms()) return 1;
 	if (KungfumMachineInit()) return 1;
@@ -3693,7 +3562,7 @@ static INT32 KungfumdInit()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x400;
 	M62NumSprites = 0x400;
-	
+
 	if (M62MemInit()) return 1;
 	if (KungfumdLoadRoms()) return 1;
 	if (KungfumMachineInit()) return 1;
@@ -3707,7 +3576,7 @@ static INT32 Kungfub3Init()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x400;
 	M62NumSprites = 0x400;
-	
+
 	if (M62MemInit()) return 1;
 	if (Kungfub3LoadRoms()) return 1;
 	if (KungfumMachineInit()) return 1;
@@ -3723,7 +3592,7 @@ static INT32 BattroadInit()
 	M62NumSprites = 0x200;
 	M62NumChars = 0x400;
 	M62CharRamSize = 0x800;
-	
+
 	if (M62MemInit()) return 1;
 	if (BattroadLoadRoms()) return 1;
 	if (BattroadMachineInit()) return 1;
@@ -3737,7 +3606,7 @@ static INT32 LdrunInit()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x400;
 	M62NumSprites = 0x100;
-	
+
 	if (M62MemInit()) return 1;
 	if (LdrunLoadRoms()) return 1;
 	if (LdrunMachineInit()) return 1;
@@ -3751,7 +3620,7 @@ static INT32 Ldrun2Init()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x400;
 	M62NumSprites = 0x200;
-	
+
 	if (M62MemInit()) return 1;
 	if (Ldrun2LoadRoms()) return 1;
 	if (Ldrun2MachineInit()) return 1;
@@ -3765,7 +3634,7 @@ static INT32 Ldrun3Init()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x800;
 	M62NumSprites = 0x400;
-	
+
 	if (M62MemInit()) return 1;
 	if (Ldrun3LoadRoms()) return 1;
 	if (Ldrun3MachineInit()) return 1;
@@ -3779,7 +3648,7 @@ static INT32 Ldrun3jInit()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x800;
 	M62NumSprites = 0x200;
-	
+
 	if (M62MemInit()) return 1;
 	if (Ldrun3jLoadRoms()) return 1;
 	if (Ldrun3MachineInit()) return 1;
@@ -3793,7 +3662,7 @@ static INT32 Ldrun4Init()
 	M62PromSize = 0x720;
 	M62NumTiles = 0x800;
 	M62NumSprites = 0x400;
-	
+
 	if (M62MemInit()) return 1;
 	if (Ldrun3LoadRoms()) return 1;
 	if (Ldrun4MachineInit()) return 1;
@@ -3813,7 +3682,7 @@ static INT32 LotlotInit()
 	M62BgyTileDim = 10;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 10;
-	
+
 	if (M62MemInit()) return 1;
 	if (LotlotLoadRoms()) return 1;
 	if (LotlotMachineInit()) return 1;
@@ -3833,10 +3702,13 @@ static INT32 KidnikiInit()
 	M62BgyTileDim = 8;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 8;
-	
+
 	if (M62MemInit()) return 1;
 	if (KidnikiLoadRoms()) return 1;
 	if (KidnikiMachineInit()) return 1;
+
+	// more bassline!
+	AY8910SetRoute(1, BURN_SND_AY8910_ROUTE_3, 0.25, BURN_SND_ROUTE_BOTH);
 
 	return 0;
 }
@@ -3853,7 +3725,7 @@ static INT32 LitheroInit()
 	M62BgyTileDim = 8;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 8;
-	
+
 	if (M62MemInit()) return 1;
 	if (LitheroLoadRoms()) return 1;
 	if (KidnikiMachineInit()) return 1;
@@ -3873,7 +3745,7 @@ static INT32 SpelunkrInit()
 	M62BgyTileDim = 8;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 8;
-	
+
 	if (M62MemInit()) return 1;
 	if (SpelunkrLoadRoms()) return 1;
 	if (SpelunkrMachineInit()) return 1;
@@ -3893,7 +3765,7 @@ static INT32 Spelunk2Init()
 	M62BgyTileDim = 8;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 8;
-	
+
 	if (M62MemInit()) return 1;
 	if (Spelunk2LoadRoms()) return 1;
 	if (Spelunk2MachineInit()) return 1;
@@ -3913,7 +3785,7 @@ static INT32 YoujyudnInit()
 	M62BgyTileDim = 16;
 	M62CharxTileDim = 12;
 	M62CharyTileDim = 8;
-	
+
 	if (M62MemInit()) return 1;
 	if (YoujyudnLoadRoms()) return 1;
 	if (YoujyudnMachineInit()) return 1;
@@ -3929,7 +3801,7 @@ static INT32 HorizonInit()
 	M62NumSprites = 0x400;
 	M62SpriteRamSize = 0x200;
 	M62ScrollRamSize = 0x40;
-	
+
 	if (M62MemInit()) return 1;
 	if (HorizonLoadRoms()) return 1;
 	if (HorizonMachineInit()) return 1;
@@ -3940,15 +3812,17 @@ static INT32 HorizonInit()
 static INT32 M62Exit()
 {
 	ZetExit();
-	M6800Exit();
-	AY8910Exit(0);
-	AY8910Exit(1);
-	MSM5205Exit();
+
+    IremSoundExit();
+
+#ifdef USE_SAMPLE_HACK
+	BurnSampleExit();
+#endif
 
 	GenericTilesExit();
-	
+
 	BurnFree(Mem);
-	
+
 	M62Z80RomSize = 0;
 	M62PromSize = 0;
 	M62NumTiles = 0;
@@ -3957,20 +3831,16 @@ static INT32 M62Exit()
 	M62SpriteRamSize = 0;
 	M62CharRamSize = 0;
 	M62ScrollRamSize = 0;
-	
+
 	M62BackgroundHScroll = 0;
 	M62BackgroundVScroll = 0;
 	M62CharHScroll = 0;
 	M62CharVScroll = 0;
 	M62FlipScreen = 0;
-	M62SoundLatch = 0;
-	M62Port1 = 0;
-	M62Port2 = 0;
-	M62SlaveMSM5205VClckReset = 0;
-	M62PaletteEntries = 0;
+
+    M62PaletteEntries = 0;
 	M62Z80Clock = 0;
 	M62M6803Clock = 0;
-	M62RenderFunction = NULL;
 	M62ExtendTileInfoFunction = NULL;
 	M62ExtendCharInfoFunction = NULL;
 	M62BankControl[0] = M62BankControl[1] = 0;
@@ -3990,7 +3860,7 @@ static INT32 M62Exit()
 static void M62CalcPalette()
 {
 	UINT8 *ColourProm = (UINT8*)M62PromData;
-	
+
 	for (UINT32 i = 0; i < M62PaletteEntries; i++) {
 		INT32 Bit0, Bit1, Bit2, Bit3, r, g, b;
 
@@ -4021,7 +3891,7 @@ static void M62CalcPalette()
 static void BattroadCalcPalette()
 {
 	UINT8 *ColourProm = (UINT8*)M62PromData;
-	
+
 	for (UINT32 i = 0; i < 0x200; i++) {
 		INT32 Bit0, Bit1, Bit2, Bit3, r, g, b;
 
@@ -4047,9 +3917,9 @@ static void BattroadCalcPalette()
 
 		ColourProm++;
 	}
-	
+
 	ColourProm = (UINT8*)M62PromData + 0x720;
-	
+
 	for (UINT32 i = 0; i < 0x20; i++) {
 		INT32 Bit0, Bit1, Bit2, r, g, b;
 
@@ -4057,12 +3927,12 @@ static void BattroadCalcPalette()
 		Bit1 = (ColourProm[i] >> 1) & 0x01;
 		Bit2 = (ColourProm[i] >> 2) & 0x01;
 		r = 0x21 * Bit0 + 0x47 * Bit1 + 0x97 * Bit2;
-		
+
 		Bit0 = (ColourProm[i] >> 3) & 0x01;
 		Bit1 = (ColourProm[i] >> 4) & 0x01;
 		Bit2 = (ColourProm[i] >> 5) & 0x01;
 		g = 0x21 * Bit0 + 0x47 * Bit1 + 0x97 * Bit2;
-		
+
 		Bit0 = 0;
 		Bit1 = (ColourProm[i] >> 6) & 0x01;
 		Bit2 = (ColourProm[i] >> 7) & 0x01;
@@ -4075,7 +3945,7 @@ static void BattroadCalcPalette()
 static void Spelunk2CalcPalette()
 {
 	UINT8 *ColourProm = (UINT8*)M62PromData;
-	
+
 	for (UINT32 i = 0; i < 0x200; i++) {
 		INT32 Bit0, Bit1, Bit2, Bit3, r, g, b;
 
@@ -4101,7 +3971,7 @@ static void Spelunk2CalcPalette()
 
 		ColourProm++;
 	}
-	
+
 	ColourProm += 0x200;
 
 	for (UINT32 i = 0; i < 0x100; i++) {
@@ -4134,45 +4004,45 @@ static void Spelunk2CalcPalette()
 static void BattroadExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32* xFlip)
 {
 	*Code |= ((*Colour & 0x40) << 3) | ((*Colour & 0x10) << 4);
-	
+
 	*xFlip = *Colour & 0x20;
-	
+
 	if (((*Colour & 0x1f) >> 1) >= 0x04) {
 		*Priority = 1;
 	} else {
 		*Priority = 0;
 	}
-	
+
 	*Colour &= 0x0f;
 }
 
 static void LdrunExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32* xFlip)
 {
 	*Code |= (*Colour & 0xc0) << 2;
-	
+
 	*xFlip = *Colour & 0x20;
-	
+
 	if (((*Colour & 0x1f) >> 1) >= 0x0c) {
 		*Priority = 1;
 	} else {
 		*Priority = 0;
 	}
-	
+
 	*Colour &= 0x1f;
 }
 
 static void Ldrun2ExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32* xFlip)
 {
 	*Code |= (*Colour & 0xc0) << 2;
-	
+
 	*xFlip = *Colour & 0x20;
-	
+
 	if (((*Colour & 0x1f) >> 1) >= 0x04) {
 		*Priority = 1;
 	} else {
 		*Priority = 0;
 	}
-	
+
 	*Colour &= 0x1f;
 }
 
@@ -4192,20 +4062,20 @@ static void LotlotExtendTile(INT32* Code, INT32* Colour, INT32*, INT32* xFlip)
 static void KidnikiExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32*)
 {
 	*Code |= ((*Colour & 0xe0) << 3) | (KidnikiBackgroundBank << 11);
-	*Priority = ((*Colour & 0xe0) == 0xe0) ? 1 : 0;	
+	*Priority = ((*Colour & 0xe0) == 0xe0) ? 1 : 0;
 	*Colour &= 0x1f;
 }
 
 static void SpelunkrExtendTile(INT32* Code, INT32* Colour, INT32*, INT32*)
 {
 	*Code |= ((*Colour & 0x10) << 4) | ((*Colour & 0x20) << 6) | ((*Colour & 0xc0) << 3);
-	*Colour &= 0x0f | (SpelunkrPaletteBank << 4);
+	*Colour = (*Colour & 0x0f) | (SpelunkrPaletteBank << 4);
 }
 
 static void Spelunk2ExtendTile(INT32* Code, INT32* Colour, INT32*, INT32*)
 {
 	*Code |= ((*Colour & 0xf0) << 4);
-	*Colour &= 0x0f | (SpelunkrPaletteBank << 4);
+	*Colour = (*Colour & 0x0f) | (SpelunkrPaletteBank << 4);
 }
 
 static void YoujyudnExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32*)
@@ -4229,11 +4099,11 @@ static void HorizonExtendTile(INT32* Code, INT32* Colour, INT32* Priority, INT32
 	}
 	*Colour &= 0x1f;
 }
-		
+
 static void M62RenderBgLayer(INT32 PriorityToRender, INT32 xOffset, INT32 yOffset, INT32 Cols, INT32 Rows, INT32 Transparent)
 {
 	INT32 Code, mx, my, Colour, x, y, TileIndex = 0, Priority, xFlip, yFlip;
-	
+
 	for (my = 0; my < Rows; my++) {
 		for (mx = 0; mx < Cols; mx++) {
 			Code = M62TileRam[TileIndex << 1];
@@ -4241,36 +4111,36 @@ static void M62RenderBgLayer(INT32 PriorityToRender, INT32 xOffset, INT32 yOffse
 			Priority = 0;
 			xFlip = 0;
 			yFlip = 0;
-			
+
 			if (M62ExtendTileInfoFunction) M62ExtendTileInfoFunction(&Code, &Colour, &Priority, &xFlip);
 			Code &= (M62NumTiles - 1);
-			
+
 			x = M62BgxTileDim * mx;
 			y = M62BgyTileDim * my;
-		
+
 			if (M62FlipScreen) {
 				xFlip = !xFlip;
 				yFlip = !yFlip;
-				
+
 				y = (Rows * M62BgyTileDim) - M62BgyTileDim - y;
 				x = (Cols * M62BgxTileDim) - M62BgxTileDim - x;
 			}
 
 			x -= xOffset;
 			y -= yOffset;
-			
+
 			if (M62FlipScreen) {
 				x += M62BackgroundHScroll & (Cols * M62BgxTileDim - 1);
 			} else {
 				x -= M62BackgroundHScroll & (Cols * M62BgxTileDim - 1);
 			}
-			
+
 			y -= M62BackgroundVScroll & (Rows * M62BgyTileDim - 1);
-	
+
 			INT32 px, py;
-		
+
 			UINT32 nPalette = Colour << 3;
-			
+
 			if (Priority == PriorityToRender) {
 				for (py = 0; py < M62BgyTileDim; py++) {
 					for (px = 0; px < M62BgxTileDim; px++) {
@@ -4278,27 +4148,25 @@ static void M62RenderBgLayer(INT32 PriorityToRender, INT32 xOffset, INT32 yOffse
 						if (xFlip) c = M62Tiles[(Code *M62BgxTileDim * M62BgyTileDim) + (py * M62BgxTileDim) + (M62BgxTileDim - 1 - px)];
 						if (yFlip) c = M62Tiles[(Code * M62BgxTileDim * M62BgyTileDim) + ((M62BgyTileDim - 1 - py) * M62BgxTileDim) + px];
 						if (xFlip && yFlip) c = M62Tiles[(Code * M62BgxTileDim * M62BgyTileDim) + ((M62BgyTileDim - 1 - py) * M62BgxTileDim) + (M62BgxTileDim - 1 - px)];
-						
+
 						if (Transparent && c == 0x00) continue;
-						
+
 						INT32 xPos = x + px;
 						INT32 yPos = y + py;
-						
+
 						if (M62ScrollRamSize) {
-//							tilemap_set_scrollx(state->bg_tilemap, i, state->scrollram[i << 1] | (state->scrollram[(i << 1) | 1] << 8));
-							
 							xPos -= (M62ScrollRam[my << 1] | (M62ScrollRam[(my << 1) | 0x01] << 8)) & (Cols * M62BgxTileDim - 1);
 						}
-						
+
 						if (xPos < 0) xPos += Cols * M62BgxTileDim;
 						if (xPos > (Cols * M62BgxTileDim - 1)) xPos -= Cols * M62BgxTileDim;
-						
+
 						if (yPos < 0) yPos += Rows * M62BgyTileDim;
 						if (yPos > (Rows * M62BgyTileDim - 1)) yPos -= Rows * M62BgyTileDim;
-					
-						if (yPos >= 0 && yPos < nScreenHeight) {					
+
+						if (yPos >= 0 && yPos < nScreenHeight) {
 							UINT16* pPixel = pTransDraw + (yPos * nScreenWidth);
-					
+
 							if (xPos >= 0 && xPos < nScreenWidth) {
 								pPixel[xPos] = c | nPalette;
 							}
@@ -4306,7 +4174,7 @@ static void M62RenderBgLayer(INT32 PriorityToRender, INT32 xOffset, INT32 yOffse
 					}
 				}
 			}
-		
+
 			TileIndex++;
 		}
 	}
@@ -4315,40 +4183,40 @@ static void M62RenderBgLayer(INT32 PriorityToRender, INT32 xOffset, INT32 yOffse
 static void KungfumRenderBgLayer(INT32 PriorityToRender, INT32 Cols, INT32 Rows, INT32 Transparent)
 {
 	INT32 Code, mx, my, Colour, x, y, TileIndex = 0, Priority, xFlip, yFlip;
-	
+
 	for (my = 0; my < Rows; my++) {
 		for (mx = 0; mx < Cols; mx++) {
 			Code = M62TileRam[TileIndex];
 			Colour = M62TileRam[TileIndex + 0x800];
 			xFlip = Colour & 0x20;
 			yFlip = 0;
-			
-			Code |= (Colour & 0xc0) << 2;			
+
+			Code |= (Colour & 0xc0) << 2;
 			Code &= (M62NumTiles - 1);
-			
-			if ((TileIndex / 64) << 6 || ((Colour & 0x1f) >> 1) > 0x0c) {
+
+			if (((TileIndex / 64) < 6) || (((Colour & 0x1f) >> 1) > 0x0c)) {
 				Priority = 1;
 			} else {
 				Priority = 0;
 			}
-			
+
 			x = M62BgxTileDim * mx;
 			y = M62BgyTileDim * my;
-		
+
 			if (M62FlipScreen) {
 				xFlip = !xFlip;
 				yFlip = !yFlip;
-				
+
 				y = (Rows * M62BgyTileDim - 1) - M62BgyTileDim - y;
 				x = (Cols * M62BgxTileDim - 1) - M62BgxTileDim - x;
 			}
 
 			x -= 128;
-	
+
 			INT32 px, py;
-		
+
 			UINT32 nPalette = (Colour & 0x1f) << 3;
-			
+
 			if (Priority == PriorityToRender) {
 				for (py = 0; py < M62BgyTileDim; py++) {
 					for (px = 0; px < M62BgxTileDim; px++) {
@@ -4356,12 +4224,12 @@ static void KungfumRenderBgLayer(INT32 PriorityToRender, INT32 Cols, INT32 Rows,
 						if (xFlip) c = M62Tiles[(Code *M62BgxTileDim * M62BgyTileDim) + (py * M62BgxTileDim) + (M62BgxTileDim - 1 - px)];
 						if (yFlip) c = M62Tiles[(Code * M62BgxTileDim * M62BgyTileDim) + ((M62BgyTileDim - 1 - py) * M62BgxTileDim) + px];
 						if (xFlip && yFlip) c = M62Tiles[(Code * M62BgxTileDim * M62BgyTileDim) + ((M62BgyTileDim - 1 - py) * M62BgxTileDim) + (M62BgxTileDim - 1 - px)];
-				
+
 						if (Transparent && c == 0x00) continue;
-						
+
 						INT32 xPos = x + px;
 						INT32 yPos = y + py;
-						
+
 						if (my >= 6) {
 							if (M62FlipScreen) {
 								xPos += M62BackgroundHScroll & (Cols * M62BgxTileDim - 1);
@@ -4369,16 +4237,16 @@ static void KungfumRenderBgLayer(INT32 PriorityToRender, INT32 Cols, INT32 Rows,
 								xPos -= M62BackgroundHScroll & (Cols * M62BgxTileDim - 1);
 							}
 						}
-						
+
 						if (xPos < 0) xPos += Cols * M62BgxTileDim;
 						if (xPos > (Cols * M62BgxTileDim - 1)) xPos -= Cols * M62BgxTileDim;
-						
+
 						if (yPos < 0) yPos += Rows * M62BgyTileDim;
 						if (yPos > (Rows * M62BgyTileDim - 1)) yPos -= Rows * M62BgyTileDim;
-					
-						if (yPos >= 0 && yPos < nScreenHeight) {					
+
+						if (yPos >= 0 && yPos < nScreenHeight) {
 							UINT16* pPixel = pTransDraw + (yPos * nScreenWidth);
-					
+
 							if (xPos >= 0 && xPos < nScreenWidth) {
 								pPixel[xPos] = c | nPalette;
 							}
@@ -4386,7 +4254,7 @@ static void KungfumRenderBgLayer(INT32 PriorityToRender, INT32 Cols, INT32 Rows,
 					}
 				}
 			}
-		
+
 			TileIndex++;
 		}
 	}
@@ -4430,14 +4298,14 @@ static void M62RenderSprites(INT32 ColourMask, INT32 PriorityMask, INT32 Priorit
 			} else {
 				Incr = 1;
 			}
-			
+
 			sx -= VisibleOffset;
 
 			do {
 				INT32 DrawCode = Code + (i * Incr);
 				INT32 DrawY = sy + (i * 16);
 				DrawCode &= (M62NumSprites - 1);
-				
+
 				if (sx > 15 && sx < (nScreenWidth - 16) && DrawY > 15 && DrawY < (nScreenHeight - 16)) {
 					if (xFlip) {
 						if (yFlip) {
@@ -4467,7 +4335,7 @@ static void M62RenderSprites(INT32 ColourMask, INT32 PriorityMask, INT32 Priorit
 						}
 					}
 				}
-				
+
 				i--;
 			} while (i >= 0);
 		}
@@ -4508,48 +4376,48 @@ static void M62RenderCharLayer(INT32 Cols, INT32 Rows, INT32 ColourDepth, INT32 
 			Colour = M62CharRam[(TileIndex << 1) | 0x01];
 			xFlip = 0;
 			yFlip = 0;
-			
+
 			if (M62ExtendCharInfoFunction) M62ExtendCharInfoFunction(&Code, &Colour, 0, 0);
 			Code &= (M62NumChars - 1);
 
 			x = M62CharxTileDim * mx;
 			y = M62CharyTileDim * my;
-			
+
 			x -= xOffset;
 			y -= yOffset;
-			
+
 			if (M62FlipScreen) {
 				x += M62CharHScroll & (Cols * M62CharxTileDim - 1);
 			} else {
 				x -= M62CharHScroll & (Cols * M62CharxTileDim - 1);
 			}
-			
+
 			y -= M62CharVScroll & (Rows * M62CharyTileDim - 1);
-			
+
 			INT32 px, py;
-		
+
 			UINT32 nPalette = Colour << ColourDepth;
-			
+
 			for (py = 0; py < M62CharyTileDim; py++) {
 				for (px = 0; px < M62CharxTileDim; px++) {
 					UINT8 c = M62Chars[(Code * M62CharxTileDim * M62CharyTileDim) + (py * M62CharxTileDim) + px];
 					if (xFlip) c = M62Chars[(Code *M62CharxTileDim * M62CharyTileDim) + (py * M62CharxTileDim) + (M62CharxTileDim - 1 - px)];
 					if (yFlip) c = M62Chars[(Code * M62CharxTileDim * M62CharyTileDim) + ((M62CharyTileDim - 1 - py) * M62CharxTileDim) + px];
 					if (xFlip && yFlip) c = M62Chars[(Code * M62CharxTileDim * M62CharyTileDim) + ((M62CharyTileDim - 1 - py) * M62CharxTileDim) + (M62CharxTileDim - 1 - px)];
-		
+
 					if (c != 0) {
 						INT32 xPos = x + px;
 						INT32 yPos = y + py;
-					
+
 						if (xPos < 0) xPos += Cols * M62CharxTileDim;
 						if (xPos > (Cols * M62CharxTileDim - 1)) xPos -= Cols * M62CharxTileDim;
-						
+
 						if (yPos < 0) yPos += Rows * M62CharyTileDim;
 						if (yPos > (Rows * M62CharyTileDim - 1)) yPos -= Rows * M62CharyTileDim;
-				
-						if (yPos >= 0 && yPos < nScreenHeight) {					
+
+						if (yPos >= 0 && yPos < nScreenHeight) {
 							UINT16* pPixel = pTransDraw + (yPos * nScreenWidth);
-					
+
 							if (xPos >= 0 && xPos < nScreenWidth) {
 								pPixel[xPos] = c | nPalette | PaletteOffset;
 							}
@@ -4563,55 +4431,60 @@ static void M62RenderCharLayer(INT32 Cols, INT32 Rows, INT32 ColourDepth, INT32 
 	}
 }
 
-static void KungfumDraw()
+static INT32 KungfumDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	KungfumRenderBgLayer(0, 64, 32, 0);
-	KungfumRenderBgLayer(1, 64, 32, 0);
-	M62RenderSprites(0x1f, 0, 0, 128, 256);
-	KungfumRenderBgLayer(0, 64, 32, 1);
+	if (nBurnLayer & 1) KungfumRenderBgLayer(0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0, 0, 128, 256);
+	if (nBurnLayer & 2) KungfumRenderBgLayer(1, 64, 32, 0);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void BattroadDraw()
+static INT32 BattroadDraw()
 {
 	BurnTransferClear();
 	BattroadCalcPalette();
-	M62RenderBgLayer(0, 128, 0, 64, 32, 0);
-	M62RenderBgLayer(1, 128, 0, 64, 32, 0);
-	M62RenderSprites(0x0f, 0x10, 0x00, 128, 256);
-	M62RenderBgLayer(1, 128, 0, 64, 32, 1);
-	M62RenderSprites(0x0f, 0x10, 0x10, 128, 256);
-	M62RenderCharLayer(32, 32, 2, 0, 0, 512);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 128, 0, 64, 32, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 128, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x0f, 0x10, 0x00, 128, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 128, 0, 64, 32, 1);
+	if (nSpriteEnable & 2) M62RenderSprites(0x0f, 0x10, 0x10, 128, 256);
+	if (nBurnLayer & 8) M62RenderCharLayer(32, 32, 2, 0, 0, 512);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void LdrunDraw()
+static INT32 LdrunDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64, 0, 64, 32, 0);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 0);
-	M62RenderSprites(0x0f, 0x10, 0x00, 64, 256);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 1);
-	M62RenderSprites(0x0f, 0x10, 0x10, 64, 256);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64, 0, 64, 32, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 64, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x0f, 0x10, 0x00, 64, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 64, 0, 64, 32, 1);
+	if (nSpriteEnable & 2) M62RenderSprites(0x0f, 0x10, 0x10, 64, 256);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void Ldrun3Draw()
+static INT32 Ldrun3Draw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64, 0, 64, 32, 0);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 0);
-	M62RenderSprites(0x0f, 0x10, 0x00, 64, 256);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 1);
-	M62RenderSprites(0x0f, 0x10, 0x10, 64, 256);	
-	
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64, 0, 64, 32, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 64, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x0f, 0x10, 0x00, 64, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 64, 0, 64, 32, 1);
+	if (nSpriteEnable & 2) M62RenderSprites(0x0f, 0x10, 0x10, 64, 256);
+
 	if (Ldrun3TopBottomMask) {
 		INT32 x, y;
-		
+
 		for (x = 0; x < nScreenWidth; x++) {
 			for (y = 0; y < 8; y++) {
 				pTransDraw[(y * nScreenWidth) + x] = BurnHighCol(0, 0, 0, 0);
@@ -4619,163 +4492,156 @@ static void Ldrun3Draw()
 			}
 		}
 	}
-	
+
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void Ldrun4Draw()
+static INT32 Ldrun4Draw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64 - 2, 0, 64, 32, 0);
-	M62RenderSprites(0x0f, 0x00, 0x00, 64, 256);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64 - 2, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x0f, 0x00, 0x00, 64, 256);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void LotlotDraw()
+static INT32 LotlotDraw()
 {
 	M62BackgroundVScroll = 32;
 	M62BackgroundHScroll = -64;
-	
+
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64, 0, 32, 64, 0);
-	M62RenderCharLayer(32, 64, 3, -64 + 64, 32, 512);
-	M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64, 0, 32, 64, 0);
+	if (nBurnLayer & 2) M62RenderCharLayer(32, 64, 3, -64 + 64, 32, 512);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void KidnikiDraw()
+static INT32 KidnikiDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64, 0, 64, 32, 0);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 0);
-	M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
-	M62RenderBgLayer(1, 64, 0, 64, 32, 1);
-	M62RenderCharLayer(32, 64, 3, 0, 128, 0);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64 - 2, 0, 64, 32, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 64 - 2, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 64 - 2, 0, 64, 32, 1);
+	if (nBurnLayer & 8) M62RenderCharLayer(32, 64, 3, 0, 128, 0);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void SpelunkrDraw()
+static INT32 SpelunkrDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 64, 128, 64, 64, 0);
-	M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
-	M62RenderCharLayer(32, 32, 3, 0, 0, 0);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64, 128, 64, 64, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 64, 256);
+	if (nBurnLayer & 2) M62RenderCharLayer(32, 32, 3, 0, 0, 0);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void Spelunk2Draw()
+static INT32 Spelunk2Draw()
 {
 	BurnTransferClear();
 	Spelunk2CalcPalette();
-	M62RenderBgLayer(0, 64 - 1, 128, 64, 64, 0);
-	M62RenderSprites(0x1f, 0x00, 0x00, 64, 512);
-	M62RenderCharLayer(32, 32, 3, 64 - 65, 0, 0);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 64 - 1, 128, 64, 64, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 64, 512);
+	if (nBurnLayer & 2) M62RenderCharLayer(32, 32, 3, 64 - 65, 0, 0);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void YoujyudnDraw()
+static INT32 YoujyudnDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 128, 0, 64, 16, 0);
-	M62RenderBgLayer(1, 128, 0, 64, 16, 0);
-	M62RenderSprites(0x1f, 0x00, 0x00, 128, 256);
-	M62RenderBgLayer(1, 128, 0, 64, 16, 1);
-	M62RenderCharLayer(32, 32, 3, 64, 0, 128);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 128, 0, 64, 16, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 128, 0, 64, 16, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 128, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 128, 0, 64, 16, 1);
+	if (nBurnLayer & 8) M62RenderCharLayer(32, 32, 3, 64, 0, 128);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
-static void HorizonDraw()
+static INT32 HorizonDraw()
 {
 	BurnTransferClear();
 	M62CalcPalette();
-	M62RenderBgLayer(0, 128, 0, 64, 32, 0);
-	M62RenderBgLayer(1, 128, 0, 64, 32, 0);
-	M62RenderSprites(0x1f, 0x00, 0x00, 128, 256);
-	M62RenderBgLayer(1, 128, 0, 64, 32, 1);
+	if (nBurnLayer & 1) M62RenderBgLayer(0, 128, 0, 64, 32, 0);
+	if (nBurnLayer & 2) M62RenderBgLayer(1, 128, 0, 64, 32, 0);
+	if (nSpriteEnable & 1) M62RenderSprites(0x1f, 0x00, 0x00, 128, 256);
+	if (nBurnLayer & 4) M62RenderBgLayer(1, 128, 0, 64, 32, 1);
 	BurnTransferCopy(M62Palette);
+
+	return 0;
 }
 
 static INT32 M62Frame()
 {
-	INT32 nInterleave = MSM5205CalcInterleave(0, M62Z80Clock);
-	INT32 nSoundBufferPos = 0;
-
 	if (M62Reset) M62DoReset();
 
 	M62MakeInputs();
 
-//	nCyclesTotal[0] = M62Z80Clock / 55;
-//	nCyclesTotal[1] = M62M6803Clock / 55;
-	nCyclesTotal[0] = M62Z80Clock / 60;
-	nCyclesTotal[1] = M62M6803Clock / 60;
-	nCyclesDone[0] = nCyclesDone[1] = 0;
+	INT32 nInterleave = MSM5205CalcInterleave(0, M62Z80Clock);
+	INT32 nCyclesTotal[2] = { M62Z80Clock / 60, M62M6803Clock / 60 };
+	INT32 nCyclesDone[2] = { 0, 0 };
 
 	ZetNewFrame();
 	M6803NewFrame();
-	
-	for (INT32 i = 0; i < nInterleave; i++) {
-		INT32 nCurrentCPU, nNext;
 
-		nCurrentCPU = 0;
-		ZetOpen(0);
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		nCyclesDone[nCurrentCPU] += ZetRun(nCyclesSegment);
-		if (i == (nInterleave - 1)) ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
-		ZetClose();
-		
-		nCurrentCPU = 1;
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		nCyclesSegment = M6803Run(nCyclesSegment);
-		nCyclesDone[nCurrentCPU] += nCyclesSegment;
-						
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-			nSoundBufferPos += nSegmentLength;
-		}
-		
-		ZetOpen(0);
+	ZetOpen(0);
+    M6803Open(0);
+
+	for (INT32 i = 0; i < nInterleave; i++) {
+        CPU_RUN(0, Zet);
+        if (i == (nInterleave - 1)) ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+
+        CPU_RUN(1, M6803);
+
 		MSM5205Update();
-		if (M62SlaveMSM5205VClckReset) {
-			MSM5205VCLKWrite(1, 1);
-			MSM5205VCLKWrite(1, 0);
-			M62SlaveMSM5205VClckReset = 0;
-		}
-		ZetClose();
+
+        IremSoundClockSlave();
 	}
-	
+
 	if (pBurnSoundOut) {
-		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-		if (nSegmentLength) {
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-		}
-		
-		ZetOpen(0);
+        AY8910Render(pBurnSoundOut, nBurnSoundLen);
+
+#ifdef USE_SAMPLE_HACK
+        if(bHasSamples)
+            BurnSampleRender(pBurnSoundOut, nBurnSoundLen);
+#endif
+
 		MSM5205Render(0, pBurnSoundOut, nBurnSoundLen);
 		MSM5205Render(1, pBurnSoundOut, nBurnSoundLen);
-		ZetClose();
 	}
-	
+
+	M6803Close();
+	ZetClose();
+
 	if (pBurnDraw) {
-		if (M62RenderFunction) M62RenderFunction();
+		BurnDrvRedraw();
 	}
-	
+
 	return 0;
 }
 
 static INT32 M62Scan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
-	
+
 	if (pnMin != NULL) {
 		*pnMin = 0x029709;
 	}
@@ -4787,22 +4653,108 @@ static INT32 M62Scan(INT32 nAction, INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 	}
-	
-	if (nAction & ACB_DRIVER_DATA) {
 
+	if (nAction & ACB_DRIVER_DATA) {
+		ZetScan(nAction);
+
+		IremSoundScan(nAction, pnMin);
+
+#ifdef USE_SAMPLE_HACK
+		BurnSampleScan(nAction, pnMin);
+#endif
+		SCAN_VAR(M62BackgroundHScroll);
+		SCAN_VAR(M62BackgroundVScroll);
+		SCAN_VAR(M62CharHScroll);
+		SCAN_VAR(M62CharVScroll);
+		SCAN_VAR(M62FlipScreen);
+
+        SCAN_VAR(M62BankControl);
+		SCAN_VAR(Ldrun2BankSwap);
+		SCAN_VAR(Ldrun3TopBottomMask);
+		SCAN_VAR(KidnikiBackgroundBank);
+		SCAN_VAR(SpelunkrPaletteBank);
+	}
+
+	if (nAction & ACB_WRITE) {
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "spelunk")) {
+			if (strstr(BurnDrvGetTextA(DRV_NAME), "spelunk2")) {
+				ZetOpen(0);
+				ZetMapArea(0x8000, 0x8fff, 0, M62Z80Rom + M62Z80BankAddress);
+				ZetMapArea(0x8000, 0x8fff, 2, M62Z80Rom + M62Z80BankAddress);
+				ZetMapArea(0x9000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress2);
+				ZetMapArea(0x9000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress2);
+				ZetClose();
+			} else {
+				ZetOpen(0);
+				ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+				ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
+				ZetClose();
+			}
+		}
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "ldrun4")) {
+			ZetOpen(0);
+			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetClose();
+		}
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "ldrun2")) {
+			ZetOpen(0);
+			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetClose();
+		}
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "battroad")) {
+			ZetOpen(0);
+			ZetMapArea(0xa000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0xa000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetClose();
+		}
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "youj")) {
+			ZetOpen(0);
+			ZetMapArea(0x8000, 0xbfff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0xbfff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetClose();
+		}
+		if (strstr(BurnDrvGetTextA(DRV_NAME), "kidnik") ||
+			strstr(BurnDrvGetTextA(DRV_NAME), "lithero") ||
+			strstr(BurnDrvGetTextA(DRV_NAME), "yanchamr")) {
+			ZetOpen(0);
+			ZetMapArea(0x8000, 0x9fff, 0, M62Z80Rom + M62Z80BankAddress);
+			ZetMapArea(0x8000, 0x9fff, 2, M62Z80Rom + M62Z80BankAddress);
+			ZetClose();
+		}
 	}
 
 	return 0;
 }
+
+static struct BurnSampleInfo M62SampleDesc[] = {
+#ifdef USE_SAMPLE_HACK
+#if !defined ROM_VERIFY
+	{ "TR606 - Hat", SAMPLE_NOLOOP },
+	{ "TR606 - Snare", SAMPLE_NOLOOP },
+	{ "TR606 - Kick", SAMPLE_NOLOOP },
+	{ "TR606 - Open Hat", SAMPLE_NOLOOP },
+	{ "TR606 - High Tom", SAMPLE_NOLOOP },
+	{ "TR606 - Low Tom", SAMPLE_NOLOOP },
+	{ "TR606 - Cymbal", SAMPLE_NOLOOP },
+#endif
+#endif
+	{ "", 0 }
+};
+
+STD_SAMPLE_PICK(M62)
+STD_SAMPLE_FN(M62)
+
 
 struct BurnDriver BurnDrvKungfum = {
 	"kungfum", NULL, NULL, NULL, "1984",
 	"Kung-Fu Master\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, KungfumRomInfo, KungfumRomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	KungfumInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, KungfumRomInfo, KungfumRomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	KungfumInit, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvKungfumd = {
@@ -4810,9 +4762,9 @@ struct BurnDriver BurnDrvKungfumd = {
 	"Kung-Fu Master (Data East)\0", NULL, "Irem (Data East License)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, KungfumdRomInfo, KungfumdRomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	KungfumdInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, KungfumdRomInfo, KungfumdRomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	KungfumdInit, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvSpartanx = {
@@ -4820,9 +4772,9 @@ struct BurnDriver BurnDrvSpartanx = {
 	"Spartan X (Japan)\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, SpartanxRomInfo, SpartanxRomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	KungfumInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, SpartanxRomInfo, SpartanxRomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	KungfumInit, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvKungfub = {
@@ -4830,9 +4782,9 @@ struct BurnDriver BurnDrvKungfub = {
 	"Kung-Fu Master (bootleg set 1)\0", NULL, "bootleg", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, KungfubRomInfo, KungfubRomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	KungfumInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, KungfubRomInfo, KungfubRomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	KungfumInit, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvKungfub2 = {
@@ -4840,9 +4792,9 @@ struct BurnDriver BurnDrvKungfub2 = {
 	"Kung-Fu Master (bootleg set 2)\0", NULL, "bootleg", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, Kungfub2RomInfo, Kungfub2RomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	KungfumInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, Kungfub2RomInfo, Kungfub2RomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	KungfumInit, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvKungfub3 = {
@@ -4850,18 +4802,18 @@ struct BurnDriver BurnDrvKungfub3 = {
 	"Kung-Fu Master (bootleg set 3)\0", NULL, "bootleg", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, Kungfub3RomInfo, Kungfub3RomName, NULL, NULL, M62InputInfo, KungfumDIPInfo,
-	Kungfub3Init, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, Kungfub3RomInfo, Kungfub3RomName, NULL, NULL, NULL, NULL, M62InputInfo, KungfumDIPInfo,
+	Kungfub3Init, M62Exit, M62Frame, KungfumDraw, M62Scan,
+	NULL, 0x200, 256, 246, 4, 3
 };
 
 struct BurnDriver BurnDrvBattroad = {
-	"battroad", NULL, NULL, NULL, "1984",
+	"battroad", NULL, NULL, "tr606drumkit", "1984",
 	"The Battle-Road\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_IREM_M62, GBF_SCRFIGHT, 0,
-	NULL, BattroadRomInfo, BattroadRomName, NULL, NULL, M62InputInfo, BattroadDIPInfo,
-	BattroadInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, BattroadRomInfo, BattroadRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, BattroadDIPInfo,
+	BattroadInit, M62Exit, M62Frame, BattroadDraw, M62Scan,
 	NULL, 0x220, 256, 256, 3, 4
 };
 
@@ -4870,8 +4822,8 @@ struct BurnDriver BurnDrvLdrun = {
 	"Lode Runner (set 1)\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, LdrunRomInfo, LdrunRomName, NULL, NULL, M62InputInfo, LdrunDIPInfo,
-	LdrunInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, LdrunRomInfo, LdrunRomName, NULL, NULL, NULL, NULL, M62InputInfo, LdrunDIPInfo,
+	LdrunInit, M62Exit, M62Frame, LdrunDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4880,8 +4832,8 @@ struct BurnDriver BurnDrvLdruna = {
 	"Lode Runner (set 2)\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, LdrunaRomInfo, LdrunaRomName, NULL, NULL, M62InputInfo, LdrunDIPInfo,
-	LdrunInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, LdrunaRomInfo, LdrunaRomName, NULL, NULL, NULL, NULL, M62InputInfo, LdrunDIPInfo,
+	LdrunInit, M62Exit, M62Frame, LdrunDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4890,8 +4842,8 @@ struct BurnDriver BurnDrvLdrun2 = {
 	"Lode Runner II - The Bungeling Strikes Back\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, Ldrun2RomInfo, Ldrun2RomName, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
-	Ldrun2Init, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, Ldrun2RomInfo, Ldrun2RomName, NULL, NULL, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
+	Ldrun2Init, M62Exit, M62Frame, LdrunDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4900,8 +4852,8 @@ struct BurnDriver BurnDrvLdrun3 = {
 	"Lode Runner III - The Golden Labyrinth\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, Ldrun3RomInfo, Ldrun3RomName, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
-	Ldrun3Init, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, Ldrun3RomInfo, Ldrun3RomName, NULL, NULL, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
+	Ldrun3Init, M62Exit, M62Frame, Ldrun3Draw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4910,8 +4862,8 @@ struct BurnDriver BurnDrvLdrun3j = {
 	"Lode Runner III - Majin No Fukkatsu\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, Ldrun3jRomInfo, Ldrun3jRomName, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
-	Ldrun3jInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, Ldrun3jRomInfo, Ldrun3jRomName, NULL, NULL, NULL, NULL, M62InputInfo, Ldrun2DIPInfo,
+	Ldrun3jInit, M62Exit, M62Frame, Ldrun3Draw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4920,8 +4872,8 @@ struct BurnDriver BurnDrvLdrun4 = {
 	"Lode Runner IV - Teikoku Karano Dasshutsu\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, Ldrun4RomInfo, Ldrun4RomName, NULL, NULL, M62InputInfo, Ldrun4DIPInfo,
-	Ldrun4Init, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, Ldrun4RomInfo, Ldrun4RomName, NULL, NULL, NULL, NULL, M62InputInfo, Ldrun4DIPInfo,
+	Ldrun4Init, M62Exit, M62Frame, Ldrun4Draw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
@@ -4930,78 +4882,78 @@ struct BurnDriver BurnDrvLotlot = {
 	"Lot Lot\0", NULL, "Irem (licensed from Tokuma Shoten)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PUZZLE, 0,
-	NULL, LotlotRomInfo, LotlotRomName, NULL, NULL, M62InputInfo, LotlotDIPInfo,
-	LotlotInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, LotlotRomInfo, LotlotRomName, NULL, NULL, NULL, NULL, M62InputInfo, LotlotDIPInfo,
+	LotlotInit, M62Exit, M62Frame, LotlotDraw, M62Scan,
 	NULL, 0x300, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvKidniki = {
-	"kidniki", NULL, NULL, NULL, "1986",
+	"kidniki", NULL, NULL, "tr606drumkit", "1986",
 	"Kid Niki - Radical Ninja (World)\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, KidnikiRomInfo, KidnikiRomName, NULL, NULL, M62InputInfo, KidnikiDIPInfo,
-	KidnikiInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, KidnikiRomInfo, KidnikiRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, KidnikiDIPInfo,
+	KidnikiInit, M62Exit, M62Frame, KidnikiDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvKidnikiu = {
-	"kidnikiu", "kidniki", NULL, NULL, "1986",
+	"kidnikiu", "kidniki", NULL, "tr606drumkit", "1986",
 	"Kid Niki - Radical Ninja (US)\0", NULL, "Irem (Data East USA license)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, KidnikiuRomInfo, KidnikiuRomName, NULL, NULL, M62InputInfo, KidnikiDIPInfo,
-	KidnikiInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, KidnikiuRomInfo, KidnikiuRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, KidnikiDIPInfo,
+	KidnikiInit, M62Exit, M62Frame, KidnikiDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvYanchamr = {
-	"yanchamr", "kidniki", NULL, NULL, "1986",
+	"yanchamr", "kidniki", NULL, "tr606drumkit", "1986",
 	"Kaiketsu Yanchamaru (Japan)\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, YanchamrRomInfo, YanchamrRomName, NULL, NULL, M62InputInfo, KidnikiDIPInfo,
-	KidnikiInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, YanchamrRomInfo, YanchamrRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, KidnikiDIPInfo,
+	KidnikiInit, M62Exit, M62Frame, KidnikiDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvLithero = {
-	"lithero", "kidniki", NULL, NULL, "1987",
+	"lithero", "kidniki", NULL, "tr606drumkit", "1987",
 	"Little Hero\0", NULL, "bootleg", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, LitheroRomInfo, LitheroRomName, NULL, NULL, M62InputInfo, KidnikiDIPInfo,
-	LitheroInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, LitheroRomInfo, LitheroRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, KidnikiDIPInfo,
+	LitheroInit, M62Exit, M62Frame, KidnikiDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvSpelunkr = {
-	"spelunkr", NULL, NULL, NULL, "1985",
+	"spelunkr", NULL, NULL, "tr606drumkit", "1985",
 	"Spelunker\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, SpelunkrRomInfo, SpelunkrRomName, NULL, NULL, M62InputInfo, SpelunkrDIPInfo,
-	SpelunkrInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, SpelunkrRomInfo, SpelunkrRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, SpelunkrDIPInfo,
+	SpelunkrInit, M62Exit, M62Frame, SpelunkrDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvSpelunkrj = {
-	"spelunkrj", "spelunkr", NULL, NULL, "1985",
+	"spelunkrj", "spelunkr", NULL, "tr606drumkit", "1985",
 	"Spelunker (Japan)\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, SpelunkrjRomInfo, SpelunkrjRomName, NULL, NULL, M62InputInfo, SpelunkrDIPInfo,
-	SpelunkrInit, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, SpelunkrjRomInfo, SpelunkrjRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, SpelunkrDIPInfo,
+	SpelunkrInit, M62Exit, M62Frame, SpelunkrDraw, M62Scan,
 	NULL, 0x200, 384, 256, 4, 3
 };
 
 struct BurnDriver BurnDrvSpelunk2 = {
-	"spelunk2", NULL, NULL, NULL, "1986",
-	"Spelunker II\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
+	"spelunk2", NULL, NULL, "tr606drumkit", "1986",
+	"Spelunker II - 23 no Kagi (Japan)\0", NULL, "Irem (licensed from Broderbund)", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_PLATFORM, 0,
-	NULL, Spelunk2RomInfo, Spelunk2RomName, NULL, NULL, M62InputInfo, Spelunk2DIPInfo,
-	Spelunk2Init, M62Exit, M62Frame, NULL, M62Scan,
+	NULL, Spelunk2RomInfo, Spelunk2RomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, Spelunk2DIPInfo,
+	Spelunk2Init, M62Exit, M62Frame, Spelunk2Draw, M62Scan,
 	NULL, 0x300, 384, 256, 4, 3
 };
 
@@ -5009,18 +4961,18 @@ struct BurnDriver BurnDrvYoujyudn = {
 	"youjyudn", NULL, NULL, NULL, "1986",
 	"Youjyuden (Japan)\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M62, GBF_VERSHOOT, 0,
-	NULL, YoujyudnRomInfo, YoujyudnRomName, NULL, NULL, M62InputInfo, YoujyudnDIPInfo,
-	YoujyudnInit, M62Exit, M62Frame, NULL, M62Scan,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M62, GBF_RUNGUN, 0,
+	NULL, YoujyudnRomInfo, YoujyudnRomName, NULL, NULL, NULL, NULL, M62InputInfo, YoujyudnDIPInfo,
+	YoujyudnInit, M62Exit, M62Frame, YoujyudnDraw, M62Scan,
 	NULL, 0x200, 256, 256, 3, 4
 };
 
 struct BurnDriver BurnDrvHorizon = {
-	"horizon", NULL, NULL, NULL, "1985",
+	"horizon", NULL, NULL, "tr606drumkit", "1985",
 	"Horizon\0", NULL, "Irem", "Irem M62",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_IREM_M62, GBF_HORSHOOT, 0,
-	NULL, HorizonRomInfo, HorizonRomName, NULL, NULL, M62InputInfo, HorizonDIPInfo,
-	HorizonInit, M62Exit, M62Frame, NULL, M62Scan,
-	NULL, 0x200, 256, 256, 4, 3
+	NULL, HorizonRomInfo, HorizonRomName, NULL, NULL, M62SampleInfo, M62SampleName, M62InputInfo, HorizonDIPInfo,
+	HorizonInit, M62Exit, M62Frame, HorizonDraw, M62Scan,
+	NULL, 0x200, 256, 248, 4, 3
 };

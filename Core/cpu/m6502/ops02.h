@@ -64,11 +64,8 @@
 
 #define PPC m6502.ppc.d
 
-//#define RDMEM_ID(a)		m6502.rdmem_id(Machine,a)
-//#define WRMEM_ID(a,d)	m6502.wrmem_id(Machine,a,d)
-
-#define RDMEM_ID(a)		M6502ReadMemIndex(a)
-#define WRMEM_ID(a,d)	M6502WriteMemIndex(a, d)
+#define RDMEM_ID(a)		M6502ReadByte(a)
+#define WRMEM_ID(a,d)	M6502WriteByte(a, d); m6502.cpu7written = 1
 
 #define CHANGE_PC change_pc(PCD)
 
@@ -77,6 +74,7 @@
  ***************************************************************/
 //#define RDOP() cpu_readop(PCW++); m6502_ICount -= 1
 #define RDOP() M6502ReadOp(PCW++); m6502_ICount -= 1
+#define PEEKOP() M6502ReadOp(PCW)
 
 /***************************************************************
  *  RDOPARG read an opcode argument
@@ -94,7 +92,7 @@
  *  WRMEM   write memory
  ***************************************************************/
 //#define WRMEM(addr,data) program_write_byte_8le(addr,data); m6502_ICount -= 1
-#define WRMEM(addr,data) M6502WriteByte(addr, data); m6502_ICount -= 1
+#define WRMEM(addr,data) M6502WriteByte(addr, data); m6502_ICount -= 1; m6502.cpu7written = 1
 
 /***************************************************************
  *  BRA  branch relative
@@ -446,7 +444,9 @@
  ***************************************************************/
 #define CLI 													\
 	if ((m6502.irq_state != M6502_CLEAR_LINE) && (P & F_I)) { 		\
-		m6502.after_cli = 1;									\
+		/* kludge for now until IRQ rewrite: ignore if RTI follows */ \
+		if (PEEKOP() != 0x40) \
+    		m6502.after_cli = 1;									\
 	}															\
 	P &= ~F_I
 
@@ -556,10 +556,10 @@
 #define JSR 													\
 	EAL = RDOPARG();											\
 	RDMEM(SPD);													\
-	PUSH(PCH);													\
-	PUSH(PCL);													\
+	PUSH(PCH);												\
+	PUSH(PCL);												\
 	EAH = RDOPARG();											\
-	PCD = EAD;													\
+	PCD = EAD;												\
 	CHANGE_PC
 
 /* 6502 ********************************************************

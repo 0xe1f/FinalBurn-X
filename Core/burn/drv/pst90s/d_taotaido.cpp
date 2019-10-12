@@ -654,20 +654,10 @@ static INT32 MemIndex()
 static void taotaidoFMIRQHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xff, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
-}
-
-static INT32 taotaidoSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 5000000;
-}
-
-static double taotaidoGetTime()
-{
-	return (double)ZetTotalCycles() / 5000000.0;
 }
 
 static INT32 DrvInit()
@@ -700,13 +690,13 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(DrvBgRAM,		0x800000, 0x803fff, SM_RAM);
-	SekMapMemory(DrvSprRAM0,	0xa00000, 0xa01fff, SM_RAM);
-	SekMapMemory(DrvSprRAM1,	0xc00000, 0xc0ffff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0xfe0000, 0xfeffff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0xffc000, 0xffcfff, SM_ROM);
-	SekMapMemory(DrvScrollRAM,	0xffe000, 0xffe3ff, SM_RAM); 
+	SekMapMemory(Drv68KROM,		0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvBgRAM,		0x800000, 0x803fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM0,	0xa00000, 0xa01fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM1,	0xc00000, 0xc0ffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0xfe0000, 0xfeffff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0xffc000, 0xffcfff, MAP_ROM);
+	SekMapMemory(DrvScrollRAM,	0xffe000, 0xffe3ff, MAP_RAM); 
 	SekSetWriteByteHandler(0,	taotaido_write_byte);
 	SekSetWriteWordHandler(0,	taotaido_write_word);
 	SekSetReadByteHandler(0,	taotaido_read_byte);
@@ -726,7 +716,7 @@ static INT32 DrvInit()
 
 	INT32 nDrvSndROM0Size = 0x100000;
 	INT32 nDrvSndROM1Size = 0x200000;
-	BurnYM2610Init(8000000, DrvSndROM1, &nDrvSndROM1Size, DrvSndROM0, &nDrvSndROM0Size, &taotaidoFMIRQHandler, taotaidoSynchroniseStream, taotaidoGetTime, 0);
+	BurnYM2610Init(8000000, DrvSndROM1, &nDrvSndROM1Size, DrvSndROM0, &nDrvSndROM0Size, &taotaidoFMIRQHandler, 0);
 	BurnTimerAttachZet(5000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
@@ -915,7 +905,7 @@ static INT32 DrvFrame()
 	ZetOpen(0);
 
 	SekRun(nCyclesTotal[0]);
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 	
 	BurnTimerEndFrame(nCyclesTotal[1]);
 	BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
@@ -991,8 +981,8 @@ struct BurnDriver BurnDrvTaotaido = {
 	"taotaido", NULL, NULL, NULL, "1993",
 	"Tao Taido (set 1)\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MISC, 0,
-	NULL, taotaidoRomInfo, taotaidoRomName, NULL, NULL, TaotaidoInputInfo, TaotaidoDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, taotaidoRomInfo, taotaidoRomName, NULL, NULL, NULL, NULL, TaotaidoInputInfo, TaotaidoDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 224, 4, 3
 };
@@ -1024,7 +1014,7 @@ struct BurnDriver BurnDrvTaotaidoa = {
 	"Tao Taido (set 2)\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, taotaidoaRomInfo, taotaidoaRomName, NULL, NULL, TaotaidoaInputInfo, TaotaidoaDIPInfo,
+	NULL, taotaidoaRomInfo, taotaidoaRomName, NULL, NULL, NULL, NULL, TaotaidoaInputInfo, TaotaidoaDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 224, 4, 3
 };

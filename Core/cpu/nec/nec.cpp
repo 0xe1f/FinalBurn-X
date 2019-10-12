@@ -103,22 +103,14 @@
 
 ****************************************************************************/
 
-#include <stdlib.h>
-#include <stdio.h>
+#include "burnint.h"
+//#include <stdlib.h>
+//#include <stdio.h>
 #include "driver.h"
-#include "state.h"
+//#include "state.h"
 #include "nec_intf.h"
 #include "bitswap.h"
-//#include "emu.h"
-//#include "debugger.h"
 
-#define offs_t int //?
-//typedef UINT8 unsigned char
-//typedef UINT16 unsigned short
-//typedef UINT32 unsigned int
-#define INT8 char
-#define INT16 short
-#define INT32 int
 #define INPUT_LINE_NMI	0x20 // nmi
 
 #define NEC_INLINE
@@ -247,7 +239,7 @@ int nec_reset()
 	nec_state->vector = 0xff; //default vector
 
 	Sreg(PS) = 0xffff;
-	Sreg(SS) = 0;
+	Sreg(SS_) = 0;
 	Sreg(DS0) = 0;
 	Sreg(DS1) = 0;
 
@@ -408,7 +400,7 @@ void necRunEnd()
 
 void necIdle(int cycles)
 {
-	sChipsPtr->icount -= cycles;
+	sChipsPtr->cycles_total += cycles;
 }
 
 int nec_execute(int cycles)
@@ -418,6 +410,7 @@ int nec_execute(int cycles)
 
 	nec_state->icount = cycles;
 	nec_state->cycles_remaining = cycles;
+	nec_state->stop_run = 0;
 
 	if (nec_state->halted)
 	{
@@ -446,11 +439,11 @@ int nec_execute(int cycles)
 		do_prefetch(nec_state, prev_ICount);
 	}
 
-	nec_state->cycles_total += cycles - nec_state->icount;
-	nec_state->cycles_remaining = 0;
-	nec_state->stop_run = 0;
+	cycles = cycles - nec_state->icount;
+	nec_state->cycles_total += cycles;
+	nec_state->cycles_remaining = nec_state->icount = 0;
 
-	return (cycles - nec_state->icount);
+	return cycles;
 }
 
 void necInit(int cpu, int type)
@@ -553,13 +546,13 @@ static CPU_SET_INFO( nec )
 			break;
 		case CPUINFO_INT_REGISTER + NEC_IP:				nec_state->ip = info->i;							break;
 		case CPUINFO_INT_SP:
-			if( info->i - (Sreg(SS)<<4) < 0x10000 )
+			if( info->i - (Sreg(SS_)<<4) < 0x10000 )
 			{
-				Wreg(SP) = info->i - (Sreg(SS)<<4);
+				Wreg(SP) = info->i - (Sreg(SS_)<<4);
 			}
 			else
 			{
-				Sreg(SS) = info->i >> 4;
+				Sreg(SS_) = info->i >> 4;
 				Wreg(SP) = info->i & 0x0000f;
 			}
 			break;
@@ -574,7 +567,7 @@ static CPU_SET_INFO( nec )
 		case CPUINFO_INT_REGISTER + NEC_IY:				Wreg(IY) = info->i;					break;
 		case CPUINFO_INT_REGISTER + NEC_ES:				Sreg(DS1) = info->i;					break;
 		case CPUINFO_INT_REGISTER + NEC_CS:				Sreg(PS) = info->i;					break;
-		case CPUINFO_INT_REGISTER + NEC_SS:				Sreg(SS) = info->i;					break;
+		case CPUINFO_INT_REGISTER + NEC_SS:				Sreg(SS_) = info->i;					break;
 		case CPUINFO_INT_REGISTER + NEC_DS:				Sreg(DS0) = info->i;					break;
 	}
 }
@@ -623,7 +616,7 @@ static CPU_GET_INFO( nec )
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + NEC_PC:				info->i = ((Sreg(PS)<<4) + nec_state->ip);	break;
 		case CPUINFO_INT_REGISTER + NEC_IP:				info->i = nec_state->ip;							break;
-		case CPUINFO_INT_SP:							info->i = (Sreg(SS)<<4) + Wreg(SP); break;
+		case CPUINFO_INT_SP:							info->i = (Sreg(SS_)<<4) + Wreg(SP); break;
 		case CPUINFO_INT_REGISTER + NEC_SP:				info->i = Wreg(SP);					break;
 		case CPUINFO_INT_REGISTER + NEC_FLAGS:			info->i = CompressFlags();				break;
 		case CPUINFO_INT_REGISTER + NEC_AW:				info->i = Wreg(AW);					break;
@@ -635,7 +628,7 @@ static CPU_GET_INFO( nec )
 		case CPUINFO_INT_REGISTER + NEC_IY:				info->i = Wreg(IY);					break;
 		case CPUINFO_INT_REGISTER + NEC_ES:				info->i = Sreg(DS1);					break;
 		case CPUINFO_INT_REGISTER + NEC_CS:				info->i = Sreg(PS);					break;
-		case CPUINFO_INT_REGISTER + NEC_SS:				info->i = Sreg(SS);					break;
+		case CPUINFO_INT_REGISTER + NEC_SS:				info->i = Sreg(SS_);					break;
 		case CPUINFO_INT_REGISTER + NEC_DS:				info->i = Sreg(DS0);					break;
 		case CPUINFO_INT_REGISTER + NEC_PENDING:		info->i = nec_state->pending_irq;				break;
 
@@ -690,7 +683,7 @@ static CPU_GET_INFO( nec )
         case CPUINFO_STR_REGISTER + NEC_IY:				sprintf(info->s, "IY:%04X", Wreg(IY)); break;
         case CPUINFO_STR_REGISTER + NEC_ES:				sprintf(info->s, "DS1:%04X", Sreg(DS1)); break;
         case CPUINFO_STR_REGISTER + NEC_CS:				sprintf(info->s, "PS:%04X", Sreg(PS)); break;
-        case CPUINFO_STR_REGISTER + NEC_SS:				sprintf(info->s, "SS:%04X", Sreg(SS)); break;
+        case CPUINFO_STR_REGISTER + NEC_SS:				sprintf(info->s, "SS:%04X", Sreg(SS_)); break;
         case CPUINFO_STR_REGISTER + NEC_DS:				sprintf(info->s, "DS0:%04X", Sreg(DS0)); break;
 	}
 }

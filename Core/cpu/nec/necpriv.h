@@ -40,7 +40,7 @@ typedef struct _nec_state_t nec_state_t;
 struct _nec_state_t
 {
 	necbasicregs regs;
-	offs_t	fetch_xor;
+	UINT32	fetch_xor;
 	UINT16	sregs[4];
 
 	UINT16	ip;
@@ -59,7 +59,7 @@ struct _nec_state_t
 	UINT8	no_interrupt;
 	UINT8	halted;
 
-	int		icount;
+	INT32	icount;
 
 	UINT8	prefetch_size;
 	UINT8	prefetch_cycles;
@@ -74,7 +74,7 @@ struct _nec_state_t
 	INT8	stop_run;
 };
 
-typedef enum { DS1, PS, SS, DS0 } SREGS;
+typedef enum { DS1, PS, SS_, DS0 } SREGS;
 typedef enum { AW, CW, DW, BW, SP, BP, IX, IY } WREGS;
 
 #ifdef LSB_FIRST
@@ -132,7 +132,7 @@ typedef enum {
 
 #define SegBase(Seg) (Sreg(Seg) << 4)
 
-#define DefaultBase(Seg) ((nec_state->seg_prefix && (Seg==DS0 || Seg==SS)) ? nec_state->prefix_base : Sreg(Seg) << 4)
+#define DefaultBase(Seg) ((nec_state->seg_prefix && (Seg==DS0 || Seg==SS_)) ? nec_state->prefix_base : Sreg(Seg) << 4)
 
 #define GetMemB(Seg,Off) (read_mem_byte(DefaultBase(Seg) + (Off)))
 #define GetMemW(Seg,Off) (read_mem_word(DefaultBase(Seg) + (Off)))
@@ -148,8 +148,8 @@ typedef enum {
 #define EMPTY_PREFETCH()	nec_state->prefetch_reset = 1
 
 
-#define PUSH(val) { Wreg(SP) -= 2; write_mem_word(((Sreg(SS)<<4)+Wreg(SP)), val); }
-#define POP(var) { Wreg(SP) += 2; var = read_mem_word(((Sreg(SS)<<4) + ((Wreg(SP)-2) & 0xffff))); }
+#define PUSH(val) { Wreg(SP) -= 2; write_mem_word(((Sreg(SS_)<<4)+Wreg(SP)), val); }
+#define POP(var) { Wreg(SP) += 2; var = read_mem_word(((Sreg(SS_)<<4) + ((Wreg(SP)-2) & 0xffff))); }
 
 
 #define GetModRM UINT32 ModRM=FETCH()

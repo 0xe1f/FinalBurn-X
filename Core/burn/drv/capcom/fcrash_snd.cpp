@@ -21,6 +21,8 @@ void FcrashSoundCommand(UINT16 d)
 {
 	INT32 nCyclesToDo = ((INT64)SekTotalCycles() * nCpsZ80Cycles / nCpsCycles) - ZetTotalCycles();
 	INT32 nEnd = FcrashSoundPos + (INT64)FcrashMSM5205Interleave * nCyclesToDo / nCpsZ80Cycles;
+	
+	if (nEnd == FcrashSoundPos) nEnd += 1;
 		
 	for (INT32 i = FcrashSoundPos; i < nEnd; i++) {
 		BurnTimerUpdate((i + 1) * FcrashCyclesPerSegment);
@@ -29,7 +31,7 @@ void FcrashSoundCommand(UINT16 d)
 	}
 		
 	FcrashSoundLatch = d & 0xff;
-	ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+	ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 }
 
 UINT8 __fastcall FcrashZ80Read(UINT16 a)
@@ -44,7 +46,7 @@ UINT8 __fastcall FcrashZ80Read(UINT16 a)
 		}
 		
 		case 0xe400: {
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return FcrashSoundLatch;
 		}
 		
@@ -112,14 +114,9 @@ void __fastcall FcrashZ80Write(UINT16 a, UINT8 d)
 	}
 }
 
-inline static INT32 FcrashSynchroniseStream(INT32 nSoundRate)
+inline static INT32 FcrashSynchroniseStream(INT32 nSoundRate) // MSM5205
 {
 	return (INT64)((double)ZetTotalCycles() * nSoundRate / (24000000 / 6));
-}
-
-inline static double FcrashGetTime()
-{
-	return (double)ZetTotalCycles() / (24000000 / 6);
 }
 
 static void FcrashMSM5205Vck0()
@@ -156,7 +153,7 @@ INT32 FcrashSoundInit()
 	ZetMapArea(0xd000, 0xd7ff, 2, FcrashZ80Ram     );
 	ZetClose();
 	
-	BurnYM2203Init(2, 24000000 / 6, NULL, FcrashSynchroniseStream, FcrashGetTime, 0);
+	BurnYM2203Init(2, 24000000 / 6, NULL, 0);
 	BurnTimerAttachZet(24000000 / 6);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.70, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.07, BURN_SND_ROUTE_BOTH);

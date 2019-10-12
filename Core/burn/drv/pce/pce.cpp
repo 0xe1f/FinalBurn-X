@@ -39,7 +39,6 @@ static UINT8 *PCECartRAM;
 static UINT8 *PCEUserRAM;
 static UINT8 *PCECDBRAM;
 
-
 static UINT32 *DrvPalette;
 UINT8 PCEPaletteRecalc;
 
@@ -62,7 +61,7 @@ static UINT8 system_identify;
 static INT32 pce_sf2 = 0;
 static INT32 pce_sf2_bank;
 static UINT8 bram_locked = 1;
-
+static INT32 wondermomohack = 0;
 
 INT32 PceGetZipName(char** pszName, UINT32 i)
 {
@@ -79,13 +78,14 @@ INT32 PceGetZipName(char** pszName, UINT32 i)
 		pszGameName = BurnDrvGetTextA(DRV_PARENT);
 	}
 
-	if (pszGameName == NULL) {
+	if (pszGameName == NULL || i > 1) {
 		*pszName = NULL;
 		return 1;
 	}
 
 	// remove the "pce_"
-	for (UINT32 j = 0; j < strlen(pszGameName); j++) {
+	memset(szFilename, 0, MAX_PATH);
+	for (UINT32 j = 0; j < (strlen(pszGameName) - 4); j++) {
 		szFilename[j] = pszGameName[j + 4];
 	}
 
@@ -109,13 +109,14 @@ INT32 TgGetZipName(char** pszName, UINT32 i)
 		pszGameName = BurnDrvGetTextA(DRV_PARENT);
 	}
 
-	if (pszGameName == NULL) {
+	if (pszGameName == NULL || i > 1) {
 		*pszName = NULL;
 		return 1;
 	}
 
 	// remove the "tg_"
-	for (UINT32 j = 0; j < strlen(pszGameName); j++) {
+	memset(szFilename, 0, MAX_PATH);
+	for (UINT32 j = 0; j < (strlen(pszGameName) - 3); j++) {
 		szFilename[j] = pszGameName[j + 3];
 	}
 
@@ -139,13 +140,14 @@ INT32 SgxGetZipName(char** pszName, UINT32 i)
 		pszGameName = BurnDrvGetTextA(DRV_PARENT);
 	}
 
-	if (pszGameName == NULL) {
+	if (pszGameName == NULL || i > 1) {
 		*pszName = NULL;
 		return 1;
 	}
 
 	// remove the "sgx_"
-	for (UINT32 j = 0; j < strlen(pszGameName); j++) {
+	memset(szFilename, 0, MAX_PATH);
+	for (UINT32 j = 0; j < (strlen(pszGameName) - 4); j++) {
 		szFilename[j] = pszGameName[j + 4];
 	}
 
@@ -158,7 +160,7 @@ static void sf2_bankswitch(UINT8 offset)
 {
 	pce_sf2_bank = offset;
 
-	h6280MapMemory(PCECartROM + (offset * 0x80000) + 0x080000, 0x080000, 0x0fffff, H6280_ROM);
+	h6280MapMemory(PCECartROM + (offset * 0x80000) + 0x080000, 0x080000, 0x0fffff, MAP_ROM);
 }
 
 static void pce_write(UINT32 address, UINT8 data)
@@ -218,29 +220,32 @@ static void pce_write(UINT32 address, UINT8 data)
 			h6280_irq_status_w(address & 0x3ff, data);
 		return;
 
-		case 0x1ff800:
-		
+		case 0x1ff800:	// cd system
+		{
 			switch( address & 0xf )
 			{
-			case 0x07:	/* BRAM unlock / CD status */
-				if ( data & 0x80 )
+				case 0x07:	/* BRAM unlock / CD status */
 				{
-					bram_locked = 0;
+					if (data & 0x80)
+					{
+						bram_locked = 0;
+					}
 				}
 				break;
 			}
+
 			bprintf(0,_T("CD write %x:%x\n"), address, data );
-			// cd system
+		}
 		return;
 	}
 	
 	if ((address >= 0x1ee000) && (address <= 0x1ee7ff)) {
-//			bprintf(0,_T("bram write %x:%x\n"), address & 0x7ff, data );
-			if (!bram_locked)
-			{
-				PCECDBRAM[address & 0x7FF] = data;
-			}
-			return;
+//		bprintf(0,_T("bram write %x:%x\n"), address & 0x7ff, data );
+		if (!bram_locked)
+		{
+			PCECDBRAM[address & 0x7FF] = data;
+		}
+		return;
 	}	
 	
 	
@@ -249,13 +254,10 @@ static void pce_write(UINT32 address, UINT8 data)
 
 static UINT8 pce_read(UINT32 address)
 {
-
 	address &= 0x1fffff;
 	
 	switch (address & ~0x3ff)
 	{
-
-			
 		case 0x1fe000:
 			return vdc_read(0, address);
 
@@ -311,11 +313,12 @@ static UINT8 pce_read(UINT32 address)
 	}
 	
 	if ((address >= 0x1ee000) && (address <= 0x1ee7ff)) {
-		//	bprintf(0,_T("bram read %x:%x\n"), address,address & 0x7ff );
-			return PCECDBRAM[address & 0x7ff];
+	//	bprintf(0,_T("bram read %x:%x\n"), address,address & 0x7ff );
+		return PCECDBRAM[address & 0x7ff];
 	}	
 		
 	bprintf(0,_T("Unknown read %x\n"), address );
+
 	return 0;
 }
 
@@ -481,11 +484,11 @@ static INT32 CommonInit(int type)
 	{
 		h6280Init(0);
 		h6280Open(0);
-		h6280MapMemory(PCECartROM + 0x000000, 0x000000, 0x0fffff, H6280_ROM);
-		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f0000, 0x1f1fff, H6280_RAM); // mirrored
-		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f2000, 0x1f3fff, H6280_RAM);
-		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f4000, 0x1f5fff, H6280_RAM);
-		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f6000, 0x1f7fff, H6280_RAM);
+		h6280MapMemory(PCECartROM + 0x000000, 0x000000, 0x0fffff, MAP_ROM);
+		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f0000, 0x1f1fff, MAP_RAM); // mirrored
+		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f2000, 0x1f3fff, MAP_RAM);
+		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f4000, 0x1f5fff, MAP_RAM);
+		h6280MapMemory(PCEUserRAM + 0x000000, 0x1f6000, 0x1f7fff, MAP_RAM);
 		h6280SetWritePortHandler(pce_write_port);
 		h6280SetWriteHandler(pce_write);
 		h6280SetReadHandler(pce_read);
@@ -503,8 +506,8 @@ static INT32 CommonInit(int type)
 	{
 		h6280Init(0);
 		h6280Open(0);
-		h6280MapMemory(PCECartROM, 0x000000, 0x0fffff, H6280_ROM);
-		h6280MapMemory(PCEUserRAM, 0x1f0000, 0x1f7fff, H6280_RAM);
+		h6280MapMemory(PCECartROM, 0x000000, 0x0fffff, MAP_ROM);
+		h6280MapMemory(PCEUserRAM, 0x1f0000, 0x1f7fff, MAP_RAM);
 		h6280SetWritePortHandler(sgx_write_port);
 		h6280SetWriteHandler(sgx_write);
 		h6280SetReadHandler(sgx_read);
@@ -516,6 +519,7 @@ static INT32 CommonInit(int type)
 	
 	bram_locked = 1;
 	
+	vdc_init();
 	vce_palette_init(DrvPalette);
 
 	c6280_init(3579545, 0);
@@ -553,11 +557,17 @@ INT32 populousInit()
 
 	if (nRet == 0) {
 		h6280Open(0);
-		h6280MapMemory(PCECartRAM, 0x080000, 0x087fff, H6280_RAM);
+		h6280MapMemory(PCECartRAM, 0x080000, 0x087fff, MAP_RAM);
 		h6280Close();
 	}
 
 	return nRet;
+}
+
+INT32 wondermomoInit()
+{
+	wondermomohack = 1;
+	return PCEInit();
 }
 
 INT32 PCEExit()
@@ -565,13 +575,14 @@ INT32 PCEExit()
 	GenericTilesExit();
 
 	c6280_exit();
-	// video exit
+	vdc_exit();
 
 	h6280Exit();
 
 	BurnFree (AllMem);
 
 	pce_sf2 = 0;
+	wondermomohack = 0;
 
 	return 0;
 }
@@ -584,9 +595,9 @@ INT32 PCEDraw()
 	}
 
 	{
-		UINT16 *src = vdc_tmp_draw + (14 * 684) + 86;
+		UINT16 *src = vdc_tmp_draw + ((14+2) * 684) + 86;
 		UINT16 *dst = pTransDraw;
-	
+
 		for (INT32 y = 0; y < nScreenHeight; y++) {
 			for (INT32 x = 0; x < nScreenWidth; x++) {
 				dst[x] = src[x];
@@ -624,16 +635,20 @@ INT32 PCEFrame()
 
 	PCECompileInputs();
 
-	INT32 nCyclesTotal = (INT32)((INT64)7159090 * nBurnCPUSpeedAdjust / (0x0100 * 60));
-	
+	INT32 nInterleave = 262;
+	INT32 nCyclesTotal[1] = { (INT32)((INT64)7159090 * nBurnCPUSpeedAdjust / (0x0100 * 60)) };
+	INT32 nCyclesDone[1] = { 0 };
+
+	if (wondermomohack) nCyclesTotal[0] += 1000;
+
 	h6280Open(0);
-	
-	for (INT32 i = 0; i < 262; i++)
+
+	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		h6280Run(nCyclesTotal / 262);
+		CPU_RUN(0, h6280);
 		interrupt();
 	}
-	
+
 	if (pBurnSoundOut) {
 		c6280_update(pBurnSoundOut, nBurnSoundLen);
 	}
@@ -664,7 +679,7 @@ INT32 PCEScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_DRIVER_DATA) {
-		h6280CpuScan(nAction);
+		h6280Scan(nAction);
 
 		vdc_scan(nAction, pnMin);
 		c6280_scan(nAction, pnMin);

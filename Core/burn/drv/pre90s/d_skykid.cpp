@@ -18,12 +18,10 @@ static UINT8 *DrvGfxROM2;
 static UINT8 *DrvColPROM;
 static UINT8 *DrvHD63701RAM1;
 static UINT8 *DrvHD63701RAM;
-static UINT8 *DrvWavRAM;
 static UINT8 *DrvVidRAM;
 static UINT8 *DrvTxtRAM;
 static UINT8 *DrvSprRAM;
 
-static UINT32 *Palette;
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
@@ -46,32 +44,34 @@ static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 static UINT8 DrvInputs[8];
 
+static INT32 drgnbstr = 0;
+
 static INT32 nCyclesDone[2];
 
 static struct BurnInputInfo SkykidInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 coin"	},
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy2 + 1,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	DrvJoy3 + 3,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	DrvJoy3 + 0,	"p1 left"	},
+	{"P1 Up",			BIT_DIGITAL,	DrvJoy3 + 3,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy3 + 2,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	DrvJoy3 + 1,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy3 + 4,	"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 fire 2"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy2 + 2,	"p2 coin"	},
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy2 + 2,	"p2 coin"	},
 	{"P2 Start",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	DrvJoy4 + 3,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy4 + 2,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy4 + 0,	"p2 left"	},
+	{"P2 Up",			BIT_DIGITAL,	DrvJoy4 + 3,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy4 + 2,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy4 + 0,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	DrvJoy4 + 1,	"p2 right"	},
 	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy4 + 4,	"p2 fire 1"	},
 	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy1 + 2,	"p2 fire 2"	},
 
-	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
-	{"Service",		BIT_DIGITAL,	DrvJoy2 + 0,	"service"	},
-	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",		BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Service",			BIT_DIGITAL,	DrvJoy2 + 0,	"service"	},
+	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Skykid)
@@ -261,13 +261,14 @@ STDDIPINFO(Drgnbstr)
 
 static inline void sync_HD63701(INT32 run)
 {
-	INT32 nNext = (INT32)((float)((102400.000 * nM6809CyclesTotal) / 25600));
+	INT32 nNext = M6809TotalCycles() - nCyclesDone[1];
 
-	if (nNext > 0) {
+	if (nNext > 0)
+	{
 		if (run) {
-			nCyclesDone[1] += HD63701Run(nNext - nCyclesDone[1]);
+			nCyclesDone[1] += HD63701Run(nNext);
 		} else {
-			nCyclesDone[1] += nNext - nCyclesDone[1];
+			nCyclesDone[1] += nNext;
 		}
 	}
 }
@@ -279,7 +280,7 @@ static void m6809Bankswitch(INT32 bank)
 	if (m6809_bank[0] != bank) {
 		m6809_bank[0] = bank;
 	
-		M6809MapMemory(DrvM6809ROM + 0x10000 + bank * 0x2000, 0x0000, 0x1fff, M6809_ROM);
+		M6809MapMemory(DrvM6809ROM + 0x10000 + bank * 0x2000, 0x0000, 0x1fff, MAP_ROM);
 	}
 }
 
@@ -304,7 +305,7 @@ void skykid_main_write(UINT16 address, UINT8 data)
 		INT32 b = (~address & 0x0800) / 0x0800;
 
 		interrupt_enable[0] = b;
-		if (b == 0) M6809SetIRQLine(0, M6809_IRQSTATUS_NONE);
+		if (b == 0) M6809SetIRQLine(0, CPU_IRQSTATUS_NONE);
 		return;
 	}
 
@@ -384,7 +385,7 @@ void skykid_mcu_write(UINT16 address, UINT8 data)
 
 		interrupt_enable[1] = b;
 
-		if (b == 0) HD63701SetIRQLine(0, HD63701_IRQSTATUS_NONE);
+		if (b == 0) HD63701SetIRQLine(0, CPU_IRQSTATUS_NONE);
 		return;
 	}
 }
@@ -452,11 +453,11 @@ static void DrvPaletteInit()
 		INT32 g = DrvColPROM[i + 0x100] & 0x0f;
 		INT32 b = DrvColPROM[i + 0x200] & 0x0f;
 
-		Palette[i] = (r << 20) | (r << 16) | (g << 12) | (g << 8) | (b << 4) | (b << 0);
+		DrvPalette[i] = BurnHighCol((r*16)+r, (g*16)+g, (b*16)+b, 0);
 	}
 
 	for (INT32 i = 0; i < 0x400; i++) {
-		Palette[i + 0x100] = Palette[DrvColPROM[0x300 + i]];
+		DrvPalette[i + 0x100] = DrvPalette[DrvColPROM[0x300 + i]];
 	}
 }
 
@@ -512,12 +513,16 @@ static INT32 DrvDoReset(INT32 ClearRAM)
 	m6809Bankswitch(0);
 	M6809Close();
 
-//	HD63701Open(0);
+	HD63701Open(0);
 	HD63701Reset();
-//	HD63701Close();
+	HD63701Close();
+
+	NamcoSoundReset();
 
 	watchdog = 0;
 	hd63701_in_reset = 0;
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -527,7 +532,7 @@ static INT32 MemIndex()
 	UINT8 *Next; Next = AllMem;
 
 	DrvM6809ROM		= Next; Next += 0x014000;
-	DrvHD63701ROM		= Next; Next += 0x010000;
+	DrvHD63701ROM	= Next; Next += 0x010000;
 
 	DrvGfxROM0		= Next; Next += 0x010000;
 	DrvGfxROM1		= Next; Next += 0x010000;
@@ -535,26 +540,22 @@ static INT32 MemIndex()
 
 	DrvColPROM		= Next; Next += 0x000700;
 
-	Palette			= (UINT32*)Next; Next += 0x0500 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x0500 * sizeof(UINT32);
 
 	AllRam			= Next;
 
-	DrvHD63701RAM1		= Next; Next += 0x000080;
-	DrvHD63701RAM		= Next; Next += 0x000800;
-
-	NamcoSoundProm		= Next;
-	DrvWavRAM		= Next; Next += 0x000500;
+	DrvHD63701RAM1	= Next; Next += 0x000080;
+	DrvHD63701RAM	= Next; Next += 0x000800;
 
 	DrvVidRAM		= Next; Next += 0x001000;
 	DrvTxtRAM		= Next; Next += 0x000800;
 	DrvSprRAM		= Next; Next += 0x001800;
 
 	m6809_bank		= Next; Next += 0x000001;
-	interrupt_enable	= Next; Next += 0x000002;
+	interrupt_enable= Next; Next += 0x000002;
 	flipscreen		= Next; Next += 0x000001;
 	priority		= Next; Next += 0x000001;
-	coin_lockout		= Next; Next += 0x000001;
+	coin_lockout	= Next; Next += 0x000001;
 	ip_select		= Next; Next += 0x000001;
 
 	scroll			= (UINT16*)Next; Next += 0x0002 * sizeof(UINT16);
@@ -601,30 +602,31 @@ static INT32 DrvInit()
 		DrvPaletteInit();
 	}
 
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809ROM + 0x10000,		0x0000, 0x1fff, M6809_ROM);
-	M6809MapMemory(DrvVidRAM,			0x2000, 0x2fff, M6809_RAM);
-	M6809MapMemory(DrvTxtRAM,			0x4000, 0x47ff, M6809_RAM);
-	M6809MapMemory(DrvSprRAM,			0x4800, 0x5fff, M6809_RAM);
-	M6809MapMemory(DrvM6809ROM + 0x08000,		0x8000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809ROM + 0x10000,		0x0000, 0x1fff, MAP_ROM);
+	M6809MapMemory(DrvVidRAM,			0x2000, 0x2fff, MAP_RAM);
+	M6809MapMemory(DrvTxtRAM,			0x4000, 0x47ff, MAP_RAM);
+	M6809MapMemory(DrvSprRAM,			0x4800, 0x5fff, MAP_RAM);
+	M6809MapMemory(DrvM6809ROM + 0x08000,		0x8000, 0xffff, MAP_ROM);
 	M6809SetWriteHandler(skykid_main_write);
 	M6809SetReadHandler(skykid_main_read);
 	M6809Close();
 
-	HD63701Init(1);
-//	HD63701Open(0);
-	HD63701MapMemory(DrvHD63701ROM + 0x8000,	0x8000, 0xbfff, HD63701_ROM);
-	HD63701MapMemory(DrvHD63701RAM,			0xc000, 0xc7ff, HD63701_RAM);
-	HD63701MapMemory(DrvHD63701ROM + 0xf000,	0xf000, 0xffff, HD63701_ROM);
+	HD63701Init(0);
+	HD63701Open(0);
+	HD63701MapMemory(DrvHD63701ROM + 0x8000,	0x8000, 0xbfff, MAP_ROM);
+	HD63701MapMemory(DrvHD63701RAM,			0xc000, 0xc7ff, MAP_RAM);
+	HD63701MapMemory(DrvHD63701ROM + 0xf000,	0xf000, 0xffff, MAP_ROM);
 	HD63701SetReadHandler(skykid_mcu_read);
 	HD63701SetWriteHandler(skykid_mcu_write);
 	HD63701SetReadPortHandler(skykid_mcu_read_port);
 	HD63701SetWritePortHandler(skykid_mcu_write_port);
-//	HD63701Close();
+	HD63701Close();
 
-	NamcoSoundInit(49152000/2048, 8);
-	NacmoSoundSetAllRoutes(0.50, BURN_SND_ROUTE_BOTH); // MAME uses 1.00, which is way too loud
+	NamcoSoundInit(49152000/2048, 8, 0);
+	NamcoSoundSetAllRoutes(0.50, BURN_SND_ROUTE_BOTH); // MAME uses 1.00, which is way too loud
+	NamcoSoundSetBuffered(M6809TotalCycles, 1536000);
 
 	GenericTilesInit();
 
@@ -644,17 +646,19 @@ static INT32 DrvExit()
 
 	BurnFree (AllMem);
 
-	NamcoSoundProm = NULL;
+	drgnbstr = 0;
 
 	return 0;
 }
 
-static void draw_fg_layer()
+static void draw_fg_layer(INT32 drgnbstr_hud)
 {
 	INT32 bank = *flipscreen ? 0x100 : 0;
 
 	for (INT32 y = 0; y < 28; y++)
 	{
+		if (drgnbstr && drgnbstr_hud && y > 1) break; // re-draw hud to cover sprites
+
 		for (INT32 x = 0; x < 36; x++)
 		{
 			INT32 col = x - 2;
@@ -758,24 +762,37 @@ static void draw_sprites()
 static INT32 DrvDraw()
 {
 	if (DrvRecalc) {
-		for (INT32 i = 0; i < 0x500; i++) {
-			INT32 p = Palette[i];
-			DrvPalette[i] = BurnHighCol(p >> 16, p >> 8, p, 0);
-		}
+		DrvPaletteInit();
 		DrvRecalc = 0;
 	}
 
-	draw_bg_layer();
+	BurnTransferClear();
 
-	if (*priority == 0) draw_sprites();
+	if (nBurnLayer & 1) draw_bg_layer();
 
-	draw_fg_layer();
+	if (nSpriteEnable & 1 && *priority == 0) draw_sprites();
 
-	if (*priority == 1) draw_sprites();
+	if (nBurnLayer & 2) draw_fg_layer(0);
+
+	if (nSpriteEnable & 2 && *priority == 1) {
+		draw_sprites();
+		// redraw the hud - dragon buster needs to keep sprites out of this area
+		if (drgnbstr && nBurnLayer & 4) draw_fg_layer(1);
+	}
 
 	BurnTransferCopy(DrvPalette);
 
 	return 0;
+}
+
+static inline void DrvClearOpposites(UINT8* nJoystickInputs)
+{ // for active LOW
+	if ((*nJoystickInputs & 0x03) == 0x00) {
+		*nJoystickInputs |= 0x03;
+	}
+	if ((*nJoystickInputs & 0x0c) == 0x00) {
+		*nJoystickInputs |= 0x0c;
+	}
 }
 
 static INT32 DrvFrame()
@@ -798,6 +815,9 @@ static INT32 DrvFrame()
 			DrvInputs[6] ^= (DrvJoy3[i] & 1) << i;
 		}
 
+		DrvClearOpposites(&DrvInputs[5]);
+		DrvClearOpposites(&DrvInputs[6]);
+
 		DrvInputs[0] = ((DrvDips[1] & 0xf8) >> 3);
 		DrvInputs[1] = ((DrvDips[1] & 0x07) << 2) | ((DrvDips[0] & 0xc0) >> 6);
 		DrvInputs[2] = ((DrvDips[0] & 0x3e) >> 1);
@@ -809,50 +829,36 @@ static INT32 DrvFrame()
 	M6809NewFrame();
 	HD63701NewFrame();
 
-	INT32 nInterleave = 100;
-	INT32 nSoundBufferPos = 0;
-	INT32 nCyclesTotal[2] = { 1536000 / 60, 6144000 / 60 };
+	INT32 nInterleave = 256;
+	INT32 nCyclesTotal[2] = { 1536000 / 60, 1536000 / 60 };
 	nCyclesDone[0] = nCyclesDone[1] = 0;
+
+	M6809Open(0);
+	HD63701Open(0);
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		INT32 nNext;
-
-		M6809Open(0);
-		nNext = (i + 1) * nCyclesTotal[0] / nInterleave;
-		nCyclesDone[0] += M6809Run(nNext - nCyclesDone[0]);
+		CPU_RUN(0, M6809);
 		if (i == (nInterleave - 1) && interrupt_enable[0]) {
-			M6809SetIRQLine(0, M6809_IRQSTATUS_ACK);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		}
-		M6809Close();
 
-	//	HD63701Open(0);
 		if (hd63701_in_reset == 0) {
 			sync_HD63701(1);
 
 			if (i == (nInterleave - 1) && interrupt_enable[1]) {
-				HD63701SetIRQLine(0, M6800_IRQSTATUS_ACK);
+				HD63701SetIRQLine(0, CPU_IRQSTATUS_ACK);
 			}
 		} else {
 			sync_HD63701(0);
 		}
-		//	HD63701Close();
-		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			NamcoSoundUpdate(pSoundBuf, nSegmentLength);
-			nSoundBufferPos += nSegmentLength;
-		}
 	}
 
-	if (pBurnSoundOut) {
-		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+	HD63701Close();
+	M6809Close();
 
-		if (nSegmentLength) {
-			NamcoSoundUpdate(pSoundBuf, nSegmentLength);
-		}
+	if (pBurnSoundOut) {
+		NamcoSoundUpdate(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	if (pBurnDraw) {
@@ -864,15 +870,13 @@ static INT32 DrvFrame()
 
 static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
-	return 1; // Broken :(
-
 	struct BurnArea ba;
 
 	if (pnMin) {
 		*pnMin = 0x029707;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -929,8 +933,8 @@ struct BurnDriver BurnDrvSkykid = {
 	"skykid", NULL, NULL, NULL, "1985",
 	"Sky Kid (new version)\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, skykidRomInfo, skykidRomName, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, skykidRomInfo, skykidRomName, NULL, NULL, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
 	288, 224, 4, 3
 };
@@ -967,8 +971,8 @@ struct BurnDriver BurnDrvSkykido = {
 	"skykido", "skykid", NULL, NULL, "1985",
 	"Sky Kid (old version)\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, skykidoRomInfo, skykidoRomName, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, skykidoRomInfo, skykidoRomName, NULL, NULL, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
 	288, 224, 4, 3
 };
@@ -1005,8 +1009,8 @@ struct BurnDriver BurnDrvSkykidd = {
 	"skykidd", "skykid", NULL, NULL, "1985",
 	"Sky Kid (CUS60 version)\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, skykiddRomInfo, skykiddRomName, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, skykiddRomInfo, skykiddRomName, NULL, NULL, NULL, NULL, SkykidInputInfo, SkykidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
 	288, 224, 4, 3
 };
@@ -1043,12 +1047,18 @@ struct BurnDriver BurnDrvSkykids = {
 	"skykids", "skykid", NULL, NULL, "1985",
 	"Sky Kid (Sipem)\0", NULL, "Namco [Sipem license]", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, skykidsRomInfo, skykidsRomName, NULL, NULL, SkykidInputInfo, SkykidsDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, skykidsRomInfo, skykidsRomName, NULL, NULL, NULL, NULL, SkykidInputInfo, SkykidsDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
 	288, 224, 4, 3
 };
 
+static INT32 DrgnbstrInit()
+{
+	drgnbstr = 1;
+
+	return DrvInit();
+}
 
 // Dragon Buster
 
@@ -1081,8 +1091,8 @@ struct BurnDriver BurnDrvDrgnbstr = {
 	"drgnbstr", NULL, NULL, NULL, "1984",
 	"Dragon Buster\0", "Missing sounds", "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_SCRFIGHT, 0,
-	NULL, drgnbstrRomInfo, drgnbstrRomName, NULL, NULL, SkykidInputInfo, DrgnbstrDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_SCRFIGHT, 0,
+	NULL, drgnbstrRomInfo, drgnbstrRomName, NULL, NULL, NULL, NULL, SkykidInputInfo, DrgnbstrDIPInfo,
+	DrgnbstrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x500,
 	288, 224, 4, 3
 };

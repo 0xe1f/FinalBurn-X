@@ -2,6 +2,7 @@
 // QSound - Z80
 
 static INT32 nQsndZBank = 0;
+static UINT8 QscCmd[2] = {0, 0};
 
 // Map in the memory for the current 0x8000-0xc000 music bank
 static INT32 QsndZBankMap()
@@ -34,8 +35,6 @@ static INT32 QsndZBankMap()
 	return 0;
 }
 
-static UINT8 QscCmd[2] = {0, 0};
-
 void __fastcall QsndZWrite(UINT16 a, UINT8 d)
 {
 	if (a == 0xd000) {
@@ -62,8 +61,8 @@ void __fastcall QsndZWrite(UINT16 a, UINT8 d)
 
 UINT8 __fastcall QsndZRead(UINT16 a)
 {
-	if (a == 0xd007) {						// return ready all the time
-		return 0x80;
+	if (a == 0xd007) {						// DSP status
+		return QscRead();
 	}
 	return 0;
 }
@@ -115,6 +114,8 @@ INT32 QsndZInit()
 
 	ZetClose();
 
+	QscCmd[0] = QscCmd[1] = 0;
+
 	return 0;
 }
 
@@ -129,6 +130,7 @@ INT32 QsndZScan(INT32 nAction)
 {
 	ZetScan(nAction);					// Scan Z80
 	SCAN_VAR(nQsndZBank);
+	SCAN_VAR(QscCmd);
 
 	if (nAction & ACB_WRITE) {			// If write, bank could have changed
 		ZetOpen(0);

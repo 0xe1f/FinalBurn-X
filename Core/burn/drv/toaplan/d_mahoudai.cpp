@@ -1,3 +1,6 @@
+// FB Alpha Mahou Daisakusen driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 // Mahou Daisakusen
 
@@ -45,7 +48,7 @@ static struct BurnRomInfo sstrikerRomDesc[] = {
 STD_ROM_PICK(sstriker)
 STD_ROM_FN(sstriker)
 
-static struct BurnRomInfo sstrikraRomDesc[] = {
+static struct BurnRomInfo sstrikerkRomDesc[] = {
 	{ "ra-ma-01_01.u65",  0x080000, 0x92259F84, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 
 	{ "ra-ma01-rom2.u2",  0x100000, 0x54E2BD95, BRF_GRA },			 //  1 GP9001 Tile data
@@ -59,8 +62,8 @@ static struct BurnRomInfo sstrikraRomDesc[] = {
 };
 
 
-STD_ROM_PICK(sstrikra)
-STD_ROM_FN(sstrikra)
+STD_ROM_PICK(sstrikerk)
+STD_ROM_FN(sstrikerk)
 
 static struct BurnInputInfo mahoudaiInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvButton + 3,	"p1 coin"},
@@ -100,13 +103,13 @@ static struct BurnDIPInfo mahoudaiDIPList[] = {
 	{0x15,	0xFF, 0xFF,	0x00, NULL},
 
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Coin mode"},
 	{0x14,	0x01, 0x01,	0x00, "Coin play"},
 	{0x14,	0x01, 0x01,	0x01, "Free play"},
 	{0,		0xFE, 0,	2,	  "Screen"},
 	{0x14,	0x01, 0x02,	0x00, "Normal"},
 	{0x14,	0x01, 0x02,	0x02, "Invert"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -141,7 +144,7 @@ static struct BurnDIPInfo mahoudaiDIPList[] = {
 	{0,		0xFE, 0,	2,	  "No death & stop mode"},
     {0x15,	0x01, 0x40,	0x00, "Off"},
     {0x15,	0x01, 0x40,	0x40, "On"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Continue mode"},
     {0x15,	0x01, 0x80,	0x00, "Continue play"},
 	{0x15,	0x01, 0x80,	0x80, "Continue impossible"},
 };
@@ -178,8 +181,25 @@ static struct BurnDIPInfo sstrikerRegionDIPList[] = {
     {0x16,	0x01, 0x0E,	0x00, "Japan"},
 };
 
+static struct BurnDIPInfo sstrikerkRegionDIPList[] = {
+	// Defaults
+	{0x16,	0xFF, 0x0E,	0x0A, NULL},
+
+	// Region
+	{0,		0xFE, 0,	7,	  "Region"},
+    {0x16,	0x01, 0x0E,	0x02, "U.S.A."},
+    {0x16,	0x01, 0x0E,	0x04, "Europe"},
+    {0x16,	0x01, 0x0E,	0x06, "South East Asia"},
+    {0x16,	0x01, 0x0E,	0x08, "China"},
+    {0x16,	0x01, 0x0E,	0x0A, "Korea"},
+    {0x16,	0x01, 0x0E,	0x0C, "Hong Kong"},
+    {0x16,	0x01, 0x0E,	0x0E, "Taiwan"},
+    {0x16,	0x01, 0x0E,	0x00, "Japan"},
+};
+
 STDDIPINFOEXT(mahoudai, mahoudai, mahoudaiRegion)
 STDDIPINFOEXT(sstriker, mahoudai, sstrikerRegion)
+STDDIPINFOEXT(sstrikerk, mahoudai, sstrikerkRegion)
 
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
@@ -234,8 +254,8 @@ static INT32 DrvScan(INT32 nAction, INT32* pnMin)
 		SekScan(nAction);				// scan 68000 states
 		ZetScan(nAction);				// Scan Z80
 
-		MSM6295Scan(0, nAction);
-		BurnYM2151Scan(nAction);
+		MSM6295Scan(nAction, pnMin);
+		BurnYM2151Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 
@@ -269,10 +289,10 @@ UINT8 __fastcall mahoudaiZ80Read(UINT16 nAddress)
 {
 //	bprintf(PRINT_NORMAL, "z80 read %4X\n", nAddress);
 	if (nAddress == 0xE001) {
-		return BurnYM2151ReadStatus();
+		return BurnYM2151Read();
 	}
 	if (nAddress == 0xE004) {
-		return MSM6295ReadStatus(0);
+		return MSM6295Read(0);
 	}
 	return 0;
 }
@@ -289,7 +309,7 @@ void __fastcall mahoudaiZ80Write(UINT16 nAddress, UINT8 nValue)
 			BurnYM2151WriteRegister(nValue);
 			break;
 		case 0xE004:
-			MSM6295Command(0, nValue);
+			MSM6295Write(0, nValue);
 //			bprintf(PRINT_NORMAL, "OKI M6295 command %02X sent\n", nValue);
 			break;
 	}
@@ -449,6 +469,8 @@ static INT32 DrvDoReset()
 	MSM6295Reset(0);
 	BurnYM2151Reset();
 
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -482,13 +504,13 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,			0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,			0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(RamPal,		0x400000, 0x400FFF, SM_RAM);	// Palette RAM
-		SekMapMemory(Ram02,			0x401000, 0x4017FF, SM_RAM);	// Unused
-		SekMapMemory(ExtraTRAM,		0x500000, 0x502FFF, SM_RAM);
-		SekMapMemory(ExtraTSelect,	0x502000, 0x502FFF, SM_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
-		SekMapMemory(ExtraTScroll,	0x503000, 0x503FFF, SM_RAM);	// 0x203000 - Offset; 0x503200 - RAM
+		SekMapMemory(Rom01,			0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,			0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x400000, 0x400FFF, MAP_RAM);	// Palette RAM
+		SekMapMemory(Ram02,			0x401000, 0x4017FF, MAP_RAM);	// Unused
+		SekMapMemory(ExtraTRAM,		0x500000, 0x502FFF, MAP_RAM);
+		SekMapMemory(ExtraTSelect,	0x502000, 0x502FFF, MAP_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
+		SekMapMemory(ExtraTScroll,	0x503000, 0x503FFF, MAP_RAM);	// 0x203000 - Offset; 0x503200 - RAM
 
 		SekSetReadWordHandler(0, mahoudaiReadWord);
 		SekSetReadByteHandler(0, mahoudaiReadByte);
@@ -612,7 +634,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			bVBlank = true;
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -665,29 +687,29 @@ static INT32 DrvFrame()
 struct BurnDriver BurnDrvMahouDai = {
 	"mahoudai", "sstriker", NULL, NULL, "1993",
 	"Mahou Daisakusen (Japan)\0", NULL, "Raizing", "Toaplan GP9001 based",
-	L"\u9B54\u6CD5\u5927\u4F5C\u6226\0Mahou Daisakusen (Japan)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, mahoudaiRomInfo, mahoudaiRomName, NULL, NULL, mahoudaiInputInfo, mahoudaiDIPInfo,
+	L"\u9B54\u6CD5\u5927\u4F5C\u6226 (Mahou Daisakusen Japan)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, FBF_MAHOU,
+	NULL, mahoudaiRomInfo, mahoudaiRomName, NULL, NULL, NULL, NULL, mahoudaiInputInfo, mahoudaiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvSStriker = {
 	"sstriker", NULL, NULL, NULL, "1993",
-	"Sorcer Striker (World)\0", NULL, "Raizing", "Toaplan GP9001 based",
+	"Sorcer Striker\0", NULL, "Raizing", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, sstrikerRomInfo, sstrikerRomName, NULL, NULL, mahoudaiInputInfo, sstrikerDIPInfo,
+	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, FBF_MAHOU,
+	NULL, sstrikerRomInfo, sstrikerRomName, NULL, NULL, NULL, NULL, mahoudaiInputInfo, sstrikerDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
 
-struct BurnDriver BurnDrvSStrikrA = {
-	"sstrikera", "sstriker", NULL, NULL, "1993",
-	"Sorcer Striker (World, alt)\0", NULL, "Raizing", "Toaplan GP9001 based",
+struct BurnDriver BurnDrvSStrikerk = {
+	"sstrikerk", "sstriker", NULL, NULL, "1993",
+	"Sorcer Striker (Korea)\0", NULL, "Raizing (Unite Trading license)", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, sstrikraRomInfo, sstrikraRomName, NULL, NULL, mahoudaiInputInfo, sstrikerDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, FBF_MAHOU,
+	NULL, sstrikerkRomInfo, sstrikerkRomName, NULL, NULL, NULL, NULL, mahoudaiInputInfo, sstrikerkDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };

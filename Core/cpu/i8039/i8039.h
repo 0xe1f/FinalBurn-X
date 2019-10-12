@@ -10,7 +10,7 @@
 #include "driver.h"
 
 #define HAS_N7751	1
-#define HAS_I8035	0
+#define HAS_I8035   1
 #define HAS_I8048	0
 #define HAS_I8749	0
 #define HAS_MB8884	0
@@ -37,15 +37,9 @@ typedef unsigned char (__fastcall *i8039ReadProgHandler)(unsigned int a);
 typedef void (__fastcall *i8039WriteProgHandler)(unsigned int a, unsigned char v);
 typedef unsigned char (__fastcall *i8039ReadOpHandler)(unsigned int a);
 typedef unsigned char (__fastcall *i8039ReadOpArgHandler)(unsigned int a);
-extern i8039ReadIoHandler I8039IORead;
-extern i8039WriteIoHandler I8039IOWrite;
-extern i8039ReadProgHandler I8039ProgramRead;
-extern i8039WriteProgHandler I8039ProgramWrite;
-extern i8039ReadOpHandler I8039CPUReadOp;
-extern i8039ReadOpArgHandler I8039CPUReadOpArg;
 
+extern void I8039Init(INT32 nCpu);
 extern int I8039Run(int cycles);
-extern void I8039Init(int (*irqcallback)(int));
 extern void I8039SetIOReadHandler(i8039ReadIoHandler handler);
 extern void I8039SetIOWriteHandler(i8039WriteIoHandler handler);
 extern void I8039SetProgramReadHandler(i8039ReadProgHandler handler);
@@ -56,45 +50,73 @@ extern void I8039Exit();
 extern void I8039Reset (void);
 extern void I8039SetIrqState(int state);
 extern int I8039Scan(int nAction,int *pnMin);
-
-extern int N7751Run(int cycles);
-extern void N7751Init(int (*irqcallback)(int));
-extern void N7751SetIOReadHandler(i8039ReadIoHandler handler);
-extern void N7751SetIOWriteHandler(i8039WriteIoHandler handler);
-extern void N7751SetProgramReadHandler(i8039ReadProgHandler handler);
-extern void N7751SetProgramWriteHandler(i8039WriteProgHandler handler);
-extern void N7751SetCPUOpReadHandler(i8039ReadOpHandler handler);
-extern void N7751SetCPUOpReadArgHandler(i8039ReadOpArgHandler handler);
-extern void N7751Exit();
-extern void N7751Reset (void);
-extern void N7751SetIrqState(int state);
-extern int N7751Scan(int nAction,int *pnMin);
-
+extern void I8039Open(INT32 nCpu);
+extern void I8039Close();
+extern INT32 I8039GetActive();
 extern INT32 I8039TotalCycles();
+extern INT32 I8039Idle(INT32 cycles);
 extern void I8039NewFrame();
+
+extern void N7751Init(INT32 nCpu);
+#define N7751Run                    I8039Run
+#define N7751SetIOReadHandler       I8039SetIOReadHandler
+#define N7751SetIOWriteHandler      I8039SetIOWriteHandler
+#define N7751SetProgramReadHandler  I8039SetProgramReadHandler
+#define N7751SetProgramWriteHandler I8039SetProgramWriteHandler
+#define N7751SetCPUOpReadHandler    I8039SetCPUOpReadHandler
+#define N7751SetCPUOpReadArgHandler I8039SetCPUOpReadArgHandler
+#define N7751Exit                   I8039Exit
+#define N7751Reset                  I8039Reset
+#define N7751SetIrqState            I8039SetIrqState
+#define N7751Scan                   I8039Scan
+#define N7751Open					I8039Open
+#define N7751Close					I8039Close
+#define N7751GetActive				I8039GetActive
+#define N7751TotalCycles			I8039TotalCycles
+#define N7751NewFrame				I8039NewFrame
+#define N7751Idle                   I8039Idle
+
+extern void I8035Init(INT32 nCpu);
+#define I8035Run                    I8039Run
+#define I8035SetIOReadHandler       I8039SetIOReadHandler
+#define I8035SetIOWriteHandler      I8039SetIOWriteHandler
+#define I8035SetProgramReadHandler  I8039SetProgramReadHandler
+#define I8035SetProgramWriteHandler I8039SetProgramWriteHandler
+#define I8035SetCPUOpReadHandler    I8039SetCPUOpReadHandler
+#define I8035SetCPUOpReadArgHandler I8039SetCPUOpReadArgHandler
+#define I8035Exit                   I8039Exit
+#define I8035Reset                  I8039Reset
+#define I8035SetIrqState            I8039SetIrqState
+#define I8035Scan                   I8039Scan
+#define I8035Open					I8039Open
+#define I8035Close					I8039Close
+#define I8035GetActive				I8039GetActive
+#define I8035TotalCycles			I8039TotalCycles
+#define I8035NewFrame				I8039NewFrame
+#define I8035Idle                   I8039Idle
 
 /*
  *   Input a UINT8 from given I/O port
  */
-#define I8039_In(Port) ((UINT8)I8039IORead(Port))
+#define I8039_In(Port) ((UINT8)HPtr->I8039IORead(Port))
 
 
 /*
  *   Output a UINT8 to given I/O port
  */
-#define I8039_Out(Port,Value) (I8039IOWrite(Port,Value))
+#define I8039_Out(Port,Value) (HPtr->I8039IOWrite(Port,Value))
 
 
 /*
  *   Read a UINT8 from given memory location
  */
-#define I8039_RDMEM(A) ((unsigned)I8039ProgramRead(A))
+#define I8039_RDMEM(A) ((unsigned)HPtr->I8039ProgramRead(A))
 
 
 /*
  *   Write a UINT8 to given memory location
  */
-#define I8039_WRMEM(A,V) (I8039ProgramWrite(A,V))
+#define I8039_WRMEM(A,V) (HPtr->I8039ProgramWrite(A,V))
 
 
 /*
@@ -102,7 +124,7 @@ extern void I8039NewFrame();
  *   opcodes. In case of system with memory mapped I/O, this function can be
  *   used to greatly speed up emulation
  */
-#define I8039_RDOP(A) ((unsigned)I8039CPUReadOp(A))
+#define I8039_RDOP(A) ((unsigned)HPtr->I8039CPUReadOp(A))
 
 
 /*
@@ -110,7 +132,7 @@ extern void I8039NewFrame();
  *   opcode arguments. This difference can be used to support systems that
  *   use different encoding mechanisms for opcodes and opcode arguments
  */
-#define I8039_RDOP_ARG(A) ((unsigned)I8039CPUReadOpArg(A))
+#define I8039_RDOP_ARG(A) ((unsigned)HPtr->I8039CPUReadOpArg(A))
 
 
 
@@ -160,7 +182,6 @@ extern void i8039_get_info(UINT32 state, cpuinfo *info);
 
 #define i8035_ICount			i8039_ICount
 
-extern void i8035_get_info(UINT32 state, cpuinfo *info);
 #endif
 
 /**************************************************************************

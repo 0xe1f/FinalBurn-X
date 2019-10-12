@@ -99,7 +99,7 @@ static void __fastcall kontest_write_port(UINT16 port, UINT8 data)
 
 		case 0x08:
 			*irq_enable = data & 0x08;
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 		return;
 	}
 }
@@ -292,7 +292,7 @@ static INT32 DrvFrame()
 	ZetRun(3000000 / 60);
 
 	if (*irq_enable)
-		ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 
 	ZetClose();
 
@@ -354,7 +354,7 @@ struct BurnDriver BurnDrvKontest = {
 	"Konami Test Board (GX800, Japan)\0", NULL, "Konami", "GX800",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_MISC, 0,
-	NULL, kontestRomInfo, kontestRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	NULL, kontestRomInfo, kontestRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x20,
 	256, 224, 4, 3
 };

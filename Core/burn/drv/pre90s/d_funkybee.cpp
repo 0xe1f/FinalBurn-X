@@ -3,10 +3,7 @@
 
 #include "tiles_generic.h"
 #include "z80_intf.h"
-#include "driver.h"
-extern "C" {
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -22,8 +19,6 @@ static UINT8 *DrvColRAM;
 
 static UINT32 *DrvPalette;
 static UINT8  DrvRecalc;
-
-static INT16 *pAY8910Buffer[3];
 
 static UINT8 *scroll;
 static UINT8 *flipscreen;
@@ -341,7 +336,7 @@ static void DrvPaletteInit()
 		bit2 = (DrvColPROM[i] >> 7) & 0x01;
 		INT32 b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		DrvPalette[i] = (r << 16) | (g << 8) | b;
+		DrvPalette[i] = BurnHighCol(r, g, b, 0);
 	}
 }
 
@@ -369,10 +364,6 @@ static INT32 MemIndex()
 	scroll			= Next; Next += 0x000001;
 
 	RamEnd			= Next;
-
-	pAY8910Buffer[0]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[1]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[2]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
 
 	MemEnd			= Next;
 
@@ -416,24 +407,18 @@ static INT32 DrvInit(INT32 game)
 
 	ZetInit(0);
 	ZetOpen(0);
-	ZetMapArea(0x0000, 0x4fff, 0, DrvZ80ROM);
-	ZetMapArea(0x0000, 0x4fff, 2, DrvZ80ROM);
-	ZetMapArea(0x8000, 0x87ff, 0, DrvZ80RAM);
-	ZetMapArea(0x8000, 0x87ff, 1, DrvZ80RAM);
-	ZetMapArea(0x8000, 0x87ff, 2, DrvZ80RAM);
-	ZetMapArea(0xa000, 0xbfff, 0, DrvVidRAM);
-	ZetMapArea(0xa000, 0xbfff, 1, DrvVidRAM);
-	ZetMapArea(0xa000, 0xbfff, 2, DrvVidRAM);
-	ZetMapArea(0xc000, 0xdfff, 0, DrvColRAM);
-	ZetMapArea(0xc000, 0xdfff, 1, DrvColRAM);
-	ZetMapArea(0xc000, 0xdfff, 2, DrvColRAM);
+	ZetMapMemory(DrvZ80ROM,	0x0000, 0x4fff, MAP_ROM);
+	ZetMapMemory(DrvZ80RAM,	0x8000, 0x87ff, MAP_RAM);
+	ZetMapMemory(DrvVidRAM,	0xa000, 0xbfff, MAP_RAM);
+	ZetMapMemory(DrvColRAM,	0xc000, 0xdfff, MAP_RAM);
 	ZetSetWriteHandler(funkybee_write);
 	ZetSetReadHandler(funkybee_read);
 	ZetSetOutHandler(funkybee_out_port);
 	ZetSetInHandler(funkybee_in_port);
 	ZetClose();
 
-	AY8910Init(0, 1500000, nBurnSoundRate, &funkybee_ay8910_read_A, NULL, NULL, NULL);
+	AY8910Init(0, 1500000, 0);
+	AY8910SetPorts(0, &funkybee_ay8910_read_A, NULL, NULL, NULL);
 	AY8910SetAllRoutes(0, 0.50, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
@@ -571,11 +556,11 @@ static INT32 DrvFrame()
 
 	ZetOpen(0);
 	ZetRun(3072000 / 60);
-	ZetRaiseIrq(0);
+	ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 	ZetClose();
 
 	if (pBurnSoundOut) {
-		AY8910Render(&pAY8910Buffer[0], pBurnSoundOut, nBurnSoundLen, 0);
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	if (pBurnDraw) {
@@ -637,7 +622,7 @@ struct BurnDriver BurnDrvfunkybee = {
 	"Funky Bee\0", NULL, "Orca", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, funkybeeRomInfo, funkybeeRomName, NULL, NULL, DrvInputInfo, funkybeeDIPInfo,
+	NULL, funkybeeRomInfo, funkybeeRomName, NULL, NULL, NULL, NULL, DrvInputInfo, funkybeeDIPInfo,
 	funkybeeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x20,
 	224, 236, 3, 4
 };
@@ -665,7 +650,7 @@ struct BurnDriver BurnDrvfunkbeeb = {
 	"Funky Bee (bootleg, harder)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, funkbeebRomInfo, funkbeebRomName, NULL, NULL, DrvInputInfo, funkbeebDIPInfo,
+	NULL, funkbeebRomInfo, funkbeebRomName, NULL, NULL, NULL, NULL, DrvInputInfo, funkbeebDIPInfo,
 	funkybeeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x20,
 	224, 236, 3, 4
 };
@@ -697,7 +682,7 @@ struct BurnDriver BurnDrvskylancr = {
 	"Sky Lancer\0", NULL, "Orca", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_PRE90S, GBF_SHOOT, 0,
-	NULL, skylancrRomInfo, skylancrRomName, NULL, NULL, DrvInputInfo, skylancrDIPInfo,
+	NULL, skylancrRomInfo, skylancrRomName, NULL, NULL, NULL, NULL, DrvInputInfo, skylancrDIPInfo,
 	skylancrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x20,
 	224, 236, 3, 4
 };
@@ -724,7 +709,7 @@ struct BurnDriver BurnDrvskylance = {
 	"Sky Lancer (Esco Trading Co license)\0", NULL, "Orca (Esco Trading Co license)", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_PRE90S, GBF_SHOOT, 0,
-	NULL, skylanceRomInfo, skylanceRomName, NULL, NULL, DrvInputInfo, skylanceDIPInfo,
+	NULL, skylanceRomInfo, skylanceRomName, NULL, NULL, NULL, NULL, DrvInputInfo, skylanceDIPInfo,
 	skylancrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x20,
 	224, 236, 3, 4
 };

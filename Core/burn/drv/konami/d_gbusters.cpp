@@ -23,7 +23,7 @@ static UINT8 *DrvBankRAM;
 static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
 static UINT8 *soundlatch;
@@ -148,9 +148,9 @@ static void set_ram_bank(INT32 data)
 	nDrvRamBank[0] = data;
 
 	if (~data & 0x01) {
-		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, MAP_RAM);
 	} else {
-		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, MAP_RAM);
 	}
 }
 
@@ -168,7 +168,7 @@ void gbusters_main_write(UINT16 address, UINT8 data)
 
 		case 0x1f88:
 			ZetSetVector(0xff);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 
 		return;
 
@@ -256,11 +256,11 @@ UINT8 __fastcall gbusters_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0xa000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 
 		case 0xc001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 	}
 
 	return 0;
@@ -272,7 +272,7 @@ static void gbusters_set_lines(INT32 lines)
 
 	nDrvKonamiBank[1] = lines;
 
-	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, MAP_ROM); 
 }
 
 static void DrvK007232VolCallback(INT32 v)
@@ -311,6 +311,7 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
+	K007232Reset(0);
 	BurnYM2151Reset();
 
 	KonamiICReset();
@@ -353,30 +354,14 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane0[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 Plane1[4] = { 0x000, 0x008, 0x010, 0x018 };
-	INT32 XOffs[16] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
-			  0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107 };
-	INT32 YOffs[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
-			  0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x80000);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x80000);
-
-	GfxDecode(0x04000, 4,  8,  8, Plane0, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-	GfxDecode(0x01000, 4, 16, 16, Plane1, XOffs, YOffs, 0x400, DrvGfxROM1, DrvGfxROMExp1);
-
-	return 0;
-}
-
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
-	if ((AllMem = (UINT8 *)malloc(nLen)) == NULL) return 1;
+	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(AllMem, 0, nLen);
 	MemIndex();
 
@@ -388,23 +373,24 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x040000,  4, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  3, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  4, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x040000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  5, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  6, 4, 2)) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000,  7, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x080000);
+		K051960GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x080000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM,           0x4000, 0x57ff, KON_RAM);
-	konamiMapMemory(DrvBankRAM,          0x5800, 0x5fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000, 0x6000, 0x7fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM,           0x4000, 0x57ff, MAP_RAM);
+	konamiMapMemory(DrvBankRAM,          0x5800, 0x5fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000, 0x6000, 0x7fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(gbusters_main_write);
 	konamiSetReadHandler(gbusters_main_read);
 	konamiSetlinesCallback(gbusters_set_lines);
@@ -428,15 +414,13 @@ static INT32 DrvInit()
 	K007232SetPortWriteHandler(0, DrvK007232VolCallback);
 	K007232PCMSetAllRoutes(0, 0.30, BURN_SND_ROUTE_BOTH);
 
-	K052109Init(DrvGfxROM0, 0x7ffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x7ffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K051960Init(DrvGfxROM1, 0x7ffff);
+	K051960Init(DrvGfxROM1, DrvGfxROMExp1, 0x7ffff);
 	K051960SetCallback(K051960Callback);
 	K051960SetSpriteOffset(8, 0);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -462,30 +446,30 @@ static INT32 DrvExit()
 
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		KonamiRecalcPal(DrvPalRAM, DrvPalette, 0x800);
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x800);
 
 	K052109UpdateScroll();
 
 	if (nDrvRamBank[0] & 0x08)
 	{
 
-		if (nBurnLayer & 1) K052109RenderLayer(2, 1, DrvGfxROMExp0);
-		K051960SpritesRender(DrvGfxROMExp1, 2);
-		if (nBurnLayer & 2) K052109RenderLayer(1, 0, DrvGfxROMExp0);
+		if (nBurnLayer & 1) K052109RenderLayer(2, K052109_OPAQUE, 0);
+		if (nSpriteEnable & 1) K051960SpritesRender(2, 2);
+		if (nBurnLayer & 2) K052109RenderLayer(1, 0, 0);
+		if (nSpriteEnable & 2) K051960SpritesRender(0, 0);
+		if (nBurnLayer & 4) K052109RenderLayer(0, 0, 0);
+
 	}
 	else
 	{
-		if (nBurnLayer & 4) K052109RenderLayer(1, 1, DrvGfxROMExp0);
-		K051960SpritesRender(DrvGfxROMExp1, 2);
-		if (nBurnLayer & 8) K052109RenderLayer(2, 0, DrvGfxROMExp0);
+		if (nBurnLayer & 1) K052109RenderLayer(1, K052109_OPAQUE, 0);
+		if (nSpriteEnable & 1) K051960SpritesRender(2, 2);
+		if (nBurnLayer & 2) K052109RenderLayer(2, 0, 0);
+		if (nSpriteEnable & 2) K051960SpritesRender(0, 0);
+		if (nBurnLayer & 4) K052109RenderLayer(0, 0, 0);
 	}
 
-	K051960SpritesRender(DrvGfxROMExp1, 1);
-	K052109RenderLayer(0, 0, DrvGfxROMExp0);
-
-	BurnTransferCopy(DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -541,7 +525,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -578,10 +562,10 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
 		K007232Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
@@ -624,8 +608,8 @@ struct BurnDriver BurnDrvGbusters = {
 	"gbusters", NULL, NULL, NULL, "1988",
 	"Gang Busters (set 1)\0", NULL, "Konami", "GX878",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_SHOOT, 0,
-	NULL, gbustersRomInfo, gbustersRomName, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, gbustersRomInfo, gbustersRomName, NULL, NULL, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	224, 288, 3, 4
 };
@@ -657,8 +641,8 @@ struct BurnDriver BurnDrvGbustera = {
 	"gbustersa", "gbusters", NULL, NULL, "1988",
 	"Gang Busters (set 2)\0", NULL, "Konami", "GX878",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_SHOOT, 0,
-	NULL, gbusteraRomInfo, gbusteraRomName, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, gbusteraRomInfo, gbusteraRomName, NULL, NULL, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	224, 288, 3, 4
 };
@@ -690,8 +674,8 @@ struct BurnDriver BurnDrvCrazycop = {
 	"crazycop", "gbusters", NULL, NULL, "1988",
 	"Crazy Cop (Japan)\0", NULL, "Konami", "GX878",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_SHOOT, 0,
-	NULL, crazycopRomInfo, crazycopRomName, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, crazycopRomInfo, crazycopRomName, NULL, NULL, NULL, NULL, GbustersInputInfo, GbustersDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	224, 288, 3, 4
 };

@@ -1,6 +1,10 @@
+// Based on MAME sources by Olivier Galibert,Aaron Giles
+/*********************************************************/
+/*    ricoh RF5C68(or clone) PCM controller              */
+/*********************************************************/
+
 #include "burnint.h"
 #include "rf5c68.h"
-#include "burn_sound.h"
 
 #define NUM_CHANNELS	(8)
 
@@ -35,7 +39,7 @@ static INT32 *right = NULL;
 
 void RF5C68PCMUpdate(INT16* pSoundBuf, INT32 length)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMUpdate called without init\n"));
 #endif
 
@@ -103,14 +107,15 @@ void RF5C68PCMUpdate(INT16* pSoundBuf, INT32 length)
 		nLeftSample = BURN_SND_CLIP(nLeftSample);
 		nRightSample = BURN_SND_CLIP(nRightSample);
 		
-		pSoundBuf[i + 0] = nLeftSample;
-		pSoundBuf[i + 1] = nRightSample;
+		pSoundBuf[0] = nLeftSample;
+		pSoundBuf[1] = nRightSample;
+		pSoundBuf += 2;
 	}
 }
 
 void RF5C68PCMReset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMReset called without init\n"));
 #endif
 
@@ -119,14 +124,14 @@ void RF5C68PCMReset()
 
 void RF5C68PCMInit(INT32 clock)
 {
-	chip = (struct rf5c68pcm*)malloc(sizeof(struct rf5c68pcm));
+	chip = (struct rf5c68pcm*)BurnMalloc(sizeof(struct rf5c68pcm));
 	
 	INT32 Rate = clock / 384;
 	
 	nUpdateStep = (INT32)(((float)Rate / nBurnSoundRate) * 32768);
 	
-	left = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
-	right = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
+	left = (INT32*)BurnMalloc(nBurnSoundLen * sizeof(INT32));
+	right = (INT32*)BurnMalloc(nBurnSoundLen * sizeof(INT32));
 	
 	chip->volume[BURN_SND_RF5C68PCM_ROUTE_1] = 1.00;
 	chip->volume[BURN_SND_RF5C68PCM_ROUTE_2] = 1.00;
@@ -138,7 +143,7 @@ void RF5C68PCMInit(INT32 clock)
 
 void RF5C68PCMSetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMSetRoute called without init\n"));
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("RF5C68PCMSetRoute called with invalid index %i\n"), nIndex);
 #endif
@@ -149,23 +154,18 @@ void RF5C68PCMSetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void RF5C68PCMExit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMExit called without init\n"));
 #endif
 
-	if (left) {
-		free(left);
-		left = NULL;
-	}
-	if (right) {
-		free(right);
-		right = NULL;
-	}
+	BurnFree(left);
+	BurnFree(right);
+	BurnFree(chip);
 
 	DebugSnd_RF5C68Initted = 0;
 }
 
-void RF5C68PCMScan(INT32 nAction)
+void RF5C68PCMScan(INT32 nAction, INT32 *)
 {
 	struct BurnArea ba;
 	
@@ -179,24 +179,13 @@ void RF5C68PCMScan(INT32 nAction)
 		SCAN_VAR(chip->cbank);
 		SCAN_VAR(chip->wbank);
 		SCAN_VAR(chip->enable);
-		
-		for (INT32 i = 0; i < NUM_CHANNELS; i++) {
-			pcm_channel *Chan = &chip->chan[i];
-			
-			SCAN_VAR(Chan->enable);
-			SCAN_VAR(Chan->env);
-			SCAN_VAR(Chan->pan);
-			SCAN_VAR(Chan->start);
-			SCAN_VAR(Chan->addr);
-			SCAN_VAR(Chan->step);
-			SCAN_VAR(Chan->loopst);
-		}		
+		SCAN_VAR(chip->chan);
 	}
 }
 
 void RF5C68PCMRegWrite(UINT8 offset, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMReqWrite called without init\n"));
 #endif
 
@@ -265,7 +254,7 @@ void RF5C68PCMRegWrite(UINT8 offset, UINT8 data)
 
 UINT8 RF5C68PCMRead(UINT16 offset)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMRead called without init\n"));
 #endif
 
@@ -274,7 +263,7 @@ UINT8 RF5C68PCMRead(UINT16 offset)
 
 void RF5C68PCMWrite(UINT16 offset, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_RF5C68Initted) bprintf(PRINT_ERROR, _T("RF5C68PCMWrite called without init\n"));
 #endif
 

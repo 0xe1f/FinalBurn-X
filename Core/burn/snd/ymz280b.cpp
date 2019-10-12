@@ -1,12 +1,15 @@
 // Yamaha YMZ280B module
+// Emulation by Jan Klaassen
+
 #include <math.h>
 #include "burnint.h"
 #include "ymz280b.h"
-#include "burn_sound.h"
 
 static INT32 nYMZ280BSampleRate;
+bool bESPRaDeMixerKludge = false;
 
 UINT8* YMZ280BROM;
+UINT32 YMZ280BROMSIZE = 0xffffff; // 16meg max addressable rom size
 void (*pYMZ280BRAMWrite)(INT32 offset, INT32 nValue) = NULL;
 INT32 (*pYMZ280BRAMRead)(INT32 offset) = NULL;
 
@@ -30,6 +33,8 @@ static INT32 YMZ280BStepShift[8] = {0x0E6, 0x0E6, 0x0E6, 0x0E6, 0x133, 0x199, 0x
 
 static double YMZ280BVolumes[2];
 static INT32 YMZ280BRouteDirs[2];
+
+static INT32 our_interpolation = 0; // ESP.Ra.De clicks with cubic, lets force off for that game.
 
 struct sYMZ280BChannelInfo {
 	bool bEnabled;
@@ -60,7 +65,7 @@ struct sYMZ280BChannelInfo {
 };
 
 static INT32 nActiveChannel, nDelta, nSample, nCount, nRamReadAddress;
-static INT32* buf;
+static INT32* buf = NULL;
 
 sYMZ280BChannelInfo YMZ280BChannelInfo[8];
 static sYMZ280BChannelInfo* channelInfo;
@@ -69,7 +74,7 @@ static INT32* YMZ280BChannelData[8];
 
 void YMZ280BReset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BReset called without init\n"));
 #endif
 
@@ -97,9 +102,9 @@ inline void YMZ280BSetSampleSize(const INT32 nChannel)
 	YMZ280BChannelInfo[nChannel].nSampleSize = (UINT32)rate;
 }
 
-INT32 YMZ280BScan()
+void YMZ280BScan(INT32 , INT32 *)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BScan called without init\n"));
 #endif
 
@@ -117,8 +122,6 @@ INT32 YMZ280BScan()
 		SCAN_VAR(YMZ280BChannelInfo[j]);
 		YMZ280BSetSampleSize(j);
 	}
-
-	return 0;
 }
 
 INT32 YMZ280BInit(INT32 nClock, void (*IRQCallback)(INT32))
@@ -144,14 +147,11 @@ INT32 YMZ280BInit(INT32 nClock, void (*IRQCallback)(INT32))
 
 	YMZ280BIRQCallback = IRQCallback;
 
-	if (pBuffer) {
-		free(pBuffer);
-		pBuffer = NULL;
-	}
-	pBuffer = (INT32*)malloc(nYMZ280BSampleRate *  2 * sizeof(INT32));
+	BurnFree(pBuffer);
+	pBuffer = (INT32*)BurnMalloc(nYMZ280BSampleRate *  2 * sizeof(INT32));
 
 	for (INT32 j = 0; j < 8; j++) {
-		YMZ280BChannelData[j] = (INT32*)malloc(0x1000 * sizeof(INT32));
+		YMZ280BChannelData[j] = (INT32*)BurnMalloc(0x1000 * sizeof(INT32));
 	}
 
 	// default routes
@@ -162,12 +162,22 @@ INT32 YMZ280BInit(INT32 nClock, void (*IRQCallback)(INT32))
 
 	YMZ280BReset();
 
+	our_interpolation = nInterpolation;
+	if (bESPRaDeMixerKludge) our_interpolation = 0;
+
 	return 0;
+}
+
+INT32 YMZ280BInit(INT32 nClock, void (*IRQCallback)(INT32), INT32 rom_len)
+{
+	YMZ280BROMSIZE = rom_len;
+
+	return YMZ280BInit(nClock, IRQCallback);
 }
 
 void YMZ280BSetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("BurnYMZ280BSetRoute called without init\n"));
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("BurnYMZ280BSetRoute called with invalid index %i\n"), nIndex);
 #endif
@@ -178,19 +188,24 @@ void YMZ280BSetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void YMZ280BExit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BExit called without init\n"));
 #endif
 
-	if (pBuffer) {
-		free(pBuffer);
-		pBuffer = NULL;
+	if (!DebugSnd_YMZ280BInitted) return;
+
+	BurnFree(pBuffer);
+
+	for (INT32 j = 0; j < 8; j++) {
+		BurnFree(YMZ280BChannelData[j]);
 	}
 
 	YMZ280BIRQCallback = NULL;
 	pYMZ280BRAMWrite = NULL;
 	pYMZ280BRAMRead = NULL;
-	
+	bESPRaDeMixerKludge = false;
+	YMZ280BROMSIZE = 0xffffff;
+
 	DebugSnd_YMZ280BInitted = 0;
 }
 
@@ -247,14 +262,27 @@ inline static void RampChannel()
 				channelInfo->nSample = 0;
 			}
 		}
+
 	}
 #endif
+}
+
+inline static UINT8 ymz280b_readmem(UINT32 offset)
+{
+	if (offset < YMZ280BROMSIZE) {
+		return YMZ280BROM[offset];
+	} else {
+		// Battle Bakraid, rom length 0xC00000 tries to read from 0xFFFF00 twice in level 5 at the first mid-boss.
+		// Possile protection?  Or just a bug?  Hmmm.. -dink
+		bprintf(0, _T("ymz280b: bad offset: %d!! (max. size: %d)\n"), offset, YMZ280BROMSIZE);
+		return 0;
+	}
 }
 
 inline static void decode_adpcm()
 {
 	// Get next value & compute delta
-	nDelta = YMZ280BROM[channelInfo->nPosition >> 1];
+	nDelta = ymz280b_readmem(channelInfo->nPosition >> 1);
 	if (channelInfo->nPosition & 1) {
 		nDelta &= 0x0F;
 	} else {
@@ -285,7 +313,7 @@ inline static void decode_adpcm()
 
 inline static void decode_pcm8()
 {
-	nDelta = YMZ280BROM[channelInfo->nPosition >> 1];
+	nDelta = ymz280b_readmem(channelInfo->nPosition >> 1);
 
 	channelInfo->nSample = (INT8)nDelta * 256;
 	channelInfo->nPosition+=2;
@@ -293,7 +321,7 @@ inline static void decode_pcm8()
 
 inline static void decode_pcm16()
 {
-	nDelta = (INT16)((YMZ280BROM[channelInfo->nPosition / 2 + 1] << 8) + YMZ280BROM[channelInfo->nPosition / 2]);
+	nDelta = (INT16)((ymz280b_readmem(channelInfo->nPosition / 2 + 1) << 8) + ymz280b_readmem(channelInfo->nPosition / 2));
 
 	channelInfo->nSample = nDelta;
 	channelInfo->nPosition+=4;
@@ -380,7 +408,7 @@ inline static void RenderADPCMLoop_Linear()
 
 			do {
 				// Check for end of sample
-				if (channelInfo->nPosition == channelInfo->nLoopStop) {
+				if (channelInfo->nPosition >= channelInfo->nLoopStop) {
 					channelInfo->nStep = channelInfo->nLoopStep;
 					channelInfo->nSample = channelInfo->nLoopSample;
 					channelInfo->nPosition = channelInfo->nLoopStart;
@@ -474,7 +502,7 @@ inline static void RenderADPCMLoop_Cubic()
 
 INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BRender called without init\n"));
 #endif
 
@@ -486,7 +514,7 @@ INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 		channelInfo = &YMZ280BChannelInfo[nActiveChannel];
 
 		if (channelInfo->bPlaying) {
-			if (nInterpolation < 3) {
+			if (our_interpolation < 3) {
 				if (channelInfo->bEnabled && channelInfo->bLoop) {
 					RenderADPCMLoop_Linear();
 				} else {
@@ -530,7 +558,7 @@ INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 
 void YMZ280BWriteRegister(UINT8 nValue)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BWriteRegister called without init\n"));
 #endif
 
@@ -555,9 +583,9 @@ void YMZ280BWriteRegister(UINT8 nValue)
 
 				if ((nValue & 0x80) == 0) {
 					YMZ280BChannelInfo[nWriteChannel].bEnabled = false;
-					if (!YMZ280BChannelInfo[nWriteChannel].bLoop) {
+					//if (!YMZ280BChannelInfo[nWriteChannel].bLoop) { // dec.24,2018 - also stops looping (fixes glitches in deroon & tkdensho)
 						YMZ280BChannelInfo[nWriteChannel].bPlaying = false;
-					}
+					//}
 				} else {
 					if (!YMZ280BChannelInfo[nWriteChannel].bEnabled) {
 						YMZ280BChannelInfo[nWriteChannel].bEnabled = true;
@@ -566,25 +594,28 @@ void YMZ280BWriteRegister(UINT8 nValue)
 						YMZ280BChannelInfo[nWriteChannel].nStep = 127;
 
 						if (YMZ280BChannelInfo[nWriteChannel].nMode > 1) {
-#ifdef DEBUG
-		//					bprintf(0,_T("Sample Start: %08X - Stop: %08X.\n"),YMZ280BChannelInfo[nWriteChannel].nSampleStart, YMZ280BChannelInfo[nWriteChannel].nSampleStop);
-#endif
+							// Handy debug info:
+							//bprintf(0,_T("ch#%02x - Sample Start: %08X - Stop: %08X.  %S\n"), nWriteChannel, YMZ280BChannelInfo[nWriteChannel].nSampleStart, YMZ280BChannelInfo[nWriteChannel].nSampleStop, (YMZ280BChannelInfo[nWriteChannel].bLoop) ? "Looping" : "");
 						}
 
-#if 0
-						if (nInterpolation < 3) {
+#if 1
+						if (our_interpolation < 3) {
+							// click avoider with fast-retrig (adds last playing sample in this channel to the accumulator)
+							// only works with linear!
 							YMZ280BChannelInfo[nWriteChannel].nFractionalPosition = 0;
 							YMZ280BChannelInfo[nWriteChannel].nPreviousOutput = YMZ280BChannelInfo[nWriteChannel].nSample;
 							YMZ280BChannelInfo[nWriteChannel].nOutput = YMZ280BChannelInfo[nWriteChannel].nSample;
 						} else {
 							YMZ280BChannelInfo[nWriteChannel].nFractionalPosition = 0x03000000;
-							YMZ280BChannelData[nWriteChannel][0] = YMZ280BChannelInfo[nWriteChannel].nSample;
+							//YMZ280BChannelData[nWriteChannel][0] = YMZ280BChannelInfo[nWriteChannel].nSample;
+							YMZ280BChannelData[nWriteChannel][3] = 0;
 							YMZ280BChannelInfo[nWriteChannel].nBufPos = 1;
 						}
+						YMZ280BChannelInfo[nWriteChannel].nSample = 0; // zero adpcm accu, otherwise causes adpcm decoding errors (esprade coin sound triggered rapidly)
 #else
 						YMZ280BChannelInfo[nWriteChannel].nSample = 0;
 
-						if (nInterpolation < 3) {
+						if (our_interpolation < 3) {
 							YMZ280BChannelInfo[nWriteChannel].nFractionalPosition = 0;
 							YMZ280BChannelInfo[nWriteChannel].nPreviousOutput = 0;
 							YMZ280BChannelInfo[nWriteChannel].nOutput = 0;
@@ -600,6 +631,16 @@ void YMZ280BWriteRegister(UINT8 nValue)
 				break;
 			}
 			case 2:																	// Volume
+			    if (bESPRaDeMixerKludge) {
+					if (nWriteChannel != 7 && nWriteChannel != 6) nValue -= 30;
+					if (nWriteChannel == 7) {
+						if (nValue + 15 > 255)
+							nValue = 255;
+						else
+							nValue += 15;
+					}
+				}
+				//bprintf(0,_T("Ch: %d Volume %d Sample Start: %08X - Stop: %08X.\n"),nWriteChannel,nValue,YMZ280BChannelInfo[nWriteChannel].nSampleStart, YMZ280BChannelInfo[nWriteChannel].nSampleStop);
 				YMZ280BChannelInfo[nWriteChannel].nVolume = nValue;
 				ComputeVolume(&YMZ280BChannelInfo[nWriteChannel]);
 				break;
@@ -724,7 +765,7 @@ void YMZ280BWriteRegister(UINT8 nValue)
 
 UINT32 YMZ280BReadStatus()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BReadStatus called without init\n"));
 #endif
 
@@ -738,7 +779,7 @@ UINT32 YMZ280BReadStatus()
 
 UINT32 YMZ280BReadRAM()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YMZ280BInitted) bprintf(PRINT_ERROR, _T("YMZ280BReadRAM called without init\n"));
 #endif
 	

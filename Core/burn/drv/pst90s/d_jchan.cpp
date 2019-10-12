@@ -4,6 +4,7 @@
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "sknsspr.h"
+#include "kaneko_tmap.h"
 #include "ymz280b.h"
 
 static UINT8 *AllMem;
@@ -27,10 +28,7 @@ static UINT8 *DrvSprReg0;
 static UINT8 *DrvSprRAM1;
 static UINT8 *DrvSprReg1;
 static UINT8 *DrvPalRAM;
-static UINT8 *DrvVidRAM1;
-static UINT8 *DrvVidRAM0;
-static UINT8 *DrvScrRAM1;
-static UINT8 *DrvScrRAM0;
+static UINT8 *DrvVidRAM;
 static UINT8 *DrvVidRegs;
 
 static UINT32 *DrvPalette;
@@ -283,7 +281,7 @@ void __fastcall jchan_main_command_write_word(UINT32 address, UINT16 data)
 	if (address == 0x403ffe) {
 		SekClose();
 		SekOpen(1);
-		SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+		SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		SekOpen(0);
 	}
@@ -301,7 +299,7 @@ void __fastcall jchan_sub_command_write_word(UINT32 address, UINT16 data)
 	if (address == 0x400000) { // not used?
 		SekClose();
 		SekOpen(0);
-		SekSetIRQLine(3, SEK_IRQSTATUS_AUTO);
+		SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		SekOpen(1);
 	}
@@ -396,10 +394,7 @@ static INT32 MemIndex()
 	DrvSprReg1		= Next; Next += 0x000400;
 	DrvPalRAM		= Next; Next += 0x010000;
 
-	DrvVidRAM1		= Next; Next += 0x001000;
-	DrvVidRAM0		= Next; Next += 0x001000;
-	DrvScrRAM1		= Next; Next += 0x001000;
-	DrvScrRAM0		= Next; Next += 0x001000;
+	DrvVidRAM		= Next; Next += 0x004000;
 	DrvVidRegs		= Next; Next += 0x000400;
 
 	mcu_com			= (UINT16*)Next; Next += 0x00004 * sizeof(UINT16);
@@ -521,45 +516,42 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM0,	0x000000, 0x1fffff, SM_ROM);
-	SekMapMemory(Drv68KRAM0,	0x200000, 0x20ffff, SM_RAM);
-	SekMapMemory(DrvMCURAM,		0x300000, 0x30ffff, SM_RAM);
-	SekMapMemory(DrvShareRAM,	0x400000, 0x403fff, SM_RAM);
-	SekMapMemory(DrvSprRAM0,	0x500000, 0x503fff, SM_RAM);
-	SekMapMemory(DrvSprReg0,	0x600000, 0x60003f|0x3ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x700000, 0x70ffff, SM_RAM);
+	SekMapMemory(Drv68KROM0,	0x000000, 0x1fffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM0,	0x200000, 0x20ffff, MAP_RAM);
+	SekMapMemory(DrvMCURAM,		0x300000, 0x30ffff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,	0x400000, 0x403fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM0,	0x500000, 0x503fff, MAP_RAM);
+	SekMapMemory(DrvSprReg0,	0x600000, 0x60003f|0x3ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x700000, 0x70ffff, MAP_RAM);
 	SekSetWriteWordHandler(0,	jchan_main_write_word);
 	SekSetWriteByteHandler(0,	jchan_main_write_byte);
 	SekSetReadWordHandler(0,	jchan_main_read_word);
 	SekSetReadByteHandler(0,	jchan_main_read_byte);
 
-	SekMapHandler(1,		0x403c00, 0x403fff, SM_WRITE);
+	SekMapHandler(1,		0x403c00, 0x403fff, MAP_WRITE);
 	SekSetWriteWordHandler(1,	jchan_main_command_write_word);
 	SekSetWriteByteHandler(1,	jchan_main_command_write_byte);
 
-	SekMapHandler(2,		0x700000, 0x70ffff, SM_WRITE);
+	SekMapHandler(2,		0x700000, 0x70ffff, MAP_WRITE);
 	SekSetWriteWordHandler(2,	jchan_palette_write_word);
 	SekSetWriteByteHandler(2,	jchan_palette_write_byte);
 	SekClose();
 
 	SekInit(1, 0x68000);
 	SekOpen(1);
-	SekMapMemory(Drv68KROM1,	0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(Drv68KRAM1,	0x100000, 0x10ffff, SM_RAM);
-	SekMapMemory(DrvShareRAM,	0x400000, 0x403fff, SM_RAM);
-	SekMapMemory(DrvVidRAM1,	0x500000, 0x500fff, SM_RAM);
-	SekMapMemory(DrvVidRAM0,	0x501000, 0x501fff, SM_RAM);
-	SekMapMemory(DrvScrRAM1,	0x502000, 0x502fff, SM_RAM);
-	SekMapMemory(DrvScrRAM0,	0x503000, 0x503fff, SM_RAM);
-	SekMapMemory(DrvVidRegs,	0x600000, 0x60001f|0x3ff, SM_RAM);
-	SekMapMemory(DrvSprRAM1,	0x700000, 0x703fff, SM_RAM);
-	SekMapMemory(DrvSprReg1,	0x780000, 0x78003f|0x3ff, SM_RAM);
+	SekMapMemory(Drv68KROM1,	0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM1,	0x100000, 0x10ffff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,	0x400000, 0x403fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM,		0x500000, 0x503fff, MAP_RAM);
+	SekMapMemory(DrvVidRegs,	0x600000, 0x60001f|0x3ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM1,	0x700000, 0x703fff, MAP_RAM);
+	SekMapMemory(DrvSprReg1,	0x780000, 0x78003f|0x3ff, MAP_RAM);
 	SekSetWriteWordHandler(0,	jchan_sub_write_word);
 	SekSetWriteByteHandler(0,	jchan_sub_write_byte);
 	SekSetReadWordHandler(0,	jchan_sub_read_word);
 	SekSetReadByteHandler(0,	jchan_sub_read_byte);
 
-	SekMapHandler(1,		0x400000, 0x4003ff, SM_WRITE);
+	SekMapHandler(1,		0x400000, 0x4003ff, MAP_WRITE);
 	SekSetWriteWordHandler(1,	jchan_sub_command_write_word);
 	SekSetWriteByteHandler(1,	jchan_sub_command_write_byte);
 	SekClose();
@@ -567,6 +559,9 @@ static INT32 DrvInit()
 	YMZ280BInit(16000000, NULL);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
+
+	skns_init();
+	kaneko_view2_init(0, DrvVidRAM, DrvVidRegs, DrvGfxROM0, 0, DrvTransTab, 25, 0);
 
 	GenericTilesInit();
 
@@ -584,146 +579,12 @@ static INT32 DrvExit()
 	YMZ280BExit();
 	YMZ280BROM = NULL;
 
+	kaneko_view2_exit();
+	skns_exit();
+
 	BurnFree(AllMem);
 
 	return 0;
-}
-
-static void draw_layer(UINT8 *ram, UINT8 *scr, INT32 layer, INT32 priority)
-{
-	UINT16 *vram = (UINT16*)ram;
-	UINT16 *sram = (UINT16*)scr;
-	UINT16 *regs = (UINT16*)DrvVidRegs;
-
-	INT32 tmflip = BURN_ENDIAN_SWAP_INT16(regs[4]);
-
-	INT32 enable = ~tmflip & (layer ? 0x0010 : 0x1000);
-	if (enable == 0) return; // disable!
-
-	INT32 tmflipx = tmflip & 0x0200; // flip whole tilemap x
-	INT32 tmflipy = tmflip & 0x0100; // flip whole tilemap y
-
-	INT32 lsenable = tmflip & (layer ? 0x0008 : 0x0800); // linescroll
-
-	INT32 xscroll = BURN_ENDIAN_SWAP_INT16(regs[2 - (layer * 2)]);
-	INT32 yscroll = BURN_ENDIAN_SWAP_INT16(regs[3 - (layer * 2)]) >> 6;
-
-	xscroll += (tmflipx) ? -((344 + (layer * 2)) * 64) : ((25 + (layer * 2)) * 64);
-	yscroll += (tmflipy) ? -260 : 11;
-	yscroll &= 0x1ff;
-
-	if (lsenable)
-	{
-		UINT16 *dest = pTransDraw;
-
-		for (INT32 y = 0; y < nScreenHeight; y++, dest += nScreenWidth) // line by line
-		{
-			INT32 scrollyy = (yscroll + y) & 0x1ff;
-			INT32 scrollxx = ((xscroll + BURN_ENDIAN_SWAP_INT16(sram[scrollyy])) >> 16) & 0x1ff;
-	
-			INT32 srcy = (scrollyy & 0x1ff) >> 4;
-			INT32 srcx = (scrollxx & 0x1ff) >> 4;
-
-			for (INT32 x = 0; x < nScreenWidth + 16; x+=16)
-			{
-				INT32 offs = ((srcy << 5) | ((srcx + (x >> 4)) & 0x1f));
-
-				INT32 attr  = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 0]);
-				INT32 code  = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 1]) & 0x1fff;
-				INT32 color = (attr & 0x00fc) << 2;
-				INT32 flipx = (attr & 0x0002) ? 0x0f : 0;
-				INT32 flipy = (attr & 0x0001) ? 0xf0 : 0;
-				INT32 group = (attr & 0x0700) >> 8;
-
-				if (DrvTransTab[code]) continue;
-
-				if (group != priority) continue;
-	
-				UINT8 *gfxsrc = DrvGfxROM0 + (code << 8) + (((scrollyy & 0x0f) << 4) ^ flipy);
-	
-				for (INT32 dx = 0; dx < 16; dx++)
-				{
-					INT32 dst = (x + dx) - (scrollxx & 0x0f);
-					if (dst < 0 || dst >= nScreenWidth) continue;
-	
-					if (gfxsrc[dx^flipx]) {
-						dest[dst] = color + gfxsrc[dx^flipx];
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		INT32 scrollx = (xscroll >> 6) & 0x1ff;
-
-		for (INT32 offs = 0; offs < 32 * 32; offs++)
-		{
-			INT32 sx = (offs & 0x1f) * 16;
-			INT32 sy = (offs / 0x20) * 16;
-	
-			sy -= yscroll;
-			if (sy < -15) sy += 512;
-			sx -= scrollx;
-			if (sx < -15) sx += 512;
-
-			if (sx >= nScreenWidth || sy >= nScreenHeight) continue;
-
-			INT32 attr  = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 0]);
-			INT32 code  = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 1]) & 0x1fff;
-			INT32 color = (attr & 0x00fc) >> 2;
-			INT32 flipx = (attr & 0x0002);
-			INT32 flipy = (attr & 0x0001);
-			INT32 group = (attr & 0x0700) >> 8;
-
-			if (DrvTransTab[code]) continue;
-
-			if (tmflipy) {
-				flipy ^= 1;
-				sy = 224 - sy; // fix later
-			}
-	
-			if (tmflipx) {
-				flipx ^= 2;
-				sx = 304 - sx; // fix later!
-			}
-	
-			if (group != priority) continue;
-
-			if (sx >= 0 && sy >=0 && sx <= (nScreenWidth - 16) && sy <= (nScreenHeight-16)) // non-clipped
-			{
-				if (flipy) {
-					if (flipx) {
-						Render16x16Tile_Mask_FlipXY(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					} else {
-						Render16x16Tile_Mask_FlipY(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					}
-				} else {
-					if (flipx) {
-						Render16x16Tile_Mask_FlipX(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					} else {
-						Render16x16Tile_Mask(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					}
-				}
-			}
-			else	// clipped
-			{
-				if (flipy) {
-					if (flipx) {
-						Render16x16Tile_Mask_FlipXY_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					} else {
-						Render16x16Tile_Mask_FlipY_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					}
-				} else {
-					if (flipx) {
-						Render16x16Tile_Mask_FlipX_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					} else {
-						Render16x16Tile_Mask_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, DrvGfxROM0);
-					}
-				}
-			}
-		}
-	}
 }
 
 static INT32 DrvDraw()
@@ -742,8 +603,8 @@ static INT32 DrvDraw()
 	}
 
 	for (INT32 i = 0; i < 8; i++) {
-		draw_layer(DrvVidRAM0, DrvScrRAM0, 0, i);
-		draw_layer(DrvVidRAM1, DrvScrRAM1, 1, i);
+		kaneko_view2_draw_layer(0, 0, i);
+		kaneko_view2_draw_layer(0, 1, i);
 	}
 
 	skns_draw_sprites(pTransDraw, (UINT32*)DrvSprRAM1, 0x4000, DrvGfxROM2, 0x1000000, (UINT32*)DrvSprReg1, 0x4000);
@@ -788,17 +649,17 @@ static INT32 DrvFrame()
 
 		SekOpen(0);
 		nCyclesDone[0] += SekRun(nSegment);
-		if (i ==  11) SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
-		if (i == 240) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i ==  11) SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
+		if (i == 240) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 		nSegment = SekTotalCycles();
 		SekClose();
 
 		SekOpen(1);
 		nCyclesDone[1] += SekRun(nSegment - SekTotalCycles());
 		if (enable_sub_irq) {
-			if (i ==  11) SekSetIRQLine(3, SEK_IRQSTATUS_AUTO);
-			if (i == 240) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
-			if (i == 249) SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
+			if (i ==  11) SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
+			if (i == 240) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
+			if (i == 249) SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
 		}
 		SekClose();
 	}
@@ -833,7 +694,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(enable_sub_irq);
 	}
@@ -844,10 +705,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ba.nLen	  = 0x80;
 		ba.szName = "NV Ram";
 		BurnAcb(&ba);
-	}
-
-	if (nAction & ACB_WRITE) {
-		DrvRecalc = 1;
 	}
 
 	return 0;
@@ -895,7 +752,7 @@ struct BurnDriver BurnDrvJchan = {
 	"Jackie Chan - The Kung-Fu Master\0", NULL, "Kaneko", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_KANEKO_MISC, GBF_VSFIGHT, 0,
-	NULL, jchanRomInfo, jchanRomName, NULL, NULL, JchanInputInfo, JchanDIPInfo,
+	NULL, jchanRomInfo, jchanRomName, NULL, NULL, NULL, NULL, JchanInputInfo, JchanDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	320, 240, 4, 3
 };
@@ -942,7 +799,7 @@ struct BurnDriver BurnDrvJchan2 = {
 	"Jackie Chan in Fists of Fire\0", NULL, "Kaneko", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_KANEKO_MISC, GBF_VSFIGHT, 0,
-	NULL, jchan2RomInfo, jchan2RomName, NULL, NULL, JchanInputInfo, Jchan2DIPInfo,
+	NULL, jchan2RomInfo, jchan2RomName, NULL, NULL, NULL, NULL, JchanInputInfo, Jchan2DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	320, 240, 4, 3
 };

@@ -44,7 +44,7 @@ static UINT8 bRecalcPalette = 0;
 static UINT32 gfx_code_mask;
 //static UINT8 bMahjong = 0;
 static UINT8 Mahjong_keyboard = 0;
-static UINT8 HasNVRam;
+static UINT8 HasNVRam = 0;
 
 static INT32 yoffset;
 static INT32 sva_x;
@@ -534,7 +534,7 @@ static struct BurnDIPInfo GundamexDIPList[]=
 	{0x16, 0x01, 0x06, 0x02, "Hard"		},
 	{0x16, 0x01, 0x06, 0x00, "Hardest"		},
 
-	{0   , 0xfe, 0   ,    0, "Flip Screen"		},
+	{0   , 0xfe, 0   ,    2, "Flip Screen"		},
 	{0x16, 0x01, 0x10, 0x10, "Off"		},
 	{0x16, 0x01, 0x10, 0x00, "On"		},
 
@@ -550,7 +550,7 @@ static struct BurnDIPInfo GundamexDIPList[]=
 	{0x16, 0x01, 0x80, 0x80, "Off"		},
 	{0x16, 0x01, 0x80, 0x00, "On"		},
 
-	{0   , 0xfe, 0   ,    2, "Coin A"		},
+	{0   , 0xfe, 0   ,    8, "Coin A"		},
 	{0x17, 0x01, 0x07, 0x00, "4 Coins 1 Credits "		},
 	{0x17, 0x01, 0x07, 0x01, "3 Coins 1 Credits "		},
 	{0x17, 0x01, 0x07, 0x02, "2 Coins 1 Credits "		},
@@ -570,7 +570,7 @@ static struct BurnDIPInfo GundamexDIPList[]=
 	{0x17, 0x01, 0x38, 0x18, "1 Coin 4 Credits "		},
 	{0x17, 0x01, 0x38, 0x20, "1 Coin 5 Credits "		},
 
-	{0   , 0xfe, 0   ,    8, "Debug Mode"		},
+	{0   , 0xfe, 0   ,    2, "Debug Mode"		},
 	{0x17, 0x01, 0x40, 0x40, "Off"		},
 	{0x17, 0x01, 0x40, 0x00, "On"		},
 
@@ -792,15 +792,15 @@ static struct BurnDIPInfo WschampDIPList[]=
 	{0x12, 0x01, 0x0f, 0x01, "1 Coin 6 Credits, 1 Credit Start & Continue"		},
 	{0x12, 0x01, 0x0f, 0x00, "Free Play"		},
 
-	{0   , 0xfe, 0   ,    0, "Service Mode"		},
+	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x12, 0x01, 0x80, 0x80, "Off"		},
 	{0x12, 0x01, 0x80, 0x00, "On"		},
 
-	{0   , 0xfe, 0   ,    0, "Vert. Flip Screen"		},
+	{0   , 0xfe, 0   ,    2, "Vert. Flip Screen"		},
 	{0x13, 0x01, 0x01, 0x01, "Off"		},
 	{0x13, 0x01, 0x01, 0x00, "On"		},
 
-	{0   , 0xfe, 0   ,    0, "Horiz. Flip Screen"		},
+	{0   , 0xfe, 0   ,    2, "Horiz. Flip Screen"		},
 	{0x13, 0x01, 0x02, 0x02, "Off"		},
 	{0x13, 0x01, 0x02, 0x00, "On"		},
 
@@ -808,7 +808,7 @@ static struct BurnDIPInfo WschampDIPList[]=
 	{0x13, 0x01, 0x04, 0x00, "Off"		},
 	{0x13, 0x01, 0x04, 0x04, "On"		},
 
-	{0   , 0xfe, 0   ,    2, "Difficulty"		},
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
 	{0x13, 0x01, 0x18, 0x10, "Easy"		},
 	{0x13, 0x01, 0x18, 0x18, "Normal"		},
 	{0x13, 0x01, 0x18, 0x08, "Hard"		},
@@ -848,15 +848,15 @@ static struct BurnDIPInfo TrophyhDIPList[]=
 	{0x12, 0x01, 0x0f, 0x01, "1 Coin 6 Credits, 1 Credit Start & Continue"		},
 	{0x12, 0x01, 0x0f, 0x00, "Free Play"		},
 
-	{0   , 0xfe, 0   ,    0, "Service Mode"		},
+	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x12, 0x01, 0x80, 0x80, "Off"		},
 	{0x12, 0x01, 0x80, 0x00, "On"		},
 
-	{0   , 0xfe, 0   ,    0, "Vert. Flip Screen"		},
+	{0   , 0xfe, 0   ,    2, "Vert. Flip Screen"		},
 	{0x13, 0x01, 0x01, 0x01, "Off"		},
 	{0x13, 0x01, 0x01, 0x00, "On"		},
 
-	{0   , 0xfe, 0   ,    0, "Horiz. Flip Screen"		},
+	{0   , 0xfe, 0   ,    2, "Horiz. Flip Screen"		},
 	{0x13, 0x01, 0x02, 0x02, "Off"		},
 	{0x13, 0x01, 0x02, 0x00, "On"		},
 
@@ -864,7 +864,7 @@ static struct BurnDIPInfo TrophyhDIPList[]=
 	{0x13, 0x01, 0x04, 0x00, "Off"		},
 	{0x13, 0x01, 0x04, 0x04, "On"		},
 
-	{0   , 0xfe, 0   ,    2, "Difficulty"		},
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
 	{0x13, 0x01, 0x18, 0x10, "Easy"		},
 	{0x13, 0x01, 0x18, 0x18, "Normal"		},
 	{0x13, 0x01, 0x18, 0x08, "Hard"		},
@@ -988,38 +988,54 @@ static struct BurnRomInfo pzlbowlRomDesc[] = {
 STD_ROM_PICK(pzlbowl)
 STD_ROM_FN(pzlbowl)
 
+static struct BurnRomInfo ablastRomDesc[] = {
+	// Genuine P0-142A PCB
+	{ "a-blast_twn_u06.u06",	  0x080000, 0xe62156d7, BRF_ESS | BRF_PRG },	// 68000 code
+	{ "a-blast_twn_u07.u07",	  0x080000, 0xd4ddc16b, BRF_ESS | BRF_PRG },
+
+	{ "a-blast_twn_u38.u38",	  0x400000, 0x090923da,	BRF_GRA },				// GFX
+	{ "a-blast_twn_u39.u39",	  0x400000, 0x6bb17d83,	BRF_GRA },
+	{ "a-blast_twn_u40.u40",	  0x400000, 0xdb94847d,	BRF_GRA },
+
+	{ "a-blast_twn_u18.u18",	  0x200000, 0xde4e65e2, BRF_SND },				// PCM
+};
+
+STD_ROM_PICK(ablast)
+STD_ROM_FN(ablast)
+
 static struct BurnRomInfo penbrosRomDesc[] = {
-	{ "u06.bin",	  0x080000, 0x7bbdffac, BRF_ESS | BRF_PRG },	// 68000 code
-	{ "u07.bin",	  0x080000, 0xd50cda5f, BRF_ESS | BRF_PRG },
+	// Genuine P0-142A PCB - Original or hack?
+	{ "a-blast_jpn_u06.u06",	  0x080000, 0x7bbdffac, BRF_ESS | BRF_PRG },	// 68000 code
+	{ "a-blast_jpn_u07.u07",	  0x080000, 0xd50cda5f, BRF_ESS | BRF_PRG },
 
-	{ "u38.bin",	  0x400000, 0x4247b39e,	BRF_GRA },				// GFX
-	{ "u39.bin",	  0x400000, 0xf9f07faf,	BRF_GRA },
-	{ "u40.bin",	  0x400000, 0xdc9e0a96,	BRF_GRA },
+	{ "a-blast_jpn_u38.u38",	  0x400000, 0x4247b39e,	BRF_GRA },				// GFX
+	{ "a-blast_jpn_u39.u39",	  0x400000, 0xf9f07faf,	BRF_GRA },
+	{ "a-blast_jpn_u40.u40",	  0x400000, 0xdc9e0a96,	BRF_GRA },
 
-	{ "u18.bin",	  0x200000, 0xde4e65e2, BRF_SND },				// PCM
+	{ "a-blast_jpn_u18.u18",	  0x200000, 0xde4e65e2, BRF_SND },				// PCM
 };
 
 STD_ROM_PICK(penbros)
 STD_ROM_FN(penbros)
 
 static struct BurnRomInfo gundamexRomDesc[] = {
-	{ "ka002002.u2",	0x080000, 0xe850f6d8, BRF_ESS | BRF_PRG }, //  0 68000 code
-	{ "ka002004.u3",	0x080000, 0xc0fb1208, BRF_ESS | BRF_PRG }, //  1
-	{ "ka002001.u4",	0x080000, 0x553ebe6b, BRF_ESS | BRF_PRG }, //  2
-	{ "ka002003.u5",	0x080000, 0x946185aa, BRF_ESS | BRF_PRG }, //  3
-	{ "ka001005.u77",	0x080000, 0xf01d3d00, BRF_ESS | BRF_PRG }, //  4
+	{ "ka_002_002.u2",	0x080000, 0xe850f6d8, BRF_ESS | BRF_PRG }, //  0 68000 code
+	{ "ka_002_004.u3",	0x080000, 0xc0fb1208, BRF_ESS | BRF_PRG }, //  1
+	{ "ka_002_001.u4",	0x080000, 0x553ebe6b, BRF_ESS | BRF_PRG }, //  2
+	{ "ka_002_003.u5",	0x080000, 0x946185aa, BRF_ESS | BRF_PRG }, //  3
+	{ "ka-001-005.u77",	0x080000, 0xf01d3d00, BRF_ESS | BRF_PRG }, //  4
 
-	{ "ka001009.u16",	0x200000, 0x997d8d93, BRF_GRA }, //  5 GFX
-	{ "ka001010.u18",	0x200000, 0x811b67ca, BRF_GRA }, //  6
-	{ "ka001011.u20",	0x200000, 0x08a72700, BRF_GRA }, //  7
-	{ "ka001012.u15",	0x200000, 0xb789e4a8, BRF_GRA }, //  8
-	{ "ka001013.u17",	0x200000, 0xd8a0201f, BRF_GRA }, //  9
-	{ "ka001014.u19",	0x200000, 0x7635e026, BRF_GRA }, // 10
-	{ "ka001006.u21",	0x200000, 0x6aac2f2f, BRF_GRA }, // 11
-	{ "ka001007.u22",	0x200000, 0x588f9d63, BRF_GRA }, // 12
-	{ "ka001008.u23",	0x200000, 0xdb55a60a, BRF_GRA }, // 13
+	{ "ka-001-009.u16",	0x200000, 0x997d8d93, BRF_GRA }, //  5 GFX
+	{ "ka-001-010.u18",	0x200000, 0x811b67ca, BRF_GRA }, //  6
+	{ "ka-001-011.u20",	0x200000, 0x08a72700, BRF_GRA }, //  7
+	{ "ka-001-012.u15",	0x200000, 0xb789e4a8, BRF_GRA }, //  8
+	{ "ka-001-013.u17",	0x200000, 0xd8a0201f, BRF_GRA }, //  9
+	{ "ka-001-014.u19",	0x200000, 0x7635e026, BRF_GRA }, // 10
+	{ "ka-001-006.u21",	0x200000, 0x6aac2f2f, BRF_GRA }, // 11
+	{ "ka-001-007.u22",	0x200000, 0x588f9d63, BRF_GRA }, // 12
+	{ "ka-001-008.u23",	0x200000, 0xdb55a60a, BRF_GRA }, // 13
 
-	{ "ka001015.u28",	0x200000, 0xada2843b, BRF_SND }, // 14 PCM
+	{ "ka-001-015.u28",	0x200000, 0xada2843b, BRF_SND }, // 14 PCM
 	
 	{ "eeprom.bin",         0x000080, 0x80f8e248, BRF_OPT },
 };
@@ -1028,135 +1044,150 @@ STD_ROM_PICK(gundamex)
 STD_ROM_FN(gundamex)
 
 static struct BurnRomInfo deerhuntRomDesc[] = {
-	{ "as0906e05.u06",	0x100000, 0x20c81f17, 1 }, //  0 68000 code
-	{ "as0907e05.u07",	0x100000, 0x1731aa2a, 1 }, //  1
+	{ "as0906_e05_u6_694e.u06",	0x100000, 0x20c81f17, 1 }, //  0 68000 code
+	{ "as0907_e05_u7_5d89.u07",	0x100000, 0x1731aa2a, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",			0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",			0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",			0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",			0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",			0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhunt)
 STD_ROM_FN(deerhunt)
 
 static struct BurnRomInfo deerhunaRomDesc[] = {
-	{ "as0906e04-v4_2.u06",	0x100000, 0xbb3af36f, 1 }, //  0 68000 code
-	{ "as0907e04-v4_2.u07",	0x100000, 0x83f02117, 1 }, //  1
+	{ "as0906_e04_u6_6640.u06",	0x100000, 0xbb3af36f, 1 }, //  0 68000 code
+	{ "as0907_e04_u7_595a.u07",	0x100000, 0x83f02117, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",			0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",			0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",			0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",			0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",			0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhuna)
 STD_ROM_FN(deerhuna)
 
 static struct BurnRomInfo deerhunbRomDesc[] = {
-	{ "as0906e04.u06",	0x100000, 0x07d9b64a, 1 }, //  0 68000 code
-	{ "as0907e04.u07",	0x100000, 0x19973d08, 1 }, //  1
+	{ "as_0906_e04.u06",	0x100000, 0x07d9b64a, 1 }, //  0 68000 code
+	{ "as_0907_e04.u07",	0x100000, 0x19973d08, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",		0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",		0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",		0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",		0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",		0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhunb)
 STD_ROM_FN(deerhunb)
 
 static struct BurnRomInfo deerhuncRomDesc[] = {
-	{ "as0937e01.u06",	0x100000, 0x8d74088e, 1 }, //  0 68000 code
-	{ "as0938e01.u07",	0x100000, 0xc7657889, 1 }, //  1
+	{ "as_0937_e01.u06",	0x100000, 0x8d74088e, 1 }, //  0 68000 code
+	{ "as_0938_e01.u07",	0x100000, 0xc7657889, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",		0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",		0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",		0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",		0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",		0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhunc)
 STD_ROM_FN(deerhunc)
 
 static struct BurnRomInfo deerhundRomDesc[] = {
-	{ "as0906e02.u06",	0x100000, 0x190cca42, 1 }, //  0 68000 code
-	{ "as0907e02.u07",	0x100000, 0x9de2b901, 1 }, //  1
+	{ "as_0906_e02.u06",	0x100000, 0x190cca42, 1 }, //  0 68000 code
+	{ "as_0907_e02.u07",	0x100000, 0x9de2b901, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",		0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",		0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",		0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",		0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",		0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhund)
 STD_ROM_FN(deerhund)
 
 static struct BurnRomInfo deerhuneRomDesc[] = {
-	{ "as0906e01.u06",	0x100000, 0x103e3ba3, 1 }, //  0 68000 code
-	{ "as0907e01.u07",	0x100000, 0xddeb0f97, 1 }, //  1
+	{ "as_0906_e01.u06",	0x100000, 0x103e3ba3, 1 }, //  0 68000 code
+	{ "as_0907_e01.u07",	0x100000, 0xddeb0f97, 1 }, //  1
 
-	{ "as0901m01.u38",	0x800000, 0x1d6acf8f, 2 }, //  2 GFX
-	{ "as0902m01.u39",	0x800000, 0xc7ca2128, 2 }, //  3
-	{ "as0903m01.u40",	0x800000, 0xe8ef81b3, 2 }, //  4
-	{ "as0904m01.u41",	0x800000, 0xd0f97fdc, 2 }, //  5
+	{ "as0901m01.u38",		0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",		0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",		0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",		0x800000, 0xd0f97fdc, 2 }, //  5
 
-	{ "as0905m01.u18",	0x400000, 0x8d8165bb, 3 }, //  6 PCM
+	{ "as0905m01.u18",		0x400000, 0x8d8165bb, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(deerhune)
 STD_ROM_FN(deerhune)
 
+static struct BurnRomInfo deerhunjRomDesc[] = {
+	{ "as0_908e01_u6_jdh.u06",	0x100000, 0x52f037da, 1 }, //  0 68000 code
+	{ "as0_909e01_u7_jdh.u07",	0x100000, 0xb391bc87, 1 }, //  1
+
+	{ "as0901m01.u38",		0x800000, 0x1d6acf8f, 2 }, //  2 GFX
+	{ "as0902m01.u39",		0x800000, 0xc7ca2128, 2 }, //  3
+	{ "as0903m01.u40",		0x800000, 0xe8ef81b3, 2 }, //  4
+	{ "as0904m01.u41",		0x800000, 0xd0f97fdc, 2 }, //  5
+
+	{ "as0905m01.u18",		0x400000, 0x8d8165bb, 3 }, //  6 PCM
+};
+
+STD_ROM_PICK(deerhunj)
+STD_ROM_FN(deerhunj)
+
 static struct BurnRomInfo turkhuntRomDesc[] = {
-	{ "asx906e01.u06",	0x100000, 0xc96266e1, 1 }, //  0 68000 code
-	{ "asx907e01.u07",	0x100000, 0x7c67b502, 1 }, //  1
+	{ "asx_906e01_th.u06",	0x100000, 0xc96266e1, 1 }, //  0 68000 code
+	{ "asx_907e01_th.u07",	0x100000, 0x7c67b502, 1 }, //  1
 
-	{ "asx901m01.u38",	0x800000, 0xeabd3f44, 2 }, //  2 GFX
-	{ "asx902m01.u39",	0x800000, 0xc32130c8, 2 }, //  3
-	{ "asx903m01.u40",	0x800000, 0x5f86c322, 2 }, //  4
-	{ "asx904m01.u41",	0x800000, 0xc77e0b66, 2 }, //  5
+	{ "asx901m01.u38",		0x800000, 0xeabd3f44, 2 }, //  2 GFX
+	{ "asx902m01.u39",		0x800000, 0xc32130c8, 2 }, //  3
+	{ "asx903m01.u40",		0x800000, 0x5f86c322, 2 }, //  4
+	{ "asx904m01.u41",		0x800000, 0xc77e0b66, 2 }, //  5
 
-	{ "asx905m01.u18",	0x400000, 0x8d9dd9a9, 3 }, //  6 PCM
+	{ "asx905m01.u18",		0x400000, 0x8d9dd9a9, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(turkhunt)
 STD_ROM_FN(turkhunt)
 
 static struct BurnRomInfo wschampRomDesc[] = {
-	{ "as1006e03.u06",	0x100000, 0x0ad01677, 1 }, //  0 68000 code
-	{ "as1007e03.u07",	0x100000, 0x572624f0, 1 }, //  1
+	{ "as_1006_e03.u06",	0x100000, 0x0ad01677, 1 }, //  0 68000 code
+	{ "as_1007_e03.u07",	0x100000, 0x572624f0, 1 }, //  1
 
-	{ "as1001m01.u38",	0x800000, 0x92595579, 2 }, //  2 GFX
-	{ "as1002m01.u39",	0x800000, 0x16c2bb08, 2 }, //  3
-	{ "as1003m01.u40",	0x800000, 0x89618858, 2 }, //  4
-	{ "as1004m01.u41",	0x800000, 0x500c0909, 2 }, //  5
+	{ "as1001m01.u38",		0x800000, 0x92595579, 2 }, //  2 GFX
+	{ "as1002m01.u39",		0x800000, 0x16c2bb08, 2 }, //  3
+	{ "as1003m01.u40",		0x800000, 0x89618858, 2 }, //  4
+	{ "as1004m01.u41",		0x800000, 0x500c0909, 2 }, //  5
 
-	{ "as1005m01.u18",	0x400000, 0xe4b137b8, 3 }, //  6 PCM
+	{ "as1005m01.u18",		0x400000, 0xe4b137b8, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(wschamp)
 STD_ROM_FN(wschamp)
 
 static struct BurnRomInfo wschampaRomDesc[] = {
-	{ "as1006e02.u06",	0x100000, 0xd3d3b2b5, 1 }, //  0 68000 code
-	{ "as1007e02.u07",	0x100000, 0x78ede6d9, 1 }, //  1
+	{ "as_1006_e02.u06",	0x100000, 0xd3d3b2b5, 1 }, //  0 68000 code
+	{ "as_1007_e02.u07",	0x100000, 0x78ede6d9, 1 }, //  1
 
-	{ "as1001m01.u38",	0x800000, 0x92595579, 2 }, //  2 GFX
-	{ "as1002m01.u39",	0x800000, 0x16c2bb08, 2 }, //  3
-	{ "as1003m01.u40",	0x800000, 0x89618858, 2 }, //  4
-	{ "as1004m01.u41",	0x800000, 0x500c0909, 2 }, //  5
+	{ "as1001m01.u38",		0x800000, 0x92595579, 2 }, //  2 GFX
+	{ "as1002m01.u39",		0x800000, 0x16c2bb08, 2 }, //  3
+	{ "as1003m01.u40",		0x800000, 0x89618858, 2 }, //  4
+	{ "as1004m01.u41",		0x800000, 0x500c0909, 2 }, //  5
 
-	{ "as1005m01.u18",	0x400000, 0xe4b137b8, 3 }, //  6 PCM
+	{ "as1005m01.u18",		0x400000, 0xe4b137b8, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(wschampa)
@@ -1178,15 +1209,15 @@ STD_ROM_PICK(wschampb)
 STD_ROM_FN(wschampb)
 
 static struct BurnRomInfo trophyhRomDesc[] = {
-	{ "as1106e01.u06",	0x100000, 0xb4950882, 1 }, //  0 68000 code
-	{ "as1107e01.u07",	0x100000, 0x19ee67cb, 1 }, //  1
+	{ "as_1106_e01.u06",	0x100000, 0xb4950882, 1 }, //  0 68000 code
+	{ "as_1107_e01.u07",	0x100000, 0x19ee67cb, 1 }, //  1
 
-	{ "as1101m01.u38",	0x800000, 0x855ed675, 2 }, //  2 GFX
-	{ "as1102m01.u39",	0x800000, 0xd186d271, 2 }, //  3
-	{ "as1103m01.u40",	0x800000, 0xadf8a54e, 2 }, //  4
-	{ "as1104m01.u41",	0x800000, 0x387882e9, 2 }, //  5
+	{ "as1101m01.u38",		0x800000, 0x855ed675, 2 }, //  2 GFX
+	{ "as1102m01.u39",		0x800000, 0xd186d271, 2 }, //  3
+	{ "as1103m01.u40",		0x800000, 0xadf8a54e, 2 }, //  4
+	{ "as1104m01.u41",		0x800000, 0x387882e9, 2 }, //  5
 
-	{ "as1105m01.u18",	0x400000, 0x633d0df8, 3 }, //  6 PCM
+	{ "as1105m01.u18",		0x400000, 0x633d0df8, 3 }, //  6 PCM
 };
 
 STD_ROM_PICK(trophyh)
@@ -1312,10 +1343,10 @@ static void tmp68301_timer_callback(INT32 i)
 
 		//cpunum_set_input_line(0,level,HOLD_LINE);
 		//bprintf(PRINT_NORMAL, _T("Tmp68301: CB IRQ[%x] %04x  timer[%d]\n"), level, tmp68301_irq_vector[level], i);
-		//SekSetIRQLine(tmp68301_irq_vector[level], SEK_IRQSTATUS_AUTO);
+		//SekSetIRQLine(tmp68301_irq_vector[level], CPU_IRQSTATUS_AUTO);
 
-		//SekSetIRQLine(level, SEK_IRQSTATUS_ACK);
-		SekSetIRQLine(level, SEK_IRQSTATUS_AUTO);
+		//SekSetIRQLine(level, CPU_IRQSTATUS_ACK);
+		SekSetIRQLine(level, CPU_IRQSTATUS_AUTO);
 	}
 
 	if (TCR & 0x0080) {	// N/1
@@ -1346,8 +1377,8 @@ static void tmp68301_update_irq_state(INT32 i)
 		//cpunum_set_input_line(0,level,HOLD_LINE);
 		//bprintf(PRINT_NORMAL, _T("Tmp68301: UP IRQ[%x] %04x  timer[%d] IMR:%04x IVNR:%04x ICR:%04x\n"), level, tmp68301_irq_vector[level], i, IMR, IVNR, ICR);
 
-		//SekSetIRQLine(level, SEK_IRQSTATUS_ACK);
-		SekSetIRQLine(level, SEK_IRQSTATUS_AUTO);
+		//SekSetIRQLine(level, CPU_IRQSTATUS_ACK);
+		SekSetIRQLine(level, CPU_IRQSTATUS_AUTO);
 	}
 }
 
@@ -1441,9 +1472,9 @@ void __fastcall grdiansWriteWord(UINT32 sekAddress, UINT16 wordValue)
 	}
 }
 
-UINT8 __fastcall setaSoundRegReadByte(UINT32 sekAddress)
+UINT8 __fastcall setaSoundRegReadByte(UINT32 /*sekAddress*/)
 {
-	bprintf(PRINT_NORMAL, _T("x1-010 to read byte value of location %x\n"), sekAddress);
+	//bprintf(PRINT_NORMAL, _T("x1-010 to read byte value of location %x\n"), sekAddress);
 	return 0;
 }
 
@@ -1525,7 +1556,7 @@ INT32 __fastcall grdiansSekIrqCallback(INT32 irq)
 static INT32 DrvDoReset()
 {
 	SekOpen(0);
-//	SekSetIRQLine(0, SEK_IRQSTATUS_NONE);
+//	SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
 	SekReset();
 	SekClose();
 
@@ -1551,7 +1582,7 @@ static INT32 MemIndex(INT32 CodeSize, INT32 GfxSize, INT32 PcmSize, INT32 ExtRam
 
 	Ram68K		= Next; Next += 0x010000;
 	RamUnknown	= Next; Next += ExtRamSize;
-	if (HasNVRam) RamNV = Next; Next += 0x10000;
+	if (HasNVRam) { RamNV = Next; Next += 0x10000; }
 	RamSpr		= (UINT16 *) Next; Next += 0x020000 * sizeof(UINT16);
 	RamSprBak	= (UINT16 *) Next; Next += 0x020000 * sizeof(UINT16);
 	RamPal		= (UINT16 *) Next; Next += 0x008000 * sizeof(UINT16);
@@ -1621,23 +1652,23 @@ static INT32 grdiansInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
-		SekMapMemory(RamUnknown,	0x304000, 0x30FFFF, SM_RAM);	// ? seems tile data
+		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
+		SekMapMemory(RamUnknown,	0x304000, 0x30FFFF, MAP_RAM);	// ? seems tile data
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0xC00000, 0xC3FFFF, SM_RAM);	// sprites
+									0xC00000, 0xC3FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0xC40000, 0xC4FFFF, SM_ROM);	// Palette
+									0xC40000, 0xC4FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0xC60000, 0xC6003F, SM_RAM);	// Video Registers
+									0xC60000, 0xC6003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0xB00000, 0xB03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xC40000, 0xC4FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xC50000, 0xC5FFFF, SM_WRITE);
-		SekMapHandler(4,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0xB00000, 0xB03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xC40000, 0xC4FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xC50000, 0xC5FFFF, MAP_WRITE);
+		SekMapHandler(4,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, grdiansReadWord);
 		SekSetReadByteHandler(0, grdiansReadByte);
@@ -1789,21 +1820,21 @@ static INT32 mj4simaiInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0xC00000, 0xC3FFFF, SM_RAM);	// sprites
+									0xC00000, 0xC3FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0xC40000, 0xC4FFFF, SM_ROM);	// Palette
+									0xC40000, 0xC4FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0xC60000, 0xC6003F, SM_RAM);	// Video Registers
+									0xC60000, 0xC6003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0xB00000, 0xB03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xC40000, 0xC4FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0xB00000, 0xB03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xC40000, 0xC4FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, mj4simaiReadWord);
 		SekSetReadByteHandler(0, mj4simaiReadByte);
@@ -1941,21 +1972,21 @@ static INT32 myangelInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0xC00000, 0xC3FFFF, SM_RAM);	// sprites
+									0xC00000, 0xC3FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0xC40000, 0xC4FFFF, SM_ROM);	// Palette
+									0xC40000, 0xC4FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0xC60000, 0xC6003F, SM_RAM);	// Video Registers
+									0xC60000, 0xC6003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0xB00000, 0xB03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xC40000, 0xC4FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0xB00000, 0xB03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xC40000, 0xC4FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, myangelReadWord);
 		SekSetReadByteHandler(0, myangelReadByte);
@@ -2091,21 +2122,21 @@ static INT32 myangel2Init()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,		0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0xD00000, 0xD3FFFF, SM_RAM);	// sprites
+									0xD00000, 0xD3FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0xD40000, 0xD4FFFF, SM_ROM);	// Palette
+									0xD40000, 0xD4FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0xD60000, 0xD6003F, SM_RAM);	// Video Registers
+									0xD60000, 0xD6003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0xB00000, 0xB03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xD40000, 0xD4FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0xB00000, 0xB03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xD40000, 0xD4FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, myangel2ReadWord);
 		SekSetReadByteHandler(0, myangel2ReadByte);
@@ -2249,21 +2280,21 @@ static INT32 pzlbowlInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,		0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0x800000, 0x83FFFF, SM_RAM);	// sprites
+									0x800000, 0x83FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0x840000, 0x84FFFF, SM_ROM);	// Palette
+									0x840000, 0x84FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0x860000, 0x86003F, SM_RAM);	// Video Registers
+									0x860000, 0x86003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0x900000, 0x903FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0x840000, 0x84FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0x900000, 0x903FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0x840000, 0x84FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, pzlbowlReadWord);
 		SekSetReadByteHandler(0, pzlbowlReadByte);
@@ -2295,8 +2326,8 @@ static INT32 pzlbowlInit()
 	gfx_code_mask = 0x0400000 * 4 / 64;
 
 	x1010_sound_init(50000000 / 3, 0x0000);
-	x1010_set_route(BURN_SND_X1010_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
-	x1010_set_route(BURN_SND_X1010_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
+	x1010_set_route(BURN_SND_X1010_ROUTE_1, 1.00, BURN_SND_ROUTE_BOTH);
+	x1010_set_route(BURN_SND_X1010_ROUTE_2, 1.00, BURN_SND_ROUTE_BOTH);
 
 	DrvDoReset();
 
@@ -2395,26 +2426,26 @@ static INT32 penbrosInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,		0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,		0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,		0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
 		SekMapMemory(RamUnknown + 0x00000,	
-									0x210000, 0x23FFFF, SM_RAM);
+									0x210000, 0x23FFFF, MAP_RAM);
 		SekMapMemory(RamUnknown + 0x30000,	
-									0x300000, 0x30FFFF, SM_RAM);
+									0x300000, 0x30FFFF, MAP_RAM);
 
 		SekMapMemory((UINT8 *)RamSpr,
-									0xB00000, 0xB3FFFF, SM_RAM);	// sprites
+									0xB00000, 0xB3FFFF, MAP_RAM);	// sprites
 		SekMapMemory((UINT8 *)RamPal,
-									0xB40000, 0xB4FFFF, SM_ROM);	// Palette
+									0xB40000, 0xB4FFFF, MAP_ROM);	// Palette
 		SekMapMemory((UINT8 *)RamVReg,
-									0xB60000, 0xB6003F, SM_RAM);	// Video Registers
+									0xB60000, 0xB6003F, MAP_RAM);	// Video Registers
 		SekMapMemory((UINT8 *)RamTMP68301,
-									0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+									0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(1,			0xA00000, 0xA03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xB40000, 0xB4FFFF, SM_WRITE);	// Palette
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(1,			0xA00000, 0xA03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xB40000, 0xB4FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, penbrosReadWord);
 		SekSetReadByteHandler(0, penbrosReadByte);
@@ -2571,17 +2602,17 @@ static INT32 gundamexInit()
 		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,				0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,				0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
-		SekMapMemory(Rom68K + 0x200000,			0x500000, 0x57FFFF, SM_ROM);	// CPU 0 ROM
+		SekMapMemory(Rom68K,				0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,				0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K + 0x200000,			0x500000, 0x57FFFF, MAP_ROM);	// CPU 0 ROM
 
-		SekMapMemory((UINT8 *)RamSpr,		0xc00000, 0xc3FFFF, SM_RAM);	// sprites
-		SekMapMemory((UINT8 *)RamPal,		0xc40000, 0xc4FFFF, SM_ROM);	// Palette
-		SekMapMemory(RamUnknown + 0x00000,		0xc50000, 0xc5FFFF, SM_RAM);
-		SekMapMemory((UINT8 *)RamVReg,		0xc60000, 0xc6003F, SM_RAM);	// Video Registers
+		SekMapMemory((UINT8 *)RamSpr,		0xc00000, 0xc3FFFF, MAP_RAM);	// sprites
+		SekMapMemory((UINT8 *)RamPal,		0xc40000, 0xc4FFFF, MAP_ROM);	// Palette
+		SekMapMemory(RamUnknown + 0x00000,		0xc50000, 0xc5FFFF, MAP_RAM);
+		SekMapMemory((UINT8 *)RamVReg,		0xc60000, 0xc6003F, MAP_RAM);	// Video Registers
 
-		SekMapHandler(1,			0xb00000, 0xb03FFF, SM_READ | SM_WRITE);
-		SekMapHandler(2,			0xc40000, 0xc4FFFF, SM_WRITE);
+		SekMapHandler(1,			0xb00000, 0xb03FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(2,			0xc40000, 0xc4FFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, gundamexReadWord);
 		//SekSetReadByteHandler(0, gundamexReadByte);
@@ -2705,19 +2736,19 @@ static INT32 samshootInit()
 		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom68K,				0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram68K,				0x200000, 0x20FFFF, SM_RAM);	// CPU 0 RAM
+		SekMapMemory(Rom68K,				0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram68K,				0x200000, 0x20FFFF, MAP_RAM);	// CPU 0 RAM
 
-		SekMapMemory(RamNV + 0x00000,		0x300000, 0x30FFFF, SM_RAM);
+		SekMapMemory(RamNV + 0x00000,		0x300000, 0x30FFFF, MAP_RAM);
 
-		SekMapMemory((UINT8 *)RamSpr,		0x800000, 0x83FFFF, SM_RAM);	// sprites
-		SekMapMemory((UINT8 *)RamPal,		0x840000, 0x84FFFF, SM_ROM);	// Palette
-		SekMapMemory((UINT8 *)RamVReg,		0x860000, 0x86003F, SM_RAM);	// Video Registers
-		SekMapMemory((UINT8 *)RamTMP68301,	0xFFFC00, 0xFFFFFF, SM_ROM);	// TMP68301 Registers
+		SekMapMemory((UINT8 *)RamSpr,		0x800000, 0x83FFFF, MAP_RAM);	// sprites
+		SekMapMemory((UINT8 *)RamPal,		0x840000, 0x84FFFF, MAP_ROM);	// Palette
+		SekMapMemory((UINT8 *)RamVReg,		0x860000, 0x86003F, MAP_RAM);	// Video Registers
+		SekMapMemory((UINT8 *)RamTMP68301,	0xFFFC00, 0xFFFFFF, MAP_ROM);	// TMP68301 Registers
 
-		SekMapHandler(2,			0x840000, 0x84FFFF, SM_WRITE);	// Palette
-		SekMapHandler(1,			0x900000, 0x903FFF, SM_READ | SM_WRITE);
-		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, SM_WRITE);
+		SekMapHandler(2,			0x840000, 0x84FFFF, MAP_WRITE);	// Palette
+		SekMapHandler(1,			0x900000, 0x903FFF, MAP_READ | MAP_WRITE);
+		SekMapHandler(3,			0xFFFC00, 0xFFFFFF, MAP_WRITE);
 
 		SekSetReadWordHandler(0, samshootReadWord);
 		SekSetWriteWordHandler(0, samshootWriteWord);
@@ -2919,7 +2950,7 @@ static void drawgfxN(UINT32,UINT32,INT32,INT32,INT32,INT32)
 
 typedef void (*pDrawgfx)(UINT32,UINT32,INT32,INT32,INT32,INT32);
 
-static void DrvDraw()
+static INT32 DrvDraw()
 {
 	if (bRecalcPalette) {
 		for (INT32 i=0;i<0x08000; i++)
@@ -2932,7 +2963,7 @@ static void DrvDraw()
 
 	if (BURN_ENDIAN_SWAP_INT16(RamVReg[0x30/2]) & 1) { // Blank Screen
 		memcpy(RamSprBak, RamSpr, 0x040000);
-		return;
+		return 0;
 	}
 
 	UINT16 *s1  = RamSprBak + 0x3000 / 2;
@@ -3097,6 +3128,8 @@ static void DrvDraw()
 	BurnTransferCopy(CurPal);
 
 	memcpy(RamSprBak, RamSpr, 0x040000);
+
+	return 0;
 }
 
 
@@ -3257,17 +3290,14 @@ static INT32 grdiansScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 	}
-	
-#if 0
-	// This is causing crashes
-	if (nAction & ACB_NVRAM && HasNVRam) {
+
+	if (nAction & ACB_NVRAM && HasNVRam && RamNV) {
 		memset(&ba, 0, sizeof(ba));
 		ba.Data = RamNV;
 		ba.nLen = 0x10000;
-		ba.szName = "Backup Ram";
+		ba.szName = "SetaNVRam";
 		BurnAcb(&ba);
 	}
-#endif
 
 	if (nAction & ACB_DRIVER_DATA) {
 
@@ -3302,11 +3332,11 @@ static INT32 grdiansScan(INT32 nAction,INT32 *pnMin)
 
 struct BurnDriver BurnDrvGrdians = {
 	"grdians", NULL, NULL, NULL, "1995",
-	"Guardians\0Denjin Makai II\0", NULL, "Banpresto", "Newer Seta",
+	"Guardians\0Denjin Makai II\0", "Imperfect graphics @ game start cutscene", "Banpresto", "Newer Seta",
 	L"Guardians\0\u96FB\u795E\u9B54\u584A \uFF29\uFF29\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_SCRFIGHT, 0,
-	NULL, grdiansRomInfo, grdiansRomName, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
-	grdiansInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, grdiansRomInfo, grdiansRomName, NULL, NULL, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
+	grdiansInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	304, 232, 4, 3
 };
 
@@ -3315,8 +3345,8 @@ struct BurnDriver BurnDrvMj4simai = {
 	"Wakakusamonogatari Mahjong Yonshimai (Japan)\0", NULL, "Maboroshi Ware", "Newer Seta",
 	L"\u82E5\u8349\u7269\u8A9E \u9EBB\u96C0\u56DB\u59C9\u59B9 (Japan)\0Wakakusamonogatari Mahjong Yonshimai\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SETA2, GBF_MAHJONG, 0,
-	NULL, mj4simaiRomInfo, mj4simaiRomName, NULL, NULL, mj4simaiInputInfo, mj4simaiDIPInfo,
-	mj4simaiInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, mj4simaiRomInfo, mj4simaiRomName, NULL, NULL, NULL, NULL, mj4simaiInputInfo, mj4simaiDIPInfo,
+	mj4simaiInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	384, 240, 4, 3
 };
 
@@ -3325,8 +3355,8 @@ struct BurnDriver BurnDrvMyangel = {
 	"Kosodate Quiz My Angel (Japan)\0", NULL, "Namco", "Newer Seta",
 	L"\u5B50\u80B2\u3066\u30AF\u30A4\u30BA \u30DE\u30A4 \u30A8\u30F3\u30B8\u30A7\u30EB (Japan)\0Kosodate Quiz My Angel\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_QUIZ, 0,
-	NULL, myangelRomInfo, myangelRomName, NULL, NULL, myangelInputInfo, myangelDIPInfo,
-	myangelInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, myangelRomInfo, myangelRomName, NULL, NULL, NULL, NULL, myangelInputInfo, myangelDIPInfo,
+	myangelInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	376, 240, 4, 3
 };
 
@@ -3335,8 +3365,8 @@ struct BurnDriver BurnDrvMyangel2 = {
 	"Kosodate Quiz My Angel 2 (Japan)\0", NULL, "Namco", "Newer Seta",
 	L"\u5B50\u80B2\u3066\u30AF\u30A4\u30BA \u30DE\u30A4 \u30A8\u30F3\u30B8\u30A7\u30EB \uFF12 (Japan)\0Kosodate Quiz My Angel 2\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_QUIZ, 0,
-	NULL, myangel2RomInfo, myangel2RomName, NULL, NULL, myangelInputInfo, myangel2DIPInfo,
-	myangel2Init, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, myangel2RomInfo, myangel2RomName, NULL, NULL, NULL, NULL, myangelInputInfo, myangel2DIPInfo,
+	myangel2Init, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	376, 240, 4, 3
 };
 
@@ -3345,8 +3375,8 @@ struct BurnDriver BurnDrvPzlbowl = {
 	"Puzzle De Bowling (Japan)\0", NULL, "Nihon System / Moss", "Newer Seta",
 	L"Puzzle De Bowling\0\u30D1\u30BA\u30EB \uFF24\uFF25 \u30DC\u30FC\u30EA\u30F3\u30B0\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_PUZZLE, 0,
-	NULL, pzlbowlRomInfo, pzlbowlRomName, NULL, NULL, grdiansInputInfo, pzlbowlDIPInfo,
-	pzlbowlInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, pzlbowlRomInfo, pzlbowlRomName, NULL, NULL, NULL, NULL, grdiansInputInfo, pzlbowlDIPInfo,
+	pzlbowlInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	384, 240, 4, 3
 };
 
@@ -3355,8 +3385,18 @@ struct BurnDriver BurnDrvPenbros = {
 	"Penguin Brothers (Japan)\0", NULL, "Subsino", "Newer Seta",
 	L"\u30DA\u30F3\u30AE\u30F3 \u30D6\u30E9\u30B6\u30FC\u30BA (Japan)\0Penguin Brothers\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_PLATFORM, 0,
-	NULL, penbrosRomInfo, penbrosRomName, NULL, NULL, penbrosInputInfo, penbrosDIPInfo,
-	penbrosInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, penbrosRomInfo, penbrosRomName, NULL, NULL, NULL, NULL, penbrosInputInfo, penbrosDIPInfo,
+	penbrosInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
+	320, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvAblast = {
+	"ablast", "penbros", NULL, NULL, "2000",
+	"A-Blast (Japan)\0", NULL, "Subsino", "Newer Seta",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_SETA2, GBF_PLATFORM, 0,
+	NULL, ablastRomInfo, ablastRomName, NULL, NULL, NULL, NULL, penbrosInputInfo, penbrosDIPInfo,
+	penbrosInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 224, 4, 3
 };
 
@@ -3365,8 +3405,8 @@ struct BurnDriver BurnDrvGundamex = {
 	"Mobile Suit Gundam EX Revue\0", NULL, "Banpresto", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_VSFIGHT, 0,
-	NULL, gundamexRomInfo, gundamexRomName, NULL, NULL, GundamexInputInfo, GundamexDIPInfo,
-	gundamexInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, gundamexRomInfo, gundamexRomName, NULL, NULL, NULL, NULL, GundamexInputInfo, GundamexDIPInfo,
+	gundamexInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	384, 224, 4, 3
 };
 
@@ -3375,8 +3415,8 @@ struct BurnDriver BurnDrvDeerhunt = {
 	"Deer Hunting USA V4.3\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhuntRomInfo, deerhuntRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhuntRomInfo, deerhuntRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3385,8 +3425,8 @@ struct BurnDriver BurnDrvDeerhuna = {
 	"Deer Hunting USA V4.2\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhunaRomInfo, deerhunaRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhunaRomInfo, deerhunaRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3395,8 +3435,8 @@ struct BurnDriver BurnDrvDeerhunb = {
 	"Deer Hunting USA V4.0\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhunbRomInfo, deerhunbRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhunbRomInfo, deerhunbRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3405,8 +3445,8 @@ struct BurnDriver BurnDrvDeerhunc = {
 	"Deer Hunting USA V3.0\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhuncRomInfo, deerhuncRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhuncRomInfo, deerhuncRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3415,8 +3455,8 @@ struct BurnDriver BurnDrvDeerhund = {
 	"Deer Hunting USA V2\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhundRomInfo, deerhundRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhundRomInfo, deerhundRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3425,18 +3465,28 @@ struct BurnDriver BurnDrvDeerhune = {
 	"Deer Hunting USA V1\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, deerhuneRomInfo, deerhuneRomName, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, deerhuneRomInfo, deerhuneRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
+	320, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvDeerhunj = {
+	"deerhuntj", "deerhunt", NULL, NULL, "2000",
+	"Deer Hunting USA V4.4.1 (Japan)\0", NULL, "Sammy USA Corporation", "Newer Seta",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
+	NULL, deerhunjRomInfo, deerhunjRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, DeerhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTurkhunt = {
 	"turkhunt", NULL, NULL, NULL, "2001",
-	"Turkey Hunting USA V1.0\0", NULL, "Sammy USA Corporation", "Newer Seta",
+	"Turkey Hunting USA V1.00\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, turkhuntRomInfo, turkhuntRomName, NULL, NULL, DeerhuntInputInfo, TurkhuntDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, turkhuntRomInfo, turkhuntRomName, NULL, NULL, NULL, NULL, DeerhuntInputInfo, TurkhuntDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3445,8 +3495,8 @@ struct BurnDriver BurnDrvWschamp = {
 	"Wing Shooting Championship V2.00\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, wschampRomInfo, wschampRomName, NULL, NULL, WschampInputInfo, WschampDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, wschampRomInfo, wschampRomName, NULL, NULL, NULL, NULL, WschampInputInfo, WschampDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3455,8 +3505,8 @@ struct BurnDriver BurnDrvWschampa = {
 	"Wing Shooting Championship V1.01\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, wschampaRomInfo, wschampaRomName, NULL, NULL, WschampInputInfo, WschampDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, wschampaRomInfo, wschampaRomName, NULL, NULL, NULL, NULL, WschampInputInfo, WschampDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3465,18 +3515,18 @@ struct BurnDriver BurnDrvWschampb = {
 	"Wing Shooting Championship V1.00\0", NULL, "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, wschampbRomInfo, wschampbRomName, NULL, NULL, WschampInputInfo, WschampDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, wschampbRomInfo, wschampbRomName, NULL, NULL, NULL, NULL, WschampInputInfo, WschampDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTrophyh = {
 	"trophyh", NULL, NULL, NULL, "2002",
-	"Trophy Hunting - Bear & Moose V1.0\0", NULL, "Sammy USA Corporation", "Newer Seta",
+	"Trophy Hunting - Bear & Moose V1.00\0", "Hangs are normal, just wait it out.", "Sammy USA Corporation", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SETA2, GBF_SHOOT, 0,
-	NULL, trophyhRomInfo, trophyhRomName, NULL, NULL, WschampInputInfo, TrophyhDIPInfo,
-	samshootInit, grdiansExit, samshootFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, trophyhRomInfo, trophyhRomName, NULL, NULL, NULL, NULL, WschampInputInfo, TrophyhDIPInfo,
+	samshootInit, grdiansExit, samshootFrame, samshootDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3490,8 +3540,8 @@ struct BurnDriverD BurnDrvFuncube2 = {
 	"Funcube 2 (v1.1)\0", "Unemulated Sub CPU", "Namco", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_SETA2, GBF_PUZZLE, 0,
-	NULL, funcube2RomInfo, funcube2RomName, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
-	funcubeInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, funcube2RomInfo, funcube2RomName, NULL, NULL, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
+	funcubeInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };
 
@@ -3500,7 +3550,7 @@ struct BurnDriverD BurnDrvFuncube4 = {
 	"Funcube 4 (v1.0)\0", "Unemulated Sub CPU", "Namco", "Newer Seta",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_SETA2, GBF_PUZZLE, 0,
-	NULL, funcube4RomInfo, funcube4RomName, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
-	funcubeInit, grdiansExit, grdiansFrame, NULL, grdiansScan, &bRecalcPalette, 0x8000,
+	NULL, funcube4RomInfo, funcube4RomName, NULL, NULL, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
+	funcubeInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
 	320, 240, 4, 3
 };

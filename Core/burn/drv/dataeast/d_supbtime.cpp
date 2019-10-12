@@ -158,7 +158,7 @@ static struct BurnDIPInfo ChinatwnDIPList[]=
 
 STDDIPINFO(Chinatwn)
 
-void __fastcall supbtime_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall supbtime_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x300000, data)
 
@@ -167,24 +167,24 @@ void __fastcall supbtime_main_write_word(UINT32 address, UINT16 data)
 		case 0x100000:
 		case 0x1a0000:
 			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 }
 
-void __fastcall supbtime_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall supbtime_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
 		case 0x100001:
 		case 0x1a0001:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 }
 
-UINT16 __fastcall supbtime_main_read_word(UINT32 address)
+static UINT16 __fastcall supbtime_main_read_word(UINT32 address)
 {
 	deco16_read_control_word(0, address, 0x300000)
 
@@ -200,14 +200,17 @@ UINT16 __fastcall supbtime_main_read_word(UINT32 address)
 			return (DrvInputs[1] & ~0x0008) | (deco16_vblank & 0x0008);
 
 		case 0x18000a:
+			return 0;
+
 		case 0x18000c:
+			SekSetIRQLine(6, CPU_IRQSTATUS_NONE);
 			return 0;
 	}
 
 	return 0;
 }
 
-UINT8 __fastcall supbtime_main_read_byte(UINT32 address)
+static UINT8 __fastcall supbtime_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -229,9 +232,22 @@ UINT8 __fastcall supbtime_main_read_byte(UINT32 address)
 	return 0;
 }
 
+static void palette_onreset() // rainbow fill palette, fixes disappearing "Super" on first titlescreen iteration
+{
+	for (INT32 i = 0; i < 0x800/2; i++) {
+		UINT8 r = ((i & 1) ? 0x0f : 0);
+		UINT8 g = ((i & 2) ? 0x0f : 0);
+		UINT8 b = ((i & 4) ? 0x0f : 0);
+
+		*((UINT32*)(DrvPalRAM + (i * 2))) =  r | (g << 4) | (b << 8);
+	}
+}
+
 static INT32 DrvDoReset()
 {
 	memset (AllRam, 0, RamEnd - AllRam);
+
+	palette_onreset();
 
 	SekOpen(0);
 	SekReset();
@@ -313,18 +329,18 @@ static INT32 DrvInit(INT32 game)
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x03ffff, SM_ROM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x03ffff, MAP_ROM);
 	if (game) {
-		SekMapMemory(Drv68KRAM,		0x100000, 0x103fff, SM_RAM); // super burger time
+		SekMapMemory(Drv68KRAM,		0x100000, 0x103fff, MAP_RAM); // super burger time
 	} else {
-		SekMapMemory(Drv68KRAM,		0x1a0000, 0x1a3fff, SM_RAM); // china town
+		SekMapMemory(Drv68KRAM,		0x1a0000, 0x1a3fff, MAP_RAM); // china town
 	}
-	SekMapMemory(DrvSprRAM,			0x120000, 0x1207ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x140000, 0x1407ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, SM_RAM);
+	SekMapMemory(DrvSprRAM,			0x120000, 0x1207ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x140000, 0x1407ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, MAP_RAM);
 	SekSetWriteWordHandler(0,		supbtime_main_write_word);
 	SekSetWriteByteHandler(0,		supbtime_main_write_byte);
 	SekSetReadWordHandler(0,		supbtime_main_read_word);
@@ -457,11 +473,11 @@ static INT32 DrvDraw()
 		pTransDraw[i] = 0x300;
 	}
 
-	if (nBurnLayer & 1) deco16_draw_layer(1, pTransDraw, 0x10000 /*opaque*/);
+	if (nBurnLayer & 1) deco16_draw_layer(1, pTransDraw, 0);
 
 	if (nBurnLayer & 2) draw_sprites();
 
-	if (nBurnLayer & 4) deco16_draw_layer(0, pTransDraw, 0x00000 /*transparent*/);
+	if (nBurnLayer & 4) deco16_draw_layer(0, pTransDraw, 0);
 
 	BurnTransferCopy(DrvPalette);
 
@@ -482,7 +498,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	INT32 nInterleave = 256;
+	INT32 nInterleave = 232;
 	INT32 nSoundBufferPos = 0;
 	INT32 nCyclesTotal[2] = { 14000000 / 58, 4027500 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
@@ -499,7 +515,11 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
 		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
 
-		if (i == 240) deco16_vblank = 0x08;
+		if (i == 206) {
+			deco16_vblank = 0x08;
+			SekSetIRQLine(6, CPU_IRQSTATUS_ACK);
+		}
+
 		
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
@@ -509,7 +529,6 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
 	
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -548,7 +567,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-	
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
@@ -573,6 +592,13 @@ static struct BurnRomInfo supbtimeRomDesc[] = {
 	{ "mae01.bin",		0x80000, 0x434af3fb, 4 | BRF_GRA },           //  5
 
 	{ "gc05.bin",		0x20000, 0x2f2246ff, 5 | BRF_SND },           //  6 OKI M6295 Samples
+	
+	{ "tg5.j1",			0x00104, 0x21d02af7, 0 | BRF_OPT },
+	{ "tg3.c13",		0x00104, 0x3d5f0e97, 0 | BRF_OPT },
+	{ "tg1.b15",		0x00104, 0x819c4522, 0 | BRF_OPT },
+	{ "tg2.c12",		0x00104, 0x88f6d299, 0 | BRF_OPT },
+	{ "tg0.a11",		0x00104, 0xac6aa74b, 0 | BRF_OPT },
+	{ "tg4.c14",		0x00104, 0xe9ee3a67, 0 | BRF_OPT },
 };
 
 STD_ROM_PICK(supbtime)
@@ -587,8 +613,8 @@ struct BurnDriver BurnDrvSupbtime = {
 	"supbtime", NULL, NULL, NULL, "1990",
 	"Super Burger Time (World, set 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_MISC, 0,
-	NULL, supbtimeRomInfo, supbtimeRomName, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
+	NULL, supbtimeRomInfo, supbtimeRomName, NULL, NULL, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
 	supbtimeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
@@ -617,8 +643,8 @@ struct BurnDriver BurnDrvSupbtimea = {
 	"supbtimea", "supbtime", NULL, NULL, "1990",
 	"Super Burger Time (World, set 2)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_MISC, 0,
-	NULL, supbtimeaRomInfo, supbtimeaRomName, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
+	NULL, supbtimeaRomInfo, supbtimeaRomName, NULL, NULL, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
 	supbtimeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
@@ -647,8 +673,8 @@ struct BurnDriver BurnDrvSupbtimej = {
 	"supbtimej", "supbtime", NULL, NULL, "1990",
 	"Super Burger Time (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_MISC, 0,
-	NULL, supbtimejRomInfo, supbtimejRomName, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
+	NULL, supbtimejRomInfo, supbtimejRomName, NULL, NULL, NULL, NULL, SupbtimeInputInfo, SupbtimeDIPInfo,
 	supbtimeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
@@ -682,8 +708,8 @@ struct BurnDriver BurnDrvChinatwn = {
 	"chinatwn", NULL, NULL, NULL, "1991",
 	"China Town (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_MISC, 0,
-	NULL, chinatwnRomInfo, chinatwnRomName, NULL, NULL, SupbtimeInputInfo, ChinatwnDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PUZZLE, 0,
+	NULL, chinatwnRomInfo, chinatwnRomName, NULL, NULL, NULL, NULL, SupbtimeInputInfo, ChinatwnDIPInfo,
 	chinatwnInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };

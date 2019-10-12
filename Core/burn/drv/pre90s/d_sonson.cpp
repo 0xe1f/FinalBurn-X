@@ -3,10 +3,7 @@
 
 #include "tiles_generic.h"
 #include "m6809_intf.h"
-#include "driver.h"
-extern "C" {
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -23,12 +20,9 @@ static UINT8 *DrvVidRAM;
 static UINT8 *DrvColRAM;
 static UINT8 *DrvSprRAM;
 static UINT8 *DrvScrollX;
-static UINT32 *DrvPalette;
-static UINT32 *Palette;
-static UINT8 DrvRecalc;
 
-static INT16 *pAY8910Buffer[6];
-static INT16 *pFMBuffer;
+static UINT32 *DrvPalette;
+static UINT8 DrvRecalc;
 
 static UINT8 DrvJoy1[8];
 static UINT8 DrvJoy2[8];
@@ -71,7 +65,6 @@ STDINPUTINFO(Sonson)
 
 static struct BurnDIPInfo SonsonDIPList[]=
 {
-	// Default Values
 	{0x0f, 0xff, 0xff, 0xdf, NULL			},
 	{0x10, 0xff, 0xff, 0xeb, NULL			},
 
@@ -146,7 +139,7 @@ static void sonson_sound_irqtrigger(UINT8 data)
 	DrvSoundTrigger = data;
 }
 
-void sonson_main_write(UINT16 address, UINT8 data)
+static void sonson_main_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -173,7 +166,7 @@ void sonson_main_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 sonson_main_read(UINT16 address)
+static UINT8 sonson_main_read(UINT16 address)
 {
 	switch (address)
 	{
@@ -190,7 +183,7 @@ UINT8 sonson_main_read(UINT16 address)
 	return 0;
 }
 
-void sonson_sound_write(UINT16 address, UINT8 data)
+static void sonson_sound_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -212,7 +205,7 @@ void sonson_sound_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 sonson_sound_read(UINT16 address)
+static UINT8 sonson_sound_read(UINT16 address)
 {
 	switch (address)
 	{
@@ -280,11 +273,11 @@ static INT32 DrvPaletteInit()
 		bit3 = (DrvColPROM[i + 0x000] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		tmp[i] = (r << 16) | (g << 8) | b;
+		tmp[i] = BurnHighCol(r,g,b,0);
 	}
 
 	for (INT32 i = 0; i < 0x200; i++) {
-		Palette[i] = tmp[(DrvColPROM[0x200 + i] & 0x0f) | ((i >> 4) & 0x10)];
+		DrvPalette[i] = tmp[(DrvColPROM[0x200 + i] & 0x0f) | ((i >> 4) & 0x10)];
 	}
 
 	BurnFree (tmp);
@@ -304,7 +297,6 @@ static INT32 MemIndex()
 
 	DrvColPROM	= Next; Next += 0x000400;
 
-	Palette		= (UINT32*)Next; Next += 0x00200 * sizeof(UINT32);
 	DrvPalette	= (UINT32*)Next; Next += 0x00200 * sizeof(UINT32);
 
 	AllRam		= Next;
@@ -319,8 +311,6 @@ static INT32 MemIndex()
 	DrvScrollX	= Next; Next += 0x000020;
 
 	RamEnd		= Next;
-
-	pFMBuffer	= (INT16*)Next; Next += nBurnSoundLen * 6 * sizeof (INT16);
 
 	MemEnd		= Next;
 
@@ -348,9 +338,10 @@ static INT32 DrvDoReset()
 	DrvSoundIrqTrigger = 0;
 	DrvSoundTrigger = 0;
 
+	HiscoreReset();
+
 	return 0;
 }
-
 
 static INT32 DrvInit()
 {
@@ -360,10 +351,6 @@ static INT32 DrvInit()
 	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(AllMem, 0, nLen);
 	MemIndex();
-
-	for (INT32 i = 0; i < 6; i++) {
-		pAY8910Buffer[i] = pFMBuffer + nBurnSoundLen * i;
-	}
 
 	if (sonsonj)
 	{
@@ -405,28 +392,30 @@ static INT32 DrvInit()
 	DrvPaletteInit();
 	DrvGfxDecode();
 
-	M6809Init(2);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809RAM0,		0x0000, 0x0fff, M6809_RAM);
-	M6809MapMemory(DrvVidRAM,		0x1000, 0x13ff, M6809_RAM);
-	M6809MapMemory(DrvColRAM,		0x1400, 0x17ff, M6809_RAM);
-	M6809MapMemory(DrvSprRAM,		0x2020, 0x207f, M6809_RAM); // 0x100 min
-	M6809MapMemory(DrvM6809ROM0 + 0x04000,	0x4000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809RAM0,		0x0000, 0x0fff, MAP_RAM);
+	M6809MapMemory(DrvVidRAM,		0x1000, 0x13ff, MAP_RAM);
+	M6809MapMemory(DrvColRAM,		0x1400, 0x17ff, MAP_RAM);
+	M6809MapMemory(DrvSprRAM,		0x2020, 0x207f, MAP_RAM); // 0x100 min
+	M6809MapMemory(DrvM6809ROM0 + 0x04000,	0x4000, 0xffff, MAP_ROM);
 	M6809SetReadHandler(sonson_main_read);
 	M6809SetWriteHandler(sonson_main_write);
 	M6809Close();
 
+	M6809Init(1);
 	M6809Open(1);
-	M6809MapMemory(DrvM6809RAM1,		0x0000, 0x07ff, M6809_RAM);
-	M6809MapMemory(DrvM6809ROM1 + 0x0e000,	0xe000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809RAM1,		0x0000, 0x07ff, MAP_RAM);
+	M6809MapMemory(DrvM6809ROM1 + 0x0e000,	0xe000, 0xffff, MAP_ROM);
 	M6809SetReadHandler(sonson_sound_read);
 	M6809SetWriteHandler(sonson_sound_write);
 	M6809Close();
 
-	AY8910Init(0, 1500000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(1, 1500000, nBurnSoundRate, NULL, NULL, NULL, NULL);
+	AY8910Init(0, 1500000, 0);
+	AY8910Init(1, 1500000, 1);
 	AY8910SetAllRoutes(0, 0.30, BURN_SND_ROUTE_BOTH);
 	AY8910SetAllRoutes(1, 0.30, BURN_SND_ROUTE_BOTH);
+	AY8910SetBuffered(M6809TotalCycles, 2000000);
 
 	DrvDoReset();
 
@@ -511,27 +500,32 @@ static void draw_sprites()
 		if (flipy) {
 			if (flipx) {
 				Render16x16Tile_Mask_FlipXY_Clip(pTransDraw, code, sx, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipXY_Clip(pTransDraw, code, sx-256, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipXY_Clip(pTransDraw, code, sx, sy-256, color, 3, 0, 0x100, DrvGfxROM1);
 			} else {
 				Render16x16Tile_Mask_FlipY_Clip(pTransDraw, code, sx, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipY_Clip(pTransDraw, code, sx-256, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipY_Clip(pTransDraw, code, sx, sy-256, color, 3, 0, 0x100, DrvGfxROM1);
 			}
 		} else {
 			if (flipx) {
 				Render16x16Tile_Mask_FlipX_Clip(pTransDraw, code, sx, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipX_Clip(pTransDraw, code, sx-256, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_FlipX_Clip(pTransDraw, code, sx, sy-256, color, 3, 0, 0x100, DrvGfxROM1);
 			} else {
 				Render16x16Tile_Mask_Clip(pTransDraw, code, sx, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_Clip(pTransDraw, code, sx-256, sy, color, 3, 0, 0x100, DrvGfxROM1);
+				Render16x16Tile_Mask_Clip(pTransDraw, code, sx, sy-256, color, 3, 0, 0x100, DrvGfxROM1);
 			}
 		}
 	}
 }
 
-
 static INT32 DrvDraw()
 {
 	if (DrvRecalc) {
-		for (INT32 i = 0; i < 0x200; i++) {
-			INT32 rgb = Palette[i];
-			DrvPalette[i] = BurnHighCol(rgb >> 16, rgb >> 8, rgb, 0);
-		}
+		DrvPaletteInit();
+		DrvRecalc = 0;
 	}
 
 	draw_background();
@@ -546,8 +540,6 @@ static INT32 DrvDraw()
 
 static INT32 DrvFrame()
 {
-	INT32 nInterleave = 16;
-	
 	if (DrvReset) {
 		DrvDoReset();
 	}
@@ -562,52 +554,34 @@ static INT32 DrvFrame()
 		}
 	}
 
-	INT32 nCyclesSegment = 0;
-	INT32 nSoundBufferPos = 0;
+	M6809NewFrame();
+
+	INT32 nInterleave = 16;
 	INT32 nCyclesTotal[2] =  { 2000000 / 60, 2000000 / 60 };
 	INT32 nCyclesDone[2] =  { 0, 0 };
 
 	for (INT32 i = 0; i < nInterleave; i++) {
-		INT32 nCurrentCPU, nNext;
-		
-		nCurrentCPU = 0;
-		M6809Open(nCurrentCPU);
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		nCyclesDone[nCurrentCPU] += M6809Run(nCyclesSegment);
+		M6809Open(0);
+		CPU_RUN(0, M6809);
 		if (i == (nInterleave - 1)) {
-			M6809SetIRQLine(0, M6809_IRQSTATUS_AUTO);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		}
 		M6809Close();
 
-		nCurrentCPU = 1;
-		M6809Open(nCurrentCPU);
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
+		M6809Open(1);
 		if (DrvSoundIrqTrigger) {
-			M6809SetIRQLine(1, M6809_IRQSTATUS_AUTO);
+			M6809SetIRQLine(1, CPU_IRQSTATUS_AUTO);
 			DrvSoundIrqTrigger = 0;
 		}
-		nCyclesDone[nCurrentCPU] += M6809Run(nCyclesSegment);
+		CPU_RUN(1, M6809);
 		if (i == 3 || i == 7 || i == 11 || i == 15) {
-			M6809SetIRQLine(0, M6809_IRQSTATUS_AUTO);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		}
 		M6809Close();
-
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-			nSoundBufferPos += nSegmentLength;
-		}
 	}
 
 	if (pBurnSoundOut) {
-		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-		if (nSegmentLength) {
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-		}
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	if (pBurnDraw) {
@@ -625,7 +599,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		*pnMin = 0x029695;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+    if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -679,8 +653,8 @@ struct BurnDriver BurnDrvSonson = {
 	"sonson", NULL, NULL, NULL, "1984",
 	"Son Son\0", NULL, "Capcom", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM, 0,
-	NULL, sonsonRomInfo, sonsonRomName, NULL, NULL, SonsonInputInfo, SonsonDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM, 0,
+	NULL, sonsonRomInfo, sonsonRomName, NULL, NULL, NULL, NULL, SonsonInputInfo, SonsonDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	240, 240, 4, 3
 };
@@ -730,8 +704,8 @@ struct BurnDriver BurnDrvSonsonj = {
 	"sonsonj", "sonson", NULL, NULL, "1984",
 	"Son Son (Japan)\0", NULL, "Capcom", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM, 0,
-	NULL, sonsonjRomInfo, sonsonjRomName, NULL, NULL, SonsonInputInfo, SonsonDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM, 0,
+	NULL, sonsonjRomInfo, sonsonjRomName, NULL, NULL, NULL, NULL, SonsonInputInfo, SonsonDIPInfo,
 	SonsonjInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	240, 240, 4, 3
 };

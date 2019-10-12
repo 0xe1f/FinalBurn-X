@@ -6,7 +6,7 @@ static INT32 nQsndCyclesExtra;
 static INT32 qsndTimerOver(INT32, INT32)
 {
 //	bprintf(PRINT_NORMAL, _T("  - IRQ -> 1.\n"));
-	ZetSetIRQLine(0xFF, ZET_IRQSTATUS_AUTO);
+	ZetSetIRQLine(0xFF, CPU_IRQSTATUS_HOLD);
 
 	return 0;
 }
@@ -22,8 +22,8 @@ INT32 QsndInit()
 	BurnTimerInit(qsndTimerOver, NULL);
 
 	if (Cps1Qs == 1) {
-		nCpsZ80Cycles = 6000000 * 100 / nBurnFPS;
-		BurnTimerAttachZet(6000000);
+		nCpsZ80Cycles = 8000000 * 100 / nBurnFPS;
+		BurnTimerAttachZet(8000000);
 	} else {
 		nCpsZ80Cycles = 8000000 * 100 / nBurnFPS;
 		BurnTimerAttachZet(8000000);
@@ -66,6 +66,9 @@ INT32 QsndScan(INT32 nAction)
 	if (nAction & ACB_DRIVER_DATA) {
 		QsndZScan(nAction);				// Scan Z80
 		QscScan(nAction);				// Scan QSound Chip
+
+		BurnTimerScan(nAction, NULL);
+		SCAN_VAR(nQsndCyclesExtra);
 	}
 
 	return 0;

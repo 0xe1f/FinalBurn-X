@@ -212,7 +212,7 @@ static void saa1099_envelope(saa1099_state *saa, INT32 ch)
 
 void saa1099Update(INT32 chip, INT16 *output, INT32 samples)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099Update called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("saa1099Update called with invalid chip %x\n"), chip);
 #endif
@@ -333,7 +333,7 @@ void saa1099Update(INT32 chip, INT16 *output, INT32 samples)
 
 void saa1099Reset(INT32 chip)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099Reset called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("saa1099Reset called with invalid chip %x\n"), chip);
 #endif
@@ -375,7 +375,7 @@ void saa1099Init(INT32 chip, INT32 clock, INT32 bAdd)
 
 void saa1099SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099SetRoute called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("saa1099SetRoute called with invalid chip %x\n"), chip);
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("saa1099SetRoute called with invalid index %i\n"), nIndex);
@@ -389,7 +389,7 @@ void saa1099SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void saa1099Exit(INT32 )
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099Exit called without init\n"));
 #endif
 
@@ -399,7 +399,7 @@ void saa1099Exit(INT32 )
 
 void saa1099ControlWrite(INT32 chip, INT32 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099ControlWrite called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("saa1099ControlWrite called with invalid chip %x\n"), chip);
 #endif
@@ -420,7 +420,7 @@ void saa1099ControlWrite(INT32 chip, INT32 data)
 
 void saa1099DataWrite(INT32 chip, INT32 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099DataWrite called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("saa1099DataWrite called with invalid chip %x\n"), chip);
 #endif
@@ -502,21 +502,26 @@ void saa1099DataWrite(INT32 chip, INT32 data)
 	}
 }
 
-void saa1099Scan(INT32 chip, INT32 nAction)
+void saa1099Scan(INT32 nAction, INT32 *)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_SAA1099Initted) bprintf(PRINT_ERROR, _T("saa1099Scan called without init\n"));
 #endif
 
 	struct BurnArea ba;
-	saa1099_state *saa = &chips[chip];
+	saa1099_state *saa ;
 
-	if (nAction & ACB_VOLATILE) {		
-		memset(&ba, 0, sizeof(ba));
+	if (nAction & ACB_VOLATILE)
+	{
+		for (INT32 i = 0; i < 2; i++)
+		{
+			saa = &chips[i];
+			memset(&ba, 0, sizeof(ba));
 
-		ba.Data	  = (UINT8*)saa;
-		ba.nLen	  = sizeof(saa1099_state);
-		ba.szName = "SAA data";
-		BurnAcb(&ba);
+			ba.Data	  = (UINT8*)saa;
+			ba.nLen	  = sizeof(saa1099_state);
+			ba.szName = "SAA data";
+			BurnAcb(&ba);
+		}
 	}
 }

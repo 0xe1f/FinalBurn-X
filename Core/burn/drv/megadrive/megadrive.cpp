@@ -1,5 +1,5 @@
 /********************************************************************************
- SEGA Genesis / Mega Drive Driver for FBA 
+ SEGA Genesis / Mega Drive Driver for FBA
  ********************************************************************************
  This is part of Pico Library v0936
 
@@ -7,7 +7,7 @@
  (c) Copyright 2006 notaz, All rights reserved.
  Free for non-commercial use.
 
- For commercial use, separate licencing terms must be obtained. 
+ For commercial use, separate licencing terms must be obtained.
  ********************************************************************************
 
  PicoOpt bits LSb->MSb:
@@ -15,26 +15,88 @@
  alt_renderer, 6button_gamepad, accurate_timing, accurate_sprites,
  draw_no_32col_border, external_ym2612
 
+ tofix:
+ .) FIXED July 22 2017: Sonic 3/S&K: Hung notes(music) when Sonic jumps in the water under the waterfall
+ .) FIXED Dec. 31 2015: Battle Squadron - loses sound after weapon upgrade [x] pickup
+
  ********************************************************************************
- Port by OopsWare
+ Port by OopsWare overhaul by dink
  ********************************************************************************/
 
 #include "burnint.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
-#include "burn_ym2612.h"
+#include "burn_md2612.h"
 #include "sn76496.h"
 #include "megadrive.h"
 #include "bitswap.h"
 #include "m68000_debug.h"
 
+//#define CYCDBUG
+
 #define OSC_NTSC 53693175
 #define OSC_PAL  53203424
+#define TOTAL_68K_CYCLES        ((488 * 262) * 60)
+#define TOTAL_68K_CYCLES_PAL    ((488 * 312) * 50)
 
-#define MAX_CARTRIDGE_SIZE	0xc00000
-#define MAX_SRAM_SIZE		0x010000
+#define MAX_CARTRIDGE_SIZE      0xc00000
+#define MAX_SRAM_SIZE           0x010000
 
-static INT32 cycles_68k, cycles_z80;
+#if defined (__GNUC__) && defined (__LIBRETRO__)
+#define OPTIMIZE_ATTR __attribute__((optimize("O2")))
+#else
+#define OPTIMIZE_ATTR
+#endif
+
+// PicoDrive Sek interface
+static UINT64 SekCycleCnt, SekCycleAim, SekCycleCntDELTA, line_base_cycles;
+
+#define SekCyclesReset()        { SekCycleCnt = SekCycleAim = SekCycleCntDELTA = 0; }
+#define SekCyclesNewFrame()     { SekCycleCntDELTA = line_base_cycles = SekCycleCnt; }
+#define SekCyclesDoneFrame()    ( (SekCycleCnt - SekCycleCntDELTA) - m68k_ICount )
+#define SekCyclesDone()         ( SekCycleCnt - m68k_ICount )
+#define SekCyclesLine()         ( (SekCyclesDone() - line_base_cycles) )
+#define SekCyclesBurn(c)        { SekCycleCnt += c; }
+#define SekCyclesBurnRun(c)     { m68k_ICount -= c; }
+#define SekEndRun(after)        { SekCycleCnt -= m68k_ICount - (after); m68k_ICount = after; }
+
+static void SekRunM68k(INT32 cyc)
+{
+	INT32 cyc_do;
+
+	SekCycleAim += cyc;
+
+	while ((cyc_do = SekCycleAim - SekCycleCnt) > 0) {
+		SekCycleCnt += cyc_do;
+		SekCycleCnt += m68k_executeMD(cyc_do) - cyc_do;
+	}
+
+	m68k_ICount = 0;
+}
+
+static UINT64 z80_cycle_cnt, z80_cycle_aim, last_z80_sync;
+
+#define z80CyclesReset()        { last_z80_sync = z80_cycle_cnt = z80_cycle_aim = 0; }
+#define cycles_68k_to_z80(x)    ( (x)*957 >> 11 )
+
+/* sync z80 to 68k */
+static void z80CyclesSync(INT32 bRun)
+{
+	INT64 m68k_cycles_done = SekCyclesDone();
+
+	INT32 m68k_cnt = m68k_cycles_done - last_z80_sync;
+	z80_cycle_aim += cycles_68k_to_z80(m68k_cnt);
+	INT32 cnt = z80_cycle_aim - z80_cycle_cnt;
+	last_z80_sync = m68k_cycles_done;
+
+	if (cnt > 0) {
+		if (bRun) {
+			z80_cycle_cnt += ZetRun(cnt);
+		} else {
+			z80_cycle_cnt += cnt;
+		}
+	}
+}
 
 typedef void (*MegadriveCb)();
 static MegadriveCb MegadriveCallback;
@@ -43,21 +105,21 @@ struct PicoVideo {
 	UINT8 reg[0x20];
 	UINT32 command;		// 32-bit Command
 	UINT8 pending;		// 1 if waiting for second half of 32-bit command
-	UINT8 type;			// Command type (v/c/vsram read/write)
+	UINT8 type;		// Command type (v/c/vsram read/write)
 	UINT16 addr;		// Read/Write address
-	INT32 status;					// Status bits
+	INT32 status;		// Status bits
 	UINT8 pending_ints;	// pending interrupts: ??VH????
-	UINT8 pad[0x13];	//
+	INT8 lwrite_cnt;        // VDP write count during active display line
+	UINT16 v_counter;       // V-counter
 };
 
-struct PicoMisc {
-	UINT32 Z80Run;
-	UINT32 Bank68k;
-	UINT8 Rotate;
+#define SR_MAPPED   (1 << 0)
+#define SR_READONLY (1 << 1)
 
-//	UINT8 Pad[3];
-	
-//	UINT32 SRamReg;
+struct PicoMisc {
+	UINT32 Bank68k;
+
+	UINT32 SRamReg;
 	UINT32 SRamStart;
 	UINT32 SRamEnd;
 	UINT32 SRamDetected;
@@ -65,20 +127,20 @@ struct PicoMisc {
 	UINT32 SRamHandlersInstalled;
 	UINT32 SRamReadOnly;
 	UINT32 SRamHasSerialEEPROM;
-	
+
 	UINT8 I2CMem;
 	UINT8 I2CClk;
-	
+
 	UINT16 JCartIOData[2];
-	
+
 	UINT8 L3AltPDat;
 	UINT8 L3AltPCmd;
-	
+
 	UINT16 SquirrelkingExtra;
-	
+
 	UINT16 Lionk2ProtData;
 	UINT16 Lionk2ProtData2;
-	
+
 	UINT32 RealtecBankAddr;
 	UINT32 RealtecBankSize;
 };
@@ -86,24 +148,35 @@ struct PicoMisc {
 struct TileStrip
 {
 	INT32 nametab; // Position in VRAM of name table (for this tile line)
-	INT32 line;    // Line number in pixels 0x000-0x3ff within the virtual tilemap 
+	INT32 line;    // Line number in pixels 0x000-0x3ff within the virtual tilemap
 	INT32 hscroll; // Horizontal scroll value in pixels for the line
 	INT32 xmask;   // X-Mask (0x1f - 0x7f) for horizontal wraparound in the tilemap
 	INT32 *hc;     // cache for high tile codes and their positions
 	INT32 cells;   // cells (tiles) to draw (32 col mode doesn't need to update whole 320)
 };
 
+struct TeamPlayer {
+	UINT32 state;
+	UINT32 counter;
+	UINT32 table[12];
+};
+
 struct MegadriveJoyPad {
-	UINT16 pad[4];
-	UINT8  padTHPhase[4];
-	UINT8  padDelay[4];
+	UINT16 pad[8];
+	UINT32 padTHPhase[8];
+	UINT32 padDelay[8];
+
+	UINT32 fourwaylatch; // EA "4 way play" adapter
+	UINT8 fourway[8];
+
+	TeamPlayer teamplayer[2]; // Sega "team player" 4 port adapter
 };
 
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
 
 static UINT8 *RomMain;
-static UINT8 *OriginalRom;
+static UINT8 *OriginalRom = NULL;
 
 static UINT8 *Ram68K;
 static UINT8 *RamZ80;
@@ -118,12 +191,13 @@ static struct PicoVideo *RamVReg;
 static struct PicoMisc *RamMisc;
 static struct MegadriveJoyPad *JoyPad;
 
-UINT16 *MegadriveCurPal;
+UINT32 *MegadriveCurPal;
 
 static UINT16 *MegadriveBackupRam;
 
 static UINT8 *HighCol;
 static UINT8 *HighColFull;
+static UINT16 *LineBuf;
 
 static INT32 *HighCacheA;
 static INT32 *HighCacheB;
@@ -138,6 +212,7 @@ UINT8 MegadriveJoy1[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 MegadriveJoy2[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 MegadriveJoy3[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 MegadriveJoy4[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+UINT8 MegadriveJoy5[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 MegadriveDIP[2] = {0, 0};
 
 static UINT32 RomNum = 0;
@@ -151,11 +226,22 @@ static INT32 Scanline = 0;
 static INT32 Z80HasBus = 0;
 static INT32 MegadriveZ80Reset = 0;
 static INT32 RomNoByteswap;
+static UINT32 Z80BankPartial = 0;
+static UINT32 Z80BankPos = 0;
+
+static INT32 dma_xfers = 0; // vdp dma
+static INT32 rendstatus = 0; // status of vdp renderer
+static INT32 BlankedLine = 0;
 
 static UINT8 Hardware;
-static UINT8 DrvSECAM = 0;	// NTSC 
+static UINT8 DrvSECAM = 0;	// NTSC
+static UINT8 bNoDebug = 0;
+static INT32 bForce3Button = 0;
+INT32 psolarmode = 0; // pier solar
+static INT32 TeamPlayerMode = 0;
+static INT32 FourWayPlayMode = 0;
 
-void MegadriveCheckHardware()
+static void MegadriveCheckHardware()
 {
 	Hardware = MegadriveDIP[0] & 0xe0;
 	if (MegadriveDIP[0] & 0x01) {
@@ -179,7 +265,7 @@ void MegadriveCheckHardware()
 					support |= v - 0x30;
 					break;
 				}
-				
+
 				case 0x41:
 				case 0x42:
 				case 0x43:
@@ -188,25 +274,25 @@ void MegadriveCheckHardware()
 					support |= v - 0x41;
 					break;
 				}
-				
+
 				case 0x45: {
 					// Japan
 					support |= 0x08;
 					break;
 				}
-				
+
 				case 0x4a: {
 					// Europe
 					support |= 0x01;
 					break;
 				}
-				
+
 				case 0x55: {
 					// USA
 					support |= 0x04;
 					break;
 				}
-				
+
 				case 0x61:
 				case 0x62:
 				case 0x63:
@@ -221,48 +307,48 @@ void MegadriveCheckHardware()
 
 		bprintf(PRINT_IMPORTANT, _T("Autodetecting Cartridge (Hardware Code: %02x%02x%02x%02x):\n"), RomMain[0x1f0], RomMain[0x1f1], RomMain[0x1f2], RomMain[0x1f3]);
 		Hardware = 0x80;
-		
+
 		if (support & 0x02) {
 			Hardware = 0x40; // Japan PAL
 			bprintf(PRINT_IMPORTANT, _T("Japan PAL supported ???\n"));
 		}
-		
+
 		if (support & 0x01) {
 			Hardware = 0x00; // Japan NTSC
 			bprintf(PRINT_IMPORTANT, _T("Japan NTSC supported\n"));
-		}		
-		
+		}
+
 		if (support & 0x08) {
 			Hardware = 0xc0; // Europe PAL
 			bprintf(PRINT_IMPORTANT, _T("Europe PAL supported\n"));
 		}
-		
+
 		if (support & 0x04) {
 			Hardware = 0x80; // USA NTSC
 			bprintf(PRINT_IMPORTANT, _T("USA NTSC supported\n"));
 		}
-		
-		if ((Hardware & 0xc0) == 0xc0) {
-			bprintf(PRINT_IMPORTANT, _T("Emulating Europe PAL Machine\n"));
-		} else {
-			if ((Hardware & 0x80) == 0x80) {
-				bprintf(PRINT_IMPORTANT, _T("Emulating USA NTSC Machine\n"));
-			} else {
-				if ((Hardware & 0x40) == 0x40) {
-					bprintf(PRINT_IMPORTANT, _T("Emulating Japan PAL Machine ???\n"));
-				} else {
-					if ((Hardware & 0x00) == 0x00) {
-						bprintf(PRINT_IMPORTANT, _T("Emulating Japan NTSC Machine\n"));
-					}
-				}
-			}
-		}
-		
+
 		// CD-ROM
 		Hardware |= MegadriveDIP[0] & 0x20;
 	}
-	
-	if ((Hardware & 0x20) != 0x20) bprintf(PRINT_IMPORTANT, _T("Emulating Mega-CD Add-on\n"));
+
+	if ((Hardware & 0xc0) == 0xc0) {
+		bprintf(PRINT_IMPORTANT, _T("Emulating Europe PAL Machine\n"));
+	} else {
+		if ((Hardware & 0x80) == 0x80) {
+			bprintf(PRINT_IMPORTANT, _T("Emulating USA NTSC Machine\n"));
+		} else {
+			if ((Hardware & 0x40) == 0x40) {
+				bprintf(PRINT_IMPORTANT, _T("Emulating Japan PAL Machine ???\n"));
+			} else {
+				if ((Hardware & 0x00) == 0x00) {
+					bprintf(PRINT_IMPORTANT, _T("Emulating Japan NTSC Machine\n"));
+				}
+			}
+		}
+	}
+
+	//if ((Hardware & 0x20) != 0x20) bprintf(PRINT_IMPORTANT, _T("Emulating Mega-CD Add-on\n")); // no we're not!
 }
 
 //-----------------------------------------------------------------
@@ -278,15 +364,15 @@ inline static void CalcCol(INT32 index, UINT16 nColour)
 	r |= r >> 4;
 	g |= g >> 4;
 	b |= b >> 4;
-	
+
 	RamPal[index] = nColour;
-	
+
 	// Normal Color
 	MegadriveCurPal[index + 0x00] = BurnHighCol(r, g, b, 0);
-	
+
 	// Shadow Color
 	MegadriveCurPal[index + 0x40] = MegadriveCurPal[index + 0xc0] = BurnHighCol(r>>1, g>>1, b>>1, 0);
-	
+
 	// Highlight Color
 	r += 0x80; if (r > 0xFF) r = 0xFF;
 	g += 0x80; if (g > 0xFF) g = 0xFF;
@@ -297,45 +383,48 @@ inline static void CalcCol(INT32 index, UINT16 nColour)
 static INT32 MemIndex()
 {
 	UINT8 *Next; Next = Mem;
-	RomMain 	= Next; Next += MAX_CARTRIDGE_SIZE;	// 68000 ROM, Max enough 
-	
+	RomMain 	= Next; Next += MAX_CARTRIDGE_SIZE;	// 68000 ROM, Max enough
+
 	RamStart	= Next;
-	
+
 	Ram68K		= Next; Next += 0x010000;
 	RamZ80		= Next; Next += 0x002000;
-	SRam		= Next; Next += MAX_SRAM_SIZE;		// SRam
 	RamIO		= Next; Next += 0x000010;			// I/O
-	
+
 	RamPal		= (UINT16 *) Next; Next += 0x000040 * sizeof(UINT16);
 	RamSVid		= (UINT16 *) Next; Next += 0x000040 * sizeof(UINT16);	// VSRam
 	RamVid		= (UINT16 *) Next; Next += 0x008000 * sizeof(UINT16);	// Video Ram
-	
 	RamVReg		= (struct PicoVideo *)Next; Next += sizeof(struct PicoVideo);
-	RamMisc		= (struct PicoMisc *)Next; Next += sizeof(struct PicoMisc);
-	
+
+	JoyPad		= (struct MegadriveJoyPad *) Next; Next += sizeof(struct MegadriveJoyPad);
+
 	RamEnd		= Next;
 
-	MegadriveCurPal		= (UINT16 *) Next; Next += 0x000040 * sizeof(UINT16) * 4;
-	
-	HighColFull	= Next; Next += (8 + 320 + 8) * 240;
-	
+	SRam		= Next; Next += MAX_SRAM_SIZE;		// SRam
+	// Keep RamMisc out of the Ram section to keep from getting cleared on reset.
+	RamMisc		= (struct PicoMisc *)Next; Next += sizeof(struct PicoMisc);
+
+	MegadriveCurPal		= (UINT32 *) Next; Next += 0x000040 * sizeof(UINT32) * 4;
+
+	HighColFull	= Next; Next += (8 + 320 + 8) * 240 + 1;
+
+	LineBuf     = (UINT16 *) Next; Next += 320 * 320 * sizeof(UINT16); // palete-processed line-buffer (dink / for sonic mode)
+
 	HighCacheA	= (INT32 *) Next; Next += (41+1) * sizeof(INT32);	// caches for high layers
 	HighCacheB	= (INT32 *) Next; Next += (41+1) * sizeof(INT32);
 	HighCacheS	= (INT32 *) Next; Next += (80+1) * sizeof(INT32);	// and sprites
 	HighPreSpr	= (INT32 *) Next; Next += (80*2+1) * sizeof(INT32);	// slightly preprocessed sprites
 	HighSprZ	= (INT8*) Next; Next += (320+8+8);				// Z-buffer for accurate sprites and shadow/hilight mode
-	
-	JoyPad		= (struct MegadriveJoyPad *) Next; Next += sizeof(struct MegadriveJoyPad);
 
 	MemEnd		= Next;
 	return 0;
 }
 
-UINT16 __fastcall MegadriveReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MegadriveReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0xa11100: {
-			UINT16 retVal = rand() & 0xffff;
+			UINT16 retVal = BurnRandom() & 0xffff;
 			if (Z80HasBus || MegadriveZ80Reset) {
 				retVal |= 0x100;
 			} else {
@@ -343,7 +432,7 @@ UINT16 __fastcall MegadriveReadWord(UINT32 sekAddress)
 			}
 			return retVal;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Attempt to read word value of location %x\n"), sekAddress);
 		}
@@ -351,7 +440,7 @@ UINT16 __fastcall MegadriveReadWord(UINT32 sekAddress)
 	return 0;
 }
 
-UINT8 __fastcall MegadriveReadByte(UINT32 sekAddress)
+static UINT8 __fastcall MegadriveReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0xa04000:
@@ -359,14 +448,14 @@ UINT8 __fastcall MegadriveReadByte(UINT32 sekAddress)
 		case 0xa04002:
 		case 0xa04003: {
 			if (!Z80HasBus && !MegadriveZ80Reset) {
-				return BurnYM2612Read(0, 0);
+				return BurnMD2612Read(0, 0);
 			} else {
 				return 0;
 			}
 		}
-				
+
 		case 0xa11100: {
-			UINT8 retVal = rand() & 0xff;
+			UINT8 retVal = BurnRandom() & 0xff;
 			if (Z80HasBus || MegadriveZ80Reset) {
 				retVal |= 0x01;
 			} else {
@@ -375,6 +464,8 @@ UINT8 __fastcall MegadriveReadByte(UINT32 sekAddress)
 			return retVal;
 		}
 
+		case 0xa12000: return 0; // NOP (cd-stuff, called repeatedly by rnrracin)
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Attempt to read byte value of location %x\n"), sekAddress);
 		}
@@ -382,55 +473,62 @@ UINT8 __fastcall MegadriveReadByte(UINT32 sekAddress)
 	return 0;
 }
 
-void __fastcall MegadriveWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d); // forward
+
+static void __fastcall MegadriveWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if(sekAddress >= 0xA13004 && sekAddress < 0xA13040) {
+		bprintf(0, _T("---------dumb 12-in-1 banking stuff.\n"));
 		// dumb 12-in-1 or 4-in-1 banking support
-		sekAddress &= 0x3f; 
+		sekAddress &= 0x3f;
 		sekAddress <<= 16;
 		INT32 len = RomSize - sekAddress;
 		if (len <= 0) return; // invalid/missing bank
 		if (len > 0x200000) len = 0x200000; // 2 megs
 		// code which does this is in RAM so this is safe.
-		memcpy(RomMain, RomMain + sekAddress, len); 
+		memcpy(RomMain, RomMain + sekAddress, len);
 		return;
 	}
 
 	switch (sekAddress) {
 		case 0xa04000: {
 			if (!Z80HasBus && !MegadriveZ80Reset) {
-				BurnYM2612Write(0, 0, byteValue);
+				BurnMD2612Write(0, 0, byteValue);
 			}
 			return;
 		}
-	
+
 		case 0xa04001: {
 			if (!Z80HasBus && !MegadriveZ80Reset) {
-				BurnYM2612Write(0, 1, byteValue);
+				BurnMD2612Write(0, 1, byteValue);
 			}
 			return;
 		}
-	
+
 		case 0xa04002: {
 			if (!Z80HasBus && !MegadriveZ80Reset) {
-				BurnYM2612Write(0, 2, byteValue);
+				BurnMD2612Write(0, 2, byteValue);
 			}
 			return;
 		}
-	
+
 		case 0xa04003: {
 			if (!Z80HasBus && !MegadriveZ80Reset) {
-				BurnYM2612Write(0, 3, byteValue);
+				BurnMD2612Write(0, 3, byteValue);
 			}
 			return;
 		}
-		
+
+		case 0xA06000: { // banking (TecToy Bomber uses this)
+			MegadriveZ80ProgWrite(sekAddress, byteValue);
+		}
+		return;
+
 		case 0xA11100: {
 			if (byteValue & 1) {
-				RamMisc->Z80Run = 0;
+				z80CyclesSync(Z80HasBus && !MegadriveZ80Reset); // synch before disconnecting.  fixes hang in Golden Axe III (z80run)
 				Z80HasBus = 0;
 			} else {
-				RamMisc->Z80Run = 1;
 				Z80HasBus = 1;
 			}
 			return;
@@ -438,60 +536,51 @@ void __fastcall MegadriveWriteByte(UINT32 sekAddress, UINT8 byteValue)
 
 		case 0xA11200: {
 			if (!(byteValue & 1)) {
-				ZetOpen(0);
 				ZetReset();
-				ZetClose();
-
-				BurnYM2612Reset();
-				MegadriveZ80Reset = 1;	
-			} else {
-				MegadriveZ80Reset = 0;
-			}
-			return;
-		}
-	
-//		case 0xA130F1: {
-			// sram access register
-//			RamMisc->SRamReg = byteValue & 0x03;
-//			return;
-//		}
-			
-		default: {
-			bprintf(PRINT_NORMAL, _T("Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
-		}		
-	}
-}
-
-void __fastcall MegadriveWriteWord(UINT32 sekAddress, UINT16 wordValue)
-{
-	switch (sekAddress) {
-		case 0xa11100: {
-			if (wordValue & 0x100) {
-				RamMisc->Z80Run = 0;
-				Z80HasBus = 0;
-			} else {
-				RamMisc->Z80Run = 1;
-				Z80HasBus = 1;
-			}
-			return;
-		}
-		
-		case 0xa11200: {
-			if (!(wordValue & 0x100)) {
-				ZetOpen(0);
-				ZetReset();
-				ZetClose();
-
-				BurnYM2612Reset();
+				BurnMD2612Reset();
 				MegadriveZ80Reset = 1;
 			} else {
 				MegadriveZ80Reset = 0;
 			}
 			return;
 		}
-		
+
+		case 0xa12000: return; // NOP (cd-stuff, called repeatedly by rnrracin)
+
 		default: {
-			bprintf(PRINT_NORMAL, _T("Attempt to write word value %x to location %x\n"), wordValue, sekAddress);
+			if (!bNoDebug)
+				bprintf(PRINT_NORMAL, _T("Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
+		}
+	}
+}
+
+static void __fastcall MegadriveWriteWord(UINT32 sekAddress, UINT16 wordValue)
+{
+	switch (sekAddress) {
+		case 0xa11100: {
+			if (wordValue & 0x100) {
+				z80CyclesSync(Z80HasBus && !MegadriveZ80Reset);
+				Z80HasBus = 0;
+			} else {
+				Z80HasBus = 1;
+			}
+			return;
+		}
+
+		case 0xa11200: {
+			if (!(wordValue & 0x100)) {
+				ZetReset();
+				BurnMD2612Reset();
+				MegadriveZ80Reset = 1;
+			} else {
+				MegadriveZ80Reset = 0;
+			}
+			return;
+		}
+
+		default: {
+			if (!bNoDebug)
+				bprintf(PRINT_NORMAL, _T("Attempt to write word value %x to location %x\n"), wordValue, sekAddress);
 		}
 	}
 }
@@ -499,24 +588,6 @@ void __fastcall MegadriveWriteWord(UINT32 sekAddress, UINT16 wordValue)
 //---------------------------------------------------------------
 // Megadrive Video Port Read Write
 //---------------------------------------------------------------
-
-static INT32 rendstatus = 0;
-
-// calculate the number of cycles 68k->VDP dma operation would take
-static INT32 DmaSlowBurn(INT32 len)
-{
-	// test: Legend of Galahad, Time Killers
-	INT32 burn,maxlen,line=Scanline;
-	//if(line == -1) line=vcounts[SekCyclesDone()>>8];
-	maxlen = (224-line) * 18;
-	if(len <= maxlen)
-		burn = len*(((cycles_68k<<8)/18))>>8;
-	else {
-		burn  = maxlen*(((cycles_68k<<8)/18))>>8;
-		burn += (len-maxlen)*(((cycles_68k<<8)/180))>>8;
-	}
-	return burn;
-}
 
 static INT32 GetDmaLength()
 {
@@ -529,12 +600,66 @@ static INT32 GetDmaLength()
   return len;
 }
 
+// dma2vram settings are just hacks to unglitch Legend of Galahad (needs <= 104 to work)
+// same for Outrunners (92-121, when active is set to 24)
+// 96 is VR hack
+static const INT32 dma_timings[] = {
+  167, 167, 166,  83, // vblank: 32cell: dma2vram dma2[vs|c]ram vram_fill vram_copy
+  103, 205, 204, 102, // vblank: 40cell:
+  16,   16,  15,   8, // active: 32cell:
+  24,   18,  17,   9  // ...
+};
+
+static const INT32 dma_bsycles[] = {
+  (488<<8)/167, (488<<8)/167, (488<<8)/166, (488<<8)/83,
+  (488<<8)/103, (488<<8)/233, (488<<8)/204, (488<<8)/102,
+  (488<<8)/16,  (488<<8)/16,  (488<<8)/15,  (488<<8)/8,
+  (488<<8)/24,  (488<<8)/18,  (488<<8)/17,  (488<<8)/9
+};
+
+static UINT32 CheckDMA(void)
+{
+  INT32 burn = 0, xfers_can, dma_op = RamVReg->reg[0x17]>>6; // see gens for 00 and 01 modes
+  INT32 xfers = dma_xfers;
+  INT32 dma_op1;
+
+  if(!(dma_op&2)) dma_op = (RamVReg->type == 1) ? 0 : 1; // setting dma_timings offset here according to Gens
+  dma_op1 = dma_op;
+  if(RamVReg->reg[12] & 1) dma_op |= 4; // 40 cell mode?
+  if(!(RamVReg->status&8)&&(RamVReg->reg[1]&0x40)) dma_op|=8; // active display?
+  xfers_can = dma_timings[dma_op];
+
+  if(xfers <= xfers_can)
+  {
+    if(dma_op&2) RamVReg->status&=~2; // dma no longer busy
+    else {
+      burn = xfers * dma_bsycles[dma_op] >> 8; // have to be approximate because can't afford division..
+    }
+    dma_xfers = 0;
+  } else {
+    if(!(dma_op&2)) burn = 488;
+    dma_xfers -= xfers_can;
+  }
+
+  //elprintf(EL_VDPDMA, "~Dma %i op=%i can=%i burn=%i [%i]", Pico.m.dma_xfers, dma_op1, xfers_can, burn, SekCyclesDone());
+  //dprintf("~aim: %i, cnt: %i", SekCycleAim, SekCycleCnt);
+  //bprintf(0, _T("burn[%d]"), burn);
+  return burn;
+}
+
+static INT32 DMABURN() { // add cycles to the 68k cpu
+    if (dma_xfers) {
+        return CheckDMA();
+    } else return 0;
+}
+
 static void DmaSlow(INT32 len)
 {
 	UINT16 *pd=0, *pdend, *r;
 	UINT32 a = RamVReg->addr, a2, d;
 	UINT8 inc = RamVReg->reg[0xf];
-	UINT32 source, burn;
+	UINT32 source;
+	UINT32 fromrom = 0;
 
 	source  = RamVReg->reg[0x15] <<  1;
 	source |= RamVReg->reg[0x16] <<  9;
@@ -543,52 +668,68 @@ static void DmaSlow(INT32 len)
   //dprintf("DmaSlow[%i] %06x->%04x len %i inc=%i blank %i [%i|%i]", Pico.video.type, source, a, len, inc,
   //         (Pico.video.status&8)||!(Pico.video.reg[1]&0x40), Pico.m.scanline, SekCyclesDone());
 
+	dma_xfers += len;
+
+	INT32 dmab = CheckDMA();
+
+#ifdef CYCDBUG
+//	bprintf(0, _T("dma @ ln %d cyc %d, burnt: %d.\n"), Scanline, SekCyclesLine(), dmab);
+#endif
+	SekCyclesBurnRun(dmab);
+
 	if ((source & 0xe00000) == 0xe00000) { // RAM
 		pd    = (UINT16 *)(Ram68K + (source & 0xfffe));
-		pdend = (UINT16 *)(Ram68K + 0x10000); 
+		pdend = (UINT16 *)(Ram68K + 0x10000);
 	} else if( source < RomSize) {	// ROM
-		pd    = (UINT16 *)(RomMain + (source & ~1)); 
-		pdend = (UINT16 *)(RomMain + RomSize); 
+		fromrom = 1;
+		source &= ~1;
+		pd    = (UINT16 *)(RomMain + source);
+		pdend = (UINT16 *)(RomMain + RomSize);
 	} else return; // Invalid source address
 
-	// CPU is stopped during DMA, so we burn some cycles to compensate that
-	if((RamVReg->status & 8) || !(RamVReg->reg[1] & 0x40)) { 	// vblank?
-		burn = (len*(((cycles_68k<<8)/167))>>8); 						// very approximate
-		if(!(RamVReg->status & 8)) burn += burn>>1;				// a hack for Legend of Galahad
-	} else burn = DmaSlowBurn(len);
-	
-	//SekCyclesBurn(burn);
-	SekRunAdjust( 0 - burn );
-	
-	if(!(RamVReg->status & 8))
-		SekRunEnd();
-	//dprintf("DmaSlow burn: %i @ %06x", burn, SekPc);
+	// overflow protection, might break something..
+	if (len > pdend - pd) {
+		len = pdend - pd;
+		//bprintf(0, _T("DmaSlow() overflow(!).\n"));
+	}
 
 	switch ( RamVReg->type ) {
 	case 1: // vram
 		r = RamVid;
 		for(; len; len--) {
-			d = *pd++;
+			if (psolarmode && fromrom) {
+				d = md_psolar_rw(source);
+				source+=2;
+			} else {
+				d = *pd++;
+			}
 			if(a&1) d=(d<<8)|(d>>8);
 			r[a>>1] = (UINT16)d; // will drop the upper bits
 			// AutoIncrement
 			a = (UINT16)(a+inc);
 			// didn't src overlap?
-			if(pd >= pdend) pd -= 0x8000; // should be good for RAM, bad for ROM
+			//if(pd >= pdend) pd -= 0x8000; // should be good for RAM, bad for ROM
 		}
+
 		rendstatus |= 0x10;
 		break;
-    
+
 	case 3: // cram
 		//dprintf("DmaSlow[%i] %06x->%04x len %i inc=%i blank %i [%i|%i]", Pico.video.type, source, a, len, inc,
 		//         (Pico.video.status&8)||!(Pico.video.reg[1]&0x40), Pico.m.scanline, SekCyclesDone());
 		for(a2 = a&0x7f; len; len--) {
-			CalcCol( a2>>1, BURN_ENDIAN_SWAP_INT16(*pd) );
-			pd++;
+			if (psolarmode && fromrom) {
+				d = md_psolar_rw(source);
+				source+=2;
+			} else {
+				d = *pd++;
+			}
+			CalcCol( a2>>1, BURN_ENDIAN_SWAP_INT16(d) );
+			//pd++;
 			// AutoIncrement
 			a2+=inc;
 			// didn't src overlap?
-			if(pd >= pdend) pd-=0x8000;
+			//if(pd >= pdend) pd-=0x8000;
 			// good dest?
 			if(a2 >= 0x80) break; // Todds Adventures in Slime World / Andre Agassi tennis
 		}
@@ -598,11 +739,17 @@ static void DmaSlow(INT32 len)
 	case 5: // vsram[a&0x003f]=d;
 		r = RamSVid;
 		for(a2=a&0x7f; len; len--) {
-			r[a2>>1] = (UINT16)*pd++;
+			if (psolarmode && fromrom) {
+				d = md_psolar_rw(source);
+				source+=2;
+			} else {
+				d = *pd++;
+			}
+			r[a2>>1] = (UINT16)d;
 			// AutoIncrement
 			a2+=inc;
 			// didn't src overlap?
-			if(pd >= pdend) pd-=0x8000;
+			//if(pd >= pdend) pd-=0x8000;
 			// good dest?
 			if(a2 >= 0x80) break;
 		}
@@ -617,25 +764,29 @@ static void DmaCopy(INT32 len)
 {
 	UINT8 * vr = (UINT8 *) RamVid;
 	UINT8 * vrs;
-	//UINT16 a = Pico.video.addr;
-	//UINT8 inc = RamVReg->reg[0xf];
+	UINT16 a = RamVReg->addr;
+	UINT8 inc = RamVReg->reg[0xf];
 	INT32 source;
-	
+
 	//dprintf("DmaCopy len %i [%i|%i]", len, Pico.m.scanline, SekCyclesDone());
+
+	RamVReg->status |= 2; // dma busy
+	dma_xfers += len;
 
 	source  = RamVReg->reg[0x15];
 	source |= RamVReg->reg[0x16]<<8;
 	vrs = vr + source;
-	
-	if (source+len > 0x10000) 
+
+	if (source+len > 0x10000)
 		len = 0x10000 - source; // clip??
-	
+
 	for(;len;len--) {
-		vr[RamVReg->addr] = *vrs++;
+		vr[a] = *vrs++;
 		// AutoIncrement
-		//a = (u16)(a + inc);
-		RamVReg->addr += RamVReg->reg[0xf];
+		a = (UINT16)(a + inc);
 	}
+	// remember addr
+	RamVReg->addr = a;
 	rendstatus |= 0x10;
 }
 
@@ -646,11 +797,13 @@ static void DmaFill(INT32 data)
 	UINT8 high = (UINT8) (data >> 8);
 	UINT16 a = RamVReg->addr;
 	UINT8 inc = RamVReg->reg[0xf];
-  
+
 	//dprintf("DmaFill len %i inc %i [%i|%i]", len, inc, Pico.m.scanline, SekCyclesDone());
 
 	// from Charles MacDonald's genvdp.txt:
 	// Write lower byte to address specified
+	RamVReg->status |= 2; // dma busy
+	dma_xfers += len;
 	vr[a] = (UINT8) data;
 	a = (UINT16)(a+inc);
 
@@ -708,7 +861,7 @@ static void CommandChange()
 
 // H-counter table for hvcounter reads in 40col mode
 // based on Gens code
-const UINT8 hcounts_40[] = {
+static const UINT8 hcounts_40[] = {
 	0x07,0x07,0x08,0x08,0x08,0x09,0x09,0x0a,0x0a,0x0b,0x0b,0x0b,0x0c,0x0c,0x0d,0x0d,
 	0x0e,0x0e,0x0e,0x0f,0x0f,0x10,0x10,0x10,0x11,0x11,0x12,0x12,0x13,0x13,0x13,0x14,
 	0x14,0x15,0x15,0x15,0x16,0x16,0x17,0x17,0x18,0x18,0x18,0x19,0x19,0x1a,0x1a,0x1b,
@@ -744,7 +897,7 @@ const UINT8 hcounts_40[] = {
 };
 
 // H-counter table for hvcounter reads in 32col mode
-const UINT8 hcounts_32[] = {
+static const UINT8 hcounts_32[] = {
 	0x05,0x05,0x05,0x06,0x06,0x07,0x07,0x07,0x08,0x08,0x08,0x09,0x09,0x09,0x0a,0x0a,
 	0x0a,0x0b,0x0b,0x0b,0x0c,0x0c,0x0c,0x0d,0x0d,0x0d,0x0e,0x0e,0x0f,0x0f,0x0f,0x10,
 	0x10,0x10,0x11,0x11,0x11,0x12,0x12,0x12,0x13,0x13,0x13,0x14,0x14,0x14,0x15,0x15,
@@ -779,16 +932,13 @@ const UINT8 hcounts_32[] = {
 	0x08,0x08,0x08,0x09,0x09,0x09,0x0a,0x0a,0x0a,0x0b,0x0b,0x0b,0x0c,0x0c,0x0c,0x0d,
 };
 
-UINT16 __fastcall MegadriveVideoReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MegadriveVideoReadWord(UINT32 sekAddress)
 {
-	//bprintf(PRINT_NORMAL, _T("Video Attempt to read word value of location %x\n"), sekAddress);
-	//return MegadriveVDPRead((sekAddress - 0xc00000) >> 1);
-	
 	if (sekAddress > 0xC0001F)
 		bprintf(PRINT_NORMAL, _T("Video Attempt to read word value of location %x\n"), sekAddress);
-	
+
 	UINT16 res = 0;
-	
+
 	switch (sekAddress & 0x1c) {
 	case 0x00:	// data
 		switch (RamVReg->type) {
@@ -800,55 +950,44 @@ UINT16 __fastcall MegadriveVideoReadWord(UINT32 sekAddress)
 		break;
 
 	case 0x04:	// command
-		res = RamVReg->status;
-		//if(PicoOpt&0x10) d|=0x0020; 							// sprite collision (Shadow of the Beast)
-		if(RamMisc->Rotate++&8) res |= 0x0100; else res |= 0x0200;	// Toggle fifo full empty (who uses that stuff?)
-		if(!(RamVReg->reg[1] & 0x40)) res |= 0x0008;			// set V-Blank if display is disabled
-		if(m68k_ICount < 84+4) res |= 0x0004;					// H-Blank (Sonic3 vs)
-		RamVReg->pending = 0;		// ctrl port reads clear write-pending flag (Charles MacDonald)		
-		break;
-	
-	case 0x08: 	// H-counter info
 		{
-			UINT32 hc = 50;
-	
-			INT32 lineCycles = (cycles_68k - m68k_ICount) & 0x1ff;
-			res = Scanline; // V-Counter
-	
-			if(RamVReg->reg[12]&1) 
-				hc = hcounts_40[lineCycles];
-			else hc = hcounts_32[lineCycles];
-	
-			if(lineCycles > cycles_68k-12) res++; // Wheel of Fortune
+			UINT16 d = RamVReg->status; //xxxxxxxxxxx
+			if (SekCyclesLine() >= (488-88))
+				d|=0x0004; // H-Blank (Sonic3 vs)
 
-			if( Hardware & 0x40 ) {
-				if(res >= 0x103) res -= 56; // based on Gens
-			} else {
-				if(res >= 0x0EB) res -= 6;
-			}
-		
-			if((RamVReg->reg[12]&6) == 6) {
-				// interlace mode 2 (Combat Cars (UE) [!])
-				res <<= 1;
-				if (res & 0xf00) res |= 1;
-			}
-			
-			//dprintf("hv: %02x %02x (%i) @ %06x", hc, d, SekCyclesDone(), SekPc);
-			res &= 0xff; 
-			res <<= 8;
-			res |= hc;
+			d |= ((RamVReg->reg[1]&0x40)^0x40) >> 3;  // set V-Blank if display is disabled
+			d |= (RamVReg->pending_ints&0x20)<<2;     // V-int pending?
+			if (d&0x100) RamVReg->status&=~0x100; // FIFO no longer full
+
+			RamVReg->pending = 0; // ctrl port reads clear write-pending flag (Charles MacDonald)
+
+			return d;
 		}
 		break;
-		
-	default:	
+	case 0x08: 	// H-counter info
+		{
+			UINT32 d;
+
+			d = (SekCyclesLine()) & 0x1ff; // FIXME
+
+			if (RamVReg->reg[12]&1)
+				d = hcounts_40[d];
+			else d = hcounts_32[d];
+
+			//elprintf(EL_HVCNT, "hv: %02x %02x (%i) @ %06x", d, Pico.video.v_counter, SekCyclesDone(), SekPc);
+			return d | (RamVReg->v_counter << 8);
+		}
+		break;
+
+	default:
 		bprintf(PRINT_NORMAL, _T("Video Attempt to read word value of location %x, %x\n"), sekAddress, sekAddress & 0x1c);
 		break;
-	}	
-	
+	}
+
 	return res;
 }
 
-UINT8 __fastcall MegadriveVideoReadByte(UINT32 sekAddress)
+static UINT8 __fastcall MegadriveVideoReadByte(UINT32 sekAddress)
 {
 	//bprintf(PRINT_NORMAL, _T("Video Attempt to read byte value of location %x\n"), sekAddress);
 	UINT16 res = MegadriveVideoReadWord(sekAddress & ~1);
@@ -856,39 +995,58 @@ UINT8 __fastcall MegadriveVideoReadByte(UINT32 sekAddress)
 	return res & 0xff;
 }
 
-void __fastcall MegadriveVideoWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall MegadriveVideoWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	if (sekAddress > 0xC0001F)
 		bprintf(PRINT_NORMAL, _T("Video Attempt to write word value %x to location %x\n"), wordValue, sekAddress);
 
 	switch (sekAddress & 0x1c) {
 	case 0x00:	// data
-		if (RamVReg->pending)
+		if (RamVReg->pending) {
 			CommandChange();
-    	RamVReg->pending = 0;
+			RamVReg->pending = 0;
+		}
 		if ((RamVReg->command & 0x80) && (RamVReg->reg[1]&0x10) && (RamVReg->reg[0x17]>>6)==2) {
 
 			DmaFill(wordValue);
 
 		} else {
+
+			// FIFO
+			// preliminary FIFO emulation for Chaos Engine, The (E)
+			if (!(RamVReg->status&8) && (RamVReg->reg[1]&0x40)) // active display?
+			{
+				RamVReg->status&=~0x200; // FIFO no longer empty
+				RamVReg->lwrite_cnt++;
+				if (RamVReg->lwrite_cnt >= 4) RamVReg->status|=0x100; // FIFO full
+				if (RamVReg->lwrite_cnt >  4) {
+					//SekRunAdjust(0-80);
+					//SekIdle(80);
+					SekCyclesBurnRun(32);
+				}
+				//elprintf(EL_ASVDP, "VDP data write: %04x [%06x] {%i} #%i @ %06x", d, Pico.video.addr,
+				//		 Pico.video.type, pvid->lwrite_cnt, SekPc);
+			}
+
 			//UINT32 a=Pico.video.addr;
 			switch (RamVReg->type) {
-			case 1: 
+			case 1:
 				// If address is odd, bytes are swapped (which game needs this?)
+				// williams arcade greatest hits -dink
 				if (RamVReg->addr & 1) {
-					bprintf(PRINT_NORMAL, _T("Video address is odd, bytes are swapped!!!\n"));
+					//bprintf(PRINT_NORMAL, _T("Video address is odd, bytes are swapped!!!\n"));
 					wordValue = (wordValue<<8)|(wordValue>>8);
 				}
 				RamVid[(RamVReg->addr >> 1) & 0x7fff] = BURN_ENDIAN_SWAP_INT16(wordValue);
-            	rendstatus |= 0x10; 
+            	rendstatus |= 0x10;
             	break;
-			case 3: 
+			case 3:
 				//Pico.m.dirtyPal = 1;
 				//dprintf("w[%i] @ %04x, inc=%i [%i|%i]", Pico.video.type, a, Pico.video.reg[0xf], Pico.m.scanline, SekCyclesDone());
 				CalcCol((RamVReg->addr >> 1) & 0x003f, wordValue);
 				break;
 			case 5:
-				RamSVid[(RamVReg->addr >> 1) & 0x003f] = BURN_ENDIAN_SWAP_INT16(wordValue); 
+				RamSVid[(RamVReg->addr >> 1) & 0x003f] = BURN_ENDIAN_SWAP_INT16(wordValue);
 				break;
 			}
 			//dprintf("w[%i] @ %04x, inc=%i [%i|%i]", Pico.video.type, a, Pico.video.reg[0xf], Pico.m.scanline, SekCyclesDone());
@@ -896,7 +1054,7 @@ void __fastcall MegadriveVideoWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			RamVReg->addr += RamVReg->reg[0xf];
 		}
     	return;
-		
+
 	case 0x04:	// command
 		if(RamVReg->pending) {
 			// Low word of command:
@@ -907,24 +1065,41 @@ void __fastcall MegadriveVideoWriteWord(UINT32 sekAddress, UINT16 wordValue)
 		} else {
 			if((wordValue & 0xc000) == 0x8000) {
 				INT32 num = (wordValue >> 8) & 0x1f;
+				RamVReg->type = 0; // register writes clear command (else no Sega logo in Golden Axe II)
+				if (num > 0x0a && !(RamVReg->reg[1] & 4)) {
+					//bprintf(0, _T("%02x written to reg %02x in SMS mode @ %06x"), d, num, SekGetPC(-1));
+					return;
+				}
+
+				// Blank last line
+				if (num == 1 && !(wordValue&0x40) && SekCyclesLine() <= (488-390))
+					BlankedLine = 1;
+
+				UINT8 oldreg = RamVReg->reg[num];
 				RamVReg->reg[num] = wordValue & 0xff;
-				
+
 				// update IRQ level (Lemmings, Wiz 'n' Liz intro, ... )
 				// may break if done improperly:
 				// International Superstar Soccer Deluxe (crash), Street Racer (logos), Burning Force (gfx), Fatal Rewind (hang), Sesame Street Counting Cafe
-				if(num < 2) {
-					
-					INT32 lines = (RamVReg->reg[1] & 0x20) | (RamVReg->reg[0] & 0x10);
-					INT32 pints = (RamVReg->pending_ints & lines);
-					if(pints & 0x20) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
-					else if(pints & 0x10) SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
-					else SekSetIRQLine(0, SEK_IRQSTATUS_NONE);
+				if(num < 2 && !SekShouldInterrupt()) {
 
+					INT32 irq = 0;
+					INT32 lines = (RamVReg->reg[1] & 0x20) | (RamVReg->reg[0] & 0x10);
+					INT32 pints = (RamVReg->pending_ints&lines);
+					if (pints & 0x20) irq = 6;
+					else if (pints & 0x10) irq = 4;
+
+					if (pints) {
+						//m68k_set_irq_delay(irq);
+						SekSetIRQLine(irq, CPU_IRQSTATUS_ACK);
+						SekEndRun(24);
+					} else {
+						SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
+					}
 				}
 
-				if (num == 5) rendstatus |= 1;
+				if (num == 5) if (RamVReg->reg[num]^oldreg) rendstatus |= 1;//PDRAW_SPRITES_MOVED;
 //				else if(num == 0xc) Pico.m.dirtyPal = 2; // renderers should update their palettes if sh/hi mode is changed
-				RamVReg->type = 0; // register writes clear command (else no Sega logo in Golden Axe II)
 			} else {
 				// High word of command:
 				RamVReg->command &= 0x0000ffff;
@@ -933,18 +1108,19 @@ void __fastcall MegadriveVideoWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			}
 		}
     	return;
-	
+
 	case 0x10:
 	case 0x14:
 		// PSG Sound
 		//bprintf(PRINT_NORMAL, _T("PSG Attempt to write word value %04x to location %08x\n"), wordValue, sekAddress);
 		SN76496Write(0, wordValue & 0xFF);
 		return;
-	
+
 	}
+	bprintf(0, _T("unmapped vdp %X %X\n"), sekAddress, sekAddress & 0x1c);
 }
 
-void __fastcall MegadriveVideoWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveVideoWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	//bprintf(PRINT_NORMAL, _T("Video Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
 	MegadriveVideoWriteWord(sekAddress, (byteValue << 8) | byteValue);
@@ -952,22 +1128,22 @@ void __fastcall MegadriveVideoWriteByte(UINT32 sekAddress, UINT8 byteValue)
 
 // -- Z80 Ram Read Write ------------------------------------------
 
-UINT8 __fastcall MegadriveZ80RamReadByte(UINT32 sekAddress)
+static UINT8 __fastcall MegadriveZ80RamReadByte(UINT32 sekAddress)
 {
 	if (!Z80HasBus && !MegadriveZ80Reset) {
 		return RamZ80[sekAddress & 0x1fff];
 	}
-		
+
 	return 0;
 }
 
-UINT16 __fastcall MegadriveZ80RamReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MegadriveZ80RamReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Z80Ram Attempt to read word value of location %x\n"), sekAddress);
 	return 0;
 }
 
-void __fastcall MegadriveZ80RamWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveZ80RamWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if (!Z80HasBus && !MegadriveZ80Reset) {
 		RamZ80[sekAddress & 0x1fff] = byteValue;
@@ -976,26 +1152,27 @@ void __fastcall MegadriveZ80RamWriteByte(UINT32 sekAddress, UINT8 byteValue)
 	bprintf(PRINT_NORMAL, _T("Z80Ram Attempt to write byte value %x to location %x and didn't have the Bus!\n"), byteValue, sekAddress);
 }
 
-void __fastcall MegadriveZ80RamWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall MegadriveZ80RamWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	if (!Z80HasBus && !MegadriveZ80Reset) {
 		RamZ80[sekAddress & 0x1fff] = wordValue >> 8;
 		return;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Z80Ram Attempt to write word value %x to location %x and didn't have the Bus!\n"), wordValue, sekAddress);
 //	MegadriveZ80RamWriteByte(sekAddress, wordValue >> 0x08);
 }
 
 // -- I/O Read Write ------------------------------------------
 
+// Joypad emulation(s)
 static INT32 PadRead(INT32 i)
 {
 	INT32 pad=0,value=0,TH;
 	pad = ~(JoyPad->pad[i]);					// Get inverse of pad MXYZ SACB RLDU
-	TH = RamIO[i+1] & 0x40;
+	TH = ((FourWayPlayMode) ? JoyPad->fourway[i & 0x03] : RamIO[i+1]) & 0x40;
 
-	/*if(PicoOpt & 0x20)*/ {					// 6 button gamepad enabled
+	if (!bForce3Button) {					    // 6 button gamepad enabled
 		INT32 phase = JoyPad->padTHPhase[i];
 
 		if(phase == 2 && !TH) {
@@ -1015,33 +1192,172 @@ static INT32 PadRead(INT32 i)
 
 end:
 
-	// orr the bits, which are set as output
-	value |= RamIO[i+1] & RamIO[i+4];
+	// or the bits, which are set as output
+	if (!FourWayPlayMode)
+		value |= RamIO[i+1] & RamIO[i+4];
 
 	return value; // will mirror later
 }
 
-UINT8 __fastcall MegadriveIOReadByte(UINT32 sekAddress)
+static void PadWrite(INT32 port, UINT8 data, UINT8 *ior)
+{
+	JoyPad->padDelay[port] = 0;
+	if(!(ior[0] & 0x40) && (data & 0x40))
+		JoyPad->padTHPhase[port] ++;
+	ior[0] = data;
+}
+
+static void teamplayer_reset()
+{
+	if (!TeamPlayerMode) return;
+
+	INT32 index = 0;
+	UINT8 port = TeamPlayerMode - 1;
+
+	memset(&JoyPad->teamplayer[port], 0, sizeof(JoyPad->teamplayer[port]));
+
+	for (INT32 i = 0; i < 4; i++)
+	{
+		INT32 padnum = ((port << 2) + i) << 4;
+
+		JoyPad->teamplayer[port].table[index++] = padnum;
+		JoyPad->teamplayer[port].table[index++] = padnum | 4;
+
+		if (!bForce3Button)
+		{
+			JoyPad->teamplayer[port].table[index++] = padnum | 8;
+		}
+	}
+
+	JoyPad->teamplayer[TeamPlayerMode - 1].state = 0x60;
+	JoyPad->teamplayer[TeamPlayerMode - 1].counter = 0;
+}
+
+static UINT8 teamplayer_read()
+{
+	UINT8 port = TeamPlayerMode - 1;
+	switch (JoyPad->teamplayer[port].counter)
+	{
+		case 0: return ((JoyPad->teamplayer[port].state & 0x20) >> 1) | 0x03;
+
+		case 1:	return ((JoyPad->teamplayer[port].state & 0x20) >> 1) | 0x0F;
+
+		case 2:
+		case 3: return ((JoyPad->teamplayer[port].state & 0x20) >> 1);
+
+		case 4:
+		case 5:
+		case 6:
+		case 7: return (((JoyPad->teamplayer[port].state & 0x20) >> 1) | ((bForce3Button) ? 0 : 1));
+
+	    default: {
+			UINT8 padnum = JoyPad->teamplayer[port].table[JoyPad->teamplayer[port].counter - 8] >> 4;
+			if (TeamPlayerMode == 2) padnum -= 3;
+			UINT8 retval = 0xf & ~(JoyPad->pad[padnum] >> (JoyPad->teamplayer[port].table[JoyPad->teamplayer[port].counter - 8] & 0xf));
+
+			return (((JoyPad->teamplayer[port].state & 0x20) >> 1) | retval);
+		}
+	}
+}
+
+static void teamplayer_write(UINT8 data, UINT8 mask)
+{
+	UINT8 port = TeamPlayerMode - 1;
+	UINT8 state = (JoyPad->teamplayer[port].state & ~mask) | (data & mask);
+
+	if (state & 0x40) {
+		JoyPad->teamplayer[port].counter = 0;
+	}
+	else if ((JoyPad->teamplayer[port].state ^ state) & 0x60) {
+		JoyPad->teamplayer[port].counter++;
+	}
+
+	JoyPad->teamplayer[port].state = state;
+}
+
+static UINT8 fourwayplay_read(UINT8 port)
+{
+	switch (port) {
+		case 0:
+			if (JoyPad->fourwaylatch & 0x04) return 0x7c;
+			return PadRead(JoyPad->fourwaylatch & 0x03);
+			break;
+		case 1:
+			return 0x7f;
+			break;
+	}
+
+	return 0;
+}
+
+static void fourwayplay_write(UINT8 port, UINT8 data, UINT8 mask)
+{
+	switch (port) {
+		case 0:
+			PadWrite(JoyPad->fourwaylatch & 0x03, data, &JoyPad->fourway[JoyPad->fourwaylatch & 0x03]);
+			break;
+		case 1:
+			JoyPad->fourwaylatch = ((data & mask) >> 4) & 0x07;
+			break;
+	}
+}
+
+static UINT8 __fastcall MegadriveIOReadByte(UINT32 sekAddress)
 {
 	if (sekAddress > 0xA1001F)
 		bprintf(PRINT_NORMAL, _T("IO Attempt to read byte value of location %x\n"), sekAddress);
 
 	INT32 offset = (sekAddress >> 1) & 0xf;
-	switch (offset) {
-	case 0:	// Get Hardware 
-		return Hardware;
-	case 1: // Pad 1
-		return (RamIO[1] & 0x80) | PadRead(0);
-	case 2: // Pad 2
-		return (RamIO[2] & 0x80) | PadRead(1);
-	default:
-		//bprintf(PRINT_NORMAL, _T("IO Attempt to read byte value of location %x\n"), sekAddress);
-		return RamIO[offset];
+	if (!TeamPlayerMode && !FourWayPlayMode) {
+		// 6-Button Support
+		switch (offset) {
+			case 0:	// Get Hardware
+				return Hardware;
+			case 1: // Pad 1
+				return (RamIO[1] & 0x80) | PadRead(0);
+			case 2: // Pad 2
+				return (RamIO[2] & 0x80) | PadRead(1);
+	        default:
+				//bprintf(PRINT_NORMAL, _T("IO Attempt to read byte value of location %x\n"), sekAddress);
+				return RamIO[offset];
+		}
+	} else if (TeamPlayerMode || FourWayPlayMode) {
+		// Sega Team Player & Four Way Play Support
+		switch (offset) {
+			case 0:	// Get Hardware
+				return Hardware;
+			case 1: // pad 1
+			case 2: // Pad 2
+			case 3: {
+				UINT8 mask = 0x80 | RamIO[offset + 3];
+				UINT8 data = 0x7f;
+				if (offset < 3) {
+					if (TeamPlayerMode) {
+						switch (TeamPlayerMode) {
+							case 1: data = (offset==1) ? teamplayer_read() : 0x7f; break; // teamplayer port 1, nothing port 2
+							case 2: data = (offset==2) ? teamplayer_read() : PadRead(0); break; // teamplayer port2, gamepad port 1
+						}
+					}
+					if (FourWayPlayMode) {
+						switch (offset) {
+							case 1:
+							case 2:
+								data = fourwayplay_read(offset - 1);
+								break;
+						}
+					}
+				}
+				return (RamIO[offset] & mask) | (data & ~mask);
+			}
+	        default:
+				//bprintf(PRINT_NORMAL, _T("IO Attempt to read byte value of location %x\n"), sekAddress);
+				return RamIO[offset];
+		}
 	}
-	return 0;
+	return 0xff;
 }
 
-UINT16 __fastcall MegadriveIOReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MegadriveIOReadWord(UINT32 sekAddress)
 {
 	//if (sekAddress > 0xA1001F)
 	//	bprintf(PRINT_NORMAL, _T("IO Attempt to read word value of location %x\n"), sekAddress);
@@ -1050,33 +1366,61 @@ UINT16 __fastcall MegadriveIOReadWord(UINT32 sekAddress)
 	return res | (res << 8);
 }
 
-void __fastcall MegadriveIOWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveIOWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if (sekAddress > 0xA1001F)
-		bprintf(PRINT_NORMAL, _T("IO Attempt to byte byte value %x to location %x\n"), byteValue, sekAddress);
+		bprintf(PRINT_NORMAL, _T("IO Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
 
 	INT32 offset = (sekAddress >> 1) & 0xf;
-	// 6-Button Support
-	switch( offset ) {
-	case 1:
-		JoyPad->padDelay[0] = 0;
-		if(!(RamIO[1] & 0x40) && (byteValue&0x40)) 
-			JoyPad->padTHPhase[0] ++;
-		break;
-	case 2:
-		JoyPad->padDelay[1] = 0;
-		if(!(RamIO[2] & 0x40) && (byteValue&0x40)) 
-			JoyPad->padTHPhase[1] ++;
-		break;
+
+	if (!TeamPlayerMode && !FourWayPlayMode) {
+		// 6-Button Support
+		switch( offset ) {
+			case 1:
+			case 2:
+				PadWrite(offset - 1, byteValue, &RamIO[offset]);
+				break;
+		}
+	} else if (FourWayPlayMode) {
+		// EA Four Way Play support
+		switch (offset) {
+			case 1:
+		    case 2:
+				fourwayplay_write(offset-1, byteValue, RamIO[offset + 3]);
+				break;
+		}
+	} else if (TeamPlayerMode) {
+		// Sega Team Player Support
+		switch (offset) {
+			case 1:
+				if (TeamPlayerMode == 2) { // teamplayer port 2, gamepad port 1
+					PadWrite(offset - 1, byteValue, &RamIO[offset]);
+				} else {
+					teamplayer_write(byteValue, RamIO[offset + 3]);
+				}
+				break;
+			case 2:
+				if (TeamPlayerMode == 2) {
+					teamplayer_write(byteValue, RamIO[offset + 3]);
+				}
+				break;
+
+			case 4:
+			case 5:
+				if (TeamPlayerMode == (offset - 3) && byteValue != RamIO[offset]) {
+					teamplayer_write(RamIO[offset - 3], byteValue);
+				}
+				break;
+		}
 	}
 	RamIO[offset] = byteValue;
 }
 
-void __fastcall MegadriveIOWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall MegadriveIOWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
-	//if (sekAddress > 0xA1001F)	
+	//if (sekAddress > 0xA1001F)
 	//	bprintf(PRINT_NORMAL, _T("IO Attempt to write word value %x to location %x\n"), wordValue, sekAddress);
-		
+
 	MegadriveIOWriteByte(sekAddress, wordValue & 0xff);
 }
 
@@ -1084,127 +1428,157 @@ void __fastcall MegadriveIOWriteWord(UINT32 sekAddress, UINT16 wordValue)
 
 inline static INT32 MegadriveSynchroniseStream(INT32 nSoundRate)
 {
-	return (INT64)SekTotalCycles() * nSoundRate / (OSC_NTSC / 7);
-}
-
-inline static double MegadriveGetTime()
-{
-	return (double)SekTotalCycles() / (OSC_NTSC / 7);
+	return (INT64)SekCyclesDoneFrame() * nSoundRate / TOTAL_68K_CYCLES;
 }
 
 inline static INT32 MegadriveSynchroniseStreamPAL(INT32 nSoundRate)
 {
-	return (INT64)SekTotalCycles() * nSoundRate / (OSC_PAL / 7);
-}
-
-inline static double MegadriveGetTimePAL()
-{
-	return (double)SekTotalCycles() / (OSC_PAL / 7);
+	return (INT64)SekCyclesDoneFrame() * nSoundRate / TOTAL_68K_CYCLES_PAL;
 }
 
 // ---------------------------------------------------------------
 
 static INT32 MegadriveResetDo()
 {
+	memset (RamStart, 0, RamEnd - RamStart);
+
 	SekOpen(0);
 	SekReset();
+	m68k_megadrive_sr_checkint_mode(1);
 	SekClose();
-	
+
 	ZetOpen(0);
 	ZetReset();
 	ZetClose();
 
-	BurnYM2612Reset();
-	
-	MegadriveZ80Reset = 1;
-	Z80HasBus = 1;
-	
+	BurnMD2612Reset();
+
 #if 0
-	FILE * f = fopen("Megadrive.bin", "wb+");
-	fwrite(RomMain, 1, 0x200000, f);
-	fclose(f);
+    BurnDump("Megadrive.bin", RomMain, 0x200000);
+    //FILE * f = fopen("Megadrive.bin", "wb+");
+	//fwrite(RomMain, 1, 0x200000, f);
+	//fclose(f);
 #endif
-	
+
 	MegadriveCheckHardware();
-	
+
 	if (Hardware & 0x40) {
+
 		BurnSetRefreshRate(50.0);
 		Reinitialise();
-		
-		BurnYM2612Exit();
-		BurnYM2612Init(1, OSC_PAL / 7, NULL, MegadriveSynchroniseStreamPAL, MegadriveGetTimePAL, 0);
-		BurnTimerAttachSek(OSC_PAL / 7);
-		BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_1, 0.50, BURN_SND_ROUTE_LEFT);
-		BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_2, 0.50, BURN_SND_ROUTE_RIGHT);
-		
-		BurnYM2612Reset();
-		
+
+		BurnMD2612Exit();
+		BurnMD2612Init(1, 1, MegadriveSynchroniseStreamPAL, 1);
+		BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_1, 0.75, BURN_SND_ROUTE_LEFT);
+		BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_2, 0.75, BURN_SND_ROUTE_RIGHT);
+
+		BurnMD2612Reset();
+
 		SN76496Exit();
-		SN76496Init(0, OSC_PAL / 15, 1);
-		SN76496SetRoute(0, 0.25, BURN_SND_ROUTE_BOTH);
+		SN76496Init(0, OSC_PAL / 15, 0);
+		SN76496SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
 	} else {
 		BurnSetRefreshRate(60.0);
 		Reinitialise();
-		
-		BurnYM2612Exit();
-		BurnYM2612Init(1, OSC_NTSC / 7, NULL, MegadriveSynchroniseStream, MegadriveGetTime, 0);
-		BurnTimerAttachSek(OSC_NTSC / 7);
-		BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_1, 0.50, BURN_SND_ROUTE_LEFT);
-		BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_2, 0.50, BURN_SND_ROUTE_RIGHT);
-		
-		BurnYM2612Reset();
-		
+
+		BurnMD2612Exit();
+		BurnMD2612Init(1, 0, MegadriveSynchroniseStream, 1);
+		BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_1, 0.75, BURN_SND_ROUTE_LEFT);
+		BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_2, 0.75, BURN_SND_ROUTE_RIGHT);
+
+		BurnMD2612Reset();
+
 		SN76496Exit();
-		SN76496Init(0, OSC_NTSC / 15, 1);
-		SN76496SetRoute(0, 0.25, BURN_SND_ROUTE_BOTH);
+		SN76496Init(0, OSC_NTSC / 15, 0);
+		SN76496SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
 	}
 
 	// other reset
-//	memset(RamMisc, 0, sizeof(struct PicoMisc));
+	//memset(RamMisc, 0, sizeof(struct PicoMisc)); // do not clear because Mappers/SRam are set up in here when the driver inits
+	if (RamMisc->SRamDetected)
+	{
+		if (RomSize <= RamMisc->SRamStart) {
+			RamMisc->SRamActive = 1;
+			RamMisc->SRamReg = SR_MAPPED;
+		} else {
+			RamMisc->SRamActive = 0;
+			RamMisc->SRamReg = SR_MAPPED;
+		}
+		RamMisc->SRamReadOnly = 0;
+	}
 	memset(JoyPad, 0, sizeof(struct MegadriveJoyPad));
-	
+	teamplayer_reset();
+
 	// default VDP register values (based on Fusion)
 	memset(RamVReg, 0, sizeof(struct PicoVideo));
 	RamVReg->reg[0x00] = 0x04;
 	RamVReg->reg[0x01] = 0x04;
 	RamVReg->reg[0x0c] = 0x81;
 	RamVReg->reg[0x0f] = 0x02;
-	
-	RamVReg->status = 0x3408 | ((MegadriveDIP[0] & 0x40) >> 6);
-	
+
+	RamVReg->status = 0x3408 | ((MegadriveDIP[0] & 0x40) >> 6); // 'always set' bits | vblank | collision | pal
+
+	RamMisc->Bank68k = 0;
+	MegadriveZ80Reset = 1;
+	Z80HasBus = 0;
+	Z80BankPartial = 0;
+	Z80BankPos = 0;
+
+	if (strstr(BurnDrvGetTextA(DRV_NAME), "bonkers")) {
+		dma_xfers = BurnRandom() & 0x7fff; // random start cycle, so Bonkers has a different boot-up logo each run and possibly affects other games as well.
+	} else {
+		dma_xfers = 0; // the above is bad for "input recording from power on", so we leave it off for everything except bonkers.
+	}
+
+	Scanline = 0;
+	rendstatus = 0;
+	bMegadriveRecalcPalette = 1;
+
+	SekCyclesReset();
+	z80CyclesReset();
+
+	md_eeprom_stm95_reset();
+	{
+		RamIO[0x07] = 0xff;
+		RamIO[0x0a] = 0xff;
+		RamIO[0x0d] = 0xfb;
+	}
+
 	return 0;
 }
 
-INT32 __fastcall MegadriveIrqCallback(INT32 irq)
+static INT32 __fastcall MegadriveIrqCallback(INT32 irq)
 {
 	switch ( irq ) {
 	case 4:	RamVReg->pending_ints  =  0x00; break;
 	case 6:	RamVReg->pending_ints &= ~0x20; break;
 	}
-	return -1;
+	SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
+	return M68K_INT_ACK_AUTOVECTOR;
 }
 
 // ----------------------------------------------------------------
 // Z80 Read/Write
 // ----------------------------------------------------------------
 
-UINT8 __fastcall MegadriveZ80PortRead(UINT16 a)
+static UINT8 __fastcall MegadriveZ80PortRead(UINT16 a)
 {
 	a &= 0xff;
-	
+
 	switch (a) {
+		case 0xbf: break; // some games read this, case added just to prevent massive debug scroll
 		default: {
-			bprintf(PRINT_NORMAL, _T("Z80 Port Read %02x\n"), a);
+			//bprintf(PRINT_NORMAL, _T("Z80 Port Read %02x\n"), a);
 		}
-	}	
+	}
 
 	return 0;
 }
 
-void __fastcall MegadriveZ80PortWrite(UINT16 a, UINT8 d)
+static void __fastcall MegadriveZ80PortWrite(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
-	
+
 	switch (a) {
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Port Write %02x, %02%x\n"), a, d);
@@ -1212,40 +1586,37 @@ void __fastcall MegadriveZ80PortWrite(UINT16 a, UINT8 d)
 	}
 }
 
-UINT8 __fastcall MegadriveZ80ProgRead(UINT16 a)
+static UINT8 __fastcall MegadriveZ80ProgRead(UINT16 a)
 {
 	if (a >= 0x6100 && a <= 0x7eff) {
 		return 0xff;
 	}
-	
+
 	if (a >= 0x8000) {
 		UINT32 addr68k = RamMisc->Bank68k;
 		addr68k += a & 0x7fff;
-		if (addr68k <= 0x3fffff) return RomMain[addr68k ^ 1];
-		
-		bprintf(PRINT_NORMAL, _T("%Z80 trying to read 68k address %06X\n"), addr68k);
+		if (addr68k < MAX_CARTRIDGE_SIZE) return RomMain[addr68k ^ 1];
+
+		//bprintf(PRINT_NORMAL, _T("Z80 trying to read 68k address %06X\n"), addr68k);
 		return 0;
 	}
-	
+
 	switch (a) {
 		case 0x4000:
 		case 0x4001:
 		case 0x4002: {
-			return BurnYM2612Read(0, 0);
+			return BurnMD2612Read(0, 0);
 		}
-		
+
 		default: {
-			bprintf(PRINT_NORMAL, _T("Z80 Read %04x\n"), a);
+			//bprintf(PRINT_NORMAL, _T("Z80 Read %04x\n"), a);
 		}
 	}
-	
+
 	return 0;
 }
 
-UINT32 Z80BankPartial = 0;
-UINT32 Z80BankPos = 0;
-
-void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d)
+static void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d)
 {
 	if (a == 0x6000 || a == 0x6001) {
 		Z80BankPartial |= (d & 0x01) << 23;
@@ -1260,18 +1631,18 @@ void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d)
 		}
 		return;
 	}
-	
+
 	if (a >= 0x8000) {
 		UINT32 addr68k = RamMisc->Bank68k;
 		addr68k += a & 0x7fff;
-		
+
 		if (addr68k <= 0x3fffff) return;
-		
-		if (addr68k == 0xc00011) {
-			SN76496Write(0, d);
+
+		if (addr68k >= 0xc00010 && addr68k <= 0xc00018) {
+			if (addr68k & 1) SN76496Write(0, d);
 			return;
 		}
-		
+
 		if ((addr68k >= 0xe00000) && (addr68k <= 0xffffff)) {
 			addr68k &=0xffff;
 			UINT16 *Ram = (UINT16*)Ram68K;
@@ -1282,40 +1653,32 @@ void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d)
 			}
 			return;
 		}
-		
+
 		bprintf(PRINT_NORMAL, _T("Z80-Bank68K Attempt to write byte value %02x to location %06x\n"), d, addr68k);
 		return;
 	}
-	
+
 	switch (a) {
 		case 0x4000: {
-			SekOpen(0);
-			BurnYM2612Write(0, 0, d);
-			SekClose();
+			BurnMD2612Write(0, 0, d);
 			return;
 		}
-		
+
 		case 0x4001: {
-			SekOpen(0);
-			BurnYM2612Write(0, 1, d);
-			SekClose();
+			BurnMD2612Write(0, 1, d);
 			return;
 		}
-		
+
 		case 0x4002: {
-			SekOpen(0);
-			BurnYM2612Write(0, 2, d);
-			SekClose();
+			BurnMD2612Write(0, 2, d);
 			return;
 		}
-		
+
 		case 0x4003: {
-			SekOpen(0);
-			BurnYM2612Write(0, 3, d);
-			SekClose();
+			BurnMD2612Write(0, 3, d);
 			return;
 		}
-		
+
 		case 0x7f11:
 		case 0x7f13:
 		case 0x7f15:
@@ -1323,7 +1686,7 @@ void __fastcall MegadriveZ80ProgWrite(UINT16 a, UINT8 d)
 			SN76496Write(0, d);
 			return;
 		}
-		
+
 		default: {
 			bprintf(PRINT_NORMAL, _T("Z80 Write %04x, %02x\n"), a, d);
 		}
@@ -1338,7 +1701,7 @@ static INT32 MegadriveLoadRoms(bool bLoad)
 	INT32 nOffset = -1;
 	UINT32 i;
 	INT32 nRet = 0;
-	
+
 	if (!bLoad) {
 		do {
 			ri.nLen = 0;
@@ -1347,16 +1710,16 @@ static INT32 MegadriveLoadRoms(bool bLoad)
 			if(ri.nLen) RomNum++;
 			RomSize += ri.nLen;
 		} while (ri.nLen);
-		
+
 		bprintf(PRINT_NORMAL, _T("68K Rom, Num %i, Size %x\n"), RomNum, RomSize);
 	}
-	
+
 	if (bLoad) {
 		INT32 Offset = 0;
-		
+
 		for (i = 0; i < RomNum; i++) {
 			BurnDrvGetRomInfo(&ri, i);
-			
+
 			if ((ri.nType & SEGA_MD_ROM_OFFS_000000) == SEGA_MD_ROM_OFFS_000000) Offset = 0x000000;
 			if ((ri.nType & SEGA_MD_ROM_OFFS_000001) == SEGA_MD_ROM_OFFS_000001) Offset = 0x000001;
 			if ((ri.nType & SEGA_MD_ROM_OFFS_020000) == SEGA_MD_ROM_OFFS_020000) Offset = 0x020000;
@@ -1365,24 +1728,31 @@ static INT32 MegadriveLoadRoms(bool bLoad)
 			if ((ri.nType & SEGA_MD_ROM_OFFS_100001) == SEGA_MD_ROM_OFFS_100001) Offset = 0x100001;
 			if ((ri.nType & SEGA_MD_ROM_OFFS_200000) == SEGA_MD_ROM_OFFS_200000) Offset = 0x200000;
 			if ((ri.nType & SEGA_MD_ROM_OFFS_300000) == SEGA_MD_ROM_OFFS_300000) Offset = 0x300000;
-			
+
 			switch (ri.nType & 0xf0) {
 				case SEGA_MD_ROM_LOAD_NORMAL: {
 					nRet = BurnLoadRom(RomMain + Offset, i, 1); if (nRet) return 1;
 					break;
 				}
-				
+
 				case SEGA_MD_ROM_LOAD16_WORD_SWAP: {
 					nRet = BurnLoadRom(RomMain + Offset, i, 1); if (nRet) return 1;
-					BurnByteswap(RomMain + Offset, ri.nLen);
+                    //BurnDump("derpy.bin", RomMain, (bDoIpsPatch && ri.nLen < nIpsMaxFileLen) ? nIpsMaxFileLen : ri.nLen);
+                    BurnByteswap(RomMain + Offset, (bDoIpsPatch && ri.nLen < nIpsMaxFileLen) ? nIpsMaxFileLen : ri.nLen);
 					break;
 				}
-				
+
 				case SEGA_MD_ROM_LOAD16_BYTE: {
 					nRet = BurnLoadRom(RomMain + Offset, i, 2); if (nRet) return 1;
 					break;
 				}
-				
+
+				case SEGA_MD_ROM_LOAD_NORMAL_CONTINUE_020000_080000: { // ghouls[1] (Ghouls 'n Ghosts)
+					nRet = BurnLoadRom(RomMain + Offset, i, 1); if (nRet) return 1;
+					memmove(RomMain + 0x020000, RomMain + 0xa0000, 0x60000);
+					break;
+				}
+
 				case SEGA_MD_ROM_LOAD16_WORD_SWAP_CONTINUE_040000_100000: {
 					nRet = BurnLoadRom(RomMain + Offset, i, 1); if (nRet) return 1;
 					memcpy(RomMain + 0x100000, RomMain + 0x040000, 0x40000);
@@ -1390,109 +1760,115 @@ static INT32 MegadriveLoadRoms(bool bLoad)
 					break;
 				}
 			}
-			
+
 			if ((ri.nType & SEGA_MD_ROM_RELOAD_200000_200000) == SEGA_MD_ROM_RELOAD_200000_200000) {
 				memcpy(RomMain + 0x200000, RomMain + 0x000000, 0x200000);
 			}
-			
+
 			if ((ri.nType & SEGA_MD_ROM_RELOAD_100000_300000) == SEGA_MD_ROM_RELOAD_100000_300000) {
 				memcpy(RomMain + 0x300000, RomMain + 0x000000, 0x100000);
 			}
+
+            if (bDoIpsPatch && ri.nLen < nIpsMaxFileLen) {
+                INT32 old = RomSize;
+                RomSize += nIpsMaxFileLen - ri.nLen;
+                bprintf(PRINT_NORMAL, _T("*** Megadrive: IPS Patch grew RomSize: %d  (was %d)\n"), RomSize, old);
+            }
 		}
 	}
-	
-	return 0;
+
+    return 0;
 }
 
 // Custom Cartridge Mapping
 
-UINT8 __fastcall JCartCtrlReadByte(UINT32 sekAddress)
+static UINT8 __fastcall JCartCtrlReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("JCartCtrlRead Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall JCartCtrlReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall JCartCtrlReadWord(UINT32 /*sekAddress*/)
 {
 	UINT16 retData = 0;
-	
+
 	UINT8 JPad3 = ~(JoyPad->pad[2] & 0xff);
 	UINT8 JPad4 = ~(JoyPad->pad[3] & 0xff);
-	
+
 	if (RamMisc->JCartIOData[0] & 0x40) {
 		retData = (RamMisc->JCartIOData[0] & 0x40) | JPad3 | (JPad4 << 8);
 	} else {
 		retData = ((JPad3 & 0xc0) >> 2) | (JPad3 & 0x03);
 		retData += (((JPad4 & 0xc0) >> 2) | (JPad4 & 0x03)) << 8;
 	}
-	
+
 	return retData;
 }
 
-void __fastcall JCartCtrlWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall JCartCtrlWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	bprintf(PRINT_NORMAL, _T("JCartCtrlWrite byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall JCartCtrlWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
+static void __fastcall JCartCtrlWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
 {
 	RamMisc->JCartIOData[0] = (wordValue & 1) << 6;
 	RamMisc->JCartIOData[1] = (wordValue & 1) << 6;
 }
 
-void __fastcall Ssf2BankWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall Ssf2BankWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0xa130f1: {
 			if (byteValue == 2) memcpy(RomMain + 0x000000, RomMain + 0x400000 + (((byteValue & 0x0f) - 2) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130f3: {
 			memcpy(RomMain + 0x080000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130f5: {
 			memcpy(RomMain + 0x100000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130f7: {
 			memcpy(RomMain + 0x180000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130f9: {
 			memcpy(RomMain + 0x200000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130fb: {
 			memcpy(RomMain + 0x280000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130fd: {
 			memcpy(RomMain + 0x300000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-		
+
 		case 0xa130ff: {
 			memcpy(RomMain + 0x380000, RomMain + 0x400000 + ((byteValue & 0xf) * 0x080000), 0x080000);
 			return;
 		}
-	}	
+	}
 }
 
-UINT8 __fastcall LK3AltProtReadByte(UINT32 sekAddress)
+static UINT8 __fastcall LK3AltProtReadByte(UINT32 sekAddress)
 {
 	INT32 Offset = (sekAddress - 0x600000) >> 1;
 	Offset &= 0x07;
-	
+
 	UINT8 retData = 0;
-	
+
 	switch (Offset) {
 		case 0x02: {
 			switch (RamMisc->L3AltPCmd) {
@@ -1519,188 +1895,188 @@ UINT8 __fastcall LK3AltProtReadByte(UINT32 sekAddress)
 			break;
 		}
 	}
-	
+
 //	bprintf(PRINT_NORMAL, _T("LK3AltProt Read Byte %x\n"), sekAddress);
-	
+
 	return retData;
 }
 
-UINT16 __fastcall LK3AltProtReadWord(UINT32 sekAddress)
+static UINT16 __fastcall LK3AltProtReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("LK3AltProt Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall LK3AltProtWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall LK3AltProtWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	INT32 Offset = (sekAddress - 0x600000) >> 1;
 	Offset &= 0x07;
-	
+
 	switch (Offset) {
 		case 0x00:
 			RamMisc->L3AltPDat = byteValue;
 			return;
-		
+
 		case 0x01:
 			RamMisc->L3AltPCmd = byteValue;
 			return;
 	}
-	
+
 //	bprintf(PRINT_NORMAL, _T("LK3AltProt write byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall LK3AltProtWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall LK3AltProtWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("LK3AltProt write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-void __fastcall LK3AltBankWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall LK3AltBankWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	INT32 Offset = (sekAddress - 0x700000) >> 1;
 	Offset &= 0x07;
-	
+
 	if (Offset == 0) {
 		memcpy(RomMain, OriginalRom + ((byteValue & 0xff) * 0x8000), 0x8000);
 		return;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("LK3AltBank write byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall LK3AltBankWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall LK3AltBankWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("LK3AltBank write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall RedclifProtReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall RedclifProtReadByte(UINT32 /*sekAddress*/)
 {
 	return (UINT8)-0x56;
 }
 
-UINT16 __fastcall RedclifProtReadWord(UINT32 sekAddress)
+static UINT16 __fastcall RedclifProtReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("RedclifeProt Read Word %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT8 __fastcall RedclifProt2ReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall RedclifProt2ReadByte(UINT32 /*sekAddress*/)
 {
 	return 0x55;
 }
 
-UINT16 __fastcall RedclifProt2ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall RedclifProt2ReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("RedclifeProt2 Read Word %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT8 __fastcall RadicaBankSelectReadByte(UINT32 sekAddress)
+static UINT8 __fastcall RadicaBankSelectReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("RadicaBankSelect Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall RadicaBankSelectReadWord(UINT32 sekAddress)
+static UINT16 __fastcall RadicaBankSelectReadWord(UINT32 sekAddress)
 {
 	INT32 Bank = ((sekAddress - 0xa13000) >> 1) & 0x3f;
 	memcpy(RomMain, RomMain + 0x400000 + (Bank * 0x10000), 0x400000);
-	
+
 	return 0;
 }
 
-UINT8 __fastcall Kof99A13000ReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Kof99A13000ReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Kof99A13000 Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Kof99A13000ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Kof99A13000ReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0xa13000: return 0x00;
 		case 0xa13002: return 0x01;
 		case 0xa1303e: return 0x1f;
-		
+
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Kof99A13000 Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall SoulbladReadByte(UINT32 sekAddress)
+static UINT8 __fastcall SoulbladReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x400002: return 0x98;
 		case 0x400004: return 0xc0;
 		case 0x400006: return 0xf0;
-		
+
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Soulblad Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall SoulbladReadWord(UINT32 sekAddress)
+static UINT16 __fastcall SoulbladReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Soulblad Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall MjloverProt1ReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall MjloverProt1ReadByte(UINT32 /*sekAddress*/)
 {
 	return 0x90;
 }
 
-UINT16 __fastcall MjloverProt1ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MjloverProt1ReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("MjloverProt1 Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall MjloverProt2ReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall MjloverProt2ReadByte(UINT32 /*sekAddress*/)
 {
 	return 0xd3;
 }
 
-UINT16 __fastcall MjloverProt2ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MjloverProt2ReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("MjloverProt2 Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall SquirrelKingExtraReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall SquirrelKingExtraReadByte(UINT32 /*sekAddress*/)
 {
 	return RamMisc->SquirrelkingExtra;
 }
 
-UINT16 __fastcall SquirrelKingExtraReadWord(UINT32 sekAddress)
+static UINT16 __fastcall SquirrelKingExtraReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("SquirrelKingExtra Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall SquirrelKingExtraWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
+static void __fastcall SquirrelKingExtraWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 {
 	RamMisc->SquirrelkingExtra = byteValue;
 }
 
-void __fastcall SquirrelKingExtraWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall SquirrelKingExtraWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("SquirrelKingExtra write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall SmouseProtReadByte(UINT32 sekAddress)
+static UINT8 __fastcall SmouseProtReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x400000: return 0x55;
@@ -1708,55 +2084,55 @@ UINT8 __fastcall SmouseProtReadByte(UINT32 sekAddress)
 		case 0x400004: return 0xaa;
 		case 0x400005: return 0xf0;
 	}
-	
+
 	return 0;
 }
 
-UINT16 __fastcall SmouseProtReadWord(UINT32 sekAddress)
+static UINT16 __fastcall SmouseProtReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("SmouseProt Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall SmbProtReadByte(UINT32 sekAddress)
+static UINT8 __fastcall SmbProtReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Smbprot Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall SmbProtReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall SmbProtReadWord(UINT32 /*sekAddress*/)
 {
 	return 0x0c;
 }
 
-UINT8 __fastcall Smb2ProtReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Smb2ProtReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Smb2Prot Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Smb2ProtReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall Smb2ProtReadWord(UINT32 /*sekAddress*/)
 {
 	return 0x0a;
 }
 
-void __fastcall KaijuBankWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
+static void __fastcall KaijuBankWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 {
 	memcpy(RomMain + 0x000000, RomMain + 0x400000 + (byteValue & 0x7f) * 0x8000, 0x8000);
 }
 
-void __fastcall KaijuBankWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall KaijuBankWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("KaijuBank write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall Chinfi3ProtReadByte(UINT32 /*sekAddress*/)
+static UINT8 __fastcall Chinfi3ProtReadByte(UINT32 /*sekAddress*/)
 {
 	UINT8 retDat = 0;
-	
+
 	if (SekGetPC(0) == 0x01782) // makes 'VS' screen appear
 	{
 		retDat = SekDbgGetRegister(SEK_REG_D3) & 0xff;
@@ -1771,11 +2147,11 @@ UINT8 __fastcall Chinfi3ProtReadByte(UINT32 /*sekAddress*/)
 	}
 	else if (SekGetPC(0) == 0x10c4a) // unknown
 	{
-		return rand() & 0xff;//space->machine().rand();
+		return BurnRandom() & 0xff;//space->machine().rand();
 	}
 	else if (SekGetPC(0) == 0x10c50) // unknown
 	{
-		return rand() & 0xff;//space->machine().rand();
+		return BurnRandom() & 0xff;//space->machine().rand();
 	}
 	else if (SekGetPC(0) == 0x10c52) // relates to the game speed..
 	{
@@ -1795,18 +2171,18 @@ UINT8 __fastcall Chinfi3ProtReadByte(UINT32 /*sekAddress*/)
 //		retDat <<= 8;
 		return retDat;
 	}
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Chinfi3ProtReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Chinfi3ProtReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Chinfi3Prot Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall Chinfi3BankWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
+static void __fastcall Chinfi3BankWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 {
 	if (byteValue == 0xf1) // *hit player
 	{
@@ -1842,70 +2218,70 @@ void __fastcall Chinfi3BankWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 	}
 }
 
-void __fastcall Chinfi3BankWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall Chinfi3BankWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Chinfi3Bank write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall Lionk2ProtReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Lionk2ProtReadByte(UINT32 sekAddress)
 {
 	switch(sekAddress) {
 		case 0x400002: {
 			return RamMisc->Lionk2ProtData;
 		}
-		
+
 		case 0x400006: {
 			return RamMisc->Lionk2ProtData2;
 		}
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Lion2Prot Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Lionk2ProtReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Lionk2ProtReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Lion2Prot Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall Lionk2ProtWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall Lionk2ProtWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x400000: {
 			RamMisc->Lionk2ProtData = byteValue;
 			return;
 		}
-		
+
 		case 0x400004: {
 			RamMisc->Lionk2ProtData2 = byteValue;
 			return;
 		}
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Lion2Prot write byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall Lionk2ProtWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall Lionk2ProtWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Lion2Prot write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall BuglExtraReadByte(UINT32 sekAddress)
+static UINT8 __fastcall BuglExtraReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("BuglExtra Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall BuglExtraReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall BuglExtraReadWord(UINT32 /*sekAddress*/)
 {
 	return 0x28;
 }
 
-UINT8 __fastcall Elfwor400000ReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Elfwor400000ReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x400000: return 0x55;
@@ -1913,58 +2289,58 @@ UINT8 __fastcall Elfwor400000ReadByte(UINT32 sekAddress)
 		case 0x400004: return 0xc9;
 		case 0x400006: return 0x18;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Elfwor400000 Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Elfwor400000ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Elfwor400000ReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Elfwor400000 Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall RockmanX3ExtraReadByte(UINT32 sekAddress)
+static UINT8 __fastcall RockmanX3ExtraReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("RockmanX3Extra Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall RockmanX3ExtraReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall RockmanX3ExtraReadWord(UINT32 /*sekAddress*/)
 {
 	return 0x0c;
 }
 
-UINT8 __fastcall SbubExtraReadByte(UINT32 sekAddress)
+static UINT8 __fastcall SbubExtraReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x400000: return 0x55;
 		case 0x400002: return 0x0f;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("SbubExtra Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall SbubExtraReadWord(UINT32 sekAddress)
+static UINT16 __fastcall SbubExtraReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("SbubExtra Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-UINT8 __fastcall Kof98ReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Kof98ReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Kof98 Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Kof98ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Kof98ReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x480000: return 0xaa00;
@@ -1974,13 +2350,13 @@ UINT16 __fastcall Kof98ReadWord(UINT32 sekAddress)
 		case 0x4a8820: return 0x0a00;
 		case 0x4f8820: return 0x0000;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Kof98 Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall RealtecWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall RealtecWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x400000: {
@@ -1992,13 +2368,13 @@ void __fastcall RealtecWriteByte(UINT32 sekAddress, UINT8 byteValue)
 			memcpy(RomMain + RamMisc->RealtecBankSize * 0x20000, RomMain + (RamMisc->RealtecBankAddr * 0x20000) + 0x400000, RamMisc->RealtecBankSize * 0x20000);
 			return;
 		}
-		
+
 		case 0x402000:{
 			RamMisc->RealtecBankAddr = 0;
 			RamMisc->RealtecBankSize = byteValue & 0x1f;
 			return;
 		}
-		
+
 		case 0x404000: {
 			INT32 BankData = byteValue & 0x3;
 
@@ -2009,45 +2385,45 @@ void __fastcall RealtecWriteByte(UINT32 sekAddress, UINT8 byteValue)
 			return;
 		}
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Realtec write byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall RealtecWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall RealtecWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Realtec write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-void __fastcall Sup19in1BankWriteByte(UINT32 sekAddress, UINT8 /*byteValue*/)
+static void __fastcall Sup19in1BankWriteByte(UINT32 sekAddress, UINT8 /*byteValue*/)
 {
 	INT32 Offset = (sekAddress - 0xa13000) >> 1;
-	
+
 	memcpy(RomMain + 0x000000, RomMain + 0x400000 + ((Offset << 1) * 0x10000), 0x80000);
 }
 
-void __fastcall Sup19in1BankWriteWord(UINT32 sekAddress, UINT16 /*wordValue*/)
+static void __fastcall Sup19in1BankWriteWord(UINT32 sekAddress, UINT16 /*wordValue*/)
 {
 	INT32 Offset = (sekAddress - 0xa13000) >> 1;
-	
+
 	memcpy(RomMain + 0x000000, RomMain + 0x400000 + ((Offset << 1) * 0x10000), 0x80000);
 }
 
-void __fastcall Mc12in1BankWriteByte(UINT32 sekAddress, UINT8 /*byteValue*/)
+static void __fastcall Mc12in1BankWriteByte(UINT32 sekAddress, UINT8 /*byteValue*/)
 {
 	INT32 Offset = (sekAddress - 0xa13000) >> 1;
 	memcpy(RomMain + 0x000000, OriginalRom + ((Offset & 0x3f) << 17), 0x100000);
 }
 
-void __fastcall Mc12in1BankWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall Mc12in1BankWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Mc12in1Bank write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall TopfigReadByte(UINT32 sekAddress)
+static UINT8 __fastcall TopfigReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x645b45: return 0x9f;
-		
+
 		case 0x6bd295: {
 			static INT32 x = -1;
 
@@ -2058,7 +2434,7 @@ UINT8 __fastcall TopfigReadByte(UINT32 sekAddress)
 				return (UINT8)x;
 			}
 		}
-		
+
 		case 0x6f5345: {
 			static INT32 x = -1;
 
@@ -2070,20 +2446,20 @@ UINT8 __fastcall TopfigReadByte(UINT32 sekAddress)
 			}
 		}
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Topfig Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall TopfigReadWord(UINT32 sekAddress)
+static UINT16 __fastcall TopfigReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Topfig Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall TopfigWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
+static void __fastcall TopfigWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 {
 	if (byteValue == 0x002a)
 	{
@@ -2106,7 +2482,7 @@ void __fastcall TopfigWriteByte(UINT32 /*sekAddress*/, UINT8 byteValue)
 	}
 }
 
-void __fastcall TopfigWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall TopfigWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Topfig write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
@@ -2115,363 +2491,364 @@ static void SetupCustomCartridgeMappers()
 {
 	if (((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_CM_JCART) || ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_CM_JCART_SEPROM)) {
 		SekOpen(0);
-		SekMapHandler(7, 0x38fffe, 0x38ffff, SM_READ | SM_WRITE);
+		SekMapHandler(7, 0x38fffe, 0x38ffff, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(7, JCartCtrlReadByte);
 		SekSetReadWordHandler(7, JCartCtrlReadWord);
 		SekSetWriteByteHandler(7, JCartCtrlWriteByte);
 		SekSetWriteWordHandler(7, JCartCtrlWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SSF2) {
 		OriginalRom = (UINT8*)BurnMalloc(0x500000);
 		memcpy(OriginalRom, RomMain, 0x500000);
-		
+
 		memcpy(RomMain + 0x800000, OriginalRom + 0x400000, 0x100000);
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x400000);
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x400000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0xa130f0, 0xa130ff, SM_WRITE);
+		SekMapHandler(7, 0xa130f0, 0xa130ff, MAP_WRITE);
 		SekSetWriteByteHandler(7, Ssf2BankWriteByte);
 		SekClose();
 	}
-	
-	if (((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_LIONK3) || ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SKINGKONG)) {
+
+	if (((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_LIONK3) ||
+	    ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SKINGKONG) ||
+	    ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_POKEMON2) ||
+	    ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MULAN)) {
 		RamMisc->L3AltPDat = 0;
 		RamMisc->L3AltPCmd = 0;
-		
+
 		OriginalRom = (UINT8*)BurnMalloc(0x200000);
 		memcpy(OriginalRom, RomMain, 0x200000);
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x200000, OriginalRom + 0x000000, 0x200000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x600000, 0x6fffff, SM_READ | SM_WRITE);
+		SekMapHandler(7, 0x600000, 0x6fffff, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(7, LK3AltProtReadByte);
 		SekSetReadWordHandler(7, LK3AltProtReadWord);
 		SekSetWriteByteHandler(7, LK3AltProtWriteByte);
 		SekSetWriteWordHandler(7, LK3AltProtWriteWord);
-		SekMapHandler(8, 0x700000, 0x7fffff, SM_WRITE);
+		SekMapHandler(8, 0x700000, 0x7fffff, MAP_WRITE);
 		SekSetWriteByteHandler(8, LK3AltBankWriteByte);
 		SekSetWriteWordHandler(8, LK3AltBankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SDK99) {
 		RamMisc->L3AltPDat = 0;
 		RamMisc->L3AltPCmd = 0;
-		
+
 		OriginalRom = (UINT8*)BurnMalloc(0x300000);
 		memcpy(OriginalRom, RomMain, 0x300000);
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x300000);
 		memcpy(RomMain + 0x300000, OriginalRom + 0x000000, 0x100000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x600000, 0x6fffff, SM_READ | SM_WRITE);
+		SekMapHandler(7, 0x600000, 0x6fffff, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(7, LK3AltProtReadByte);
 		SekSetReadWordHandler(7, LK3AltProtReadWord);
 		SekSetWriteByteHandler(7, LK3AltProtWriteByte);
 		SekSetWriteWordHandler(7, LK3AltProtWriteWord);
-		SekMapHandler(8, 0x700000, 0x7fffff, SM_WRITE);
+		SekMapHandler(8, 0x700000, 0x7fffff, MAP_WRITE);
 		SekSetWriteByteHandler(8, LK3AltBankWriteByte);
 		SekSetWriteWordHandler(8, LK3AltBankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_REDCL_EN) {
 		OriginalRom = (UINT8*)BurnMalloc(0x200005);
 		memcpy(OriginalRom, RomMain, 0x200005);
 		for (UINT32 i = 0; i < RomSize; i++) {
 			OriginalRom[i] ^= 0x40;
 		}
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000004, 0x200000);
-	
+
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400001, SM_READ);
+		SekMapHandler(7, 0x400000, 0x400001, MAP_READ);
 		SekSetReadByteHandler(7, RedclifProt2ReadByte);
 		SekSetReadWordHandler(7, RedclifProt2ReadWord);
-		SekMapHandler(8, 0x400004, 0x400005, SM_READ);
+		SekMapHandler(8, 0x400004, 0x400005, MAP_READ);
 		SekSetReadByteHandler(8, RedclifProtReadByte);
 		SekSetReadWordHandler(8, RedclifProtReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_RADICA) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x400000);
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x400000);
 		memcpy(RomMain + 0x800000, OriginalRom + 0x000000, 0x400000);
-	
+
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa1307f, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa1307f, MAP_READ);
 		SekSetReadByteHandler(7, RadicaBankSelectReadByte);
 		SekSetReadWordHandler(7, RadicaBankSelectReadWord);
 		SekClose();
 	}
-	
-	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_KOF99) {
+
+	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_KOF99 ||
+		(BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_POKEMON) {
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa1303f, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa1303f, MAP_READ);
 		SekSetReadByteHandler(7, Kof99A13000ReadByte);
 		SekSetReadWordHandler(7, Kof99A13000ReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SOULBLAD) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400002, 0x400007, SM_READ);
+		SekMapHandler(7, 0x400002, 0x400007, MAP_READ);
 		SekSetReadByteHandler(7, SoulbladReadByte);
 		SekSetReadWordHandler(7, SoulbladReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MJLOVER) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400001, SM_READ);
+		SekMapHandler(7, 0x400000, 0x400001, MAP_READ);
 		SekSetReadByteHandler(7, MjloverProt1ReadByte);
 		SekSetReadWordHandler(7, MjloverProt1ReadWord);
-		SekMapHandler(8, 0x401000, 0x401001, SM_READ);
+		SekMapHandler(8, 0x401000, 0x401001, MAP_READ);
 		SekSetReadByteHandler(8, MjloverProt2ReadByte);
 		SekSetReadWordHandler(8, MjloverProt2ReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SQUIRRELK) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400007, SM_READ | SM_WRITE);
+		SekMapHandler(7, 0x400000, 0x400007, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(7, SquirrelKingExtraReadByte);
 		SekSetReadWordHandler(7, SquirrelKingExtraReadWord);
 		SekSetWriteByteHandler(7, SquirrelKingExtraWriteByte);
 		SekSetWriteWordHandler(7, SquirrelKingExtraWriteWord);
 		SekClose();
+		bNoDebug = 1; // Games make a lot of unmapped word-writes
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SMOUSE) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400007, SM_READ);
+		SekMapHandler(7, 0x400000, 0x400007, MAP_READ);
 		SekSetReadByteHandler(7, SmouseProtReadByte);
 		SekSetReadWordHandler(7, SmouseProtReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SMB) {
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13001, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa13001, MAP_READ);
 		SekSetReadByteHandler(7, SmbProtReadByte);
 		SekSetReadWordHandler(7, SmbProtReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SMB2) {
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13001, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa13001, MAP_READ);
 		SekSetReadByteHandler(7, Smb2ProtReadByte);
 		SekSetReadWordHandler(7, Smb2ProtReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_KAIJU) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x400000, OriginalRom, 0x200000);
 		memcpy(RomMain + 0x600000, OriginalRom, 0x200000);
 		memcpy(RomMain + 0x000000, OriginalRom, 0x200000);
-	
+
 		SekOpen(0);
-		SekMapHandler(7, 0x700000, 0x7fffff, SM_WRITE);
+		SekMapHandler(7, 0x700000, 0x7fffff, MAP_WRITE);
 		SekSetWriteByteHandler(7, KaijuBankWriteByte);
 		SekSetWriteWordHandler(7, KaijuBankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_CHINFIGHT3) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x600000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x200000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x4fffff, SM_READ);
+		SekMapHandler(7, 0x400000, 0x4fffff, MAP_READ);
 		SekSetReadByteHandler(7, Chinfi3ProtReadByte);
 		SekSetReadWordHandler(7, Chinfi3ProtReadWord);
-		SekMapHandler(8, 0x600000, 0x6fffff, SM_WRITE);
+		SekMapHandler(8, 0x600000, 0x6fffff, MAP_WRITE);
 		SekSetWriteByteHandler(8, Chinfi3BankWriteByte);
 		SekSetWriteWordHandler(8, Chinfi3BankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_LIONK2) {
 		RamMisc->Lionk2ProtData = 0;
 		RamMisc->Lionk2ProtData2 = 0;
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400007, SM_READ | SM_WRITE);
+		SekMapHandler(7, 0x400000, 0x400007, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(7, Lionk2ProtReadByte);
 		SekSetReadWordHandler(7, Lionk2ProtReadWord);
 		SekSetWriteByteHandler(7, Lionk2ProtWriteByte);
 		SekSetWriteWordHandler(7, Lionk2ProtWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_BUGSLIFE) {
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13001, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa13001, MAP_READ);
 		SekSetReadByteHandler(7, BuglExtraReadByte);
 		SekSetReadWordHandler(7, BuglExtraReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_ELFWOR) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400007, SM_READ);
+		SekMapHandler(7, 0x400000, 0x400007, MAP_READ);
 		SekSetReadByteHandler(7, Elfwor400000ReadByte);
 		SekSetReadWordHandler(7, Elfwor400000ReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_ROCKMANX3) {
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13001, SM_READ);
+		SekMapHandler(7, 0xa13000, 0xa13001, MAP_READ);
 		SekSetReadByteHandler(7, RockmanX3ExtraReadByte);
 		SekSetReadWordHandler(7, RockmanX3ExtraReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SBUBBOB) {
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x400003, SM_READ);
+		SekMapHandler(7, 0x400000, 0x400003, MAP_READ);
 		SekSetReadByteHandler(7, SbubExtraReadByte);
 		SekSetReadWordHandler(7, SbubExtraReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_KOF98) {
 		SekOpen(0);
-		SekMapHandler(7, 0x480000, 0x4fffff, SM_READ);
+		SekMapHandler(7, 0x480000, 0x4fffff, MAP_READ);
 		SekSetReadByteHandler(7, Kof98ReadByte);
 		SekSetReadWordHandler(7, Kof98ReadWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_REALTEC) {
 		RamMisc->RealtecBankAddr = 0;
 		RamMisc->RealtecBankSize = 0;
-		
+
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x080000);
-		
+
 		for (INT32 i = 0; i < 0x400000; i += 0x2000) {
 			memcpy(RomMain + i, OriginalRom + 0x7e000, 0x2000);
 		}
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x400000, 0x40400f, SM_WRITE);
+		SekMapHandler(7, 0x400000, 0x40400f, MAP_WRITE);
 		SekSetWriteByteHandler(7, RealtecWriteByte);
 		SekSetWriteWordHandler(7, RealtecWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MC_SUP19IN1) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x400000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13039, SM_WRITE);
+		SekMapHandler(7, 0xa13000, 0xa13039, MAP_WRITE);
 		SekSetWriteByteHandler(7, Sup19in1BankWriteByte);
 		SekSetWriteWordHandler(7, Sup19in1BankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MC_SUP15IN1) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x200000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa13039, SM_WRITE);
+		SekMapHandler(7, 0xa13000, 0xa13039, MAP_WRITE);
 		SekSetWriteByteHandler(7, Sup19in1BankWriteByte);
 		SekSetWriteWordHandler(7, Sup19in1BankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MC_12IN1) {
-		OriginalRom = (UINT8*)BurnMalloc(RomSize);
+		OriginalRom = (UINT8*)BurnMalloc(RomSize * 2); // add a little buffer on the end so memcpy @ the last bank doesn't crash
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x200000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0xa13000, 0xa1303f, SM_WRITE);
+		SekMapHandler(7, 0xa13000, 0xa1303f, MAP_WRITE);
 		SekSetWriteByteHandler(7, Mc12in1BankWriteByte);
 		SekSetWriteWordHandler(7, Mc12in1BankWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_TOPFIGHTER) {
 		OriginalRom = (UINT8*)BurnMalloc(RomSize);
 		memcpy(OriginalRom, RomMain, RomSize);
-		
+
 		memcpy(RomMain + 0x000000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x200000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x400000, OriginalRom + 0x000000, 0x200000);
 		memcpy(RomMain + 0x600000, OriginalRom + 0x000000, 0x200000);
-		
+
 		SekOpen(0);
-		SekMapHandler(7, 0x600000, 0x6fffff, SM_READ);
+		SekMapHandler(7, 0x600000, 0x6fffff, MAP_READ);
 		SekSetReadByteHandler(7, TopfigReadByte);
-		SekSetReadWordHandler(7, TopfigReadWord);		
-		SekMapHandler(8, 0x700000, 0x7fffff, SM_WRITE);
+		SekSetReadWordHandler(7, TopfigReadWord);
+		SekMapHandler(8, 0x700000, 0x7fffff, MAP_WRITE);
 		SekSetWriteByteHandler(8, TopfigWriteByte);
 		SekSetWriteWordHandler(8, TopfigWriteWord);
 		SekClose();
 	}
-	
-	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_POKEMON) {
-		UINT16 *ROM16 = (UINT16 *)RomMain;
 
-		ROM16[0x0dd19e/2] = 0x47F8;
-		ROM16[0x0dd1a0/2] = 0xFFF0;
-		ROM16[0x0dd1a2/2] = 0x4E63;
-		ROM16[0x0dd46e/2] = 0x4EF8;
-		ROM16[0x0dd470/2] = 0x0300;
-		ROM16[0x0dd49c/2] = 0x6002;
+	switch ((BurnDrvGetHardwareCode() & 0xff)) {
+		case HARDWARE_SEGA_MEGADRIVE_FOURWAYPLAY:
+			FourWayPlayMode = 1;
+			break;
+		case HARDWARE_SEGA_MEGADRIVE_TEAMPLAYER:
+			TeamPlayerMode = 1;
+			break;
+		case HARDWARE_SEGA_MEGADRIVE_TEAMPLAYER_PORT2:
+			TeamPlayerMode = 2;
+			break;
+		default:
+			TeamPlayerMode = 0;
+			FourWayPlayMode = 0;
+			break;
 	}
-	
-	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_POKEMON2) {
-		UINT16 *ROM16 = (UINT16 *)RomMain;
 
-		ROM16[0x06036/2] = 0xE000;
-		ROM16[0x02540/2] = 0x6026;
-		ROM16[0x01ED0/2] = 0x6026;
-		ROM16[0x02476/2] = 0x6022;
-
-		ROM16[0x7E300/2] = 0x60FE;
+	if (TeamPlayerMode) {
+		bprintf(0, _T("Game supports Sega TeamPlayer 4x Pad in Port %d.\n"), TeamPlayerMode);
 	}
-	
-	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_MULAN) {
-		UINT16 *ROM16 = (UINT16 *)RomMain;
 
-		ROM16[0x06036/2] = 0xE000;
-	}	
+	if (FourWayPlayMode) {
+		bprintf(0, _T("Game supports EA 4-WayPlay 4x Pad in Port 1 & 2.\n"));
+	}
 }
 
 // SRAM and EEPROM Handling
 
-UINT8 __fastcall MegadriveSRAMReadByte(UINT32 sekAddress)
+static UINT8 __fastcall MegadriveSRAMReadByte(UINT32 sekAddress)
 {
 	if (RamMisc->SRamActive) {
 		return SRam[(sekAddress - RamMisc->SRamStart) ^ 1];
@@ -2480,7 +2857,7 @@ UINT8 __fastcall MegadriveSRAMReadByte(UINT32 sekAddress)
 	}
 }
 
-UINT16 __fastcall MegadriveSRAMReadWord(UINT32 sekAddress)
+static UINT16 __fastcall MegadriveSRAMReadWord(UINT32 sekAddress)
 {
 	if (RamMisc->SRamActive) {
 		UINT16 *Ram = (UINT16*)SRam;
@@ -2491,7 +2868,7 @@ UINT16 __fastcall MegadriveSRAMReadWord(UINT32 sekAddress)
 	}
 }
 
-void __fastcall MegadriveSRAMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveSRAMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if (RamMisc->SRamActive) {
 		if (!RamMisc->SRamReadOnly) {
@@ -2501,7 +2878,7 @@ void __fastcall MegadriveSRAMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 	}
 }
 
-void __fastcall MegadriveSRAMWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall MegadriveSRAMWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	if (RamMisc->SRamActive) {
 		if (!RamMisc->SRamReadOnly) {
@@ -2515,186 +2892,198 @@ void __fastcall MegadriveSRAMWriteWord(UINT32 sekAddress, UINT16 wordValue)
 static void InstallSRAMHandlers(bool MaskAddr)
 {
 	UINT32 Mask = MaskAddr ? 0x3fffff : 0xffffff;
-	
+
 	memset(SRam, 0xff, MAX_SRAM_SIZE);
-	memcpy((UINT8*)MegadriveBackupRam, SRam, RamMisc->SRamEnd - RamMisc->SRamStart + 1);
-	
+
+	// this breaks "md_thor".  sram is mapped in and out, so this is totally wrong.
+	// leaving this in "just incase / for reference" incase I come across a game that needs it.
+	//memcpy((UINT8*)MegadriveBackupRam, SRam, RamMisc->SRamEnd - RamMisc->SRamStart + 1);
+
 	SekOpen(0);
-	SekMapHandler(6, RamMisc->SRamStart & Mask, RamMisc->SRamEnd & Mask, SM_READ | SM_WRITE);
+	SekMapHandler(6, RamMisc->SRamStart & Mask, RamMisc->SRamEnd & Mask, MAP_READ | MAP_WRITE);
 	SekSetReadByteHandler(6, MegadriveSRAMReadByte);
 	SekSetReadWordHandler(6, MegadriveSRAMReadWord);
 	SekSetWriteByteHandler(6, MegadriveSRAMWriteByte);
 	SekSetWriteWordHandler(6, MegadriveSRAMWriteWord);
 	SekClose();
 
-	RamMisc->SRamHandlersInstalled = 1;	
+	RamMisc->SRamHandlersInstalled = 1;
 }
 
-UINT8 __fastcall Megadrive6658ARegReadByte(UINT32 sekAddress)
+static UINT8 __fastcall Megadrive6658ARegReadByte(UINT32 sekAddress)
 {
 	if (sekAddress & 1) return RamMisc->SRamActive;
-	
+
 	bprintf(PRINT_NORMAL, _T("Megadrive6658AReg Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall Megadrive6658ARegReadWord(UINT32 sekAddress)
+static UINT16 __fastcall Megadrive6658ARegReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Megadrive6658AReg Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall Megadrive6658ARegWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall Megadrive6658ARegWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if (sekAddress & 1) {
 		if (byteValue == 1) {
 			RamMisc->SRamActive = 1;
 			return;
 		}
-	
+
 		if (byteValue == 0) {
 			RamMisc->SRamActive = 0;
 			return;
 		}
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("6658A Reg write byte  %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall Megadrive6658ARegWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall Megadrive6658ARegWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("6658A Reg write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall WboyVEEPROMReadByte(UINT32 sekAddress)
+static UINT8 __fastcall WboyVEEPROMReadByte(UINT32 sekAddress)
 {
 	if (sekAddress & 1) return ~RamMisc->I2CMem & 1;
-	
+
 	bprintf(PRINT_NORMAL, _T("WboyVEEPROM Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall WboyVEEPROMReadWord(UINT32 sekAddress)
-{	
+static UINT16 __fastcall WboyVEEPROMReadWord(UINT32 sekAddress)
+{
 	bprintf(PRINT_NORMAL, _T("WboyVEEPROM Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall WboyVEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall WboyVEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
-	if (sekAddress & 1) {	
+	if (sekAddress & 1) {
 		RamMisc->I2CClk = (byteValue & 0x0002) >> 1;
 		RamMisc->I2CMem = (byteValue & 0x0001);
 		return;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("WboyVEEPROM write byte value %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall WboyVEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall WboyVEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("WboyVEEPROM write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-UINT8 __fastcall NbajamEEPROMReadByte(UINT32 sekAddress)
+static UINT8 __fastcall NbajamEEPROMReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Nbajam Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall NbajamEEPROMReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall NbajamEEPROMReadWord(UINT32 /*sekAddress*/)
 {
 	return RamMisc->I2CMem & 1;
 }
 
-void __fastcall NbajamEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall NbajamEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	bprintf(PRINT_NORMAL, _T("Nbajam write byte value %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall NbajamEEPROMWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
+static void __fastcall NbajamEEPROMWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
 {
 	RamMisc->I2CClk = (wordValue & 0x0002) >> 1;
 	RamMisc->I2CMem = (wordValue & 0x0001);
 }
 
-UINT8 __fastcall NbajamteEEPROMReadByte(UINT32 sekAddress)
-{
-	if (sekAddress & 1) return RamMisc->I2CMem & 1;
-	
-	bprintf(PRINT_NORMAL, _T("Nbajamte Read Byte %x\n"), sekAddress);
-	
-	return 0;
+static UINT8 __fastcall NbajamteEEPROMReadByte(UINT32 sekAddress)
+{ // this is enough to get the game booting and working, but with no real serial eeprom handling
+	if (sekAddress >= 0x200000 && sekAddress <= 0x200001) {
+		if (sekAddress & 1) return RamMisc->I2CMem & 1;
+		return 0;
+	}
+
+	if (sekAddress < 0x300000) {
+		return RomMain[sekAddress^1];
+	} else {
+		return 0xff;
+	}
 }
 
-UINT16 __fastcall NbajamteEEPROMReadWord(UINT32 sekAddress)
+static UINT16 __fastcall NbajamteEEPROMReadWord(UINT32 sekAddress)
 {
-	bprintf(PRINT_NORMAL, _T("Nbajamte Read Word %x\n"), sekAddress);
-
-	return 0;
+	if (sekAddress < 0x300000) {
+		UINT16 *Rom = (UINT16*)RomMain;
+		return Rom[sekAddress >> 1];
+	} else {
+		return 0xffff;
+	}
 }
 
-void __fastcall NbajamteEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall NbajamteEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
-	if (sekAddress & 1) {
+	if (sekAddress == 0x200001) {
 //		RamMisc->I2CClk = (wordValue & 0x0002) >> 1;
 		RamMisc->I2CMem = (byteValue & 0x0001);
 		return;
 	}
-	
-	bprintf(PRINT_NORMAL, _T("Nbajamte write byte value %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall NbajamteEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall NbajamteEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
-	bprintf(PRINT_NORMAL, _T("Nbajamte write word value %04x to location %08x\n"), wordValue, sekAddress);
+	if (sekAddress == 0x200001) {
+		RamMisc->I2CMem = (wordValue & 0x0001);
+		return;
+	}
 }
 
-UINT8 __fastcall EANhlpaEEPROMReadByte(UINT32 sekAddress)
+static UINT8 __fastcall EANhlpaEEPROMReadByte(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("EANhlpa Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall EANhlpaEEPROMReadWord(UINT32 /*sekAddress*/)
+static UINT16 __fastcall EANhlpaEEPROMReadWord(UINT32 /*sekAddress*/)
 {
 	return (RamMisc->I2CMem & 1) << 7;
 }
 
-void __fastcall EANhlpaEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall EANhlpaEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	bprintf(PRINT_NORMAL, _T("EANhlpa write byte value %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall EANhlpaEEPROMWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
+static void __fastcall EANhlpaEEPROMWriteWord(UINT32 /*sekAddress*/, UINT16 wordValue)
 {
 	RamMisc->I2CClk = ((wordValue & 0x0040) >> 6);
 	RamMisc->I2CMem = ((wordValue & 0x0080) >> 7);
 }
 
-UINT8 __fastcall CodemastersEEPROMReadByte(UINT32 sekAddress)
+static UINT8 __fastcall CodemastersEEPROMReadByte(UINT32 sekAddress)
 {
 	if (sekAddress & 1) return RamMisc->I2CMem & 1;
-	
+
 	bprintf(PRINT_NORMAL, _T("Codemasters Read Byte %x\n"), sekAddress);
-	
+
 	return 0;
 }
 
-UINT16 __fastcall CodemastersEEPROMReadWord(UINT32 sekAddress)
+static UINT16 __fastcall CodemastersEEPROMReadWord(UINT32 sekAddress)
 {
 	bprintf(PRINT_NORMAL, _T("Codemasters Read Word %x\n"), sekAddress);
 
 	return 0;
 }
 
-void __fastcall CodemastersEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall CodemastersEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	if (sekAddress & 1) {
 		RamMisc->I2CClk = (byteValue & 0x0002) >> 1;
@@ -2705,23 +3094,31 @@ void __fastcall CodemastersEEPROMWriteByte(UINT32 sekAddress, UINT8 byteValue)
 		RamMisc->I2CMem = (byteValue & 0x0001);
 		return;
 	}
-	
+
 	bprintf(PRINT_NORMAL, _T("Codemasters write byte value %02x to location %08x\n"), byteValue, sekAddress);
 }
 
-void __fastcall CodemastersEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall CodemastersEEPROMWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	bprintf(PRINT_NORMAL, _T("Codemasters write word value %04x to location %08x\n"), wordValue, sekAddress);
 }
 
-void __fastcall MegadriveSRAMToggleWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall MegadriveSRAMToggleWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
-	bprintf(PRINT_NORMAL, _T("SRam Toggle byte  %02x to location %08x\n"), byteValue, sekAddress);
+	if (sekAddress == 0xa130f1) {
+		RamMisc->SRamReg &= ~(SR_MAPPED | SR_READONLY);
+		RamMisc->SRamReg |= byteValue;
+		RamMisc->SRamActive = RamMisc->SRamReg & SR_MAPPED;
+		RamMisc->SRamReadOnly = RamMisc->SRamReg & SR_READONLY;
+		bprintf(0, _T("SRam Status: %S%S\n"), RamMisc->SRamActive ? "Active " : "", RamMisc->SRamReadOnly ? "ReadOnly" : "");
+	}
 }
 
-void __fastcall MegadriveSRAMToggleWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall MegadriveSRAMToggleWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
-	bprintf(PRINT_NORMAL, _T("SRam Toggle word value %04x to location %08x\n"), wordValue, sekAddress);
+	if (sekAddress == 0xa130f0) {
+		MegadriveSRAMToggleWriteByte(sekAddress | 1, wordValue & 0xff);
+	}
 }
 
 static void MegadriveSetupSRAM()
@@ -2734,8 +3131,9 @@ static void MegadriveSetupSRAM()
 	RamMisc->SRamActive = 0;
 	RamMisc->SRamReadOnly = 0;
 	RamMisc->SRamHasSerialEEPROM = 0;
+	RamMisc->SRamReg = 0;
 	MegadriveBackupRam = NULL;
-	
+
 	if ((BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_00400) || (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_00800) || (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_01000) || (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_04000) || (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_10000)) {
 		RamMisc->SRamStart = 0x200000;
 		if (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_00400) RamMisc->SRamEnd = 0x2003ff;
@@ -2743,113 +3141,123 @@ static void MegadriveSetupSRAM()
 		if (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_01000) RamMisc->SRamEnd = 0x200fff;
 		if (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_04000) RamMisc->SRamEnd = 0x203fff;
 		if (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_SRAM_10000) RamMisc->SRamEnd = 0x20ffff;
-		
+
+		bprintf(PRINT_IMPORTANT, _T("SRAM Settings: start %06x - end %06x\n"), RamMisc->SRamStart, RamMisc->SRamEnd);
 		RamMisc->SRamDetected = 1;
 		MegadriveBackupRam = (UINT16*)RomMain + RamMisc->SRamStart;
-		
+
 		SekOpen(0);
-		SekMapHandler(5, 0xa130f0, 0xa130f1, SM_WRITE);
+		SekMapHandler(5, 0xa130f0, 0xa130f1, MAP_WRITE);
 		SekSetWriteByteHandler(5, MegadriveSRAMToggleWriteByte);
 		SekSetWriteWordHandler(5, MegadriveSRAMToggleWriteWord);
 		SekClose();
-		
+
+		InstallSRAMHandlers(false);
+
 		if (RomSize <= RamMisc->SRamStart) {
 			RamMisc->SRamActive = 1;
-			InstallSRAMHandlers(false);
 		}
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_BEGGAR) {
 		RamMisc->SRamStart = 0x400000;
 		RamMisc->SRamEnd = 0x40ffff;
-		
+
 		RamMisc->SRamDetected = 1;
 		MegadriveBackupRam = (UINT16*)RomMain + RamMisc->SRamStart;
-		
-		RamMisc->SRamActive = 1;		
+
+		RamMisc->SRamActive = 1;
 		InstallSRAMHandlers(false);
 	}
-	
+
 	if (BurnDrvGetHardwareCode() & HARDWARE_SEGA_MEGADRIVE_FRAM_00400) {
 		RamMisc->SRamStart = 0x200000;
 		RamMisc->SRamEnd = 0x2003ff;
-		
+
 		RamMisc->SRamDetected = 1;
 		MegadriveBackupRam = (UINT16*)RomMain + RamMisc->SRamStart;
-		
+
 		SekOpen(0);
-		SekMapHandler(5, 0xa130f0, 0xa130f1, SM_READ | SM_WRITE);
+		SekMapHandler(5, 0xa130f0, 0xa130f1, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(5, Megadrive6658ARegReadByte);
 		SekSetReadWordHandler(5, Megadrive6658ARegReadWord);
 		SekSetWriteByteHandler(5, Megadrive6658ARegWriteByte);
 		SekSetWriteWordHandler(5, Megadrive6658ARegWriteWord);
 		SekClose();
-		
+
 		InstallSRAMHandlers(false);
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM) {
 		RamMisc->SRamHasSerialEEPROM = 1;
 		SekOpen(0);
-		SekMapHandler(5, 0x200000, 0x200001, SM_READ | SM_WRITE);
+		SekMapHandler(5, 0x200000, 0x200001, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(5, WboyVEEPROMReadByte);
 		SekSetReadWordHandler(5, WboyVEEPROMReadWord);
 		SekSetWriteByteHandler(5, WboyVEEPROMWriteByte);
 		SekSetWriteWordHandler(5, WboyVEEPROMWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_NBA_JAM) {
 		RamMisc->SRamHasSerialEEPROM = 1;
 		SekOpen(0);
-		SekMapHandler(5, 0x200000, 0x200001, SM_READ | SM_WRITE);
+		SekMapHandler(5, 0x200000, 0x200001, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(5, NbajamEEPROMReadByte);
 		SekSetReadWordHandler(5, NbajamEEPROMReadWord);
 		SekSetWriteByteHandler(5, NbajamEEPROMWriteByte);
 		SekSetWriteWordHandler(5, NbajamEEPROMWriteWord);
 		SekClose();
 	}
-	
+
 	if (((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_NBA_JAM_TE) || ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_NFL_QB_96) || ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_C_SLAM)) {
 		RamMisc->SRamHasSerialEEPROM = 1;
 		SekOpen(0);
-		SekMapHandler(5, 0x200000, 0x200001, SM_READ | SM_WRITE);
+		SekMapHandler(5, 0x200000, 0x200001, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(5, NbajamteEEPROMReadByte);
 		SekSetReadWordHandler(5, NbajamteEEPROMReadWord);
 		SekSetWriteByteHandler(5, NbajamteEEPROMWriteByte);
 		SekSetWriteWordHandler(5, NbajamteEEPROMWriteWord);
 		SekClose();
 	}
-	
+
 	if ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_EA_NHLPA) {
 		RamMisc->SRamHasSerialEEPROM = 1;
 		SekOpen(0);
-		SekMapHandler(5, 0x200000, 0x200001, SM_READ | SM_WRITE);
+		SekMapHandler(5, 0x200000, 0x200001, MAP_READ | MAP_WRITE);
 		SekSetReadByteHandler(5, EANhlpaEEPROMReadByte);
 		SekSetReadWordHandler(5, EANhlpaEEPROMReadWord);
 		SekSetWriteByteHandler(5, EANhlpaEEPROMWriteByte);
 		SekSetWriteWordHandler(5, EANhlpaEEPROMWriteWord);
 		SekClose();
 	}
-	
+
 	if (((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_CODE_MASTERS) || ((BurnDrvGetHardwareCode() & 0xff) == HARDWARE_SEGA_MEGADRIVE_PCB_CM_JCART_SEPROM)) {
 		RamMisc->SRamHasSerialEEPROM = 1;
 		SekOpen(0);
-		SekMapHandler(5, 0x300000, 0x300001, SM_WRITE);
+		SekMapHandler(5, 0x300000, 0x300001, MAP_WRITE);
 		SekSetWriteByteHandler(5, CodemastersEEPROMWriteByte);
 		SekSetWriteWordHandler(5, CodemastersEEPROMWriteWord);
-		SekMapHandler(6, 0x380000, 0x380001, SM_READ);
+		SekMapHandler(6, 0x380000, 0x380001, MAP_READ);
 		SekSetReadByteHandler(6, CodemastersEEPROMReadByte);
 		SekSetReadWordHandler(6, CodemastersEEPROMReadWord);
 		SekClose();
 	}
-	
+
+	if (psolarmode) {
+		md_eeprom_stm95_init(RomMain); // pier solar
+	}
+
 	if (!RamMisc->SRamDetected && !RamMisc->SRamHasSerialEEPROM) {
-		// check if cart has battery save 
+		// check if cart has battery save
 		if (RomMain[0x1b1] == 'R' && RomMain[0x1b0] == 'A') {
-			// SRAM info found in header 
+			// SRAM info found in header
 			RamMisc->SRamStart = (RomMain[0x1b5] << 24 | RomMain[0x1b4] << 16 | RomMain[0x1b7] << 8 | RomMain[0x1b6]);
 			RamMisc->SRamEnd = (RomMain[0x1b9] << 24 | RomMain[0x1b8] << 16 | RomMain[0x1bb] << 8 | RomMain[0x1ba]);
+
+			// The 68k only has 24 address bits.
+			RamMisc->SRamStart &= 0xffffff;
+			RamMisc->SRamEnd &= 0xffffff;
 
 			if ((RamMisc->SRamStart > RamMisc->SRamEnd) || ((RamMisc->SRamEnd - RamMisc->SRamStart) >= 0x10000)) {
 				RamMisc->SRamEnd = RamMisc->SRamStart + 0x0FFFF;
@@ -2871,7 +3279,7 @@ static void MegadriveSetupSRAM()
 
 		if (!(RamMisc->SRamEnd & 1)) RamMisc->SRamEnd += 1;
 
-		// calculate backup RAM location 
+		// calculate backup RAM location
 		MegadriveBackupRam = (UINT16*) (RomMain + (RamMisc->SRamStart & 0x3fffff));
 
 		if (RamMisc->SRamDetected) {
@@ -2879,22 +3287,55 @@ static void MegadriveSetupSRAM()
 		}
 
 		// Enable SRAM handlers only if the game does not use EEPROM.
-		if (!RamMisc->SRamHasSerialEEPROM) {
-			// Info from DGen: If SRAM does not overlap main ROM, set it active by default since a few games can't manage to properly switch it on/off. 
+		if (!RamMisc->SRamHasSerialEEPROM && !psolarmode /*pier solar*/) {
+			// Info from DGen: If SRAM does not overlap main ROM, set it active by default since a few games can't manage to properly switch it on/off.
 			if (RomSize <= RamMisc->SRamStart) {
 				RamMisc->SRamActive = 1;
 			}
 
 			SekOpen(0);
-			SekMapHandler(5, 0xa130f0, 0xa130f1, SM_WRITE);
+			SekMapHandler(5, 0xa130f0, 0xa130f1, MAP_WRITE);
 			SekSetWriteByteHandler(5, MegadriveSRAMToggleWriteByte);
 			SekSetWriteWordHandler(5, MegadriveSRAMToggleWriteWord);
 			SekClose();
 
-			// Sonic 1 included in Sonic Classics doesn't have SRAM and does lots of ROM access at this range, then only install read write handlers if SRAM is active to not slow down emulation.
-			if (RamMisc->SRamActive) InstallSRAMHandlers(true);
+			InstallSRAMHandlers(true);
 		}
 	}
+}
+
+static void sram_patch_megaman()
+{
+	UINT16 *rom = (UINT16*)RomMain;
+	// code to allow use of sram in megaman, which is i2c eeprom(not impl. yet)
+	rom[0x0018e/2] = 0x125a;	rom[0x001b2/2] = 0xf820;
+	rom[0x001ba/2] = 0x3fff;	rom[0x0036a/2] = 0x4e71;
+	rom[0x003a4/2] = 0x4e71;	rom[0x6db4e/2] = 0x4e71;
+	rom[0x6db50/2] = 0x4e71;	rom[0x6db5c/2] = 0x40ce;
+	rom[0x6db76/2] = 0x0050;	rom[0x6db8c/2] = 0x40ce;
+	rom[0x6dba8/2] = 0x003e;	rom[0x6dbb8/2] = 0x4e71;
+	rom[0x6dbba/2] = 0x4e71;	rom[0x6dbbc/2] = 0x60fa;
+	rom[0x6dbbe/2] = 0x4e71;	rom[0x6dbc0/2] = 0x4e71;
+	rom[0x6dbc2/2] = 0x4e71;	rom[0x6dbc4/2] = 0x4e71;
+	rom[0x6dbc6/2] = 0x4a41;	rom[0x6dbc8/2] = 0x6606;
+	rom[0x6dbca/2] = 0x45f9;	rom[0x6dbce/2] = 0x0101;
+	rom[0x6dbd0/2] = 0x1412;	rom[0x6dbd2/2] = 0xe14a;
+	rom[0x6dbd4/2] = 0x142a;	rom[0x6dbd6/2] = 0x0002;
+	rom[0x6dbd8/2] = 0x45ea;	rom[0x6dbda/2] = 0x0004;
+	rom[0x6dbdc/2] = 0x4e75;	rom[0x6dbde/2] = 0x4e71;
+	rom[0x6dbe0/2] = 0x4e71;	rom[0x6dbe2/2] = 0x4e71;
+	rom[0x6dbe4/2] = 0x4e71;	rom[0x6dbe6/2] = 0x4a41;
+	rom[0x6dbe8/2] = 0x6606;	rom[0x6dbea/2] = 0x45f9;
+	rom[0x6dbec/2] = 0x0020;	rom[0x6dbee/2] = 0x0101;
+	rom[0x6dbf0/2] = 0x1542;	rom[0x6dbf2/2] = 0x0002;
+	rom[0x6dbf4/2] = 0xe04a;	rom[0x6dbf6/2] = 0x1482;
+	rom[0x6dbf8/2] = 0x45ea;	rom[0x6dbfa/2] = 0x0004;
+	rom[0x6dbfc/2] = 0x4e75;	rom[0x6dbfe/2] = 0x4e71;
+}
+
+static INT32 __fastcall MegadriveTAScallback(void)
+{
+	return 0; // disable
 }
 
 INT32 MegadriveInit()
@@ -2904,29 +3345,38 @@ INT32 MegadriveInit()
 	INT32 nLen = MemEnd - (UINT8 *)0;
 	if ((Mem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(Mem, 0, nLen);
-	MemIndex();	
+	MemIndex();
 
 	MegadriveLoadRoms(0);
-	MegadriveLoadRoms(1);
+	if (MegadriveLoadRoms(1)) return 1;
+
+	if (strstr(BurnDrvGetTextA(DRV_NAME), "megaman")) {
+		bprintf(0, _T("Megaman SRAM fix activated!\n"));
+		sram_patch_megaman(); // after rom-load (must!)
+	}
 
 	{
 		SekInit(0, 0x68000);										// Allocate 68000
-	        SekOpen(0);
+		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(RomMain,		0x000000, 0x3FFFFF, SM_ROM);	// 68000 ROM
-		SekMapMemory(Ram68K,		0xFF0000, 0xFFFFFF, SM_RAM);	// 68000 RAM
-		
-		SekMapHandler(1,			0xC00000, 0xC0001F, SM_RAM);	// Video Port
-		SekMapHandler(2,			0xA00000, 0xA01FFF, SM_RAM);	// Z80 Ram
-		SekMapHandler(3,			0xA02000, 0xA03FFF, SM_RAM);	// Z80 Ram
-		SekMapHandler(4,			0xA10000, 0xA1001F, SM_RAM);	// I/O
-		
+		SekMapMemory(RomMain,		0x000000, 0x9FFFFF, MAP_ROM);	// 68000 ROM
+
+		// RAM and it's mirrors (Fix Xaio Monv: Magic Girl)
+		for (INT32 a = 0xe00000; a < 0x1000000; a += 0x010000) {
+			SekMapMemory(Ram68K, a, a + 0xFFFF, MAP_RAM);	        // 68000 RAM
+		}
+
+		SekMapHandler(1,			0xC00000, 0xC0001F, MAP_RAM);	// Video Port
+		SekMapHandler(2,			0xA00000, 0xA01FFF, MAP_RAM);	// Z80 Ram
+		SekMapHandler(3,			0xA02000, 0xA03FFF, MAP_RAM);	// Z80 Ram
+		SekMapHandler(4,			0xA10000, 0xA1001F, MAP_RAM);	// I/O
+
 		SekSetReadByteHandler (0, MegadriveReadByte);
 		SekSetReadWordHandler (0, MegadriveReadWord);
 		SekSetWriteByteHandler(0, MegadriveWriteByte);
 		SekSetWriteWordHandler(0, MegadriveWriteWord);
-		
+
 		SekSetReadByteHandler (1, MegadriveVideoReadByte);
 		SekSetReadWordHandler (1, MegadriveVideoReadWord);
 		SekSetWriteByteHandler(1, MegadriveVideoWriteByte);
@@ -2936,7 +3386,7 @@ INT32 MegadriveInit()
 		SekSetReadWordHandler (2, MegadriveZ80RamReadWord);
 		SekSetWriteByteHandler(2, MegadriveZ80RamWriteByte);
 		SekSetWriteWordHandler(2, MegadriveZ80RamWriteWord);
-		
+
 		SekSetReadByteHandler (3, MegadriveZ80RamReadByte);
 		SekSetReadWordHandler (3, MegadriveZ80RamReadWord);
 		SekSetWriteByteHandler(3, MegadriveZ80RamWriteByte);
@@ -2948,13 +3398,14 @@ INT32 MegadriveInit()
 		SekSetWriteWordHandler(4, MegadriveIOWriteWord);
 
 		SekSetIrqCallback( MegadriveIrqCallback );
+		SekSetTASCallback(MegadriveTAScallback);
 		SekClose();
 	}
-	
+
 	{
 		ZetInit(0);
 		ZetOpen(0);
-		
+
 		ZetMapArea(0x0000, 0x1FFF, 0, RamZ80);
 		ZetMapArea(0x0000, 0x1FFF, 1, RamZ80);
 		ZetMapArea(0x0000, 0x1FFF, 2, RamZ80);
@@ -2962,35 +3413,45 @@ INT32 MegadriveInit()
 		ZetMapArea(0x2000, 0x3FFF, 0, RamZ80);
 		ZetMapArea(0x2000, 0x3FFF, 1, RamZ80);
 		ZetMapArea(0x2000, 0x3FFF, 2, RamZ80);
-		
-		
+
+
 		ZetSetReadHandler(MegadriveZ80ProgRead);
 		ZetSetWriteHandler(MegadriveZ80ProgWrite);
 		ZetSetInHandler(MegadriveZ80PortRead);
 		ZetSetOutHandler(MegadriveZ80PortWrite);
 		ZetClose();
 	}
-	
+
 	// OSC_NTSC / 7
 	BurnSetRefreshRate(60.0);
 
+	bNoDebug = 0;
 	DrvSECAM = 0;
-	BurnYM2612Init(1, OSC_NTSC / 7, NULL, MegadriveSynchroniseStream, MegadriveGetTime, 0);
-	BurnTimerAttachSek(OSC_NTSC / 7);
-	BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_1, 0.50, BURN_SND_ROUTE_LEFT);
-	BurnYM2612SetRoute(0, BURN_SND_YM2612_YM2612_ROUTE_2, 0.50, BURN_SND_ROUTE_RIGHT);
-	
-	SN76496Init(0, OSC_NTSC / 15, 1);
-	SN76496SetRoute(0, 0.25, BURN_SND_ROUTE_BOTH);
-	
+	BurnMD2612Init(1, 0, MegadriveSynchroniseStream, 1);
+	BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_1, 0.75, BURN_SND_ROUTE_LEFT);
+	BurnMD2612SetRoute(0, BURN_SND_MD2612_MD2612_ROUTE_2, 0.75, BURN_SND_ROUTE_RIGHT);
+
+	SN76496Init(0, OSC_NTSC / 15, 0);
+	SN76496SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
+
 	MegadriveSetupSRAM();
 	SetupCustomCartridgeMappers();
-	
+
 	if (MegadriveCallback) MegadriveCallback();
-	
+
 	pBurnDrvPalette = (UINT32*)MegadriveCurPal;
-	
-	MegadriveResetDo();	
+
+	MegadriveResetDo();
+
+	if (strstr(BurnDrvGetTextA(DRV_NAME), "puggsy")) {
+		bprintf(0, _T("Puggsy protection fix activated!\n"));
+		RamMisc->SRamActive = 0;
+	}
+
+	if (strstr(BurnDrvGetTextA(DRV_NAME), "forgottn")) {
+		bprintf(0, _T("Forced 3-button mode for Forgotten Worlds!\n"));
+		bForce3Button = 1;
+	}
 
 	return 0;
 }
@@ -3000,15 +3461,20 @@ INT32 MegadriveExit()
 	SekExit();
 	ZetExit();
 
-	BurnYM2612Exit();
+	BurnMD2612Exit();
 	SN76496Exit();
-	
-	BurnFree(Mem);
-	BurnFree(OriginalRom);
-	
+
+	if (Mem) {
+		BurnFree(Mem);
+		Mem = NULL;
+	}
+
+	if (OriginalRom) {
+		BurnFree(OriginalRom);
+		OriginalRom = NULL;
+	}
+
 	MegadriveCallback = NULL;
-	cycles_68k = 0;
-	cycles_z80 = 0;
 	RomNoByteswap = 0;
 	MegadriveReset = 0;
 	RomSize = 0;
@@ -3020,7 +3486,13 @@ INT32 MegadriveExit()
 	Hardware = 0;
 	DrvSECAM = 0;
 	HighCol = NULL;
-	
+	bNoDebug = 0;
+	bForce3Button = 0;
+	TeamPlayerMode = 0;
+	FourWayPlayMode = 0;
+
+	psolarmode = 0;
+
 	return 0;
 }
 
@@ -3031,7 +3503,7 @@ INT32 MegadriveExit()
 static INT32 TileNorm(INT32 sx,INT32 addr,INT32 pal)
 {
 	UINT8 *pd = HighCol+sx;
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 
 	pack = BURN_ENDIAN_SWAP_INT32(*(UINT32 *)(RamVid + addr)); // Get 8 pixels
@@ -3052,7 +3524,7 @@ static INT32 TileNorm(INT32 sx,INT32 addr,INT32 pal)
 static INT32 TileFlip(INT32 sx,INT32 addr,INT32 pal)
 {
 	UINT8 *pd = HighCol+sx;
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 
 	pack = BURN_ENDIAN_SWAP_INT32(*(UINT32 *)(RamVid + addr)); // Get 8 pixels
@@ -3119,7 +3591,7 @@ static INT32 TileFlipSH(INT32 sx,INT32 addr,INT32 pal)
 
 static INT32 TileNormZ(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 {
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 	UINT8 *pd = HighCol+sx;
 	INT8 *zb = HighSprZ+sx;
@@ -3143,12 +3615,12 @@ static INT32 TileNormZ(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 
 static INT32 TileFlipZ(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 {
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 	UINT8 *pd = HighCol+sx;
 	INT8 *zb = HighSprZ+sx;
 	INT32 collision = 0, zb_s;
-	
+
 	pack=BURN_ENDIAN_SWAP_INT32(*(UINT32 *)(RamVid+addr)); // Get 8 pixels
 	if (pack) {
 		t=pack&0x000f0000; if(t) { zb_s=zb[0]&0x1f; if(zb_s) collision=1; if(zval>zb_s) { pd[0]=(UINT8)(pal|(t>>16)); zb[0]=(INT8)zval; } }
@@ -3178,7 +3650,7 @@ static INT32 TileFlipZ(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 
 static INT32 TileNormZSH(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 {
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 	UINT8 *pd = HighCol+sx;
 	INT8 *zb = HighSprZ+sx;
@@ -3202,12 +3674,12 @@ static INT32 TileNormZSH(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 
 static INT32 TileFlipZSH(INT32 sx,INT32 addr,INT32 pal,INT32 zval)
 {
-	UINT32 pack=0; 
+	UINT32 pack=0;
 	UINT32 t=0;
 	UINT8 *pd = HighCol+sx;
 	INT8 *zb = HighSprZ+sx;
 	INT32 collision = 0;
-	
+
 	pack=BURN_ENDIAN_SWAP_INT32(*(UINT32 *)(RamVid+addr)); // Get 8 pixels
 	if (pack) {
 		t=(pack&0x000f0000)>>16; sh_pixZ(0);
@@ -3268,7 +3740,7 @@ static void DrawStrip(struct TileStrip *ts, INT32 sh)
 	*ts->hc = 0;
 }
 
-static void DrawStripVSRam(struct TileStrip *ts, INT32 plane)
+static void DrawStripVSRam(struct TileStrip *ts, INT32 plane, INT32 sh)
 {
 	INT32 tilex=0,dx=0,ty=0,code=0,addr=0,cell=0,nametabadd=0;
 	INT32 oldcode=-1,blank=-1; // The tile we know is blank
@@ -3316,7 +3788,7 @@ static void DrawStripVSRam(struct TileStrip *ts, INT32 plane)
 			// Get tile address/2:
 			addr=(code&0x7ff)<<4;
 			if (code&0x1000) addr+=14-ty; else addr+=ty; // Y-flip
-			pal=((code>>9)&0x30);
+			pal=((code>>9)&0x30)|(sh<<6);
 		}
 
 		if (code&0x0800) zero=TileFlip(dx,addr,pal);
@@ -3387,13 +3859,18 @@ static void DrawLayer(INT32 plane, INT32 *hcache, INT32 maxcells, INT32 sh)
 
 	// Work out the name table size: 32 64 or 128 tiles (0-3)
 	width  = RamVReg->reg[16];
-	height = (width>>4)&3; 
+	height = (width>>4)&3;
 	width &= 3;
 
 	ts.xmask=(1<<shift[width])-1; // X Mask in tiles (0x1f-0x7f)
 	ymask=(height<<8)|0xff;       // Y Mask in pixels
-	if(width == 1)   ymask&=0x1ff;
-	else if(width>1) ymask =0x0ff;
+	//if(width == 1)   ymask&=0x1ff;
+	//else if(width>1) ymask =0x0ff;
+	switch (width) {
+		case 1: ymask &= 0x1ff; break;
+		case 2: ymask =  0x007; break;
+		case 3: ymask =  0x0ff; break;
+	}
 
 	// Find name table:
 	if (plane==0) ts.nametab=(RamVReg->reg[2] & 0x38)<< 9; // A
@@ -3405,7 +3882,7 @@ static void DrawLayer(INT32 plane, INT32 *hcache, INT32 maxcells, INT32 sh)
 	htab += plane; // A or B
 
 	// Get horizontal scroll value, will be masked later
-	ts.hscroll = BURN_ENDIAN_SWAP_INT16(RamVid[htab & 0x7fff]);
+	ts.hscroll = BURN_ENDIAN_SWAP_INT16(RamVid[htab & 0x7fff]) & 0x3ff;
 
 	if((RamVReg->reg[12]&6) == 6) {
 		// interlace mode 2
@@ -3415,12 +3892,12 @@ static void DrawLayer(INT32 plane, INT32 *hcache, INT32 maxcells, INT32 sh)
 		ts.line=(vscroll+(Scanline<<1))&((ymask<<1)|1);
 		ts.nametab+=(ts.line>>4)<<shift[width];
 
-		DrawStripInterlace(&ts);
+		if (nBurnLayer & 1) DrawStripInterlace(&ts);
 	} else if( RamVReg->reg[11]&4) {
-		// shit, we have 2-cell column based vscroll
+		// we have 2-cell column based vscroll
 		// luckily this doesn't happen too often
 		ts.line = ymask | (shift[width]<<24); // save some stuff instead of line
-		DrawStripVSRam(&ts, plane);
+		if (nBurnLayer & 2) DrawStripVSRam(&ts, plane, sh);
 	} else {
 		vscroll = BURN_ENDIAN_SWAP_INT16(RamSVid[plane]); // Get vertical scroll value
 
@@ -3428,7 +3905,7 @@ static void DrawLayer(INT32 plane, INT32 *hcache, INT32 maxcells, INT32 sh)
 		ts.line = (vscroll+Scanline)&ymask;
 		ts.nametab += (ts.line>>3)<<shift[width];
 
-		DrawStrip(&ts, sh);
+		if (nBurnLayer & 4) DrawStrip(&ts, sh);
 	}
 }
 
@@ -3437,10 +3914,17 @@ static void DrawWindow(INT32 tstart, INT32 tend, INT32 prio, INT32 sh)
 	INT32 tilex=0, ty=0, nametab, code=0;
 	INT32 blank = -1; // The tile we know is blank
 
+	if (!(nSpriteEnable&16) && prio == 0) return;
+	if (!(nSpriteEnable&32) && prio == 1) return;
+
 	// Find name table line:
-	nametab  = (RamVReg->reg[3] & 0x3c)<<9;
-	if (RamVReg->reg[12] & 1) nametab += (Scanline>>3)<<6;	// 40-cell mode
-	else					  nametab += (Scanline>>3)<<5;	// 32-cell mode
+	if (RamVReg->reg[12] & 1) {
+		nametab  = (RamVReg->reg[3] & 0x3c)<<9;
+		nametab += (Scanline>>3)<<6;	// 40-cell mode
+	} else {
+		nametab  = (RamVReg->reg[3] & 0x3e)<<9;
+		nametab += (Scanline>>3)<<5;	// 32-cell mode
+	}
 
 	tilex = tstart<<1;
 	tend <<= 1;
@@ -3455,11 +3939,11 @@ static void DrawWindow(INT32 tstart, INT32 tend, INT32 prio, INT32 sh)
 	}
 
 	// Draw tiles across screen:
-	for (; tilex < tend; tilex++) {
+	for (; tilex <= tend; tilex++) {
 		INT32 addr=0, zero=0, pal;
 
 		code = BURN_ENDIAN_SWAP_INT16(RamVid[nametab + tilex]);
-		if(code==blank) continue;
+		//if(code==blank) continue; // this breaks issdx/dinho98 / causes in-game dark tile "overlay" bug
 		if((code>>15) != prio) {
 			rendstatus |= 2;
 			continue;
@@ -3471,11 +3955,15 @@ static void DrawWindow(INT32 tstart, INT32 tend, INT32 prio, INT32 sh)
 			INT32 tmp, *zb = (INT32 *)(HighCol+8+(tilex<<3));
 			if(prio) {
 				tmp = *zb;
-				if(!(tmp&0x00000080)) tmp&=~0x000000c0; if(!(tmp&0x00008000)) tmp&=~0x0000c000;
-				if(!(tmp&0x00800000)) tmp&=~0x00c00000; if(!(tmp&0x80000000)) tmp&=~0xc0000000;
+				if(!(tmp&0x00000080)) tmp&=~0x000000c0;
+				if(!(tmp&0x00008000)) tmp&=~0x0000c000;
+				if(!(tmp&0x00800000)) tmp&=~0x00c00000;
+				if(!(tmp&0x80000000)) tmp&=~0xc0000000;
 				*zb++=tmp; tmp = *zb;
-				if(!(tmp&0x00000080)) tmp&=~0x000000c0; if(!(tmp&0x00008000)) tmp&=~0x0000c000;
-				if(!(tmp&0x00800000)) tmp&=~0x00c00000; if(!(tmp&0x80000000)) tmp&=~0xc0000000;
+				if(!(tmp&0x00000080)) tmp&=~0x000000c0;
+				if(!(tmp&0x00008000)) tmp&=~0x0000c000;
+				if(!(tmp&0x00800000)) tmp&=~0x00c00000;
+				if(!(tmp&0x80000000)) tmp&=~0xc0000000;
 				*zb++=tmp;
 			} else {
 				pal |= 0x40;
@@ -3512,10 +4000,22 @@ static void DrawTilesFromCache(INT32 *hc, INT32 sh)
 		dx=(code>>16)&0x1ff;
 		if(sh) {
 			UINT8 *zb = HighCol+dx;
-			if(!(*zb&0x80)) *zb&=0x3f; zb++; if(!(*zb&0x80)) *zb&=0x3f; zb++;
-			if(!(*zb&0x80)) *zb&=0x3f; zb++; if(!(*zb&0x80)) *zb&=0x3f; zb++;
-			if(!(*zb&0x80)) *zb&=0x3f; zb++; if(!(*zb&0x80)) *zb&=0x3f; zb++;
-			if(!(*zb&0x80)) *zb&=0x3f; zb++; if(!(*zb&0x80)) *zb&=0x3f; zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
+			if(!(*zb&0x80)) *zb&=0x3f;
+			zb++;
 		}
 
 		pal=((code>>9)&0x30);
@@ -3608,11 +4108,11 @@ static void DrawSpriteZ(INT32 pack, INT32 pack2, INT32 shpri, INT32 sprio)
 	tile+= row>>3;				// Tile number increases going down
 	delta=height;				// Delta to increase tile by going right
 	if (pack2&0x0800) { 		// Flip X
-		tile += delta*(width-1); 
-		delta = -delta; 
-	} 
+		tile += delta*(width-1);
+		delta = -delta;
+	}
 
-	tile<<=4; 
+	tile<<=4;
 	tile+=(row&7)<<1; // Tile address
 	delta<<=4; // Delta of address
 	pal=((pack2>>9)&0x30);
@@ -3646,28 +4146,28 @@ static void DrawSpriteInterlace(UINT32 *sprite)
 	INT32 pal;
 	INT32 tile=0,delta=0;
 	INT32 sx, sy;
-	
+
 	// parse the sprite data
 	sy=sprite[0];
 	height=sy>>24;
 	sy=(sy&0x3ff)-0x100; // Y
 	width=(height>>2)&3; height&=3;
 	width++; height++; // Width and height in tiles
-	
+
 	row=(Scanline<<1)-sy; // Row of the sprite we are on
-	
+
 	code=sprite[1];
 	sx=((code>>16)&0x1ff)-0x78; // X
-	
+
 	if (code&0x1000) row^=(16<<height)-1; // Flip Y
-	
+
 	tile=code&0x3ff; // Tile number
 	tile+=row>>4; // Tile number increases going down
 	delta=height; // Delta to increase tile by going right
 	if (code&0x0800) { tile+=delta*(width-1); delta=-delta; } // Flip X
-	
+
 	tile<<=5; tile+=(row&15)<<1; // Tile address
-	
+
 	delta<<=5; // Delta of address
 	pal=((code>>9)&0x30); // Get palette pointer
 
@@ -3686,11 +4186,11 @@ static void DrawAllSpritesInterlace(INT32 pri, INT32 maxwidth)
 {
 	INT32 i,u,table,link=0,sline=Scanline<<1;
 	UINT32 *sprites[80]; // Sprite index
-	
+
 	table = RamVReg->reg[5]&0x7f;
 	if (RamVReg->reg[12]&1) table&=0x7e; // Lowest bit 0 in 40-cell mode
 	table<<=8; // Get sprite table address/2
-	
+
 	for (i=u=0; u < 80 && i < 21; u++) {
 		UINT32 *sprite;
 		INT32 code, sx, sy, height;
@@ -3701,20 +4201,20 @@ static void DrawAllSpritesInterlace(INT32 pri, INT32 maxwidth)
 		code = BURN_ENDIAN_SWAP_INT32(sprite[0]);
 		sx = BURN_ENDIAN_SWAP_INT32(sprite[1]);
 		if(((sx>>15)&1) != pri) goto nextsprite; // wrong priority sprite
-		
+
 		// check if it is on this line
 		sy = (code&0x3ff)-0x100;
 		height = (((code>>24)&3)+1)<<4;
 		if(sline < sy || sline >= sy+height) goto nextsprite; // no
-		
+
 		// check if sprite is not hidden offscreen
 		sx = (sx>>16)&0x1ff;
 		sx -= 0x78; // Get X coordinate + 8
 		if(sx <= -8*3 || sx >= maxwidth) goto nextsprite;
-		
+
 		// sprite is good, save it's pointer
 		sprites[i++]=sprite;
-		
+
 		nextsprite:
 		// Find next sprite
 		link=(code>>16)&0x7f;
@@ -3731,9 +4231,9 @@ static void DrawSpritesFromCache(INT32 *hc, INT32 sh)
 	INT32 code, tile, sx, delta, width;
 	INT32 pal;
 	INT32 (*fTileFunc)(INT32 sx,INT32 addr,INT32 pal);
-	
+
 	// *(*hc)++ = (tile<<16)|((code&0x0800)<<5)|((sx<<6)&0x0000ffc0)|((code>>9)&0x30)|((sprite[0]>>24)&0xf);
-	
+
 	while((code=*hc++)) {
 		pal=(code&0x30);
 		delta=code&0xf;
@@ -3743,7 +4243,7 @@ static void DrawSpritesFromCache(INT32 *hc, INT32 sh)
 		delta<<=4;
 		tile=((UINT32)code>>17)<<1;
 		sx=(code<<16)>>22; // sx can be negative (start offscreen), so sign extend
-		
+
 		if(sh && pal == 0x30) { //
 			if(code&0x10000) fTileFunc=TileFlipSH;
 			else             fTileFunc=TileNormSH;
@@ -3768,25 +4268,25 @@ static void DrawSpritesFromCache(INT32 *hc, INT32 sh)
 // Index + 0  :    hhhhvvvv ab--hhvv yyyyyyyy yyyyyyyy // a: offscreen h, b: offs. v, h: horiz. size
 // Index + 4  :    xxxxxxxx xxxxxxxx pccvhnnn nnnnnnnn // x: x coord + 8
 
-static void PrepareSprites(INT32 full)
+static void OPTIMIZE_ATTR PrepareSprites(INT32 full)
 {
 	INT32 u=0,link=0,sblocks=0;
 	INT32 table=0;
 	INT32 *pd = HighPreSpr;
-	
+
 	table=RamVReg->reg[5]&0x7f;
 	if (RamVReg->reg[12]&1) table&=0x7e; // Lowest bit 0 in 40-cell mode
 	table<<=8; // Get sprite table address/2
-	
+
 	if (!full) {
 		INT32 pack;
 		// updates: tilecode, sx
 		for (u=0; u < 80 && (pack = *pd); u++, pd+=2) {
 			UINT32 *sprite;
 			INT32 code, code2, sx, sy, skip=0;
-			
+
 			sprite=(UINT32 *)(RamVid+((table+(link<<2))&0x7ffc)); // Find sprite
-			
+
 			// parse sprite info
 			code  = BURN_ENDIAN_SWAP_INT32(sprite[0]);
 			code2 = BURN_ENDIAN_SWAP_INT32(sprite[1]);
@@ -3802,7 +4302,7 @@ static void PrepareSprites(INT32 full)
 
 			*pd = (pack&~(1<<23))|skip;
 			*(pd+1) = code2;
-			
+
 			// Find next sprite
 			link=(code>>16)&0x7f;
 			if(!link) break; // End of sprites
@@ -3812,23 +4312,23 @@ static void PrepareSprites(INT32 full)
 		for (; u < 80; u++) {
 			UINT32 *sprite;
 			INT32 code, code2, sx, sy, hv, height, width, skip=0, sx_min;
-			
+
 			sprite=(UINT32 *)(RamVid+((table+(link<<2))&0x7ffc)); // Find sprite
-			
+
 			// parse sprite info
 			code = BURN_ENDIAN_SWAP_INT32(sprite[0]);
 			sy = (code&0x1ff)-0x80;
 			hv = (code>>24)&0xf;
 			height = (hv&3)+1;
-			
+
 			if(sy > 240 || sy + (height<<3) <= 0) skip|=1<<22;
-			
+
 			width  = (hv>>2)+1;
 			code2 = BURN_ENDIAN_SWAP_INT32(sprite[1]);
 			sx = (code2>>16)&0x1ff;
 			sx -= 0x78; // Get X coordinate + 8
 			sx_min = 8-(width<<3);
-    
+
 			if((sx <= sx_min && sx >= -0x76) || sx >= 328) skip|=1<<23;
 			else if (sx > sx_min && !skip) {
 				INT32 sbl = (2<<height)-1;
@@ -3836,10 +4336,10 @@ static void PrepareSprites(INT32 full)
 				if(shi < 0) shi=0; // negative sy
 				sblocks |= sbl<<shi;
 			}
-    
+
 			*pd++ = (width<<28)|(height<<24)|skip|(hv<<16)|((UINT16)sy);
 			*pd++ = (sx<<16)|((UINT16)code2);
-			
+
 			// Find next sprite
 			link=(code>>16)&0x7f;
 			if(!link) break; // End of sprites
@@ -3915,9 +4415,9 @@ static void DrawAllSprites(INT32 *hcache, INT32 maxwidth, INT32 prio, INT32 sh)
 		}
 		else if(sx == -0x77) {
 			// masking mode2 (Outrun, Galaxy Force II, Shadow of the beast)
-			if(sx1seen>>8) { 
-				i=(sx1seen>>8)-1; 
-				break; 
+			if(sx1seen>>8) {
+				i=(sx1seen>>8)-1;
+				break;
 			} // seen both 0 and 1
 			sx1seen |= 2;
 			continue;
@@ -3964,21 +4464,21 @@ static INT32 DrawDisplay(INT32 sh)
 {
 	INT32 maxw, maxcells;
 	INT32 win=0, edge=0, hvwind=0;
-	
+
 	if(RamVReg->reg[12] & 1) {
 		maxw = 328; maxcells = 40;
 	} else {
 		maxw = 264; maxcells = 32;
 	}
-	
+
 	// Find out if the window is on this line:
 	win = RamVReg->reg[0x12];
 	edge = (win & 0x1f)<<3;
-  	
+
   	if (win&0x80) { if (Scanline>=edge) hvwind=1; }
 	else          { if (Scanline< edge) hvwind=1; }
-	
-	if(!hvwind) { // we might have a vertical window here 
+
+	if(!hvwind) { // we might have a vertical window here
 		win = RamVReg->reg[0x11];
 		edge = win&0x1f;
 		if(win&0x80) {
@@ -3989,8 +4489,8 @@ static INT32 DrawDisplay(INT32 sh)
 			else if(edge < (maxcells>>1)) hvwind=2;
 			else hvwind=1;
 		}
-	}	
-	
+	}
+
 	DrawLayer(1, HighCacheB, maxcells, sh);
 	if(hvwind == 1)
 		DrawWindow(0, maxcells>>1, 0, sh); // HighCacheAW
@@ -4000,9 +4500,9 @@ static INT32 DrawDisplay(INT32 sh)
 		DrawWindow((win&0x80) ? edge : 0, (win&0x80) ? maxcells>>1 : edge, 0, sh); // HighCacheW
 	} else
 		DrawLayer(0, HighCacheA, maxcells, sh);
-	DrawAllSprites(HighCacheS, maxw, 0, sh);
-	
-	if(HighCacheB[0]) 
+	if (nSpriteEnable & 1) DrawAllSprites(HighCacheS, maxw, 0, sh);
+
+	if(HighCacheB[0])
 		DrawTilesFromCache(HighCacheB, sh);
 	if(hvwind == 1)
 		DrawWindow(0, maxcells>>1, 1, sh);
@@ -4011,7 +4511,7 @@ static INT32 DrawDisplay(INT32 sh)
 		DrawWindow((win&0x80) ? edge : 0, (win&0x80) ? maxcells>>1 : edge, 1, sh);
 	} else
 		if(HighCacheA[0]) DrawTilesFromCache(HighCacheA, sh);
-	DrawAllSprites(HighCacheS, maxw, 1, sh);
+	if (nSpriteEnable & 2) DrawAllSprites(HighCacheS, maxw, 1, sh);
 
 	return 0;
 }
@@ -4020,9 +4520,15 @@ static void PicoFrameStart()
 {
 	// prepare to do this frame
 	rendstatus = 0x80 >> 5;							// accurate sprites
-	RamVReg->status &= ~0x0020;
+	RamVReg->status &= ~0x0020;                     // mask collision bit
 	if((RamVReg->reg[12]&6) == 6) rendstatus |= 8;	// interlace mode
-	//if(Pico.m.dirtyPal) Pico.m.dirtyPal = 2; 		// reset dirty if needed
+	Scanline = 0;
+	BlankedLine = 0;
+
+	INT32 offset = 0;
+	if (!(RamVReg->reg[1] & 8)) offset = 8;
+	HighCol = HighColFull + ( (offset + Scanline) * (8 + 320 + 8) );  // the FIRST line.
+
 	PrepareSprites(1);
 }
 
@@ -4031,206 +4537,356 @@ static INT32 PicoLine(INT32 /*scan*/)
 	INT32 sh = (RamVReg->reg[0xC] & 8)>>3; // shadow/hilight?
 
 	BackFill(RamVReg->reg[7], sh);
+
+	if (BlankedLine && Scanline > 0)  // blank last line stuff
+	{
+		INT32 offset = 0;
+		if (!(RamVReg->reg[1] & 8)) offset = 8;
+
+		{ // copy blanked line to previous line
+			UINT16 *pDest = LineBuf + ((Scanline-1) * 320);
+			UINT8 *pSrc = HighColFull + (Scanline + offset)*(8+320+8) + 8;
+
+			for (INT32 i = 0; i < 320; i++)
+				pDest[i] = MegadriveCurPal[pSrc[i]];
+
+		}
+	}
+	BlankedLine = 0;
+
 	if (RamVReg->reg[1] & 0x40)
 		DrawDisplay(sh);
-	
+
 	{
-		INT32 num = Scanline + 1;
-		if (!(RamVReg->reg[1] & 8)) num += 8;
-		HighCol = HighColFull + ( num * (8 + 320 + 8) );
-	};
+		INT32 offset = 0;
+		if (!(RamVReg->reg[1] & 8)) offset = 8;
+		HighCol = HighColFull + ( (offset + Scanline + 1) * (8 + 320 + 8) ); // Set-up pointer to next line to be rendered to (see: PicoFrameStart();)
+
+		{ // copy current line to linebuf, for mid-screen palette changes (referred to as SONIC rendering mode, for water & etc.)
+			UINT16 *pDest = LineBuf + (Scanline * 320);
+			UINT8 *pSrc = HighColFull + (Scanline + offset)*(8+320+8) + 8;
+
+			for (INT32 i = 0; i < 320; i++)
+				pDest[i] = MegadriveCurPal[pSrc[i]];
+
+		}
+	}
 
 	return 0;
 }
 
-static void MegadriveDraw()
+INT32 MegadriveDraw()
 {
-	UINT16 * pDest = (UINT16 *)pBurnDraw;
+	if (bMegadriveRecalcPalette) {
+	    for (INT32 i=0; i< 0x40; i++)
+			CalcCol(i, BURN_ENDIAN_SWAP_INT16(RamPal[i]));
+		bMegadriveRecalcPalette = 0;
+	}
+
+	UINT16 *pDest = (UINT16 *)pBurnDraw;
 
 	if ((RamVReg->reg[12]&1) || !(MegadriveDIP[1] & 0x03)) {
-	
-		for (INT32 j=0; j<224; j++) {
-			UINT8 * pSrc = HighColFull + (j+9)*(8+320+8) + 8;
-			for (INT32 i=0;i<320;i++)
-				pDest[i] = MegadriveCurPal[ pSrc[i] ];
+
+		for (INT32 j=0; j < 224; j++) {
+			UINT16 *pSrc = LineBuf + (j * 320);
+			for (INT32 i = 0; i < 320; i++)
+				pDest[i] = pSrc[i];
 			pDest += 320;
 		}
-	
-	} else {  
-		
+
+	} else {
+
 		if (( MegadriveDIP[1] & 0x03 ) == 0x01 ) {
-			// Center 
+			// Center
 			pDest += 32;
-			for (INT32 j=0; j<224; j++) {
-				UINT8 * pSrc = HighColFull + (j+9)*(8+320+8) + 8;
+			for (INT32 j = 0; j < 224; j++) {
+				UINT16 *pSrc = LineBuf + (j * 320);
 
 				memset((UINT8 *)pDest -  32*2, 0, 64);
-				
-				for (INT32 i=0;i<256;i++)
-					pDest[i] = MegadriveCurPal[ pSrc[i] ];
-				
+
+				for (INT32 i = 0; i < 256; i++)
+					pDest[i] = pSrc[i];
+
 				memset((UINT8 *)pDest + 256*2, 0, 64);
-				
+
 				pDest += 320;
 			}
 		} else {
 			// Zoom
-			for (INT32 j=0; j<224; j++) {
-				UINT8 * pSrc = HighColFull + (j+9)*(8+320+8) + 8;
+			for (INT32 j = 0; j < 224; j++) {
+				UINT16 *pSrc = LineBuf + (j * 320);
 				UINT32 delta = 0;
-				for (INT32 i=0;i<320;i++) {
-					pDest[i] = MegadriveCurPal[ pSrc[ delta >> 16 ] ];
+				for (INT32 i = 0; i < 320; i++) {
+					pDest[i] = pSrc[delta >> 16];
 					delta += 0xCCCC;
 				}
 				pDest += 320;
 			}
 		}
-		
+
 	}
+
+	return 0;
 }
 
-#define TOTAL_68K_CYCLES	((double)OSC_NTSC / 7) / 60
-#define TOTAL_Z80_CYCLES	((double)OSC_NTSC / 15) / 60
-#define TOTAL_68K_CYCLES_PAL	((double)OSC_PAL / 7) / 50
-#define TOTAL_Z80_CYCLES_PAL	((double)OSC_PAL / 15) / 50
+#define CYCLES_M68K_LINE     488 // suitable for both PAL/NTSC
+#define CYCLES_M68K_VINT_LAG  68
+#define CYCLES_M68K_ASD      148
 
-INT32 MegadriveFrame()
+INT32 OPTIMIZE_ATTR MegadriveFrame()
 {
 	if (MegadriveReset) {
 		MegadriveResetDo();
 		MegadriveReset = 0;
+		return 0xdead; // prevent crash because of a call to Reinitialise() in MegadriveResetDo();
 	}
 
-	if (bMegadriveRecalcPalette) {
-		for (INT32 i=0;i<0x40;i++)
-			CalcCol(i, BURN_ENDIAN_SWAP_INT16(RamPal[i]));
-		bMegadriveRecalcPalette = 0;	
-	}
-	
-	JoyPad->pad[0] = JoyPad->pad[1] = JoyPad->pad[2] = JoyPad->pad[3] = 0;
+	JoyPad->pad[0] = JoyPad->pad[1] = JoyPad->pad[2] = JoyPad->pad[3] = JoyPad->pad[4] = 0;
 	for (INT32 i = 0; i < 12; i++) {
 		JoyPad->pad[0] |= (MegadriveJoy1[i] & 1) << i;
 		JoyPad->pad[1] |= (MegadriveJoy2[i] & 1) << i;
 		JoyPad->pad[2] |= (MegadriveJoy3[i] & 1) << i;
 		JoyPad->pad[3] |= (MegadriveJoy4[i] & 1) << i;
+		JoyPad->pad[4] |= (MegadriveJoy5[i] & 1) << i;
 	}
-	
-	
-	SekNewFrame();
-	ZetNewFrame();
-	
-	HighCol = HighColFull;
+
+	SekCyclesNewFrame(); // for sound sync
+
+	SekOpen(0);
+	ZetOpen(0);
+
 	PicoFrameStart();
 
-	INT32 lines,lines_vis = 224,line_sample;
-	INT32 done_z80 = 0;
+	INT32 lines, lines_vis = 224, line_sample;
 	INT32 hint = RamVReg->reg[10]; // Hint counter
-	INT32 total_68k_cycles, total_z80_cycles;
-	
-	if( Hardware & 0x40 ) {
-		lines  = 313;
+	INT32 vcnt_wrap = 0;
+	INT32 zirq_skipped = 0;
+#ifdef CYCDBUG
+	INT32 burny = 0;
+#endif
+	INT32 nSoundBufferPos = 0;
+
+	if (Hardware & 0x40) { // PAL
+		lines  = 312;
 		line_sample = 68;
-		if( RamVReg->reg[1]&8 ) lines_vis = 240;
-		total_68k_cycles = (INT32)(INT64)(TOTAL_68K_CYCLES_PAL * nBurnCPUSpeedAdjust / 0x100);
-		total_z80_cycles = (INT32)TOTAL_Z80_CYCLES_PAL;
-	} else {
+		if (RamVReg->reg[1]&8) lines_vis = 240;
+	} else { // NTSC
 		lines  = 262;
 		line_sample = 93;
-		total_68k_cycles = (INT32)(INT64)(TOTAL_68K_CYCLES * nBurnCPUSpeedAdjust / 0x100);
-		total_z80_cycles = (INT32)TOTAL_Z80_CYCLES;
 	}
-	
-	cycles_68k = total_68k_cycles / lines;
-	cycles_z80 = total_z80_cycles / lines;
-  
+
 	RamVReg->status &= ~0x88; // clear V-Int, come out of vblank
-	
+	RamVReg->v_counter = 0;
+
+	SekRunM68k(CYCLES_M68K_ASD);
+
 	for (INT32 y=0; y<lines; y++) {
 
 		Scanline = y;
 
-		/*if(PicoOpt&0x20)*/ {
+		if (y < lines_vis) {
+			// VDP FIFO
+			RamVReg->lwrite_cnt -= 12;
+			if (RamVReg->lwrite_cnt <= 0) {
+				RamVReg->lwrite_cnt=0;
+				RamVReg->status|=0x200;
+			}
+			RamVReg->v_counter = y;
+			if ((RamVReg->reg[12]&6) == 6) { // interlace mode 2
+				RamVReg->v_counter <<= 1;
+				RamVReg->v_counter |= RamVReg->v_counter >> 8;
+				RamVReg->v_counter &= 0xff;
+			}
+		} else if (y == lines_vis) {
+			vcnt_wrap = (Hardware & 0x40) ? 0x103 : 0xEB; // based on Gens, TODO: verify
+			// V-int line (224 or 240)
+			RamVReg->v_counter = 0xe0; // bad for 240 mode
+			if ((RamVReg->reg[12]&6) == 6) RamVReg->v_counter = 0xc1;
+			// VDP FIFO
+			RamVReg->lwrite_cnt = 0;
+			RamVReg->status |= 0x200;
+
+		} else if (y > lines_vis) {
+			RamVReg->v_counter = y;
+			if (y >= vcnt_wrap)
+				RamVReg->v_counter -= (Hardware & 0x40) ? 56 : 6;
+			if ((RamVReg->reg[12]&6) == 6)
+				RamVReg->v_counter = (RamVReg->v_counter << 1) | 1;
+			RamVReg->v_counter &= 0xff;
+		}
+
+		if (!bForce3Button) {
 			// pad delay (for 6 button pads)
 			if(JoyPad->padDelay[0]++ > 25) JoyPad->padTHPhase[0] = 0;
 			if(JoyPad->padDelay[1]++ > 25) JoyPad->padTHPhase[1] = 0;
+
+			if (FourWayPlayMode) {
+				if(JoyPad->padDelay[2]++ > 25) JoyPad->padTHPhase[2] = 0; // fourwayplay
+				if(JoyPad->padDelay[3]++ > 25) JoyPad->padTHPhase[3] = 0; // "
+			}
 		}
 
 		// H-Interrupts:
 		if((y <= lines_vis) && (--hint < 0)) { // y <= lines_vis: Comix Zone, Golden Axe
-			//dprintf("rhint:old @ %06x", SekPc);
 			hint = RamVReg->reg[10]; // Reload H-Int counter
 			RamVReg->pending_ints |= 0x10;
 			if (RamVReg->reg[0] & 0x10) {
-				SekOpen(0);
-				SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
-				SekClose();
+				//bprintf(0, _T("h-int @ %d. "), SekCyclesDoneFrame());
+				SekSetIRQLine(4, CPU_IRQSTATUS_ACK);
 			}
 		}
 
 		// V-Interrupt:
 		if (y == lines_vis) {
-			//dprintf("vint: @ %06x [%i|%i]", SekPc, y, SekCycleCnt);
-			RamVReg->status |= 0x88; // V-Int happened, go into vblank
-			
-			// there must be a gap between H and V ints, also after vblank bit set (Mazin Saga, Bram Stoker's Dracula)
-			SekOpen(0);
-//			done_68k+=SekRun(128); 
-			BurnTimerUpdate((y * cycles_68k) + 128 - cycles_68k);
-			SekClose();
-
+			RamVReg->status |= 0x08; // V-Int
 			RamVReg->pending_ints |= 0x20;
+
+			line_base_cycles = SekCyclesDone();
+			// there must be a gap between H and V ints, also after vblank bit set (Mazin Saga, Bram Stoker's Dracula)
+#ifdef CYCDBUG
+			burny = DMABURN();
+			SekCyclesBurn(burny);
+			if (burny) {bprintf(0, _T("[%d] v-burny %d, cyclesdone %d. "), Scanline, burny, SekCyclesLine()); }
+#else
+			SekCyclesBurn(DMABURN());
+#endif
+			SekRunM68k(CYCLES_M68K_VINT_LAG);
+
 			if(RamVReg->reg[1] & 0x20) {
-				SekOpen(0);
-				SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
-				SekClose();
+				//bprintf(0, _T("v-int @ %d. "), SekCyclesDoneFrame());
+				SekSetIRQLine(6, CPU_IRQSTATUS_ACK);
 			}
+			//RamVReg->status |= 0x80; // VBL (some games wont boot without this, Mega-lo-Mania is one of them)
 		}
 
 		// decide if we draw this line
 		if ((!(RamVReg->reg[1]&8) && y<=224) || ((RamVReg->reg[1]&8) && y<240))
-			PicoLine(y);
+				PicoLine(y);
+
+		if (Z80HasBus && !MegadriveZ80Reset) {
+			z80CyclesSync(1);
+
+			if (y == line_sample || (y == lines_vis && zirq_skipped)) {
+				ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+				zirq_skipped = 0;
+			}
+		} else {
+			if (y == line_sample) {
+				zirq_skipped = 1; // if the irq gets skipped, try again @ vbl
+			}
+			z80CyclesSync(0);
+		}
 
 		// Run scanline
-		SekOpen(0);
-		BurnTimerUpdate(y * cycles_68k);
-		SekClose();
-		
-		if (Z80HasBus && !MegadriveZ80Reset) {
-			ZetOpen(0);
-			done_z80 += ZetRun(cycles_z80);
-			if (y == line_sample) ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
-			if (y == line_sample + 1) ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
-			ZetClose();
+		if (y == lines_vis) {
+			SekRunM68k(CYCLES_M68K_LINE - CYCLES_M68K_VINT_LAG - CYCLES_M68K_ASD);
+		} else {
+			line_base_cycles = SekCyclesDone();
+#ifdef CYCDBUG
+			burny = DMABURN();
+			SekCyclesBurn(burny);
+			if (burny) {bprintf(0, _T("[%d] burny %d, cyclesdone %d. "), Scanline, burny, SekCyclesLine()); }
+#else
+			SekCyclesBurn(DMABURN());
+#endif
+			SekRunM68k(CYCLES_M68K_LINE);
 		}
+
+		z80CyclesSync(Z80HasBus && !MegadriveZ80Reset);
+
+#ifdef CYCDBUG
+		if (burny)
+			bprintf(0, _T("line cycles[%d]: %d."), Scanline, SekCyclesLine());
+#endif
+		// Afterburner II uses the PSG as a dac, this requires that we update the PSG often. (every other line)
+		if (pBurnSoundOut && y&1) {
+			INT32 nSegmentLength = nBurnSoundLen / (lines / 2);
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			SN76496Update(0, pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
+
 	}
-	
+
 	if (pBurnDraw) MegadriveDraw();
 
-	SekOpen(0);
-	BurnTimerEndFrame(total_68k_cycles);
-	SekClose();
-	
 	if (Z80HasBus && !MegadriveZ80Reset) {
-		if (done_z80 < total_z80_cycles) {
-			ZetOpen(0);
-			ZetRun(total_z80_cycles - done_z80);
-			ZetClose();
-		}
+		z80CyclesSync(1);
 	}
-	
+
+	// Make sure the buffer is entirely filled.
 	if (pBurnSoundOut) {
-		SekOpen(0);
-		BurnYM2612Update(pBurnSoundOut, nBurnSoundLen);
-		SekClose();
-		SN76496Update(0, pBurnSoundOut, nBurnSoundLen);
+		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+		if (nSegmentLength) {
+			SN76496Update(0, pSoundBuf, nSegmentLength);
+		}
+		BurnMD2612Update(pBurnSoundOut, nBurnSoundLen);
 	}
-	
+
+	SekClose();
+	ZetClose();
+
 	return 0;
 }
 
-INT32 MegadriveScan(INT32 /*nAction*/, INT32 * /*pnMin*/)
+INT32 MegadriveScan(INT32 nAction, INT32 *pnMin)
 {
-	//BurnYM2612Scan(nAction, pnMin);	
-	
-	return 1;
+	if (pnMin) {						// Return minimum compatible version
+		*pnMin = 0x029738;
+	}
+
+	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
+		struct BurnArea ba;
+		memset(&ba, 0, sizeof(ba));
+		ba.Data		= RamStart;
+		ba.nLen		= RamEnd - RamStart;
+		ba.szName	= "RAM";
+		BurnAcb(&ba);
+
+		memset(&ba, 0, sizeof(ba));
+		ba.Data		= RamMisc;
+		ba.nLen		= sizeof(struct PicoMisc);
+		ba.szName	= "RAMMisc";
+		BurnAcb(&ba);
+
+		SekScan(nAction);
+		ZetScan(nAction);
+		BurnMD2612Scan(nAction, pnMin);
+		SN76496Scan(nAction, pnMin);
+
+		SCAN_VAR(Scanline);
+		SCAN_VAR(Z80HasBus);
+		SCAN_VAR(MegadriveZ80Reset);
+		SCAN_VAR(SpriteBlocks);
+		SCAN_VAR(rendstatus);
+		SCAN_VAR(Z80BankPartial);
+		SCAN_VAR(Z80BankPos);
+		SCAN_VAR(SekCycleCnt);
+		SCAN_VAR(SekCycleAim);
+		SCAN_VAR(dma_xfers);
+
+		SCAN_VAR(z80_cycle_cnt);
+		SCAN_VAR(z80_cycle_aim);
+		SCAN_VAR(last_z80_sync);
+
+		BurnRandomScan(nAction);
+	}
+
+	if (nAction & ACB_NVRAM && RamMisc->SRamDetected) {
+		struct BurnArea ba;
+		memset(&ba, 0, sizeof(ba));
+		ba.Data		= SRam;
+		ba.nLen		= MAX_SRAM_SIZE;
+		ba.nAddress	= 0;
+		ba.szName	= "NV RAM";
+		BurnAcb(&ba);
+	}
+
+	if (psolarmode) // pier solar
+	{
+		md_eeprom_stm95_scan(nAction);
+	}
+
+	return 0;
 }

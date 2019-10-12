@@ -26,7 +26,7 @@ static UINT8 *DrvPMCRAM;
 static UINT8 *DrvM6809RAM;
 static UINT8 *DrvZ80RAM;
 
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8  DrvRecalc;
 
 static UINT8 *soundlatch;
@@ -160,17 +160,17 @@ static void DrvSetRAMBank(UINT8 bank, UINT8 data)
 	nDrvRomBank[2] = data;
 
 	if (data & 0x10) {
-		M6809MapMemory(DrvPalRAM, 0x0000, 0x07ff, M6809_RAM);
+		M6809MapMemory(DrvPalRAM, 0x0000, 0x07ff, MAP_RAM);
 	} else if (data & 0x20) {
 		if (bank & 0x80) {
-			M6809MapMemory(DrvPMCRAM, 0x0000, 0x07ff, M6809_RAM);
+			M6809MapMemory(DrvPMCRAM, 0x0000, 0x07ff, MAP_RAM);
 		} else {
 			// unmap
-			M6809MapMemory(DrvM6809ROM + 0x800, 0x0000, 0x07ff, M6809_ROM);
-			M6809MapMemory(DrvM6809ROM + 0x000, 0x0000, 0x07ff, M6809_WRITE);
+			M6809MapMemory(DrvM6809ROM + 0x800, 0x0000, 0x07ff, MAP_ROM);
+			M6809MapMemory(DrvM6809ROM + 0x000, 0x0000, 0x07ff, MAP_WRITE);
 		}
 	} else {
-		M6809MapMemory(DrvBankRAM, 0x0000, 0x07ff, M6809_RAM);
+		M6809MapMemory(DrvBankRAM, 0x0000, 0x07ff, MAP_RAM);
 	}
 }
 
@@ -257,9 +257,9 @@ static void spy_3f90_w(INT32 data)
 	{
 		spy_collision();
 
-		M6809SetIRQLine(1 /*FIRQ*/, M6809_IRQSTATUS_ACK);
+		M6809SetIRQLine(1 /*FIRQ*/, CPU_IRQSTATUS_ACK);
 		M6809Run(105); // delay or the M6809 won't read it...
-		M6809SetIRQLine(1 /*FIRQ*/, M6809_IRQSTATUS_NONE);
+		M6809SetIRQLine(1 /*FIRQ*/, CPU_IRQSTATUS_NONE);
 	}
 
 	Drv3f90old = data;
@@ -276,7 +276,7 @@ static void bankswitch(INT32 data)
 		nBank = 0x10000 + (data & 0x0e) * 0x1000;
 	}
 
-	M6809MapMemory(DrvM6809ROM + nBank, 0x6000, 0x7fff, M6809_ROM);
+	M6809MapMemory(DrvM6809ROM + nBank, 0x6000, 0x7fff, MAP_ROM);
 }
 
 void spy_main_write(UINT16 address, UINT8 data)
@@ -300,7 +300,7 @@ void spy_main_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x3fc0:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 
@@ -370,7 +370,7 @@ void __fastcall spy_sound_write(UINT16 address, UINT8 data)
 
 		case 0xc000:
 		case 0xc001:
-			BurnYM3812Write(address & 1, data);
+			BurnYM3812Write(0, address & 1, data);
 		return;
 	}
 }
@@ -389,10 +389,10 @@ UINT8 __fastcall spy_sound_read(UINT16 address)
 	{
 		case 0xc000:
 		case 0xc001:
-			return BurnYM3812Read(address & 1);
+			return BurnYM3812Read(0, address & 1);
 
 		case 0xd000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -411,8 +411,8 @@ static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, 
 static void K051960Callback(INT32 *code, INT32 *color, INT32 *priority, INT32 *)
 {
 	*priority = 0x00;
-	if ( *color & 0x10) *priority = 1;
-	if (~*color & 0x20) *priority = 2;
+	if ( *color & 0x10) *priority = 0x0a;
+	if (~*color & 0x20) *priority = 0x0c;
 
 	*color = 0x20 | (*color & 0x0f);
 
@@ -457,6 +457,8 @@ static int DrvDoReset()
 
 	KonamiICReset();
 
+	K007232Reset(0);
+	K007232Reset(1);
 	BurnYM3812Reset();
 
 	spy_video_enable = 0;
@@ -502,26 +504,10 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane0[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 Plane1[4] = { 0x000, 0x008, 0x010, 0x018 };
-	INT32 XOffs[16] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
-			  0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107 };
-	INT32 YOffs[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
-			  0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x080000);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x100000);
-
-	GfxDecode(0x04000, 4,  8,  8, Plane0, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-	GfxDecode(0x02000, 4, 16, 16, Plane1, XOffs, YOffs, 0x400, DrvGfxROM1, DrvGfxROMExp1);
-
-	return 0;
-}
-
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -536,24 +522,25 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x040000,  4, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  3, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  4, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x080000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  5, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  6, 4, 2)) return 1;
 
 		if (BurnLoadRom(DrvSndROM0 + 0x000000,  7, 1)) return 1;
 
 		if (BurnLoadRom(DrvSndROM1 + 0x000000,  8, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x080000);
+		K051960GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x100000);
 	}
 
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809RAM,		0x0800, 0x1aff, M6809_RAM);
-	M6809MapMemory(DrvM6809ROM + 0x10000,	0x6000, 0x7fff, M6809_ROM);
-	M6809MapMemory(DrvM6809ROM + 0x08000,	0x8000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809RAM,		0x0800, 0x1aff, MAP_RAM);
+	M6809MapMemory(DrvM6809ROM + 0x10000,	0x6000, 0x7fff, MAP_ROM);
+	M6809MapMemory(DrvM6809ROM + 0x08000,	0x8000, 0xffff, MAP_ROM);
 	M6809SetWriteHandler(spy_main_write);
 	M6809SetReadHandler(spy_main_read);
 	M6809Close();
@@ -569,17 +556,17 @@ static INT32 DrvInit()
 	ZetSetReadHandler(spy_sound_read);
 	ZetClose();
 
-	K052109Init(DrvGfxROM0, 0x07ffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x07ffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(-2, 0);
 
-	K051960Init(DrvGfxROM1, 0x0fffff);
+	K051960Init(DrvGfxROM1, DrvGfxROMExp1, 0x0fffff);
 	K051960SetCallback(K051960Callback);
 	K051960SetSpriteOffset(0, 0);
 
-	BurnYM3812Init(3579545, &DrvFMIRQHandler, DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(3579545);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, &DrvFMIRQHandler, DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 3579545);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	K007232Init(0, 3579545, DrvSndROM0, 0x40000);
 	K007232SetPortWriteHandler(0, DrvK007232VolCallback0);
@@ -588,8 +575,6 @@ static INT32 DrvInit()
 	K007232Init(1, 3579545, DrvSndROM1, 0x40000);
 	K007232SetPortWriteHandler(1, DrvK007232VolCallback1);
 	K007232PCMSetAllRoutes(1, 0.20, BURN_SND_ROUTE_BOTH);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -616,26 +601,20 @@ static INT32 DrvExit()
 
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		KonamiRecalcPal(DrvPalRAM, DrvPalette, 0x800);
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x800);
 
 	K052109UpdateScroll();
 
 	if (spy_video_enable) {
-		K052109RenderLayer(1, 1, DrvGfxROMExp0);
-		K051960SpritesRender(DrvGfxROMExp1, 2); 
-		K052109RenderLayer(2, 0, DrvGfxROMExp0);
-		K051960SpritesRender(DrvGfxROMExp1, 1); 
-		K051960SpritesRender(DrvGfxROMExp1, 0); 
-		K052109RenderLayer(0, 0, DrvGfxROMExp0);
+		K052109RenderLayer(1, K052109_OPAQUE, 1);
+		K052109RenderLayer(2, 0, 2);
+		K051960SpritesRender(-1, -1); 
+		K052109RenderLayer(0, 0, 0);
 	} else {
-		for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-			pTransDraw[i] = 0x0300;
-		}
+		KonamiClearBitmaps(DrvPalette[0x300]);
 	}
 
-	BurnTransferCopy(DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -680,7 +659,7 @@ static INT32 DrvFrame()
 		nCyclesDone[1] += BurnTimerUpdateYM3812(nCyclesSegment - nCyclesDone[1]);
 	}
 
-	if (K052109_irq_enabled) M6809SetIRQLine(0, M6809_IRQSTATUS_AUTO);
+	if (K052109_irq_enabled) M6809SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 	
 	BurnTimerEndFrameYM3812(nCyclesTotal[1]);
 
@@ -770,8 +749,8 @@ struct BurnDriver BurnDrvSpy = {
 	"spy", NULL, NULL, NULL, "1989",
 	"S.P.Y. - Special Project Y (World ver. N)\0", NULL, "Konami", "GX857",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, spyRomInfo, spyRomName, NULL, NULL, SpyInputInfo, SpyDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_SHOOT, 0,
+	NULL, spyRomInfo, spyRomName, NULL, NULL, NULL, NULL, SpyInputInfo, SpyDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	304, 216, 4, 3
 };
@@ -805,8 +784,8 @@ struct BurnDriver BurnDrvSpyu = {
 	"spyu", "spy", NULL, NULL, "1989",
 	"S.P.Y. - Special Project Y (US ver. M)\0", NULL, "Konami", "GX857",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, spyuRomInfo, spyuRomName, NULL, NULL, SpyInputInfo, SpyDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SHOOT, 0,
+	NULL, spyuRomInfo, spyuRomName, NULL, NULL, NULL, NULL, SpyInputInfo, SpyDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	304, 216, 4, 3
 };

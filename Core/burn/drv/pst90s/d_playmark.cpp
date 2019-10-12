@@ -1,3 +1,6 @@
+// FB Alpha Playmark hardware driver module
+// Based on MAME driver by Nicola Salmoria, Pierpaolo Prazzoli, Quench
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "pic16c5x_intf.h"
@@ -62,11 +65,11 @@ static INT32 nCyclesDone[2], nCyclesTotal[2];
 static INT32 nCyclesSegment;
 static INT32 nIRQLine = 2;
 
-typedef void (*Render)();
+typedef INT32 (*Render)();
 static Render DrawFunction;
-static void DrvRender();
-static void ExcelsrRender();
-static void HotmindRender();
+static INT32 DrvRender();
+static INT32 ExcelsrRender();
+static INT32 HotmindRender();
 
 static struct BurnInputInfo BigtwinInputList[] = {
 	{"Coin 1"            , BIT_DIGITAL  , DrvInputPort0 + 4, "p1 coin"   },
@@ -361,7 +364,7 @@ static struct BurnRomInfo BigtwinRomDesc[] = {
 	{ "2.302",            0x80000, 0xe6767f60, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
 	{ "3.301",            0x80000, 0x5aba6990, BRF_ESS | BRF_PRG }, //  1	68000 Program Code
 	
-	{ "16c57hs.015",      0x02d4c, 0xc07e9375, BRF_ESS | BRF_PRG }, //  2	PIC16C57 HEX
+	{ "pic16c57-hs_bigtwin_015.hex", 0x02d4c, 0xc07e9375, BRF_ESS | BRF_PRG }, //  2	PIC16C57 HEX
 
 	{ "4.311",            0x40000, 0x6f628fbc, BRF_GRA },			//  3	Tiles
 	{ "5.312",            0x40000, 0x6a9b1752, BRF_GRA },			//  4	Tiles
@@ -387,7 +390,7 @@ static struct BurnRomInfo ExcelsrRomDesc[] = {
 	{ "20.u305",          0x80000, 0x8692afe9, BRF_ESS | BRF_PRG }, //  4	68000 Program Code
 	{ "17.u306",          0x80000, 0x978f9a6b, BRF_ESS | BRF_PRG }, //  5	68000 Program Code
 	
-	{ "pic16c57-hs.i015", 0x02d4c, 0x022c6941, BRF_ESS | BRF_PRG }, //  6	PIC16C57 HEX
+	{ "pic16c57-hs_excelsior_i015.hex", 0x02d4c, 0x022c6941, BRF_ESS | BRF_PRG }, //  6	PIC16C57 HEX
 
 	{ "26.u311",          0x80000, 0xc171c059, BRF_GRA },			//  7	Tiles
 	{ "30.u312",          0x80000, 0xb4a4c510, BRF_GRA },			//  8	Tiles
@@ -406,14 +409,14 @@ STD_ROM_PICK(Excelsr)
 STD_ROM_FN(Excelsr)
 
 static struct BurnRomInfo ExcelsraRomDesc[] = {
-	{ "22(__excelsra).u301",      0x80000, 0x55dca2da, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
-	{ "19(__excelsra).u302",      0x80000, 0xd13990a8, BRF_ESS | BRF_PRG }, //  1	68000 Program Code
+	{ "22.u301",          0x80000, 0x55dca2da, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
+	{ "19.u302",          0x80000, 0xd13990a8, BRF_ESS | BRF_PRG }, //  1	68000 Program Code
 	{ "21.u303",          0x80000, 0xfdf9bd64, BRF_ESS | BRF_PRG }, //  2	68000 Program Code
 	{ "18.u304",          0x80000, 0xfe517e0e, BRF_ESS | BRF_PRG }, //  3	68000 Program Code
 	{ "20.u305",          0x80000, 0x8692afe9, BRF_ESS | BRF_PRG }, //  4	68000 Program Code
 	{ "17.u306",          0x80000, 0x978f9a6b, BRF_ESS | BRF_PRG }, //  5	68000 Program Code
 	
-	{ "pic16c57-hs.i015", 0x02d4c, 0x022c6941, BRF_ESS | BRF_PRG }, //  6	PIC16C57 HEX
+	{ "pic16c57-hs_excelsior_i015.hex", 0x02d4c, 0x022c6941, BRF_ESS | BRF_PRG }, //  6	PIC16C57 HEX
 
 	{ "26.u311",          0x80000, 0xc171c059, BRF_GRA },			//  7	Tiles
 	{ "30.u312",          0x80000, 0xb4a4c510, BRF_GRA },			//  8	Tiles
@@ -432,22 +435,30 @@ STD_ROM_PICK(Excelsra)
 STD_ROM_FN(Excelsra)
 
 static struct BurnRomInfo HotmindRomDesc[] = {
-	{ "21.u87",           0x20000, 0xe9000f7f, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
-	{ "22.u68",           0x20000, 0x2c518ec5, BRF_ESS | BRF_PRG }, //  1	68000 Program Code
+	{ "21.u67",           0x20000, 0xe9000f7f, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
+	{ "22.u66",           0x20000, 0x2c518ec5, BRF_ESS | BRF_PRG }, //  1	68000 Program Code
 	
-	{ "pic16c57-hs.i015", 0x02d4c, 0x022c6941, BRF_ESS | BRF_PRG }, //  2	PIC16C57 HEX
+	{ "hotmind_pic16c57.hex", 0x02d4c, 0x11957803, BRF_ESS | BRF_PRG }, //  2	PIC16C57 HEX
 
 	{ "23.u36",           0x20000, 0xddcf60b9, BRF_GRA },			//  3	Tiles
 	{ "27.u42",           0x20000, 0x413bbcf4, BRF_GRA },			//  4	Tiles
 	{ "24.u39",           0x20000, 0x4baa5b4c, BRF_GRA },			//  5	Tiles
-	{ "28.u49",           0x20000, 0x8df34d6a, BRF_GRA },			//  6	Tiles
+	{ "28.u45",           0x20000, 0x8df34d6a, BRF_GRA },			//  6	Tiles
 	
-	{ "26.u34",           0x20000, 0xff8d3b75, BRF_GRA },			//  7	Sprites
+	{ "26.u86",           0x20000, 0xff8d3b75, BRF_GRA },			//  7	Sprites
 	{ "30.u85",           0x20000, 0x87a640c7, BRF_GRA },			//  8	Sprites
-	{ "25.u35",           0x20000, 0xc4fd4445, BRF_GRA },			//  9	Sprites
+	{ "25.u84",           0x20000, 0xc4fd4445, BRF_GRA },			//  9	Sprites
 	{ "29.u83",           0x20000, 0x0bebfb53, BRF_GRA },			//  10	Sprites
 	
 	{ "20.io13",          0x40000, 0x0bf3a3e5, BRF_SND },			//  11	Samples
+	
+	{ "hotmind_pic16c57-hs_io15.hex", 0x02d4c, 0xf3300d13, BRF_OPT },
+	{ "palce16v8h-25-pc4_u58.jed",    0x00b89, 0xba88c1da, BRF_OPT },
+	{ "palce16v8h-25-pc4_u182.jed",   0x00b89, 0xba88c1da, BRF_OPT },
+	{ "palce16v8h-25-pc4_jamma.jed",  0x00b89, 0xba88c1da, BRF_OPT },
+	{ "tibpal22v10acnt_u113.jed",     0x01e84, 0x94106c63, BRF_OPT },
+	{ "tibpal22v10acnt_u183.jed",     0x01e84, 0x95a446b6, BRF_OPT },
+	{ "tibpal22v10acnt_u211.jed",     0x01e84, 0x94106c63, BRF_OPT },
 };
 
 STD_ROM_PICK(Hotmind)
@@ -918,7 +929,7 @@ UINT8 PlaymarkSoundReadPort(UINT16 Port)
 				Data = DrvSoundCommand;
 			} else {
 				if ((DrvOkiControl & 0x38) == 0x28) {
-					Data = MSM6295ReadStatus(0) & 0x0f;
+					Data = MSM6295Read(0) & 0x0f;
 				}
 			}
 
@@ -970,7 +981,7 @@ void PlaymarkSoundWritePort(UINT16 Port, UINT8 Data)
 			DrvOkiControl = Data;
 
 			if ((Data & 0x38) == 0x18) {
-				MSM6295Command(0, DrvOkiCommand);
+				MSM6295Write(0, DrvOkiCommand);
 			}
 			return;
 		}
@@ -1039,22 +1050,22 @@ static INT32 DrvInit()
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68kRom       , 0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(DrvSpriteRam    , 0x440000, 0x4403ff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram    , 0x500000, 0x500fff, SM_RAM);
-	SekMapMemory(DrvVideo1Ram    , 0x502000, 0x503fff, SM_RAM);
-	SekMapMemory(DrvBgVideoRam   , 0x600000, 0x67ffff, SM_RAM);
-	SekMapMemory(DrvPaletteRam   , 0x780000, 0x7807ff, SM_READ);
-	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68kRom       , 0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvSpriteRam    , 0x440000, 0x4403ff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram    , 0x500000, 0x500fff, MAP_RAM);
+	SekMapMemory(DrvVideo1Ram    , 0x502000, 0x503fff, MAP_RAM);
+	SekMapMemory(DrvBgVideoRam   , 0x600000, 0x67ffff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam   , 0x780000, 0x7807ff, MAP_READ);
+	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, MAP_RAM);
 	SekSetReadByteHandler(0, DrvReadByte);
 	SekSetReadWordHandler(0, DrvReadWord);
 	SekSetWriteByteHandler(0, DrvWriteByte);
 	SekSetWriteWordHandler(0, DrvWriteWord);
 	SekClose();
 	
-	pic16c5xInit(0x16C57, DrvPicRom);
-	pPic16c5xReadPort = PlaymarkSoundReadPort;
-	pPic16c5xWritePort = PlaymarkSoundWritePort;
+	pic16c5xInit(0, 0x16C57, DrvPicRom);
+	pic16c5xSetReadPortHandler(PlaymarkSoundReadPort);
+	pic16c5xSetWritePortHandler(PlaymarkSoundWritePort);
 	
 	MSM6295Init(0, 1000000 / 132, 0);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
@@ -1130,22 +1141,22 @@ static INT32 ExcelsrInit()
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68kRom       , 0x000000, 0x2fffff, SM_ROM);
-	SekMapMemory(DrvSpriteRam    , 0x440000, 0x440fff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram    , 0x500000, 0x500fff, SM_RAM);
-	SekMapMemory(DrvVideo1Ram    , 0x501000, 0x501fff, SM_RAM);
-	SekMapMemory(DrvBgVideoRam   , 0x600000, 0x67ffff, SM_RAM);
-	SekMapMemory(DrvPaletteRam   , 0x780000, 0x7807ff, SM_READ);
-	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68kRom       , 0x000000, 0x2fffff, MAP_ROM);
+	SekMapMemory(DrvSpriteRam    , 0x440000, 0x440fff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram    , 0x500000, 0x500fff, MAP_RAM);
+	SekMapMemory(DrvVideo1Ram    , 0x501000, 0x501fff, MAP_RAM);
+	SekMapMemory(DrvBgVideoRam   , 0x600000, 0x67ffff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam   , 0x780000, 0x7807ff, MAP_READ);
+	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, MAP_RAM);
 	SekSetReadByteHandler(0, ExcelsrReadByte);
 	SekSetReadWordHandler(0, ExcelsrReadWord);
 	SekSetWriteByteHandler(0, ExcelsrWriteByte);
 	SekSetWriteWordHandler(0, ExcelsrWriteWord);
 	SekClose();
 	
-	pic16c5xInit(0x16C57, DrvPicRom);
-	pPic16c5xReadPort = PlaymarkSoundReadPort;
-	pPic16c5xWritePort = PlaymarkSoundWritePort;
+	pic16c5xInit(0, 0x16C57, DrvPicRom);
+	pic16c5xSetReadPortHandler(PlaymarkSoundReadPort);
+	pic16c5xSetWritePortHandler(PlaymarkSoundWritePort);
 	
 	MSM6295Init(0, 1000000 / 132, 0);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
@@ -1232,22 +1243,22 @@ static INT32 HotmindInit()
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68kRom       , 0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(DrvBgVideoRam   , 0x100000, 0x103fff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram    , 0x104000, 0x107fff, SM_RAM);
-	SekMapMemory(DrvVideo1Ram    , 0x108000, 0x10ffff, SM_RAM);
-	SekMapMemory(DrvSpriteRam    , 0x200000, 0x200fff, SM_RAM);
-	SekMapMemory(DrvPaletteRam   , 0x280000, 0x2807ff, SM_READ);
-	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68kRom       , 0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(DrvBgVideoRam   , 0x100000, 0x103fff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram    , 0x104000, 0x107fff, MAP_RAM);
+	SekMapMemory(DrvVideo1Ram    , 0x108000, 0x10ffff, MAP_RAM);
+	SekMapMemory(DrvSpriteRam    , 0x200000, 0x200fff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam   , 0x280000, 0x2807ff, MAP_READ);
+	SekMapMemory(Drv68kRam       , 0xff0000, 0xffffff, MAP_RAM);
 	SekSetReadByteHandler(0, HotmindReadByte);
 	SekSetReadWordHandler(0, HotmindReadWord);
 	SekSetWriteByteHandler(0, HotmindWriteByte);
 	SekSetWriteWordHandler(0, HotmindWriteWord);
 	SekClose();
 	
-	pic16c5xInit(0x16C57, DrvPicRom);
-	pPic16c5xReadPort = PlaymarkSoundReadPort;
-	pPic16c5xWritePort = PlaymarkSoundWritePort;
+	pic16c5xInit(0, 0x16C57, DrvPicRom);
+	pic16c5xSetReadPortHandler(PlaymarkSoundReadPort);
+	pic16c5xSetWritePortHandler(PlaymarkSoundWritePort);
 	
 	MSM6295Init(0, 1000000 / 132, 0);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
@@ -1572,7 +1583,7 @@ static void DrvRenderBitmap()
 	}
 }
 
-static void DrvRender()
+static INT32 DrvRender()
 {
 	BurnTransferClear();
 	DrvRenderFgLayer();
@@ -1580,9 +1591,11 @@ static void DrvRender()
 	DrvRenderSprites(4, 0x400, 32, -1, 0, 0);
 	DrvRenderCharLayer(64, 8);
 	BurnTransferCopy(DrvPalette);
+
+	return 0;
 }
 
-static void ExcelsrRender()
+static INT32 ExcelsrRender()
 {
 	BurnTransferClear();
 	DrvRenderFgLayer();
@@ -1592,9 +1605,11 @@ static void ExcelsrRender()
 	DrvRenderCharLayer(32, 16);
 	DrvRenderSprites(2, 0xd00, 16, 0, 0, 0);
 	BurnTransferCopy(DrvPalette);
+
+	return 0;
 }
 
-static void HotmindRender()
+static INT32 HotmindRender()
 {
 	BurnTransferClear();
 	if (DrvScreenEnable) {
@@ -1606,6 +1621,8 @@ static void HotmindRender()
 		HotmindRenderCharLayer();
 	}
 	BurnTransferCopy(DrvPalette);
+
+	return 0;
 }
 
 static INT32 DrvFrame()
@@ -1634,7 +1651,7 @@ static INT32 DrvFrame()
 		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
 		if (i == 90) {
 			DrvVBlank = 1;
-			SekSetIRQLine(nIRQLine, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(nIRQLine, CPU_IRQSTATUS_AUTO);
 		}
 		
 		nCurrentCPU = 1;
@@ -1689,8 +1706,8 @@ struct BurnDriver BurnDrvBigtwin = {
 	"Big Twin\0", NULL, "Playmark", "Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, BigtwinRomInfo, BigtwinRomName, NULL, NULL, BigtwinInputInfo, BigtwinDIPInfo,
-	DrvInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, BigtwinRomInfo, BigtwinRomName, NULL, NULL, NULL, NULL, BigtwinInputInfo, BigtwinDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrawFunction, DrvScan,
 	NULL, 0x400, 320, 240, 4, 3
 };
 
@@ -1699,8 +1716,8 @@ struct BurnDriver BurnDrvExcelsr = {
 	"Excelsior (set 1)\0", NULL, "Playmark", "Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, ExcelsrRomInfo, ExcelsrRomName, NULL, NULL, ExcelsrInputInfo, ExcelsrDIPInfo,
-	ExcelsrInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, ExcelsrRomInfo, ExcelsrRomName, NULL, NULL, NULL, NULL, ExcelsrInputInfo, ExcelsrDIPInfo,
+	ExcelsrInit, DrvExit, DrvFrame, DrawFunction, DrvScan,
 	NULL, 0x400, 320, 240, 4, 3
 };
 
@@ -1709,8 +1726,8 @@ struct BurnDriver BurnDrvExcelsra = {
 	"Excelsior (set 2)\0", NULL, "Playmark", "Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, ExcelsraRomInfo, ExcelsraRomName, NULL, NULL, ExcelsrInputInfo, ExcelsrDIPInfo,
-	ExcelsrInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, ExcelsraRomInfo, ExcelsraRomName, NULL, NULL, NULL, NULL, ExcelsrInputInfo, ExcelsrDIPInfo,
+	ExcelsrInit, DrvExit, DrvFrame, DrawFunction, DrvScan,
 	NULL, 0x400, 320, 240, 4, 3
 };
 
@@ -1719,7 +1736,7 @@ struct BurnDriver BurnDrvHotmind = {
 	"Hot Mind (Hard Times hardware)\0", NULL, "Playmark", "Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, HotmindRomInfo, HotmindRomName, NULL, NULL, HotmindInputInfo, HotmindDIPInfo,
-	HotmindInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, HotmindRomInfo, HotmindRomName, NULL, NULL, NULL, NULL, HotmindInputInfo, HotmindDIPInfo,
+	HotmindInit, DrvExit, DrvFrame, DrawFunction, DrvScan,
 	NULL, 0x400, 320, 224, 4, 3
 };

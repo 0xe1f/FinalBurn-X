@@ -1,3 +1,7 @@
+// Based on MAME driver by David Graves
+
+// tofix: darius2d's offsets and y screen size is wrong - it should be 232 and everything moved down 8px
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
@@ -5,22 +9,15 @@
 #include "taito_ic.h"
 #include "burn_ym2610.h"
 
-static INT32 Ninjaw;
+static INT32 Ninjaw = 0, Warriorb = 0;
 
 static double Darius2YM2610Route1MasterVol;
 static double Darius2YM2610Route2MasterVol;
 
-static void Darius2Draw();
-static void Darius2dDraw();
-static void WarriorbDraw();
-
 static struct BurnInputInfo Darius2InputList[] =
 {
-	{"Coin 1"            , BIT_DIGITAL   , TC0220IOCInputPort0 + 2, "p1 coin"   },
-	{"Start 1"           , BIT_DIGITAL   , TC0220IOCInputPort2 + 2, "p1 start"  },
-	{"Coin 2"            , BIT_DIGITAL   , TC0220IOCInputPort0 + 3, "p2 coin"   },
-	{"Start 2"           , BIT_DIGITAL   , TC0220IOCInputPort2 + 3, "p2 start"  },
-
+	{"P1 Coin"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 2, "p1 coin"   },
+	{"P1 Start"          , BIT_DIGITAL   , TC0220IOCInputPort2 + 2, "p1 start"  },
 	{"P1 Up"             , BIT_DIGITAL   , TC0220IOCInputPort1 + 0, "p1 up"     },
 	{"P1 Down"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 1, "p1 down"   },
 	{"P1 Left"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 3, "p1 left"   },
@@ -28,6 +25,8 @@ static struct BurnInputInfo Darius2InputList[] =
 	{"P1 Fire 1"         , BIT_DIGITAL   , TC0220IOCInputPort2 + 4, "p1 fire 1" },
 	{"P1 Fire 2"         , BIT_DIGITAL   , TC0220IOCInputPort2 + 5, "p1 fire 2" },
 	
+	{"P2 Coin"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 3, "p2 coin"   },
+	{"P2 Start"          , BIT_DIGITAL   , TC0220IOCInputPort2 + 3, "p2 start"  },
 	{"P2 Up"             , BIT_DIGITAL   , TC0220IOCInputPort1 + 4, "p2 up"     },
 	{"P2 Down"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 5, "p2 down"   },
 	{"P2 Left"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 7, "p2 left"   },
@@ -47,11 +46,8 @@ STDINPUTINFO(Darius2)
 
 static struct BurnInputInfo Darius2dInputList[] =
 {
-	{"Coin 1"            , BIT_DIGITAL   , TC0220IOCInputPort0 + 2, "p1 coin"   },
-	{"Start 1"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 4, "p1 start"  },
-	{"Coin 2"            , BIT_DIGITAL   , TC0220IOCInputPort0 + 3, "p2 coin"   },
-	{"Start 2"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 5, "p2 start"  },
-
+	{"P1 Coin"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 2, "p1 coin"   },
+	{"P1 Start"          , BIT_DIGITAL   , TC0220IOCInputPort0 + 4, "p1 start"  },
 	{"P1 Up"             , BIT_DIGITAL   , TC0220IOCInputPort1 + 0, "p1 up"     },
 	{"P1 Down"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 1, "p1 down"   },
 	{"P1 Left"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 2, "p1 left"   },
@@ -59,6 +55,8 @@ static struct BurnInputInfo Darius2dInputList[] =
 	{"P1 Fire 1"         , BIT_DIGITAL   , TC0220IOCInputPort2 + 4, "p1 fire 1" },
 	{"P1 Fire 2"         , BIT_DIGITAL   , TC0220IOCInputPort2 + 5, "p1 fire 2" },
 	
+	{"P2 Coin"           , BIT_DIGITAL   , TC0220IOCInputPort0 + 3, "p2 coin"   },
+	{"P2 Start"          , BIT_DIGITAL   , TC0220IOCInputPort0 + 5, "p2 start"  },
 	{"P2 Up"             , BIT_DIGITAL   , TC0220IOCInputPort1 + 4, "p2 up"     },
 	{"P2 Down"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 5, "p2 down"   },
 	{"P2 Left"           , BIT_DIGITAL   , TC0220IOCInputPort1 + 6, "p2 left"   },
@@ -78,11 +76,8 @@ STDINPUTINFO(Darius2d)
 
 static struct BurnInputInfo WarriorbInputList[] =
 {
-	{"Coin 1"            , BIT_DIGITAL   , TC0510NIOInputPort0 + 2, "p1 coin"   },
-	{"Start 1"           , BIT_DIGITAL   , TC0510NIOInputPort0 + 4, "p1 start"  },
-	{"Coin 2"            , BIT_DIGITAL   , TC0510NIOInputPort0 + 3, "p2 coin"   },
-	{"Start 2"           , BIT_DIGITAL   , TC0510NIOInputPort0 + 5, "p2 start"  },
-
+	{"P1 Coin"           , BIT_DIGITAL   , TC0510NIOInputPort0 + 2, "p1 coin"   },
+	{"P1 Start"          , BIT_DIGITAL   , TC0510NIOInputPort0 + 4, "p1 start"  },
 	{"P1 Up"             , BIT_DIGITAL   , TC0510NIOInputPort1 + 0, "p1 up"     },
 	{"P1 Down"           , BIT_DIGITAL   , TC0510NIOInputPort1 + 1, "p1 down"   },
 	{"P1 Left"           , BIT_DIGITAL   , TC0510NIOInputPort1 + 2, "p1 left"   },
@@ -91,6 +86,8 @@ static struct BurnInputInfo WarriorbInputList[] =
 	{"P1 Fire 2"         , BIT_DIGITAL   , TC0510NIOInputPort2 + 5, "p1 fire 2" },
 	{"P1 Fire 3"         , BIT_DIGITAL   , TC0510NIOInputPort0 + 6, "p1 fire 3" },
 	
+	{"P2 Coin"           , BIT_DIGITAL   , TC0510NIOInputPort0 + 3, "p2 coin"   },
+	{"P2 Start"          , BIT_DIGITAL   , TC0510NIOInputPort0 + 5, "p2 start"  },
 	{"P2 Up"             , BIT_DIGITAL   , TC0510NIOInputPort1 + 4, "p2 up"     },
 	{"P2 Down"           , BIT_DIGITAL   , TC0510NIOInputPort1 + 5, "p2 down"   },
 	{"P2 Left"           , BIT_DIGITAL   , TC0510NIOInputPort1 + 6, "p2 left"   },
@@ -539,6 +536,35 @@ static struct BurnRomInfo Darius2doRomDesc[] = {
 STD_ROM_PICK(Darius2do)
 STD_ROM_FN(Darius2do)
 
+static struct BurnRomInfo SagaiaRomDesc[] = {
+	{ "c07_44.74",     0x20000, 0xd0ca72d8, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "c07_43.73",     0x20000, 0xa34ea5ba, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "c07_45.76",     0x20000, 0x8a043c14, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "c07_42.71",     0x20000, 0xb6cb642f, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "c07-09.75",     0x80000, 0xcc69c2ce, BRF_ESS | BRF_PRG | TAITO_68KROM1          },
+
+	{ "c07_41.69",     0x20000, 0xb50256ea, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	
+	{ "c07-03.12",     0x80000, 0x189bafce, BRF_GRA | TAITO_CHARS },
+	{ "c07-04.11",     0x80000, 0x50421e81, BRF_GRA | TAITO_CHARS },
+	
+	{ "c07-06.27",     0x80000, 0x5eebbcd6, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "c07-05.24",     0x80000, 0xfb6d0550, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "c07-08.25",     0x80000, 0xa07dc846, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "c07-07.26",     0x80000, 0xfd9f9e74, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	
+	{ "c07-10.95",     0x80000, 0x4bbe0ed9, BRF_SND | TAITO_YM2610A },
+	{ "c07-11.96",     0x80000, 0x3c815699, BRF_SND | TAITO_YM2610A },
+	
+	{ "c07-12.107",    0x80000, 0xe0b71258, BRF_SND | TAITO_YM2610B },
+	
+	{ "c07-13.37",     0x00400, 0x3ca18eb3, BRF_OPT },
+	{ "c07-14.38",     0x00400, 0xbaf2a193, BRF_OPT },
+};
+
+STD_ROM_PICK(Sagaia)
+STD_ROM_FN(Sagaia)
+
 static struct BurnRomInfo NinjawRomDesc[] = {
 	{ "b31_45.35",     0x10000, 0x107902c3, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
 	{ "b31_47.32",     0x10000, 0xbd536b1e, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
@@ -578,6 +604,46 @@ static struct BurnRomInfo NinjawRomDesc[] = {
 
 STD_ROM_PICK(Ninjaw)
 STD_ROM_FN(Ninjaw)
+
+static struct BurnRomInfo Ninjaw1RomDesc[] = {
+	{ "b31_30.35",     0x10000, 0x056edd9f, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_43.32",     0x10000, 0x56ae37a6, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_29.34",     0x10000, 0xf2941a37, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_27.31",     0x10000, 0x2f3ff642, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_41.5",      0x20000, 0x0daef28a, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_39.2",      0x20000, 0xe9197c3c, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_40.6",      0x20000, 0x2ce0f24e, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b31_38.3",      0x20000, 0xbc68cd99, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	
+	{ "b31_33.87",     0x10000, 0x6ce9af44, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+	{ "b31_36.97",     0x10000, 0xba20b0d4, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+	{ "b31_32.86",     0x10000, 0xe6025fec, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+	{ "b31_35.96",     0x10000, 0x70d9a89f, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+	{ "b31_31.85",     0x10000, 0x837f47e2, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+	{ "b31_34.95",     0x10000, 0xd6b5fb2a, BRF_ESS | BRF_PRG | TAITO_68KROM2_BYTESWAP },
+
+	{ "b31_37.11",     0x20000, 0x0ca5799d, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	
+	{ "b31-01.23",     0x80000, 0x8e8237a7, BRF_GRA | TAITO_CHARS },
+	{ "b31-02.24",     0x80000, 0x4c3b4e33, BRF_GRA | TAITO_CHARS },
+	
+	{ "b31-07.176",    0x80000, 0x33568cdb, BRF_GRA | TAITO_SPRITESA },
+	{ "b31-06.175",    0x80000, 0x0d59439e, BRF_GRA | TAITO_SPRITESA },
+	{ "b31-05.174",    0x80000, 0x0a1fc9fb, BRF_GRA | TAITO_SPRITESA },
+	{ "b31-04.173",    0x80000, 0x2e1e4cb5, BRF_GRA | TAITO_SPRITESA },
+	
+	{ "b31-09.18",     0x80000, 0x60a73382, BRF_SND | TAITO_YM2610A },
+	{ "b31-10.17",     0x80000, 0xc6434aef, BRF_SND | TAITO_YM2610A },
+	{ "b31-11.16",     0x80000, 0x8da531d4, BRF_SND | TAITO_YM2610A },
+	
+	{ "b31-08.19",     0x80000, 0xa0a1f87d, BRF_SND | TAITO_YM2610B },
+	
+	{ "b31-25.38",     0x00200, 0xa0b4ba48, BRF_OPT },
+	{ "b31-26.58",     0x00200, 0x13e5fe15, BRF_OPT },
+};
+
+STD_ROM_PICK(Ninjaw1)
+STD_ROM_FN(Ninjaw1)
 
 static struct BurnRomInfo NinjawjRomDesc[] = {
 	{ "b31_30.35",     0x10000, 0x056edd9f, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
@@ -685,6 +751,9 @@ static struct BurnRomInfo WarriorbRomDesc[] = {
 	
 	{ "d24-13.37",     0x000400, 0x3ca18eb3, BRF_OPT },
 	{ "d24-14.38",     0x000400, 0xbaf2a193, BRF_OPT },
+	
+	{ "d24-15.78",     0x000144, 0x04992a7d, BRF_OPT },
+	{ "d24-16.79",     0x000144, 0x92c59a8d, BRF_OPT },
 };
 
 STD_ROM_PICK(Warriorb)
@@ -773,11 +842,7 @@ static void Darius2CpuAReset(UINT16 d)
 {
 	TaitoCpuACtrl = d;
 	if (!(TaitoCpuACtrl & 1)) {
-		SekClose();
-		SekOpen(1);
-		SekReset();
-		SekClose();
-		SekOpen(0);
+		SekReset(1);
 	}
 }
 
@@ -1099,6 +1164,8 @@ void __fastcall Darius2d68KWriteWord(UINT32 a, UINT16 d)
 
 UINT8 __fastcall Warriorb68KReadByte(UINT32 a)
 {
+	TC0510NIOHalfWordRead_Map(0x800000)
+
 	switch (a) {
 		default: {
 			bprintf(PRINT_NORMAL, _T("68K #1 Read byte => %06X\n"), a);
@@ -1312,21 +1379,7 @@ static INT32 Darius2dSpriteYOffsets[16]    = { 0, 64, 128, 192, 256, 320, 384, 4
 
 static void Darius2FMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 Darius2SynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / (16000000 / 4);
-}
-
-static double Darius2GetTime()
-{
-	return (double)ZetTotalCycles() / (16000000 / 4);
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 Darius2Init()
@@ -1378,20 +1431,20 @@ static INT32 Darius2Init()
 	TC0100SCNSetClipArea(2, 288, nScreenHeight, 576);
 	TC0100SCNSetPaletteOffset(2, 0x2000);
 	TC0110PCRInit(3, 0x3000);
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 	TC0220IOCInit();
 	
 	if (TaitoLoadRoms(1)) return 1;
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1           , 0x000000, 0x0bffff, SM_ROM);
-	SekMapMemory(Taito68KRam1           , 0x0c0000, 0x0cffff, SM_RAM);
-	SekMapMemory(TaitoSharedRam         , 0x240000, 0x24ffff, SM_RAM);
-	SekMapMemory(TaitoSpriteRam         , 0x260000, 0x263fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0]        , 0x280000, 0x293fff, SM_READ);
-	SekMapMemory(TC0100SCNRam[1]        , 0x2c0000, 0x2d3fff, SM_READ);
-	SekMapMemory(TC0100SCNRam[2]        , 0x300000, 0x313fff, SM_READ);
+	SekMapMemory(Taito68KRom1           , 0x000000, 0x0bffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1           , 0x0c0000, 0x0cffff, MAP_RAM);
+	SekMapMemory(TaitoSharedRam         , 0x240000, 0x24ffff, MAP_RAM);
+	SekMapMemory(TaitoSpriteRam         , 0x260000, 0x263fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0]        , 0x280000, 0x293fff, MAP_READ);
+	SekMapMemory(TC0100SCNRam[1]        , 0x2c0000, 0x2d3fff, MAP_READ);
+	SekMapMemory(TC0100SCNRam[2]        , 0x300000, 0x313fff, MAP_READ);
 	SekSetReadByteHandler(0, Darius268K1ReadByte);
 	SekSetWriteByteHandler(0, Darius268K1WriteByte);
 	SekSetReadWordHandler(0, Darius268K1ReadWord);	
@@ -1400,11 +1453,11 @@ static INT32 Darius2Init()
 	
 	SekInit(1, 0x68000);
 	SekOpen(1);
-	SekMapMemory(Taito68KRom2           , 0x000000, 0x05ffff, SM_ROM);
-	SekMapMemory(Taito68KRam2           , 0x080000, 0x08ffff, SM_RAM);
-	SekMapMemory(TaitoSharedRam         , 0x240000, 0x24ffff, SM_RAM);
-	SekMapMemory(TaitoSpriteRam         , 0x260000, 0x263fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0]        , 0x280000, 0x293fff, SM_READ);
+	SekMapMemory(Taito68KRom2           , 0x000000, 0x05ffff, MAP_ROM);
+	SekMapMemory(Taito68KRam2           , 0x080000, 0x08ffff, MAP_RAM);
+	SekMapMemory(TaitoSharedRam         , 0x240000, 0x24ffff, MAP_RAM);
+	SekMapMemory(TaitoSpriteRam         , 0x260000, 0x263fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0]        , 0x280000, 0x293fff, MAP_READ);
 	SekSetReadByteHandler(0, Darius268K2ReadByte);
 	SekSetWriteByteHandler(0, Darius268K2WriteByte);
 	SekSetReadWordHandler(0, Darius268K2ReadWord);	
@@ -1424,15 +1477,14 @@ static INT32 Darius2Init()
 	ZetMapArea(0xc000, 0xdfff, 2, TaitoZ80Ram1               );
 	ZetClose();
 	
-	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, Darius2SynchroniseStream, Darius2GetTime, 0);
+	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, 0);
 	BurnTimerAttachZet(16000000 / 4);
-	BurnYM2610SetLeftVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
-	BurnYM2610SetRightVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
+	BurnYM2610SetLeftVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.03);
+	BurnYM2610SetRightVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.03);
 	Darius2YM2610Route1MasterVol = 1.00;
 	Darius2YM2610Route2MasterVol = 1.00;
 	bYM2610UseSeperateVolumes = 1;
 	
-	TaitoDrawFunction = Darius2Draw;
 	TaitoMakeInputsFunction = Darius2MakeInputs;
 	TaitoIrqLine = 4;
 	
@@ -1490,18 +1542,18 @@ static INT32 Darius2dInit()
 	TC0100SCNSetClipArea(1, 320, nScreenHeight, 320);
 	TC0100SCNSetPaletteOffset(1, 0x1000);
 	TC0110PCRInit(2, 0x2000);
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 	TC0220IOCInit();
 	
 	if (TaitoLoadRoms(1)) return 1;
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1           , 0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(Taito68KRam1           , 0x100000, 0x10ffff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0]        , 0x200000, 0x213fff, SM_READ);
-	SekMapMemory(TC0100SCNRam[1]        , 0x240000, 0x253fff, SM_READ);
-	SekMapMemory(TaitoSpriteRam         , 0x600000, 0x6013ff, SM_RAM);
+	SekMapMemory(Taito68KRom1           , 0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1           , 0x100000, 0x10ffff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0]        , 0x200000, 0x213fff, MAP_READ);
+	SekMapMemory(TC0100SCNRam[1]        , 0x240000, 0x253fff, MAP_READ);
+	SekMapMemory(TaitoSpriteRam         , 0x600000, 0x6013ff, MAP_RAM);
 	SekSetReadByteHandler(0, Darius2d68KReadByte);
 	SekSetWriteByteHandler(0, Darius2d68KWriteByte);
 	SekSetReadWordHandler(0, Darius2d68KReadWord);	
@@ -1521,15 +1573,14 @@ static INT32 Darius2dInit()
 	ZetMapArea(0xc000, 0xdfff, 2, TaitoZ80Ram1               );
 	ZetClose();
 	
-	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, Darius2SynchroniseStream, Darius2GetTime, 0);
+	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, 0);
 	BurnTimerAttachZet(16000000 / 4);
-	BurnYM2610SetLeftVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
-	BurnYM2610SetRightVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
+	BurnYM2610SetLeftVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.03);
+	BurnYM2610SetRightVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.03);
 	Darius2YM2610Route1MasterVol = 12.00;
 	Darius2YM2610Route2MasterVol = 12.00;
 	bYM2610UseSeperateVolumes = 1;
 	
-	TaitoDrawFunction = Darius2dDraw;
 	TaitoMakeInputsFunction = Darius2dMakeInputs;
 	TaitoIrqLine = 4;
 	
@@ -1551,7 +1602,8 @@ static INT32 NinjawInit()
 static INT32 WarriorbInit()
 {
 	INT32 nLen;
-	
+
+	Warriorb = 1;
 	TaitoCharModulo = 0x100;
 	TaitoCharNumPlanes = 4;
 	TaitoCharWidth = 8;
@@ -1601,18 +1653,18 @@ static INT32 WarriorbInit()
 	TC0100SCNSetClipArea(1, 320, nScreenHeight, 320);
 	TC0100SCNSetPaletteOffset(1, 0x1000);
 	TC0110PCRInit(2, 0x2000);
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 	TC0510NIOInit();
 	
 	if (TaitoLoadRoms(1)) return 1;
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1           , 0x000000, 0x1fffff, SM_ROM);
-	SekMapMemory(Taito68KRam1           , 0x200000, 0x213fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0]        , 0x300000, 0x313fff, SM_READ);
-	SekMapMemory(TC0100SCNRam[1]        , 0x340000, 0x353fff, SM_READ);
-	SekMapMemory(TaitoSpriteRam         , 0x600000, 0x6013ff, SM_RAM);
+	SekMapMemory(Taito68KRom1           , 0x000000, 0x1fffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1           , 0x200000, 0x213fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0]        , 0x300000, 0x313fff, MAP_READ);
+	SekMapMemory(TC0100SCNRam[1]        , 0x340000, 0x353fff, MAP_READ);
+	SekMapMemory(TaitoSpriteRam         , 0x600000, 0x6013ff, MAP_RAM);
 	SekSetReadByteHandler(0, Warriorb68KReadByte);
 	SekSetWriteByteHandler(0, Warriorb68KWriteByte);
 	SekSetReadWordHandler(0, Warriorb68KReadWord);	
@@ -1632,7 +1684,7 @@ static INT32 WarriorbInit()
 	ZetMapArea(0xc000, 0xdfff, 2, TaitoZ80Ram1               );
 	ZetClose();
 	
-	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, Darius2SynchroniseStream, Darius2GetTime, 0);
+	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &Darius2FMIRQHandler, 0);
 	BurnTimerAttachZet(16000000 / 4);
 	BurnYM2610SetLeftVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
 	BurnYM2610SetRightVolume(BURN_SND_YM2610_AY8910_ROUTE, 0.25);
@@ -1640,7 +1692,6 @@ static INT32 WarriorbInit()
 	Darius2YM2610Route2MasterVol = 12.00;
 	bYM2610UseSeperateVolumes = 1;
 	
-	TaitoDrawFunction = WarriorbDraw;
 	TaitoMakeInputsFunction = WarriorbMakeInputs;
 	TaitoIrqLine = 4;
 	
@@ -1656,7 +1707,7 @@ static INT32 WarriorbInit()
 static INT32 Darius2Exit()
 {
 	Ninjaw = 0;
-	
+	Warriorb = 0;
 	return TaitoExit();
 }
 
@@ -1751,7 +1802,7 @@ static void Darius2dRenderSprites(INT32 PriorityDraw)
 		
 		if (Priority != PriorityDraw) continue;
 
-		y -= 16;
+		y -= (Warriorb) ? 8 : 16+8; //darius2d (16+8)
 
 		if (x > 0x3c0) x -= 0x400;
 		if (y > 0x180) y -= 0x200;
@@ -1788,7 +1839,7 @@ static void Darius2dRenderSprites(INT32 PriorityDraw)
 	}
 }
 
-static void Darius2Draw()
+static INT32 Darius2Draw()
 {
 	INT32 Disable = TC0100SCNCtrl[0][6] & 0xf7;
 	INT32 Disable2 = TC0100SCNCtrl[1][6] & 0xf7;
@@ -1820,9 +1871,11 @@ static void Darius2Draw()
 	if (!(Disable2 & 0x04)) TC0100SCNRenderCharLayer(1);
 	if (!(Disable3 & 0x04)) TC0100SCNRenderCharLayer(2);
 	BurnTransferCopy(TC0110PCRPalette);
+
+	return 0;
 }
 
-static void Darius2dDraw()
+static INT32 Darius2dDraw()
 {
 	INT32 Disable = TC0100SCNCtrl[0][6] & 0xf7;
 	INT32 Disable2 = TC0100SCNCtrl[1][6] & 0xf7;
@@ -1830,52 +1883,56 @@ static void Darius2dDraw()
 	BurnTransferClear();
 	
 	if (TC0100SCNBottomLayer(0)) {
-		if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoChars);
-		Darius2dRenderSprites(1);
-		if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoChars);
+		if (nBurnLayer & 2) if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 2) if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoChars);
+		if (nSpriteEnable & 1) Darius2dRenderSprites(1);
+		if (nBurnLayer & 1) if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 1) if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoChars);
 	} else {
-		if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoChars);
-		Darius2dRenderSprites(1);
-		if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoChars);
+		if (nBurnLayer & 1) if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 1) if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoChars);
+		if (nSpriteEnable & 1) Darius2dRenderSprites(1);
+		if (nBurnLayer & 2) if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 2) if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoChars);
 	}
 	
-	Darius2dRenderSprites(0);
+	if (nSpriteEnable & 2) Darius2dRenderSprites(0);
 	
-	if (!(Disable & 0x04)) TC0100SCNRenderCharLayer(0);
-	if (!(Disable2 & 0x04)) TC0100SCNRenderCharLayer(1);
+	if (nBurnLayer & 4) if (!(Disable & 0x04)) TC0100SCNRenderCharLayer(0);
+	if (nBurnLayer & 8) if (!(Disable2 & 0x04)) TC0100SCNRenderCharLayer(1);
 	BurnTransferCopy(TC0110PCRPalette);
+
+	return 0;
 }
 
-static void WarriorbDraw()
+static INT32 WarriorbDraw()
 {
 	INT32 Disable = TC0100SCNCtrl[0][6] & 0xf7;
 	INT32 Disable2 = TC0100SCNCtrl[1][6] & 0xf7;
-	
+
 	BurnTransferClear();
-	
+
 	if (TC0100SCNBottomLayer(0)) {
-		if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoCharsB);
-		Darius2dRenderSprites(1);
-		if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoCharsB);
+		if (nBurnLayer & 2) if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 2) if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoCharsB);
+		if (nSpriteEnable & 1) Darius2dRenderSprites(1);
+		if (nBurnLayer & 1) if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 1) if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoCharsB);
 	} else {
-		if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoCharsB);
-		Darius2dRenderSprites(1);
-		if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
-		if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoCharsB);
+		if (nBurnLayer & 1) if (!(Disable & 0x01)) TC0100SCNRenderBgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 1) if (!(Disable2 & 0x01)) TC0100SCNRenderBgLayer(1, 0, TaitoCharsB);
+		if (nSpriteEnable & 1) Darius2dRenderSprites(1);
+		if (nBurnLayer & 2) if (!(Disable & 0x02)) TC0100SCNRenderFgLayer(0, 0, TaitoChars);
+		if (nBurnLayer & 2) if (!(Disable2 & 0x02)) TC0100SCNRenderFgLayer(1, 0, TaitoCharsB);
 	}
 	
-	Darius2dRenderSprites(0);
+	if (nSpriteEnable & 2) Darius2dRenderSprites(0);
 	
-	if (!(Disable & 0x04)) TC0100SCNRenderCharLayer(0);
-	if (!(Disable2 & 0x04)) TC0100SCNRenderCharLayer(1);
+	if (nBurnLayer & 4) if (!(Disable & 0x04)) TC0100SCNRenderCharLayer(0);
+	if (nBurnLayer & 8) if (!(Disable2 & 0x04)) TC0100SCNRenderCharLayer(1);
 	BurnTransferCopy(TC0110PCRPalette);
+
+	return 0;
 }
 
 static INT32 Darius2Frame()
@@ -1900,7 +1957,7 @@ static INT32 Darius2Frame()
 		nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 		nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 		nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-		if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
+		if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		
 		// Run 68000 # 2
@@ -1910,7 +1967,7 @@ static INT32 Darius2Frame()
 			nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 			nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 			nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-			if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
+			if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, CPU_IRQSTATUS_AUTO);
 			SekClose();
 		}
 		
@@ -1921,10 +1978,12 @@ static INT32 Darius2Frame()
 	
 	ZetOpen(0);
 	BurnTimerEndFrame(nTaitoCyclesTotal[2]);
-	BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	if (pBurnSoundOut) {
+		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	}
 	ZetClose();
 	
-	if (pBurnDraw) TaitoDrawFunction();
+	if (pBurnDraw) BurnDrvRedraw();
 	
 	return 0;
 }
@@ -1951,7 +2010,7 @@ static INT32 Darius2dFrame()
 		nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 		nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 		nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-		if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
+		if (i == nInterleave - 1) SekSetIRQLine(TaitoIrqLine, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		
 		ZetOpen(0);
@@ -1961,10 +2020,12 @@ static INT32 Darius2dFrame()
 	
 	ZetOpen(0);
 	BurnTimerEndFrame(nTaitoCyclesTotal[1]);
-	BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	if (pBurnSoundOut) {
+		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	}
 	ZetClose();
 	
-	if (pBurnDraw) TaitoDrawFunction();
+	if (pBurnDraw) BurnDrvRedraw();
 	
 	return 0;
 }
@@ -1993,6 +2054,8 @@ static INT32 Darius2Scan(INT32 nAction, INT32 *pnMin)
 
 		if (TaitoNumYM2610) BurnYM2610Scan(nAction, pnMin);
 
+		SCAN_VAR(TaitoCpuACtrl);
+
 		SCAN_VAR(TaitoInput);
 		SCAN_VAR(TaitoZ80Bank);
 		SCAN_VAR(nTaitoCyclesDone);
@@ -2011,11 +2074,11 @@ static INT32 Darius2Scan(INT32 nAction, INT32 *pnMin)
 
 struct BurnDriver BurnDrvDarius2 = {
 	"darius2", NULL, NULL, NULL, "1989",
-	"Darius II (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
+	"Darius II (triple screen) (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_HORSHOOT, 0,
-	NULL, Darius2RomInfo, Darius2RomName, NULL, NULL, Darius2InputInfo, Darius2DIPInfo,
-	Darius2Init, Darius2Exit, Darius2Frame, NULL, Darius2Scan,
+	NULL, Darius2RomInfo, Darius2RomName, NULL, NULL, NULL, NULL, Darius2InputInfo, Darius2DIPInfo,
+	Darius2Init, Darius2Exit, Darius2Frame, Darius2Draw, Darius2Scan,
 	NULL, 0x3000, 864, 224, 12, 3
 };
 
@@ -2024,8 +2087,8 @@ struct BurnDriver BurnDrvDarius2d = {
 	"Darius II (dual screen) (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_HORSHOOT, 0,
-	NULL, Darius2dRomInfo, Darius2dRomName, NULL, NULL, Darius2dInputInfo, Darius2dDIPInfo,
-	Darius2dInit, Darius2Exit, Darius2dFrame, NULL, Darius2Scan,
+	NULL, Darius2dRomInfo, Darius2dRomName, NULL, NULL, NULL, NULL, Darius2dInputInfo, Darius2dDIPInfo,
+	Darius2dInit, Darius2Exit, Darius2dFrame, Darius2dDraw, Darius2Scan,
 	NULL, 0x2000, 640, 224, 8, 3
 };
 
@@ -2034,18 +2097,38 @@ struct BurnDriver BurnDrvDarius2do = {
 	"Darius II (dual screen) (Japan old version)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_HORSHOOT, 0,
-	NULL, Darius2doRomInfo, Darius2doRomName, NULL, NULL, Darius2dInputInfo, Darius2dDIPInfo,
-	Darius2dInit, Darius2Exit, Darius2dFrame, NULL, Darius2Scan,
+	NULL, Darius2doRomInfo, Darius2doRomName, NULL, NULL, NULL, NULL, Darius2dInputInfo, Darius2dDIPInfo,
+	Darius2dInit, Darius2Exit, Darius2dFrame, Darius2dDraw, Darius2Scan,
+	NULL, 0x2000, 640, 224, 8, 3
+};
+
+struct BurnDriver BurnDrvSagaia = {
+	"sagaia", "darius2", NULL, NULL, "1989",
+	"Darius II (dual screen) (World)\0", NULL, "Taito Corporation", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_HORSHOOT, 0,
+	NULL, SagaiaRomInfo, SagaiaRomName, NULL, NULL, NULL, NULL, Darius2dInputInfo, Darius2dDIPInfo,
+	Darius2dInit, Darius2Exit, Darius2dFrame, Darius2dDraw, Darius2Scan,
 	NULL, 0x2000, 640, 224, 8, 3
 };
 
 struct BurnDriver BurnDrvNinjaw = {
 	"ninjaw", NULL, NULL, NULL, "1987",
-	"The Ninja Warriors (World)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	"The Ninja Warriors (World, later version)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, NinjawRomInfo, NinjawRomName, NULL, NULL, Darius2InputInfo, NinjawDIPInfo,
-	NinjawInit, Darius2Exit, Darius2Frame, NULL, Darius2Scan,
+	NULL, NinjawRomInfo, NinjawRomName, NULL, NULL, NULL, NULL, Darius2InputInfo, NinjawDIPInfo,
+	NinjawInit, Darius2Exit, Darius2Frame, Darius2Draw, Darius2Scan,
+	NULL, 0x3000, 864, 224, 12, 3
+};
+
+struct BurnDriver BurnDrvNinjaw1 = {
+	"ninjaw1", "ninjaw", NULL, NULL, "1987",
+	"The Ninja Warriors (World, earlier version)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
+	NULL, Ninjaw1RomInfo, Ninjaw1RomName, NULL, NULL, NULL, NULL, Darius2InputInfo, NinjawDIPInfo,
+	NinjawInit, Darius2Exit, Darius2Frame, Darius2Draw, Darius2Scan,
 	NULL, 0x3000, 864, 224, 12, 3
 };
 
@@ -2054,18 +2137,18 @@ struct BurnDriver BurnDrvNinjawj = {
 	"The Ninja Warriors (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, NinjawjRomInfo, NinjawjRomName, NULL, NULL, Darius2InputInfo, NinjawjDIPInfo,
-	NinjawInit, Darius2Exit, Darius2Frame, NULL, Darius2Scan,
+	NULL, NinjawjRomInfo, NinjawjRomName, NULL, NULL, NULL, NULL, Darius2InputInfo, NinjawjDIPInfo,
+	NinjawInit, Darius2Exit, Darius2Frame, Darius2Draw, Darius2Scan,
 	NULL, 0x3000, 864, 224, 12, 3
 };
 
 struct BurnDriver BurnDrvNinjawu = {
 	"ninjawu", "ninjaw", NULL, NULL, "1987",
-	"The Ninja Warriors (US)\0", NULL, "Taito Corporation America (licensed to Romstar)", "Taito Misc",
+	"The Ninja Warriors (US, Romstar license)\0", NULL, "Taito Corporation America (licensed to Romstar)", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, NinjawuRomInfo, NinjawuRomName, NULL, NULL, Darius2InputInfo, NinjawjDIPInfo,
-	NinjawInit, Darius2Exit, Darius2Frame, NULL, Darius2Scan,
+	NULL, NinjawuRomInfo, NinjawuRomName, NULL, NULL, NULL, NULL, Darius2InputInfo, NinjawjDIPInfo,
+	NinjawInit, Darius2Exit, Darius2Frame, Darius2Draw, Darius2Scan,
 	NULL, 0x3000, 864, 224, 12, 3
 };
 
@@ -2074,7 +2157,7 @@ struct BurnDriver BurnDrvWarriorb = {
 	"Warrior Blade - Rastan Saga Episode III (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_HORSHOOT, 0,
-	NULL, WarriorbRomInfo, WarriorbRomName, NULL, NULL, WarriorbInputInfo, WarriorbDIPInfo,
-	WarriorbInit, Darius2Exit, Darius2dFrame, NULL, Darius2Scan,
+	NULL, WarriorbRomInfo, WarriorbRomName, NULL, NULL, NULL, NULL, WarriorbInputInfo, WarriorbDIPInfo,
+	WarriorbInit, Darius2Exit, Darius2dFrame, WarriorbDraw, Darius2Scan,
 	NULL, 0x2000, 640, 240, 8, 3
 };

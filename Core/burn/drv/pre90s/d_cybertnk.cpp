@@ -192,7 +192,7 @@ static void __fastcall cybertnk_main_write_byte(UINT32 address, UINT8 data)
 	{
 		case 0x110001:
 			*soundlatch = data;
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x110003: // watchdog?
@@ -203,7 +203,7 @@ static void __fastcall cybertnk_main_write_byte(UINT32 address, UINT8 data)
 		return;
 
 		case 0x11000d:
-			SekSetIRQLine(1, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(1, CPU_IRQSTATUS_NONE);
 		return;
 	}
 }
@@ -330,7 +330,7 @@ static UINT8 __fastcall cybertnk_sound_read(UINT16 address)
 			return BurnY8950Read(0, address & 1);
 
 		case 0xa001:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 
 		case 0xc000:
@@ -548,15 +548,15 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM0,	0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM0,	0x080000, 0x087fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x0a0000, 0x0a0fff, SM_RAM);
-	SekMapMemory(DrvVidRAM0,	0x0c0000, 0x0c1fff, SM_RAM);
-	SekMapMemory(DrvVidRAM1,	0x0c4000, 0x0c5fff, SM_RAM);
-	SekMapMemory(DrvVidRAM2,	0x0c8000, 0x0c9fff, SM_RAM);
-	SekMapMemory(DrvShareRAM,	0x0e0000, 0x0e0fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x100000, 0x103fff, SM_ROM);
-	SekMapMemory(DrvPalRAM + 0x4000,0x104000, 0x107fff, SM_RAM); // Copy of first half
+	SekMapMemory(Drv68KROM0,	0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM0,	0x080000, 0x087fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x0a0000, 0x0a0fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM0,	0x0c0000, 0x0c1fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM1,	0x0c4000, 0x0c5fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM2,	0x0c8000, 0x0c9fff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,	0x0e0000, 0x0e0fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x100000, 0x103fff, MAP_ROM);
+	SekMapMemory(DrvPalRAM + 0x4000,0x104000, 0x107fff, MAP_RAM); // Copy of first half
 	SekSetWriteByteHandler(0,	cybertnk_main_write_byte);
 	SekSetWriteWordHandler(0,	cybertnk_main_write_word);
 	SekSetReadByteHandler(0,	cybertnk_main_read_byte);
@@ -565,10 +565,10 @@ static INT32 DrvInit()
 
 	SekInit(1, 0x68000);
 	SekOpen(1);
-	SekMapMemory(Drv68KROM1,	0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM1,	0x080000, 0x083fff, SM_RAM);
-	SekMapMemory(DrvRoadRAM,	0x0c0000, 0x0c0fff, SM_RAM);
-	SekMapMemory(DrvShareRAM,	0x100000, 0x100fff, SM_RAM);
+	SekMapMemory(Drv68KROM1,	0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM1,	0x080000, 0x083fff, MAP_RAM);
+	SekMapMemory(DrvRoadRAM,	0x0c0000, 0x0c0fff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,	0x100000, 0x100fff, MAP_RAM);
 	SekClose();
 
 	ZetInit(0);
@@ -583,9 +583,9 @@ static INT32 DrvInit()
 	ZetClose();
 
 	BurnY8950Init(2, 3579545, DrvSndROM0, 0x40000, DrvSndROM1, 0x80000, NULL, &DrvSynchroniseStream, 0);
-	BurnTimerAttachZetY8950(3579545);
-	BurnY8950SetRoute(0, BURN_SND_Y8950_ROUTE, 1.00, BURN_SND_ROUTE_RIGHT);
-	BurnY8950SetRoute(1, BURN_SND_Y8950_ROUTE, 1.00, BURN_SND_ROUTE_RIGHT);
+	BurnTimerAttachY8950(&ZetConfig, 3579545);
+	BurnY8950SetRoute(0, BURN_SND_Y8950_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnY8950SetRoute(1, BURN_SND_Y8950_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
 
@@ -861,12 +861,12 @@ static INT32 DrvFrame()
 		SekOpen(0);
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
 		INT32 nCycles = SekTotalCycles();
-		if (i == ((nScreenHeight * 100) / 256)) SekSetIRQLine(1, SEK_IRQSTATUS_ACK);
+		if (i == ((nScreenHeight * 100) / 256)) SekSetIRQLine(1, CPU_IRQSTATUS_ACK);
 		SekClose();
 
 		SekOpen(1);
 		nCyclesDone[1] += SekRun(nCycles - SekTotalCycles());
-		if (i == ((nScreenHeight * 100) / 256)) SekSetIRQLine(3, SEK_IRQSTATUS_AUTO);
+		if (i == ((nScreenHeight * 100) / 256)) SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
 		SekClose();
 
 		BurnTimerUpdateY8950(i * (nCyclesTotal[2] / nInterleave));
@@ -1085,8 +1085,8 @@ struct BurnDriver BurnDrvCybertnk = {
 	"cybertnk", NULL, NULL, NULL, "1988",
 	"Cyber Tank (v1.4)\0", NULL, "Coreland", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_MISC, 0,
-	NULL, cybertnkRomInfo, cybertnkRomName, NULL, NULL, CybertnkInputInfo, CybertnkDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_SHOOT, 0,
+	NULL, cybertnkRomInfo, cybertnkRomName, NULL, NULL, NULL, NULL, CybertnkInputInfo, CybertnkDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	512, 224, 8, 3
 };

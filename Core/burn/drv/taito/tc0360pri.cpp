@@ -1,4 +1,5 @@
 // TC0360PRI
+// Based on MAME sources by Nicola Salmoria
 
 #include "burnint.h"
 #include "taito_ic.h"
@@ -17,7 +18,7 @@ void TC0360PRIHalfWordWrite(UINT32 Offset, UINT16 Data)
 
 void TC0360PRIHalfWordSwapWrite(UINT32 Offset, UINT16 Data)
 {
-	if (Data & 0xff00) TC0360PRIWrite(Offset, (Data >> 8) & 0xff);
+	TC0360PRIWrite(Offset, (Data >> 8) & 0xff);
 }
 
 void TC0360PRIReset()

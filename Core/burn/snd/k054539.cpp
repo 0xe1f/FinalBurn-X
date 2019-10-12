@@ -1,19 +1,21 @@
+// copyright-holders:Aaron Giles
 /*********************************************************
 
-    Konami 054539 PCM Sound Chip
+    Konami 054539 (TOP) PCM Sound Chip
 
     A lot of information comes from Amuse.
     Big thanks to them.
 
 *********************************************************/
 
-// IRQ handling is disabled for now...
+// IRQ handling is disabled (handled in driver) for now...
+
+// Jan 19, 2018: added cubic resampling.
 
 #include "burnint.h"
 #include "math.h"
 #include "k054539.h"
 
-static UINT32 nUpdateStep;
 static INT32 nNumChips = 0;
 
 typedef struct _k054539_interface k054539_interface;
@@ -29,10 +31,12 @@ struct k054539_channel {
 	UINT32 pfrac;
 	INT32 val;
 	INT32 pval;
+	double lvol;
+	double rvol;
 };
 
 struct k054539_info {
-	const k054539_interface *intf;
+	k054539_interface intf;
 	double voltab[256];
 	double pantab[0xf];
 
@@ -62,13 +66,17 @@ struct k054539_info {
 static k054539_info Chips[2];
 static k054539_info *info;
 
-static INT32 *soundbuf[2];
+// for resampling
+static INT16 *soundbuf[2] = { NULL, NULL };
+static UINT32 nSampleSize;
+static INT32 nFractionalPosition[2];
+static INT32 nPosition[2];
 
-void K054539_init_flags(INT32 chip, INT32 flags)
+void K054539SetFlags(INT32 chip, INT32 flags)
 {
-#if defined FBA_DEBUG
-	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539_init_flags called without init\n"));
-	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539_init_flags called with invalid chip %x\n"), chip);
+#if defined FBNEO_DEBUG
+	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539SetFlags called without init\n"));
+	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539SetFlags called with invalid chip %x\n"), chip);
 #endif
 
 	info = &Chips[chip];
@@ -77,7 +85,7 @@ void K054539_init_flags(INT32 chip, INT32 flags)
 
 void K054539_set_gain(INT32 chip, INT32 channel, double gain)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539_set_gain called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539_set_gain called with invalid chip %x\n"), chip);
 #endif
@@ -88,7 +96,7 @@ void K054539_set_gain(INT32 chip, INT32 channel, double gain)
 
 static INT32 k054539_regupdate()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539_regupdate called without init\n"));
 #endif
 
@@ -97,7 +105,7 @@ static INT32 k054539_regupdate()
 
 static void k054539_keyon(INT32 channel)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539_keyon called without init\n"));
 #endif
 
@@ -107,7 +115,7 @@ static void k054539_keyon(INT32 channel)
 
 static void k054539_keyoff(INT32 channel)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539_keyoff called without init\n"));
 #endif
 
@@ -117,7 +125,7 @@ static void k054539_keyoff(INT32 channel)
 
 void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Write called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Write called with invalid chip %x\n"), chip);
 #endif
@@ -147,8 +155,8 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 	{
 		case 0x13f:
 			pan = data >= 0x11 && data <= 0x1f ? data - 0x11 : 0x18 - 0x11;
-			if(info->intf->apan)
-				info->intf->apan(info->pantab[pan], info->pantab[0xe - pan]);
+			if(info->intf.apan)
+				info->intf.apan(info->pantab[pan], info->pantab[0xe - pan]);
 		break;
 
 		case 0x214:
@@ -209,7 +217,7 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 
 UINT8 K054539Read(INT32 chip, INT32 offset)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Read called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Read called with invalid chip %x\n"), chip);
 #endif
@@ -239,29 +247,32 @@ UINT8 K054539Read(INT32 chip, INT32 offset)
 
 void K054539Reset(INT32 chip)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Reset called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Reset called with invalid chip %x\n"), chip);
 #endif
 
 	info = &Chips[chip];
-	INT32 data = info->regs[0x22e];
-	info->cur_zone =
-		data == 0x80 ? info->ram :
-		info->rom + 0x20000*data;
-	info->cur_limit = data == 0x80 ? 0x4000 : 0x20000;
+
+	info->reverb_pos = 0;
+	info->cur_ptr = 0;
+	info->cur_zone = info->rom;
+	memset(info->ram, 0, 0x4000*2+info->clock/50*2);
+	memset(info->regs, 0, sizeof(info->regs));
+	memset(info->k054539_posreg_latch, 0, sizeof(info->k054539_posreg_latch));
+	memset(info->channels, 0, sizeof(info->channels));
+	memset(soundbuf[0], 0, (800 * sizeof(INT16) * 2) * 4);
+	memset(soundbuf[1], 0, (800 * sizeof(INT16) * 2) * 4);
 }
 
 static void k054539_init_chip(INT32 clock, UINT8 *rom, INT32 nLen)
 {
-	INT32 i;
-
 	memset(info->regs, 0, sizeof(info->regs));
 	memset(info->k054539_posreg_latch, 0, sizeof(info->k054539_posreg_latch));
 	info->k054539_flags |= K054539_UPDATE_AT_KEYON; // make it default until proven otherwise
 
 	// Real size of 0x4000, the addon is to simplify the reverb buffer computations
-	info->ram = (UINT8*)malloc(0x4000*2+clock/50*2);
+	info->ram = (UINT8*)BurnMalloc(0x4000*2+clock/50*2);
 	info->reverb_pos = 0;
 	info->cur_ptr = 0;
 	memset(info->ram, 0, 0x4000*2+clock/50*2);
@@ -269,35 +280,43 @@ static void k054539_init_chip(INT32 clock, UINT8 *rom, INT32 nLen)
 	info->rom = rom;
 	info->rom_size = nLen;
 	info->rom_mask = 0xffffffffU;
-	for(i=0; i<32; i++) {
+	for (INT32 i = 0; i < 32; i++) {
 		if((1U<<i) >= info->rom_size) {
 			info->rom_mask = (1U<<i) - 1;
 			break;
 		}
 	}
-	
+
 	info->volume[BURN_SND_K054539_ROUTE_1] = 1.00;
 	info->volume[BURN_SND_K054539_ROUTE_2] = 1.00;
 	info->output_dir[BURN_SND_K054539_ROUTE_1] = BURN_SND_ROUTE_BOTH;
 	info->output_dir[BURN_SND_K054539_ROUTE_2] = BURN_SND_ROUTE_BOTH;
-	
-//	if(info->intf->irq)
+
+	//	if(info->intf->irq)
 //		timer_pulse(ATTOTIME_IN_HZ(480), info, 0, k054539_irq); // 10% of usual clock...
+}
+
+void K054539SetApanCallback(INT32 chip, void (*ApanCB)(double, double))
+{
+	info = &Chips[chip];
+	info->intf.apan = ApanCB;
 }
 
 void K054539Init(INT32 chip, INT32 clock, UINT8 *rom, INT32 nLen)
 {
 	DebugSnd_K054539Initted = 1;
 	
-	static const k054539_interface defintrf = { 0, 0 };
 	INT32 i;
+
+	memset(&Chips[chip], 0, sizeof(k054539_info));
 
 	info = &Chips[chip];
 
-	info->intf = &defintrf;
 	info->clock = clock;
 
-	nUpdateStep = (INT32)(((float)clock / nBurnSoundRate) * 32768);
+	nSampleSize = (UINT32)48000 * (1 << 16) / nBurnSoundRate;
+	nFractionalPosition[chip] = 0;
+	nPosition[chip] = 0;
 
 	for (i = 0; i < 8; i++)
 		info->k054539_gain[i] = 1.0;
@@ -312,15 +331,15 @@ void K054539Init(INT32 chip, INT32 clock, UINT8 *rom, INT32 nLen)
 
 	k054539_init_chip(clock, rom, nLen);
 
-	if (soundbuf[0] == NULL) soundbuf[0] = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
-	if (soundbuf[1] == NULL) soundbuf[1] = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
-	
+	if (soundbuf[0] == NULL) soundbuf[0] = (INT16*)BurnMalloc((800 * sizeof(INT16) * 2) * 4);
+	if (soundbuf[1] == NULL) soundbuf[1] = (INT16*)BurnMalloc((800 * sizeof(INT16) * 2) * 4);
+
 	nNumChips = chip;
 }
 
 void K054539SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539SetRoute called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K054539SetRoute called with invalid chip %x\n"), chip);
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("K054539SetRoute called with invalid index %i\n"), nIndex);
@@ -334,35 +353,34 @@ void K054539SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void K054539Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Exit called without init\n"));
 #endif
 
-	if (soundbuf[0] != NULL) {
-		free (soundbuf[0]);
-		soundbuf[0] = NULL;
-	}
+	if (!DebugSnd_K054539Initted) return;
 
-	if (soundbuf[1] != NULL) {
-		free (soundbuf[1]);
-		soundbuf[1] = NULL;
-	}
+	BurnFree (soundbuf[0]);
+	BurnFree (soundbuf[1]);
+	soundbuf[0] = NULL;
+	soundbuf[1] = NULL;
 
 	for (INT32 i = 0; i < 2; i++) {
 		info = &Chips[i];
-		if (info->ram) {
-			free (info->ram);
-			info->ram = NULL;
-		}
+		BurnFree (info->ram);
 	}
 	
 	DebugSnd_K054539Initted = 0;
 	nNumChips = 0;
 }
 
-void K054539Update(INT32 chip, INT16 *pBuf, INT32 length)
+static INT32 signdiff(INT32 a, INT32 b)
 {
-#if defined FBA_DEBUG
+	return ((a >= 0 && b < 0) || (a < 0 && b >= 0));
+}
+
+void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
+{
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Update called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Update called with invalid chip %x\n"), chip);
 #endif
@@ -372,189 +390,171 @@ void K054539Update(INT32 chip, INT16 *pBuf, INT32 length)
 
 	static const INT16 dpcm[16] = {
 		0<<8, 1<<8, 4<<8, 9<<8, 16<<8, 25<<8, 36<<8, 49<<8,
-		(INT16)(-64<<8), (INT16)(-49<<8), (INT16)(-36<<8), (INT16)(-25<<8),
-        (INT16)(-16<<8), (INT16)(-9<<8), (INT16)(-4<<8), (INT16)(-1<<8)
+		0, -49<<8, -36<<8, -25<<8, -16<<8, -9<<8, -4<<8, -1<<8
+		//-64<<8, -49<<8, -36<<8, -25<<8, -16<<8, -9<<8, -4<<8, -1<<8
 	};
 
-	INT32 ch, reverb_pos;
-	INT16 *rbase;
-	UINT8 *samples;
-	UINT32 rom_mask;
+	INT16 *rbase = (INT16 *)(info->ram);
+	UINT8 *rom = info->rom;
+	UINT32 rom_mask = info->rom_mask;
 
-	UINT8 *base1, *base2;
-	struct k054539_channel *chan;
-	INT32 *bufl, *bufr;
-	INT32 cur_pos, cur_pfrac, cur_val, cur_pval;
-	INT32 delta, rdelta, fdelta, pdelta;
-	INT32 vol, bval, pan, i;
+	if(!(info->regs[0x22f] & 1))
+		return;
 
-	double gain, lvol, rvol, rbvol;
+	// re-sampleizer pt.1
+	INT32 nSamplesNeeded = ((((((48000 * 1000) / nBurnFPS) * samples_len) / nBurnSoundLen)) / 10);
+	if (nBurnSoundRate < 44100) nSamplesNeeded += 2; // so we don't end up with negative nPosition[chip] below
 
-	reverb_pos = info->reverb_pos;
-	rbase = (INT16 *)(info->ram);
+	INT16 *pBufL = soundbuf[chip] + 0 * 4096 + 5 + nPosition[chip];
+	INT16 *pBufR = soundbuf[chip] + 1 * 4096 + 5 + nPosition[chip];
 
-	INT32 **buffer = soundbuf;
+	for (INT32 sample = 0; sample < (nSamplesNeeded - nPosition[chip]); sample++) {
+		double lval, rval;
 
-	memset(buffer[0], 0, length*sizeof(*buffer[0]));
-	memset(buffer[1], 0, length*sizeof(*buffer[1]));
+		if(!(info->k054539_flags & K054539_DISABLE_REVERB))
+			lval = rval = rbase[info->reverb_pos];
+		else
+			lval = rval = 0;
+		rbase[info->reverb_pos] = 0;
 
-	samples = info->rom;
-	rom_mask = info->rom_mask;
+		for(INT32 ch=0; ch<8; ch++)
+			if(info->regs[0x22c] & (1<<ch)) {
+				UINT8 *base1 = info->regs + 0x20*ch;
+				UINT8 *base2 = info->regs + 0x200 + 0x2*ch;
+				struct k054539_channel *chan = info->channels + ch;
 
-	if(!(info->regs[0x22f] & 1)) return;
+				INT32 delta = base1[0x00] | (base1[0x01] << 8) | (base1[0x02] << 16);
 
-	info->reverb_pos = (reverb_pos + length) & 0x3fff;
+				INT32 vol = base1[0x03];
 
-	for(ch=0; ch<8; ch++)
-		if(info->regs[0x22c] & (1<<ch)) {
-			base1 = info->regs + 0x20*ch;
-			base2 = info->regs + 0x200 + 0x2*ch;
-			chan = info->channels + ch;
-			delta = base1[0x00] | (base1[0x01] << 8) | (base1[0x02] << 16);
+				INT32 bval = vol + base1[0x04];
+				if (bval > 255)
+					bval = 255;
 
-			vol = base1[0x03];
+				INT32 pan = base1[0x05];
+				// DJ Main: 81-87 right, 88 middle, 89-8f left
+				if (pan >= 0x81 && pan <= 0x8f)
+					pan -= 0x81;
+				else if (pan >= 0x11 && pan <= 0x1f)
+					pan -= 0x11;
+				else
+					pan = 0x18 - 0x11;
 
-			bval = vol + base1[0x04];
-			if (bval > 255) bval = 255;
+				double cur_gain = info->k054539_gain[ch];
 
-			pan = base1[0x05];
-// DJ Main: 81-87 right, 88 middle, 89-8f left
-if (pan >= 0x81 && pan <= 0x8f)
-pan -= 0x81;
-else
-			if (pan >= 0x11 && pan <= 0x1f) pan -= 0x11; else pan = 0x18 - 0x11;
+				double lvol = info->voltab[vol] * info->pantab[pan] * cur_gain;
+				if (lvol > VOL_CAP)
+					lvol = VOL_CAP;
 
-			gain = info->k054539_gain[ch];
+				double rvol = info->voltab[vol] * info->pantab[0xe - pan] * cur_gain;
+				if (rvol > VOL_CAP)
+					rvol = VOL_CAP;
 
-			lvol = info->voltab[vol] * info->pantab[pan] * gain;
-			if (lvol > VOL_CAP) lvol = VOL_CAP;
+				double rbvol= info->voltab[bval] * cur_gain / 2;
+				if (rbvol > VOL_CAP)
+					rbvol = VOL_CAP;
 
-			rvol = info->voltab[vol] * info->pantab[0xe - pan] * gain;
-			if (rvol > VOL_CAP) rvol = VOL_CAP;
+				INT32 rdelta = (base1[6] | (base1[7] << 8)) >> 3;
+				rdelta = (rdelta + info->reverb_pos) & 0x3fff;
 
-			rbvol= info->voltab[bval] * gain / 2;
-			if (rbvol > VOL_CAP) rbvol = VOL_CAP;
+				INT32 cur_pos = (base1[0x0c] | (base1[0x0d] << 8) | (base1[0x0e] << 16)) & rom_mask;
 
-			rdelta = (base1[6] | (base1[7] << 8)) >> 3;
-//          rdelta = (reverb_pos + (int)((rdelta - 0x2000) * info->freq_ratio)) & 0x3fff;
-			rdelta = (INT32)(rdelta + reverb_pos) & 0x3fff;
+				INT32 fdelta, pdelta;
+				if(base2[0] & 0x20) {
+					delta = -delta;
+					fdelta = +0x10000;
+					pdelta = -1;
+				} else {
+					fdelta = -0x10000;
+					pdelta = +1;
+				}
 
-			cur_pos = (base1[0x0c] | (base1[0x0d] << 8) | (base1[0x0e] << 16)) & rom_mask;
+				INT32 cur_pfrac, cur_val, cur_pval, cur_pval2;
+				if(cur_pos != (INT32)chan->pos) {
+					chan->pos = cur_pos;
+					cur_pfrac = 0;
+					cur_val = 0;
+					cur_pval = 0;
+				} else {
+					cur_pfrac = chan->pfrac;
+					cur_val = chan->val;
+					cur_pval = chan->pval;
+				}
 
-			bufl = buffer[0];
-			bufr = buffer[1];
-//*
-
-			if(base2[0] & 0x20) {
-				delta = -delta;
-				fdelta = +0x10000;
-				pdelta = -1;
-			} else {
-				fdelta = -0x10000;
-				pdelta = +1;
-			}
-
-			if(cur_pos != (INT32)chan->pos) {
-				chan->pos = cur_pos;
-				cur_pfrac = 0;
-				cur_val = 0;
-				cur_pval = 0;
-			} else {
-				cur_pfrac = chan->pfrac;
-				cur_val = chan->val;
-				cur_pval = chan->pval;
-			}
-
-#define UPDATE_CHANNELS																	\
-			do {																		\
-				*bufl++ += (INT16)(cur_val*lvol);										\
-				*bufr++ += (INT16)(cur_val*rvol);										\
-				rbase[rdelta++] += (INT16)(cur_val*rbvol);										\
-				rdelta &= 0x3fff;										\
-			} while(0)
-
-			switch(base2[0] & 0xc) {
-			case 0x0: { // 8bit pcm
-				for(i=0; i<length; i++) {
+				switch(base2[0] & 0xc) {
+				case 0x0: { // 8bit pcm
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
-						cur_pos += (pdelta * nUpdateStep) >> 15;
+						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(samples[cur_pos] << 8);
+						cur_val = (INT16)(rom[cur_pos] << 8);
+						if(cur_val == (INT16)0x8000 && (base2[1] & 1)) {
+							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
+							cur_val = (INT16)(rom[cur_pos] << 8);
+						}
 						if(cur_val == (INT16)0x8000) {
-							if(base2[1] & 1) {
-								cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
-								cur_val = (INT16)(samples[cur_pos] << 8);
-								if(cur_val != (INT16)0x8000)
-									continue;
-							}
 							k054539_keyoff(ch);
-							goto end_channel_0;
+							cur_val = 0;
+							break;
 						}
 					}
-
-					UPDATE_CHANNELS;
+					break;
 				}
-			end_channel_0:
-				break;
-			}
-			case 0x4: { // 16bit pcm lsb first
-				pdelta <<= 1;
 
-				for(i=0; i<length; i++) {
+				case 0x4: { // 16bit pcm lsb first
+					pdelta <<= 1;
+
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
-						cur_pos += (pdelta * nUpdateStep) >> 15;
+						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(samples[cur_pos] | samples[cur_pos+1]<<8);
+						cur_val = (INT16)(rom[cur_pos] | rom[cur_pos+1]<<8);
+						if(cur_val == (INT16)0x8000 && (base2[1] & 1)) {
+							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
+							cur_val = (INT16)(rom[cur_pos] | rom[cur_pos+1]<<8);
+						}
 						if(cur_val == (INT16)0x8000) {
-							if(base2[1] & 1) {
-								cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
-								cur_val = (INT16)(samples[cur_pos] | samples[cur_pos+1]<<8);
-								if(cur_val != (INT16)0x8000)
-									continue;
-							}
 							k054539_keyoff(ch);
-							goto end_channel_4;
+							cur_val = 0;
+							break;
 						}
 					}
-
-					UPDATE_CHANNELS;
-				}
-			end_channel_4:
-				break;
-			}
-			case 0x8: { // 4bit dpcm
-				cur_pos <<= 1;
-				cur_pfrac <<= 1;
-				if(cur_pfrac & 0x10000) {
-					cur_pfrac &= 0xffff;
-					cur_pos |= 1;
+					break;
 				}
 
-				for(i=0; i<length; i++) {
+				case 0x8: { // 4bit dpcm
+					cur_pos <<= 1;
+					cur_pfrac <<= 1;
+					if(cur_pfrac & 0x10000) {
+						cur_pfrac &= 0xffff;
+						cur_pos |= 1;
+					}
+
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
-						cur_pos += (pdelta * nUpdateStep) >> 15;
+						cur_pos += pdelta;
 
+						cur_pval2 = cur_pval;
 						cur_pval = cur_val;
-						cur_val = samples[cur_pos>>1];
+						cur_val = rom[cur_pos>>1];
+						if(cur_val == 0x88 && (base2[1] & 1)) {
+							cur_pos = ((base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask) << 1;
+							cur_val = rom[cur_pos>>1];
+						}
 						if(cur_val == 0x88) {
-							if(base2[1] & 1) {
-								cur_pos = ((base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask) << 1;
-								cur_val = samples[cur_pos>>1];
-								if(cur_val != 0x88)
-									goto next_iter;
-							}
 							k054539_keyoff(ch);
-							goto end_channel_8;
+							//bprintf(0, _T("4bit dpcm off ch %X. cur_val %X cur_pval %X cur_pval2 %X\n"), ch, cur_val, cur_pval, cur_pval2);
+							// at the end of the sample: if there's a huge jump between pval and pval2, use pval2
+							if (signdiff(cur_pval, cur_pval2))
+								cur_pval = cur_pval2;
+							cur_val = cur_pval;
+							break;
 						}
-					next_iter:
 						if(cur_pos & 1)
 							cur_val >>= 4;
 						else
@@ -566,75 +566,120 @@ else
 							cur_val = 32767;
 					}
 
-					UPDATE_CHANNELS;
+					cur_pfrac >>= 1;
+					if(cur_pos & 1)
+						cur_pfrac |= 0x8000;
+					cur_pos >>= 1;
+					break;
 				}
-			end_channel_8:
-				cur_pfrac >>= 1;
-				if(cur_pos & 1)
-					cur_pfrac |= 0x8000;
-				cur_pos >>= 1;
-				break;
+				default:
+					//LOG(("Unknown sample type %x for channel %d\n", base2[0] & 0xc, ch));
+					break;
+				}
+				lval += cur_val * lvol;
+				rval += cur_val * rvol;
+				rbase[(rdelta + info->reverb_pos) & 0x1fff] += INT16(cur_val*rbvol);
+
+				chan->lvol = lvol;
+				chan->rvol = rvol;
+
+				chan->pos = cur_pos;
+				chan->pfrac = cur_pfrac;
+				chan->pval = cur_pval;
+				chan->val = cur_val;
+
+				if(k054539_regupdate()) {
+					base1[0x0c] = cur_pos     & 0xff;
+					base1[0x0d] = cur_pos>> 8 & 0xff;
+					base1[0x0e] = cur_pos>>16 & 0xff;
+				}
+			} else { // get rampy to remove dc offset clicks -dink [Dec. 1, 2017]
+				struct k054539_channel *chan = info->channels + ch;
+
+				if (chan->val > 0) {
+					chan->val -= ((chan->val >  4) ? 4 : 1);
+				} else {
+					chan->val += ((chan->val < -4) ? 4 : 1);
+				}
+
+				lval += chan->val * chan->lvol;
+				rval += chan->val * chan->rvol;
 			}
-			default:
-				break;
-			}
-			chan->pos = cur_pos;
-			chan->pfrac = cur_pfrac;
-			chan->pval = cur_pval;
-			chan->val = cur_val;
-			if(k054539_regupdate()) {
-				base1[0x0c] = cur_pos     & 0xff;
-				base1[0x0d] = cur_pos>> 8 & 0xff;
-				base1[0x0e] = cur_pos>>16 & 0xff;
-			}
+		info->reverb_pos = (info->reverb_pos + 1) & 0x1fff;
+
+		if (info->k054539_flags & K054539_REVERSE_STEREO) {
+			double temp = rval;
+			rval = lval;
+			lval = temp;
 		}
 
-	//* drivers should be given the option to disable reverb when things go terribly wrong
-	if(!(info->k054539_flags & K054539_DISABLE_REVERB))
-	{
-		for(i=0; i<length; i++) {
-			INT16 val = rbase[(i+reverb_pos) & 0x3fff];
-			buffer[0][i] += val;
-			buffer[1][i] += val;
-		}
-	}
-
-	for (INT32 f = 0; f < length; f++) {
 		INT32 nLeftSample = 0, nRightSample = 0;
-		
+
 		if ((info->output_dir[BURN_SND_K054539_ROUTE_1] & BURN_SND_ROUTE_LEFT) == BURN_SND_ROUTE_LEFT) {
-			nLeftSample += (INT32)(buffer[0][f] * info->volume[BURN_SND_K054539_ROUTE_1]);
+			nLeftSample += (INT32)(lval * info->volume[BURN_SND_K054539_ROUTE_1]);
 		}
 		if ((info->output_dir[BURN_SND_K054539_ROUTE_1] & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
-			nRightSample += (INT32)(buffer[0][f] * info->volume[BURN_SND_K054539_ROUTE_1]);
+			nRightSample += (INT32)(rval * info->volume[BURN_SND_K054539_ROUTE_1]);
 		}
-		
+
 		if ((info->output_dir[BURN_SND_K054539_ROUTE_2] & BURN_SND_ROUTE_LEFT) == BURN_SND_ROUTE_LEFT) {
-			nLeftSample += (INT32)(buffer[1][f] * info->volume[BURN_SND_K054539_ROUTE_2]);
+			nLeftSample += (INT32)(lval * info->volume[BURN_SND_K054539_ROUTE_2]);
 		}
 		if ((info->output_dir[BURN_SND_K054539_ROUTE_2] & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
-			nRightSample += (INT32)(buffer[1][f] * info->volume[BURN_SND_K054539_ROUTE_2]);
+			nRightSample += (INT32)(rval * info->volume[BURN_SND_K054539_ROUTE_2]);
 		}
-		
-		nLeftSample = BURN_SND_CLIP(nLeftSample);
-		nRightSample = BURN_SND_CLIP(nRightSample);
-		
-		pBuf[0] += nLeftSample;
-		pBuf[1] += nRightSample;
-		pBuf += 2;
+
+		pBufL[0] = BURN_SND_CLIP(nLeftSample);  pBufL++;
+		pBufR[0] = BURN_SND_CLIP(nRightSample); pBufR++;
 	}
 
-	if(reverb_pos + length > 0x4000) {
-		i = 0x4000 - reverb_pos;
-		memset(rbase + reverb_pos, 0, i*2);
-		memset(rbase, 0, (length-i)*2);
-	} else
-		memset(rbase + reverb_pos, 0, length*2);
+	pBufL = soundbuf[chip] + 0 * 4096 + 5;
+	pBufR = soundbuf[chip] + 1 * 4096 + 5;
+
+	for (INT32 i = (nFractionalPosition[chip] & 0xFFFF0000) >> 15; i < (samples_len << 1); i += 2, nFractionalPosition[chip] += nSampleSize) {
+		INT32 nLeftSample[4] = {0, 0, 0, 0};
+		INT32 nRightSample[4] = {0, 0, 0, 0};
+		INT32 nTotalLeftSample, nTotalRightSample;
+
+		nLeftSample[0] += (INT32)(pBufL[(nFractionalPosition[chip] >> 16) - 3]);
+		nLeftSample[1] += (INT32)(pBufL[(nFractionalPosition[chip] >> 16) - 2]);
+		nLeftSample[2] += (INT32)(pBufL[(nFractionalPosition[chip] >> 16) - 1]);
+		nLeftSample[3] += (INT32)(pBufL[(nFractionalPosition[chip] >> 16) - 0]);
+
+		nRightSample[0] += (INT32)(pBufR[(nFractionalPosition[chip] >> 16) - 3]);
+		nRightSample[1] += (INT32)(pBufR[(nFractionalPosition[chip] >> 16) - 2]);
+		nRightSample[2] += (INT32)(pBufR[(nFractionalPosition[chip] >> 16) - 1]);
+		nRightSample[3] += (INT32)(pBufR[(nFractionalPosition[chip] >> 16) - 0]);
+
+		nTotalLeftSample = INTERPOLATE4PS_16BIT((nFractionalPosition[chip] >> 4) & 0x0fff, nLeftSample[0], nLeftSample[1], nLeftSample[2], nLeftSample[3]);
+		nTotalRightSample = INTERPOLATE4PS_16BIT((nFractionalPosition[chip] >> 4) & 0x0fff, nRightSample[0], nRightSample[1], nRightSample[2], nRightSample[3]);
+
+		nTotalLeftSample = BURN_SND_CLIP(nTotalLeftSample);
+		nTotalRightSample = BURN_SND_CLIP(nTotalRightSample);
+
+		outputs[i + 0] = BURN_SND_CLIP(outputs[i + 0] + nTotalLeftSample);
+		outputs[i + 1] = BURN_SND_CLIP(outputs[i + 1] + nTotalRightSample);
+	}
+
+	if (samples_len >= nBurnSoundLen) {
+		INT32 nExtraSamples = nSamplesNeeded - (nFractionalPosition[chip] >> 16);
+		//if (nExtraSamples) bprintf(0, _T("%X, "), nExtraSamples);
+
+		for (INT32 i = -4; i < nExtraSamples; i++) {
+			pBufL[i] = pBufL[(nFractionalPosition[chip] >> 16) + i];
+			pBufR[i] = pBufR[(nFractionalPosition[chip] >> 16) + i];
+		}
+
+		nFractionalPosition[chip] &= 0xFFFF;
+
+		nPosition[chip] = nExtraSamples;
+	}
+	//  -4 -3 -2 -1 0 +1 +2 +3 +4
 }
 
-INT32 K054539Scan(INT32 nAction)
+void K054539Scan(INT32 nAction, INT32 *)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K054539Initted) bprintf(PRINT_ERROR, _T("K054539Scan called without init\n"));
 #endif
 
@@ -642,46 +687,58 @@ INT32 K054539Scan(INT32 nAction)
 	char szName[32];
 
 	if ((nAction & ACB_DRIVER_DATA) == 0) {
-		return 1;
+		return;
 	}
 
-	for (INT32 i = 0; i < 2; i++) {
+	for (INT32 i = 0; i < nNumChips+1; i++) {
 		info = &Chips[i];
 
-		sprintf(szName, "K054539 Latch %d", 0);
+		memset(&ba, 0, sizeof(ba));
+		sprintf(szName, "K054539 Latch %d", i);
 		ba.Data		= info->k054539_posreg_latch;
-		ba.nLen		= 8*3;
+		ba.nLen		= sizeof(info->k054539_posreg_latch);
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
-		sprintf(szName, "K054539 Regs # %d", 0);
+		sprintf(szName, "K054539 Regs # %d", i);
 		ba.Data		= info->regs;
-		ba.nLen		= 0x230;
+		ba.nLen		= sizeof(info->regs);
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
-		sprintf(szName, "K054539 Ram # %d", 0);
+		sprintf(szName, "K054539 Ram # %d", i);
 		ba.Data		= info->ram;
 		ba.nLen		= 0x4000*2+info->clock/50*2;
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
+		sprintf(szName, "K054539 Channels # %d", i);
 		ba.Data		= &info->channels;
-		ba.nLen		= sizeof(k054539_channel) * 8;
+		ba.nLen		= sizeof(info->channels);
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
-		SCAN_VAR(info->k054539_flags);
 		SCAN_VAR(info->reverb_pos);
 		SCAN_VAR(info->cur_ptr);
 		SCAN_VAR(info->cur_limit);
 
-		K054539Write(i, 0x22e, K054539Read(0, 0x22e));
-	}
+		if (nAction & ACB_WRITE) {
+			INT32 data = info->regs[0x22e];
+			info->cur_zone =
+				data == 0x80 ? info->ram :
+				info->rom + 0x20000*data;
+			info->cur_limit = data == 0x80 ? 0x4000 : 0x20000;
 
-	return 0;
+			for (INT32 chip = 0; chip < 2; chip++) {
+				nFractionalPosition[chip] = 0;
+				nPosition[chip] = 0;
+			}
+			memset(soundbuf[0], 0, (800 * sizeof(INT16) * 2) * 4);
+			memset(soundbuf[1], 0, (800 * sizeof(INT16) * 2) * 4);
+		}
+	}
 }

@@ -1,4 +1,5 @@
 // Kaneko Pandora module
+// Based on MAME sources by David Haywood, Luca Elia
 
 #include "tiles_generic.h"
 
@@ -9,11 +10,12 @@ static INT32 pandora_clear;
 static INT32 pandora_xoffset;
 static INT32 pandora_yoffset;
 static INT32 pandora_color_offset;
+static INT32 pandora_code_max;
 INT32 pandora_flipscreen;
 
 void pandora_set_clear(INT32 clear)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugDev_PandoraInitted) bprintf(PRINT_ERROR, _T("pandora_set_clear called without init\n"));
 #endif
 
@@ -22,7 +24,7 @@ void pandora_set_clear(INT32 clear)
 
 void pandora_update(UINT16 *dest)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugDev_PandoraInitted) bprintf(PRINT_ERROR, _T("pandora_update called without init\n"));
 #endif
 
@@ -35,7 +37,7 @@ void pandora_update(UINT16 *dest)
 
 void pandora_buffer_sprites()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugDev_PandoraInitted) bprintf(PRINT_ERROR, _T("pandora_buffer_sprites called without init\n"));
 #endif
 
@@ -66,6 +68,8 @@ void pandora_buffer_sprites()
 			x = dx;
 			y = dy;
 		}
+
+		code &= pandora_code_max;
 
 		if (pandora_flipscreen)
 		{
@@ -105,7 +109,7 @@ void pandora_buffer_sprites()
 }
 
 // must be called after GenericTilesInit()
-void pandora_init(UINT8 *ram, UINT8 *gfx, INT32 color_offset, INT32 x, INT32 y)
+void pandora_init(UINT8 *ram, UINT8 *gfx, INT32 gfx_mod, INT32 color_offset, INT32 x, INT32 y)
 {
 	DebugDev_PandoraInitted = 1;
 	
@@ -114,6 +118,7 @@ void pandora_init(UINT8 *ram, UINT8 *gfx, INT32 color_offset, INT32 x, INT32 y)
 	pandora_yoffset	= y;
 	pandora_gfx	= gfx;
 	pandora_color_offset	= color_offset;
+	pandora_code_max = gfx_mod;
 
 	if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
 		BurnDrvGetVisibleSize(&nScreenHeight, &nScreenWidth);
@@ -121,20 +126,17 @@ void pandora_init(UINT8 *ram, UINT8 *gfx, INT32 color_offset, INT32 x, INT32 y)
 		BurnDrvGetVisibleSize(&nScreenWidth, &nScreenHeight);
 	}
 
-	pandora_temp = (UINT16*)malloc(nScreenWidth * nScreenHeight * sizeof(UINT16));
+	pandora_temp = (UINT16*)BurnMalloc(nScreenWidth * nScreenHeight * sizeof(UINT16));
 	pandora_clear = 1;
 }
 
 void pandora_exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugDev_PandoraInitted) bprintf(PRINT_ERROR, _T("pandora_exit called without init\n"));
 #endif
 
-	if (pandora_temp) {
-		free (pandora_temp);
-		pandora_temp = NULL;
-	}
+	BurnFree (pandora_temp);
 
 	pandora_ram = pandora_gfx = NULL;
 	

@@ -10,6 +10,7 @@ extern "C" void BurnYM2610UpdateRequest();
 
 void BurnYM2610MapADPCMROM(UINT8* YM2610ADPCMAROM, INT32 nYM2610ADPCMASize, UINT8* YM2610ADPCMBROM, INT32 nYM2610ADPCMBSize);
 INT32 BurnYM2610Init(INT32 nClockFrequency, UINT8* YM2610ADPCMAROM, INT32* nYM2610ADPCMASize, UINT8* YM2610ADPCMBROM, INT32* nYM2610ADPCMBSize, FM_IRQHANDLER IRQCallback, INT32 (*StreamCallback)(INT32), double (*GetTimeCallback)(), INT32 bAddSignal);
+INT32 BurnYM2610Init(INT32 nClockFrequency, UINT8* YM2610ADPCMAROM, INT32* nYM2610ADPCMASize, UINT8* YM2610ADPCMBROM, INT32* nYM2610ADPCMBSize, FM_IRQHANDLER IRQCallback, INT32 bAddSignal);
 void BurnYM2610SetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir);
 void BurnYM2610SetLeftVolume(INT32 nIndex, double nLeftVolume);
 void BurnYM2610SetRightVolume(INT32 nIndex, double nRightVolume);
@@ -31,7 +32,7 @@ extern INT32 bYM2610UseSeperateVolumes;
 	
 #define BurnYM2610Read(a) YM2610Read(0, a)
 
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	#define BurnYM2610Write(a, n) if (!DebugSnd_YM2610Initted) bprintf(PRINT_ERROR, _T("BurnYM2610Write called without init\n")); YM2610Write(0, a, n)
 #else
 	#define BurnYM2610Write(a, n) YM2610Write(0, a, n)

@@ -134,7 +134,7 @@ void __fastcall pass_sound_write_port(UINT16 port, UINT8 data)
 		return;
 
 		case 0x80:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 
 		case 0xc0:
@@ -158,16 +158,6 @@ UINT8 __fastcall pass_sound_read_port(UINT16 port)
 	}
 
 	return 0;
-}
-
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 3579545;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 3579545.0;
 }
 
 static INT32 DrvDoReset()
@@ -251,11 +241,11 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x080000, 0x083fff, SM_RAM);
-	SekMapMemory(DrvBgVRAM,		0x200000, 0x200fff, SM_RAM);
-	SekMapMemory(DrvFgVRAM,		0x210000, 0x213fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x220000, 0x2203ff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x080000, 0x083fff, MAP_RAM);
+	SekMapMemory(DrvBgVRAM,		0x200000, 0x200fff, MAP_RAM);
+	SekMapMemory(DrvFgVRAM,		0x210000, 0x213fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x220000, 0x2203ff, MAP_RAM);
 	SekSetWriteWordHandler(0,	pass_write_word);
 	SekSetWriteByteHandler(0,	pass_write_byte);
 	SekSetReadWordHandler(0,	pass_read_word);
@@ -273,9 +263,10 @@ static INT32 DrvInit()
 	ZetSetInHandler(pass_sound_read_port);
 	ZetClose();
 
-	BurnYM2203Init(1, 3579545, NULL, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(1, 3579545, NULL, 0);
 	BurnTimerAttachZet(3579545);
 	BurnYM2203SetAllRoutes(0, 0.60, BURN_SND_ROUTE_BOTH);
+	BurnYM2203SetPSGVolume(0, 0.10);
 
 	MSM6295Init(0, 792000 / 132, 1);
 	MSM6295SetRoute(0, 0.60, BURN_SND_ROUTE_BOTH);
@@ -431,10 +422,10 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += SekRun(nSegment);
 
 		nSegment = nTotalCycles[1] / nInterleave;
-		BurnTimerUpdate(i * nSegment);
+		BurnTimerUpdate((i + 1) * nSegment);
 	}
+	ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
 
-	ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
 	BurnTimerEndFrame(nTotalCycles[1]);
 	
 	if (pBurnSoundOut) {
@@ -442,7 +433,7 @@ static INT32 DrvFrame()
 		MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);
 	}
 
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 	ZetClose();
 	SekClose();
@@ -475,7 +466,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ZetScan(nAction);
 
 		BurnYM2203Scan(nAction, pnMin);
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 	}
 
 	return 0;
@@ -509,7 +500,7 @@ struct BurnDriver BurnDrvPass = {
 	"Pass\0", NULL, "Oksan", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MAZE, 0,
-	NULL, passRomInfo, passRomName, NULL, NULL, PassInputInfo, PassDIPInfo,
+	NULL, passRomInfo, passRomName, NULL, NULL, NULL, NULL, PassInputInfo, PassDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };

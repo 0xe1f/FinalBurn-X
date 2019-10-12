@@ -3,16 +3,16 @@
 /* ======================================================================== */
 /*
  *                                  MUSASHI
- *                                Version 3.3
+ *                                Version 3.32
  *
  * A portable Motorola M680x0 processor emulation engine.
- * Copyright 1998-2001 Karl Stenerud.  All rights reserved.
+ * Copyright Karl Stenerud.  All rights reserved.
  *
  * This code may be freely used for non-commercial purposes as long as this
  * copyright notice remains unaltered in the source code and any binary files
  * containing this code in compiled form.
  *
- * All other lisencing terms must be negotiated with the author
+ * All other licensing terms must be negotiated with the author
  * (Karl Stenerud).
  *
  * The latest version of this code can be obtained at:
@@ -20,6 +20,7 @@
  */
 
 
+#pragma once
 
 #ifndef M68KCONF__HEADER
 #define M68KCONF__HEADER
@@ -38,6 +39,30 @@
 
 
 /* ======================================================================== */
+/* ============================== MAME STUFF ============================== */
+/* ======================================================================== */
+
+/* If you're compiling this for MAME, only change M68K_COMPILE_FOR_MAME
+ * to OPT_ON and use m68kmame.h to configure the 68k core.
+ */
+#ifndef M68K_COMPILE_FOR_MAME
+#define M68K_COMPILE_FOR_MAME      OPT_ON
+#endif /* M68K_COMPILE_FOR_MAME */
+
+
+#if M68K_COMPILE_FOR_MAME == OPT_OFF
+
+#ifndef FALSE
+#    define FALSE 0
+#endif
+#ifndef TRUE
+#    define TRUE 1
+#endif
+
+#include "driver.h"
+
+
+/* ======================================================================== */
 /* ============================= CONFIGURATION ============================ */
 /* ======================================================================== */
 
@@ -46,6 +71,7 @@
 #define M68K_EMULATE_010            OPT_ON
 #define M68K_EMULATE_EC020          OPT_ON
 #define M68K_EMULATE_020            OPT_OFF
+#define M68K_EMULATE_040            OPT_OFF
 
 
 /* If ON, the CPU will call m68k_read_immediate_xx() for immediate addressing
@@ -93,15 +119,19 @@
  * instruction.
  */
 #define M68K_CMPILD_HAS_CALLBACK     OPT_SPECIFY_HANDLER
-//#define M68K_CMPILD_CALLBACK(v,r)    your_cmpild_handler_function(v,r)
 #define M68K_CMPILD_CALLBACK(v, r)   M68KcmpildCallback(v, r)
 
 /* If ON, CPU will call the callback when it encounters a rte
  * instruction.
  */
 #define M68K_RTE_HAS_CALLBACK       OPT_SPECIFY_HANDLER
-//#define M68K_RTE_CALLBACK()         your_rte_handler_function()
-#define M68K_RTE_CALLBACK()	    M68KRTECallback()
+#define M68K_RTE_CALLBACK()         M68KRTECallback()
+
+/* If ON, CPU will call the callback when it encounters a tas
+ * instruction.
+ */
+#define M68K_TAS_HAS_CALLBACK       OPT_SPECIFY_HANDLER
+#define M68K_TAS_CALLBACK()         M68KTASCallback()
 
 
 /* If ON, CPU will call the set fc callback on every memory access to
@@ -125,7 +155,7 @@
 /* If ON, CPU will call the instruction hook callback before every
  * instruction.
  */
-#ifdef FBA_DEBUG
+#ifdef FBNEO_DEBUG
  #define M68K_INSTRUCTION_HOOK       OPT_ON
 #else
  #define M68K_INSTRUCTION_HOOK       OPT_OFF
@@ -191,6 +221,7 @@ void M68KResetCallback(void);
 int M68KIRQAcknowledge(int nIRQ);
 void M68KRTECallback(void);
 void M68KcmpildCallback(unsigned int val, int reg);
+int M68KTASCallback(void);
 
 unsigned int __fastcall M68KFetchByte(unsigned int a);
 unsigned int __fastcall M68KFetchWord(unsigned int a);
@@ -200,7 +231,7 @@ extern unsigned int (*SekDbgFetchByteDisassembler)(unsigned int);
 extern unsigned int (*SekDbgFetchWordDisassembler)(unsigned int);
 extern unsigned int (*SekDbgFetchLongDisassembler)(unsigned int);
 
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 extern unsigned int (__fastcall *M68KReadByteDebug)(unsigned int);
 extern unsigned int (__fastcall *M68KReadWordDebug)(unsigned int);
 extern unsigned int (__fastcall *M68KReadLongDebug)(unsigned int);
@@ -238,7 +269,7 @@ void __fastcall M68KWriteLong(unsigned int a, unsigned int d);
 #define m68k_read_disassembler_16(address) SekDbgFetchWordDisassembler(address)
 #define m68k_read_disassembler_32(address) SekDbgFetchLongDisassembler(address)
 
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 /* Read from anywhere */
 #define m68k_read_memory_8(address) M68KReadByteDebug(address)
 #define m68k_read_memory_16(address) M68KReadWordDebug(address)
@@ -258,7 +289,9 @@ void __fastcall M68KWriteLong(unsigned int a, unsigned int d);
 #define m68k_write_memory_8(address, value) M68KWriteByte(address, value)
 #define m68k_write_memory_16(address, value) M68KWriteWord(address, value)
 #define m68k_write_memory_32(address, value) M68KWriteLong(address, value)
-#endif /* FBA_DEBUG */
+#endif /* FBNEO_DEBUG */
+
+#endif /* M68K_COMPILE_FOR_MAME */
 
 
 /* ======================================================================== */

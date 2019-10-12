@@ -1,3 +1,6 @@
+// FB Alpha Battle Bakraid driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 #include "ymz280b.h"
 #include "eeprom.h"
@@ -31,25 +34,27 @@ static INT32 nCycles68KSync;
 
 static INT32 nTextROMStatus;
 
+#ifdef BUILD_A68K
 static bool bUseAsm68KCoreOldValue = false;
+#endif
 
 // Rom information
 static struct BurnRomInfo bkraiduRomDesc[] = {
-	{ "prg0u022_usa.bin", 0x080000, 0x95fb2ffd, BRF_ESS | BRF_PRG }, //  0 CPU #0 code (even)
-	{ "prg2u021.bin", 0x080000, 0xFFBA8656, BRF_ESS | BRF_PRG }, //  1
-	{ "prg1u023.new", 0x080000, 0x4ae9aa64, BRF_ESS | BRF_PRG }, //  2				(odd)
-	{ "prg3u024.bin", 0x080000, 0x834B8AD6, BRF_ESS | BRF_PRG }, //  3
+	{ "prg0u022_usa.bin", 	0x080000, 0x95fb2ffd, BRF_ESS | BRF_PRG }, 	//  0 CPU #0 code (even)
+	{ "prg2u021.bin", 		0x080000, 0xffba8656, BRF_ESS | BRF_PRG }, 	//  1
+	{ "prg1u023.new", 		0x080000, 0x4ae9aa64, BRF_ESS | BRF_PRG }, 	//  2			  (odd)
+	{ "prg3u024.bin", 		0x080000, 0x834b8ad6, BRF_ESS | BRF_PRG }, 	//  3
 
-	{ "gfxu0510.bin", 0x400000, 0x9CCA3446, BRF_GRA },			 //  4 GP9001 Tile data
-	{ "gfxu0512.bin", 0x400000, 0xA2A281D5, BRF_GRA },			 //  5
-	{ "gfxu0511.bin", 0x400000, 0xE16472C0, BRF_GRA },			 //  6
-	{ "gfxu0513.bin", 0x400000, 0x8BB635A0, BRF_GRA },			 //  7
+	{ "gfxu0510.bin", 		0x400000, 0x9cca3446, BRF_GRA },			//  4 GP9001 Tile data
+	{ "gfxu0512.bin", 		0x400000, 0xa2a281d5, BRF_GRA },			//  5
+	{ "gfxu0511.bin", 		0x400000, 0xe16472c0, BRF_GRA },			//  6
+	{ "gfxu0513.bin", 		0x400000, 0x8bb635a0, BRF_GRA },			//  7
 
-	{ "sndu0720.bin", 0x020000, 0xE62AB246, BRF_ESS | BRF_PRG }, //  8 Z80 program
+	{ "sndu0720.bin", 		0x020000, 0xe62ab246, BRF_ESS | BRF_PRG }, 	//  8 Z80 program
 
-	{ "rom6.829",     0x400000, 0x8848B4A0, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "rom7.830",     0x400000, 0xD6224267, BRF_SND },			 // 10
-	{ "rom8.831",     0x400000, 0xA101DFB0, BRF_SND },			 // 11
+	{ "rom6.829",     		0x400000, 0x8848b4a0, BRF_SND },			//  9 YMZ280B (AD)PCM data
+	{ "rom7.830",     		0x400000, 0xd6224267, BRF_SND },			// 10
+	{ "rom8.831",     		0x400000, 0xa101dfb0, BRF_SND },			// 11
 	
 	{ "eeprom-bbakraid-new.bin", 0x00200, 0x35c9275a, BRF_PRG },
 };
@@ -59,21 +64,21 @@ STD_ROM_PICK(bkraidu)
 STD_ROM_FN(bkraidu)
 
 static struct BurnRomInfo bkraidjRomDesc[] = {
-	{ "prg0u022.bin", 0x080000, 0x0DD59512, BRF_ESS | BRF_PRG }, //  0 CPU #0 code (even)
-	{ "prg2u021.bin", 0x080000, 0xFFBA8656, BRF_ESS | BRF_PRG }, //  1
-	{ "prg1u023.bin", 0x080000, 0xFECDE223, BRF_ESS | BRF_PRG }, //  2				(odd)
-	{ "prg3u024.bin", 0x080000, 0x834B8AD6, BRF_ESS | BRF_PRG }, //  3
+	{ "prg0u022.bin", 		0x080000, 0x0dd59512, BRF_ESS | BRF_PRG }, 	//  0 CPU #0 code (even)
+	{ "prg2u021.bin", 		0x080000, 0xffba8656, BRF_ESS | BRF_PRG }, 	//  1
+	{ "prg1u023.bin", 		0x080000, 0xfecde223, BRF_ESS | BRF_PRG }, 	//  2				(odd)
+	{ "prg3u024.bin", 		0x080000, 0x834b8ad6, BRF_ESS | BRF_PRG }, 	//  3
 
-	{ "gfxu0510.bin", 0x400000, 0x9CCA3446, BRF_GRA },			 //  4 GP9001 Tile data
-	{ "gfxu0512.bin", 0x400000, 0xA2A281D5, BRF_GRA },			 //  5
-	{ "gfxu0511.bin", 0x400000, 0xE16472C0, BRF_GRA },			 //  6
-	{ "gfxu0513.bin", 0x400000, 0x8BB635A0, BRF_GRA },			 //  7
+	{ "gfxu0510.bin", 		0x400000, 0x9cca3446, BRF_GRA },			//  4 GP9001 Tile data
+	{ "gfxu0512.bin", 		0x400000, 0xa2a281d5, BRF_GRA },			//  5
+	{ "gfxu0511.bin", 		0x400000, 0xe16472c0, BRF_GRA },			//  6
+	{ "gfxu0513.bin", 		0x400000, 0x8bb635a0, BRF_GRA },			//  7
 
-	{ "sndu0720.bin", 0x020000, 0xE62AB246, BRF_ESS | BRF_PRG }, //  8 Z80 program
+	{ "sndu0720.bin", 		0x020000, 0xe62ab246, BRF_ESS | BRF_PRG }, 	//  8 Z80 program
 
-	{ "rom6.829",     0x400000, 0x8848B4A0, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "rom7.830",     0x400000, 0xD6224267, BRF_SND },			 // 10
-	{ "rom8.831",     0x400000, 0xA101DFB0, BRF_SND },			 // 11
+	{ "rom6.829",     		0x400000, 0x8848b4a0, BRF_SND },			//  9 YMZ280B (AD)PCM data
+	{ "rom7.830",     		0x400000, 0xd6224267, BRF_SND },			// 10
+	{ "rom8.831",     		0x400000, 0xa101dfb0, BRF_SND },			// 11
 	
 	{ "eeprom-bbakraid.bin", 0x00200, 0x7f97d347, BRF_PRG },
 };
@@ -82,22 +87,46 @@ static struct BurnRomInfo bkraidjRomDesc[] = {
 STD_ROM_PICK(bkraidj)
 STD_ROM_FN(bkraidj)
 
+static struct BurnRomInfo bkraidcRomDesc[] = {
+	{ "prg0u022_china.bin", 0x080000, 0x760be084, BRF_ESS | BRF_PRG }, 	//  0 CPU #0 code (even)
+	{ "prg2u021.bin", 		0x080000, 0xffba8656, BRF_ESS | BRF_PRG }, 	//  1
+	{ "prg1u023.new", 		0x080000, 0x4ae9aa64, BRF_ESS | BRF_PRG }, 	//  2				(odd)
+	{ "prg3u024.bin", 		0x080000, 0x834b8ad6, BRF_ESS | BRF_PRG }, 	//  3
+
+	{ "gfxu0510.bin", 		0x400000, 0x9cca3446, BRF_GRA },			//  4 GP9001 Tile data
+	{ "gfxu0512.bin", 		0x400000, 0xa2a281d5, BRF_GRA },			//  5
+	{ "gfxu0511.bin", 		0x400000, 0xe16472c0, BRF_GRA },			//  6
+	{ "gfxu0513.bin", 		0x400000, 0x8bb635a0, BRF_GRA },			//  7
+
+	{ "sndu0720.bin", 		0x020000, 0xe62ab246, BRF_ESS | BRF_PRG }, 	//  8 Z80 program
+
+	{ "rom6.829",     		0x400000, 0x8848b4a0, BRF_SND },			//  9 YMZ280B (AD)PCM data
+	{ "rom7.830",     		0x400000, 0xd6224267, BRF_SND },			// 10
+	{ "rom8.831",     		0x400000, 0xa101dfb0, BRF_SND },			// 11
+	
+	{ "eeprom-bbakraid-new.bin", 0x00200, 0x35c9275a, BRF_PRG },
+};
+
+
+STD_ROM_PICK(bkraidc)
+STD_ROM_FN(bkraidc)
+
 static struct BurnRomInfo bkraidujRomDesc[] = {
-	{ "prg0u022.new", 0x080000, 0xFA8D38D3, BRF_ESS | BRF_PRG }, //  0 CPU #0 code (even)
-	{ "prg2u021.bin", 0x080000, 0xFFBA8656, BRF_ESS | BRF_PRG }, //  1
-	{ "prg1u023.new", 0x080000, 0x4AE9AA64, BRF_ESS | BRF_PRG }, //  2				(odd)
-	{ "prg3u024.bin", 0x080000, 0x834B8AD6, BRF_ESS | BRF_PRG }, //  3
+	{ "prg0u022.new", 		0x080000, 0xfa8d38d3, BRF_ESS | BRF_PRG }, 	//  0 CPU #0 code (even)
+	{ "prg2u021.bin", 		0x080000, 0xffba8656, BRF_ESS | BRF_PRG }, 	//  1
+	{ "prg1u023.new", 		0x080000, 0x4ae9aa64, BRF_ESS | BRF_PRG }, 	//  2				(odd)
+	{ "prg3u024.bin", 		0x080000, 0x834b8ad6, BRF_ESS | BRF_PRG }, 	//  3
 
-	{ "gfxu0510.bin", 0x400000, 0x9CCA3446, BRF_GRA },			 //  4 GP9001 Tile data
-	{ "gfxu0512.bin", 0x400000, 0xA2A281D5, BRF_GRA },			 //  5
-	{ "gfxu0511.bin", 0x400000, 0xE16472C0, BRF_GRA },			 //  6
-	{ "gfxu0513.bin", 0x400000, 0x8BB635A0, BRF_GRA },			 //  7
+	{ "gfxu0510.bin", 		0x400000, 0x9cca3446, BRF_GRA },			//  4 GP9001 Tile data
+	{ "gfxu0512.bin", 		0x400000, 0xa2a281d5, BRF_GRA },			//  5
+	{ "gfxu0511.bin", 		0x400000, 0xe16472c0, BRF_GRA },			//  6
+	{ "gfxu0513.bin", 		0x400000, 0x8bb635a0, BRF_GRA },			//  7
 
-	{ "sndu0720.bin", 0x020000, 0xE62AB246, BRF_ESS | BRF_PRG }, //  8 Z80 program
+	{ "sndu0720.bin", 		0x020000, 0xe62ab246, BRF_ESS | BRF_PRG }, 	//  8 Z80 program
 
-	{ "rom6.829",     0x400000, 0x8848B4A0, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "rom7.830",     0x400000, 0xD6224267, BRF_SND },			 // 10
-	{ "rom8.831",     0x400000, 0xA101DFB0, BRF_SND },			 // 11
+	{ "rom6.829",     		0x400000, 0x8848b4a0, BRF_SND },			//  9 YMZ280B (AD)PCM data
+	{ "rom7.830",     		0x400000, 0xd6224267, BRF_SND },			// 10
+	{ "rom8.831",     		0x400000, 0xa101dfb0, BRF_SND },			// 11
 	
 	{ "eeprom-bbakraid-new.bin", 0x00200, 0x35c9275a, BRF_PRG },
 };
@@ -337,6 +366,7 @@ static INT32 MemIndex()
 	GP9001ROM[0]= Next; Next += nGP9001ROMSize[0];	// GP9001 tile data
 	YMZ280BROM	= Next;	Next += 0xC00000;
 	DefaultEEPROM = Next; Next += 0x000200;
+
 	RamStart	= Next;
 	ExtraTROM	= Next; Next += 0x008000;			// Extra Text layer tile data
 	ExtraTRAM	= Next; Next += 0x002000;			// Extra tile layer
@@ -347,46 +377,12 @@ static INT32 MemIndex()
 	GP9001RAM[0]= Next; Next += 0x004000;
 	GP9001Reg[0]= (UINT16*)Next; Next += 0x0100 * sizeof(UINT16);
 	RamEnd		= Next;
+
 	ToaPalette	= (UINT32 *)Next; Next += nColCount * sizeof(UINT32);
 	MemEnd		= Next;
 
  	ExtraTSelect= Ram01;							// Extra text layer scroll
 	ExtraTScroll= Ram01 + 0x000200;					// Extra text layer offset
-	return 0;
-}
-
-// Scan ram
-static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
-{
-	struct BurnArea ba;
-
-	if (pnMin) {						// Return minimum compatible version
-		*pnMin =  0x029521;
-	}
-
-	EEPROMScan(nAction, pnMin);			// Scan EEPROM
-
-	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
-		memset(&ba, 0, sizeof(ba));
-    ba.Data		= RamStart;
-		ba.nLen		= RamEnd - RamStart;
-		ba.szName	= "RAM";
-		BurnAcb(&ba);
-
-		SekScan(nAction);				// scan 68000 states
-		ZetScan(nAction);				// Scan Z80
-
-		YMZ280BScan();
-		BurnTimerScan(nAction, pnMin);
-
-		ToaScanGP9001(nAction, pnMin);
-
-		SCAN_VAR(DrvInput);
-		SCAN_VAR(nSoundData);
-		SCAN_VAR(Z80BusRQ);
-		SCAN_VAR(nIRQPending);
-	}
-
 	return 0;
 }
 
@@ -407,7 +403,7 @@ static INT32 LoadRoms()
 	BurnLoadRom(YMZ280BROM + 0x000000, 9, 1);
 	BurnLoadRom(YMZ280BROM + 0x400000, 10, 1);
 	BurnLoadRom(YMZ280BROM + 0x800000, 11, 1);
-	
+
 	BurnLoadRom(DefaultEEPROM, 12, 1);
 	
 	return 0;
@@ -433,12 +429,12 @@ static inline void bbakraidSynchroniseZ80(INT32 nExtraCycles)
 static INT32 bbakraidTimerOver(INT32, INT32)
 {
 //	bprintf(PRINT_NORMAL, _T("  - IRQ -> 1.\n"));
-	ZetSetIRQLine(0xFF, ZET_IRQSTATUS_AUTO);
+	ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
 
 	return 0;
 }
 
-UINT8 __fastcall bbakraidZIn(UINT16 nAddress)
+static UINT8 __fastcall bbakraidZIn(UINT16 nAddress)
 {
 	nAddress &= 0xFF;
 	switch (nAddress) {
@@ -457,7 +453,7 @@ UINT8 __fastcall bbakraidZIn(UINT16 nAddress)
 	return 0;
 }
 
-void __fastcall bbakraidZOut(UINT16 nAddress, UINT8 nValue)
+static void __fastcall bbakraidZOut(UINT16 nAddress, UINT8 nValue)
 {
 	nAddress &= 0xFF;
 	switch (nAddress) {
@@ -520,22 +516,22 @@ static void Map68KTextROM(bool bMapTextROM)
 {
 	if (bMapTextROM) {
 		if (nTextROMStatus != 1) {
-			SekMapMemory(ExtraTROM,  0x200000, 0x207FFF, SM_RAM);	// Extra text tile memory
+			SekMapMemory(ExtraTROM,  0x200000, 0x207FFF, MAP_RAM);	// Extra text tile memory
 
 			nTextROMStatus = 1;
 		}
 	} else {
 		if (nTextROMStatus != 0) {
-			SekMapMemory(ExtraTRAM,	0x200000, 0x201FFF, SM_RAM);	// Extra text tilemap RAM
-			SekMapMemory(RamPal,	0x202000, 0x202FFF, SM_RAM);	// Palette RAM
-			SekMapMemory(Ram01,		0x203000, 0x207FFF, SM_RAM);	// Extra text Scroll & offset; RAM
+			SekMapMemory(ExtraTRAM,	0x200000, 0x201FFF, MAP_RAM);	// Extra text tilemap RAM
+			SekMapMemory(RamPal,	0x202000, 0x202FFF, MAP_RAM);	// Palette RAM
+			SekMapMemory(Ram01,		0x203000, 0x207FFF, MAP_RAM);	// Extra text Scroll & offset; RAM
 
 			nTextROMStatus = 0;
 		}
 	}
 }
 
-UINT8 __fastcall bbakraidReadByte(UINT32 sekAddress)
+static UINT8 __fastcall bbakraidReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 
@@ -569,7 +565,7 @@ UINT8 __fastcall bbakraidReadByte(UINT32 sekAddress)
 	return 0;
 }
 
-UINT16 __fastcall bbakraidReadWord(UINT32 sekAddress)
+static UINT16 __fastcall bbakraidReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 
@@ -602,7 +598,7 @@ UINT16 __fastcall bbakraidReadWord(UINT32 sekAddress)
 	return 0;
 }
 
-void __fastcall bbakraidWriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall bbakraidWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 
@@ -619,22 +615,24 @@ void __fastcall bbakraidWriteByte(UINT32 sekAddress, UINT8 byteValue)
 	}
 }
 
-void __fastcall bbakraidWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall bbakraidWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	switch (sekAddress) {
 		case 0x500014:
+			bbakraidSynchroniseZ80(0);
 			nSoundlatchAck &= ~1;
 			nSoundData[0] = wordValue;
+			ZetNmi();
 			return;
 		case 0x500016:
+			bbakraidSynchroniseZ80(0);
 			nSoundlatchAck &= ~2;
 			nSoundData[1] = wordValue;
+			ZetNmi();
 			return;
 
-		// This register is always written to after writing (sound) commands for the Z80
+		// This register is always written to after [~10 cycles] writing (sound) commands for the Z80
 		case 0x50001A:
-			bbakraidSynchroniseZ80(0);
-			ZetNmi();
 			return;
 
 		// Serial EEPROM command
@@ -651,7 +649,7 @@ void __fastcall bbakraidWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			return;
 
 		case 0x500082:		// Acknowledge interrupt
-			SekSetIRQLine(0, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			nIRQPending = 0;
 			return;
 
@@ -678,7 +676,7 @@ void __fastcall bbakraidWriteWord(UINT32 sekAddress, UINT16 wordValue)
 	}
 }
 
-UINT16 __fastcall bbakraidReadWordGP9001(UINT32 sekAddress)
+static UINT16 __fastcall bbakraidReadWordGP9001(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x400008:
@@ -691,7 +689,7 @@ UINT16 __fastcall bbakraidReadWordGP9001(UINT32 sekAddress)
 	return 0;
 }
 
-void __fastcall bbakraidWriteWordGP9001(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall bbakraidWriteWordGP9001(UINT32 sekAddress, UINT16 wordValue)
 {
 	switch (sekAddress) {
 
@@ -714,12 +712,12 @@ void __fastcall bbakraidWriteWordGP9001(UINT32 sekAddress, UINT16 wordValue)
 	}
 }
 
-UINT8 __fastcall bbakraidReadByteZ80ROM(UINT32 sekAddress)
+static UINT8 __fastcall bbakraidReadByteZ80ROM(UINT32 sekAddress)
 {
 	return RomZ80[(sekAddress & 0x7FFFF) >> 1];
 }
 
-UINT16 __fastcall bbakraidReadWordZ80ROM(UINT32 sekAddress)
+static UINT16 __fastcall bbakraidReadWordZ80ROM(UINT32 sekAddress)
 {
 	return RomZ80[(sekAddress & 0x7FFFF) >> 1];
 }
@@ -734,7 +732,7 @@ static INT32 DrvDoReset()
 
 	SekOpen(0);
 	nIRQPending = 0;
-	SekSetIRQLine(0, SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
 	SekReset();
 	SekClose();
 
@@ -757,6 +755,8 @@ static INT32 DrvDoReset()
 	ZetOpen(0);
 	BurnTimerSetRetrig(0, 1.0 / 445.0);
 	ZetClose();
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -801,14 +801,16 @@ static INT32 bbakraidInit()
 
 	EEPROMInit(&eeprom_interface_93C66);
 
+#ifdef BUILD_A68K
 		// Make sure we use Musashi
 		if (bBurnUseASMCPUEmulation) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 			bprintf(PRINT_NORMAL, _T("Switching to Musashi 68000 core\n"));
 #endif
 			bUseAsm68KCoreOldValue = bBurnUseASMCPUEmulation;
 			bBurnUseASMCPUEmulation = false;
 		}
+#endif
 
 //	if (strcmp("bbakraid", BurnDrvGetTextA(DRV_NAME)) == 0 || strcmp("bbakraidj", BurnDrvGetTextA(DRV_NAME)) == 0) {
 //		if (!EEPROMAvailable()) EEPROMFill(bbakraid_unlimited_nvram, 0, sizeof(bbakraid_unlimited_nvram));
@@ -821,8 +823,8 @@ static INT32 bbakraidInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,		0x000000, 0x1FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram02,		0x208000, 0x20FFFF, SM_RAM);
+		SekMapMemory(Rom01,		0x000000, 0x1FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram02,		0x208000, 0x20FFFF, MAP_RAM);
 
 		Map68KTextROM(true);
 
@@ -831,12 +833,12 @@ static INT32 bbakraidInit()
 		SekSetWriteWordHandler(0, bbakraidWriteWord);
 		SekSetWriteByteHandler(0, bbakraidWriteByte);
 
-		SekMapHandler(1,	0x400000, 0x400400, SM_RAM);		// GP9001 addresses
+		SekMapHandler(1,	0x400000, 0x400400, MAP_RAM);		// GP9001 addresses
 
 		SekSetReadWordHandler(1, bbakraidReadWordGP9001);
 		SekSetWriteWordHandler(1, bbakraidWriteWordGP9001);
 
-		SekMapHandler(2,	0x300000, 0x37FFFF, SM_ROM);		// Z80 ROM
+		SekMapHandler(2,	0x300000, 0x37FFFF, MAP_ROM);		// Z80 ROM
 
 		SekSetReadByteHandler(2, bbakraidReadByteZ80ROM);
 		SekSetReadWordHandler(2, bbakraidReadWordZ80ROM);
@@ -857,7 +859,7 @@ static INT32 bbakraidInit()
 
 	DrvZ80Init();				// Initialize Z80
 
-	YMZ280BInit(16934400, NULL);
+	YMZ280BInit(16934400, NULL, 0xC00000);
 	YMZ280BSetAllRoutes(1.00, BURN_SND_ROUTE_BOTH);
 
 	BurnTimerInit(bbakraidTimerOver, NULL);
@@ -887,13 +889,15 @@ static INT32 DrvExit()
 
 	EEPROMExit();
 
+#ifdef BUILD_A68K
 		if (bUseAsm68KCoreOldValue) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 			bprintf(PRINT_NORMAL, _T("Switching back to A68K core\n"));
 #endif
 			bUseAsm68KCoreOldValue = false;
 			bBurnUseASMCPUEmulation = true;
 		}
+#endif
 
 	BurnFree(Mem);
 
@@ -983,7 +987,7 @@ static INT32 DrvFrame()
 			}
 
 			nIRQPending = 1;
-			SekSetIRQLine(3, SEK_IRQSTATUS_ACK);
+			SekSetIRQLine(3, CPU_IRQSTATUS_ACK);
 
 			ToaBufferGP9001Sprites();
 
@@ -1036,12 +1040,68 @@ static INT32 DrvFrame()
 	return 0;
 }
 
+// Scan ram
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
+{
+	struct BurnArea ba;
+
+	if (pnMin) {						// Return minimum compatible version
+		*pnMin =  0x029521;
+	}
+
+	EEPROMScan(nAction, pnMin);			// Scan EEPROM
+
+	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
+		memset(&ba, 0, sizeof(ba));
+		ba.Data		= RamStart;
+		ba.nLen		= RamEnd - RamStart;
+		ba.szName	= "RAM";
+		BurnAcb(&ba);
+
+		SekScan(nAction);				// scan 68000 states
+		ZetScan(nAction);				// Scan Z80
+
+		YMZ280BScan(nAction, pnMin);
+		BurnTimerScan(nAction, pnMin);
+
+		ToaScanGP9001(nAction, pnMin);
+
+		SCAN_VAR(DrvInput);
+		SCAN_VAR(nSoundData);
+		SCAN_VAR(nSoundlatchAck);
+		SCAN_VAR(nCyclesDone);
+		SCAN_VAR(Z80BusRQ);
+		SCAN_VAR(nIRQPending);
+		SCAN_VAR(nTextROMStatus);
+
+		if (nAction & ACB_WRITE) {
+			INT32 n = nTextROMStatus;
+			nTextROMStatus = -1;
+			SekOpen(0);
+			Map68KTextROM(n);
+			SekClose();
+		}
+	}
+
+	return 0;
+}
+
 struct BurnDriver BurnDrvBattleBkraidu = {
 	"bbakraid", NULL, NULL, NULL, "1999",
 	"Battle Bakraid - Unlimited Version (U.S.A.) (Tue Jun 8 1999)\0", NULL, "Eighting", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, bkraiduRomInfo, bkraiduRomName, NULL, NULL, bbakraidInputInfo, bkraiduDIPInfo,
+	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
+	NULL, bkraiduRomInfo, bkraiduRomName, NULL, NULL, NULL, NULL, bbakraidInputInfo, bkraiduDIPInfo,
+	bbakraidInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
+	240, 320, 3, 4
+};
+
+struct BurnDriver BurnDrvBattleBkraidc = {
+	"bbakraidc", "bbakraid", NULL, NULL, "1999",
+	"Battle Bakraid - Unlimited Version (China) (Tue Jun 8 1999)\0", NULL, "Eighting", "Toaplan GP9001 based",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
+	NULL, bkraidcRomInfo, bkraidcRomName, NULL, NULL, NULL, NULL, bbakraidInputInfo, bbakraidDIPInfo,
 	bbakraidInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
@@ -1050,8 +1110,8 @@ struct BurnDriver BurnDrvBattleBkraiduj = {
 	"bbakraidj", "bbakraid", NULL, NULL, "1999",
 	"Battle Bakraid - Unlimited Version (Japan) (Tue Jun 8 1999)\0", NULL, "Eighting", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, bkraidujRomInfo, bkraidujRomName, NULL, NULL, bbakraidInputInfo, bbakraidDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
+	NULL, bkraidujRomInfo, bkraidujRomName, NULL, NULL, NULL, NULL, bbakraidInputInfo, bbakraidDIPInfo,
 	bbakraidInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
@@ -1060,8 +1120,8 @@ struct BurnDriver BurnDrvBattleBkraidj = {
 	"bbakraidja", "bbakraid", NULL, NULL, "1999",
 	"Battle Bakraid (Japan) (Wed Apr 7 1999)\0", NULL, "Eighting", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, bkraidjRomInfo, bkraidjRomName, NULL, NULL, bbakraidInputInfo, bbakraidDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
+	NULL, bkraidjRomInfo, bkraidjRomName, NULL, NULL, NULL, NULL, bbakraidInputInfo, bbakraidDIPInfo,
 	bbakraidInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };

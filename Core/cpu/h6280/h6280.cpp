@@ -130,7 +130,7 @@ static int 	h6280_ICount = 0;
 
 static h6280_Regs  h6280;
 
-//static void set_irq_line(int irqline, int state);
+void h6280_set_irq_line(INT32 irqline, INT32 state);
 #define set_irq_line h6280_set_irq_line
 
 /* include the macros */
@@ -174,18 +174,20 @@ static void h6280_init(int index, int clock, const void *config, int (*irqcallba
 }
 #endif
 
+void h6280_irqcallback(int (*irqcallback)(int))
+{
+	h6280.irq_callback = irqcallback;
+}
+
 void h6280Reset(void)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280Reset called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280Reset called with no CPU open\n"));
 #endif
 
-	int (*save_irqcallback)(int);
-	int i;
-
 	/* wipe out the h6280 structure */
-	save_irqcallback = h6280.irq_callback;
+	int (*save_irqcallback)(int) = h6280.irq_callback;
 	memset(&h6280, 0, sizeof(h6280_Regs));
 	h6280.irq_callback = save_irqcallback;
 
@@ -208,7 +210,7 @@ void h6280Reset(void)
 	h6280.timer_load = 128 * 1024;
 
     /* clear pending interrupts */
-	for (i = 0; i < 3; i++)
+	for (INT32 i = 0; i < 3; i++)
 		h6280.irq_state[i] = CLEAR_LINE;
 	h6280.nmi_state = CLEAR_LINE;
 
@@ -224,9 +226,11 @@ static void h6280_exit(void)
 }
 #endif
 
+static int end_run = 0;
+
 int h6280Run(int cycles)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280Run called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280Run called with no CPU open\n"));
 #endif
@@ -234,6 +238,8 @@ int h6280Run(int cycles)
 	int in;
 	h6280_ICount = cycles;
 	h6280.h6280_iCycles = cycles;
+
+	end_run = 0;
 
 	if ( h6280.irq_pending == 2 ) {
 		h6280.irq_pending--;
@@ -276,13 +282,15 @@ int h6280Run(int cycles)
 				set_irq_line(2,ASSERT_LINE);
 			}
 		}
-	} while (h6280_ICount > 0);
+	} while (h6280_ICount > 0 && !end_run);
 
-	h6280.h6280_totalcycles += cycles - h6280_ICount;
+	cycles = cycles - h6280_ICount;
+
+	h6280.h6280_totalcycles += cycles;
 	h6280_ICount = 0;
 	h6280.h6280_iCycles = 0;
 
-	return cycles - h6280_ICount;
+	return cycles;
 }
 
 void h6280_get_context(void *dst)
@@ -300,29 +308,41 @@ void h6280_set_context(void *src)
 
 int h6280TotalCycles()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280TotalCycles called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280TotalCycles called with no CPU open\n"));
 #endif
 
-	return h6280.h6280_totalcycles;
+	return h6280.h6280_totalcycles + (h6280.h6280_iCycles - h6280_ICount);
 }
 
 void h6280RunEnd()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280RunEnd called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280RunEnd called with no CPU open\n"));
 #endif
 
-	h6280_ICount = 0;
+	end_run = 1;
+}
+
+INT32 h6280Idle(INT32 cycles)
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280Idle called without init\n"));
+	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280Idle called with no CPU open\n"));
+#endif
+
+	h6280.h6280_totalcycles += cycles;
+
+	return cycles;
 }
 
 /*****************************************************************************/
 
 void h6280_set_irq_line(int irqline, int state)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280_set_irq_line called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280_set_irq_line called with no CPU open\n"));
 #endif
@@ -335,6 +355,10 @@ void h6280_set_irq_line(int irqline, int state)
 	}
 	else if (irqline < 3)
 	{
+		if (state == CPU_IRQSTATUS_HOLD) {
+			state = CPU_IRQSTATUS_ACK;
+			h6280.irq_hold = 1;
+		}
 		/* If the state has not changed, just return */
 		if ( h6280.irq_state[irqline] == state )
 			return;
@@ -351,7 +375,7 @@ void h6280_set_irq_line(int irqline, int state)
 
 unsigned char h6280_irq_status_r(unsigned int offset)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280_irq_status_r called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280_irq_status_r called with no CPU open\n"));
 #endif
@@ -375,7 +399,7 @@ unsigned char h6280_irq_status_r(unsigned int offset)
 
 void h6280_irq_status_w(unsigned int offset, unsigned char data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280_irq_status_w called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280_irq_status_w called with no CPU open\n"));
 #endif
@@ -397,7 +421,7 @@ void h6280_irq_status_w(unsigned int offset, unsigned char data)
 
 unsigned char h6280_timer_r(unsigned int)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280_timer_r called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280_timer_r called with no CPU open\n"));
 #endif
@@ -408,7 +432,7 @@ unsigned char h6280_timer_r(unsigned int)
 
 void h6280_timer_w(unsigned int offset, unsigned char data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_H6280Initted) bprintf(PRINT_ERROR, _T("h6280_timer_w called without init\n"));
 	if (nh6280CpuActive == -1) bprintf(PRINT_ERROR, _T("h6280_timer_w called with no CPU open\n"));
 #endif
@@ -416,7 +440,7 @@ void h6280_timer_w(unsigned int offset, unsigned char data)
 	h6280.io_buffer=data;
 	switch (offset&1) {
 		case 0: /* Counter preload */
-			h6280.timer_load=h6280.timer_value=((data&127)+1)*1024;
+			h6280.timer_load=((data&127)+1)*1024;
 			return;
 
 		case 1: /* Counter enable */

@@ -177,7 +177,7 @@ static INT32 DrvFrame()
 
 	ZetOpen(0);
 	ZetRun(4000000 / 60);
-	ZetRaiseIrq(0);
+	ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 	ZetClose();
 
 	if (pBurnDraw) {
@@ -223,7 +223,7 @@ struct BurnDriver BurnDrvdotrikun = {
 	"Dottori Kun (new version)\0", NULL, "Sega", "Test Hardware",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SEGA_MISC, GBF_MAZE, 0,
-	NULL, dotrikunRomInfo, dotrikunRomName, NULL, NULL, DrvInputInfo, NULL,
+	NULL, dotrikunRomInfo, dotrikunRomName, NULL, NULL, NULL, NULL, DrvInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x02,
 	256, 192, 4, 3
 };
@@ -232,7 +232,7 @@ struct BurnDriver BurnDrvdotrikun = {
 // Dottori Kun (old version)
 
 static struct BurnRomInfo dotriku2RomDesc[] = {
-	{ "14479.mpr",	0x4000, 0xa6aa7fa5, BRF_ESS | BRF_PRG }, //  Z80 code
+	{ "epr-13141.ic2",	0x4000, 0xa6aa7fa5, BRF_ESS | BRF_PRG }, //  Z80 code
 };
 
 STD_ROM_PICK(dotriku2)
@@ -243,7 +243,27 @@ struct BurnDriver BurnDrvdotriku2 = {
 	"Dottori Kun (old version)\0", NULL, "Sega", "Test Hardware",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SEGA_MISC, GBF_MAZE, 0,
-	NULL, dotriku2RomInfo, dotriku2RomName, NULL, NULL, DrvInputInfo, NULL,
+	NULL, dotriku2RomInfo, dotriku2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, NULL,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x02,
+	256, 192, 4, 3
+};
+
+
+// Dottori-Man Jr. 
+
+static struct BurnRomInfo dotrimanRomDesc[] = {
+	{ "14479a.mpr",	0x4000, 0x4ba6d2f5, BRF_ESS | BRF_PRG }, //  Z80 code
+};
+
+STD_ROM_PICK(dotriman)
+STD_ROM_FN(dotriman)
+
+struct BurnDriver BurnDrvdotriman = {
+	"dotriman", "dotrikun", NULL, NULL, "2016",
+	"Dottori-Man Jr.\0", NULL, "hack (Chris Covell)", "Test Hardware",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SEGA_MISC, GBF_MAZE, 0,
+	NULL, dotrimanRomInfo, dotrimanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x02,
 	256, 192, 4, 3
 };

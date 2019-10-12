@@ -1,5 +1,7 @@
+// FB Alpha Teki Paki driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
-#include "samples.h"
 
 // Teki Paki
 
@@ -12,16 +14,20 @@ static UINT8 DrvReset = 0;
 static UINT8 bDrawScreen;
 static bool bVBlank;
 
+static UINT8 to_mcu;
+static UINT8 z80cmdavailable;
+
+static INT32 whoopeemode = 0;
 
 // Rom information
 static struct BurnRomInfo drvRomDesc[] = {
-	{ "tp020-1.bin",  0x010000, 0xD8420BD5, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "tp020-2.bin",  0x010000, 0x7222DE8E, BRF_ESS | BRF_PRG }, //  1
+	{ "tp020-1.bin",  		0x010000, 0xd8420bd5, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "tp020-2.bin",  		0x010000, 0x7222de8e, BRF_ESS | BRF_PRG }, //  1
 
-	{ "tp020-4.bin",  0x080000, 0x3EBBE41E, BRF_GRA },	     //  2 GP9001 Tile data
-	{ "tp020-3.bin",  0x080000, 0x2D5E2201, BRF_GRA },	     //  3
+	{ "tp020-4.bin",  		0x080000, 0x3ebbe41e, BRF_GRA },	       //  2 GP9001 Tile data
+	{ "tp020-3.bin",  		0x080000, 0x2d5e2201, BRF_GRA },	       //  3
 
-	{ "hd647180.020", 0x008000, 0x00000000, 0x10 | BRF_NODUMP }, //  4 Sound CPU
+	{ "hd647180.020", 		0x008000, 0xd5157c12, BRF_PRG },           //  4 Sound CPU
 };
 
 STD_ROM_PICK(drv)
@@ -29,14 +35,29 @@ STD_ROM_FN(drv)
 
 
 // Rom information
+static struct BurnRomInfo drvtRomDesc[] = {
+	{ "e.e5",  		  		0x010000, 0x89affc73, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "o.e6",  		  		0x010000, 0xa2244558, BRF_ESS | BRF_PRG }, //  1
+
+	{ "0-1_4.4_cb45.a16",  	0x080000, 0x35e14729, BRF_GRA },	       //  2 GP9001 Tile data
+	{ "3-4_4.4_547d.a15",  	0x080000, 0x41975fcc, BRF_GRA },	       //  3
+
+	{ "hd647180.020", 		0x008000, 0xd5157c12, BRF_PRG },           //  4 Sound CPU
+};
+
+STD_ROM_PICK(drvt)
+STD_ROM_FN(drvt)
+
+
+// Rom information
 static struct BurnRomInfo whoopeeRomDesc[] = {
-	{ "whoopee.1",    0x020000, 0x28882e7e, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "whoopee.2",    0x020000, 0x6796f133, BRF_ESS | BRF_PRG }, //  1
+	{ "whoopee.1",    		0x020000, 0x28882e7e, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "whoopee.2",    		0x020000, 0x6796f133, BRF_ESS | BRF_PRG }, //  1
 
-	{ "tp025-4.bin",  0x100000, 0xab97f744, BRF_GRA },	     //  2 GP9001 Tile data
-	{ "tp025-3.bin",  0x100000, 0x7b16101e, BRF_GRA },	     //  3
+	{ "tp025-4.bin",  		0x100000, 0xab97f744, BRF_GRA },	       //  2 GP9001 Tile data
+	{ "tp025-3.bin",  		0x100000, 0x7b16101e, BRF_GRA },	       //  3
 
-	{ "hd647180.025", 0x008000, 0x00000000, 0x10 | BRF_NODUMP }, //  4 Sound CPU
+	{ "hd647180.025", 		0x008000, 0xc02436f6, BRF_PRG },           //  4 Sound CPU
 };
 
 STD_ROM_PICK(whoopee)
@@ -81,10 +102,10 @@ static struct BurnDIPInfo tekipakiDIPList[] = {
 	{0x16,	0xFF, 0x0F,	0x00,	  NULL},
 
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Screen type"},
 	{0x14,	0x01, 0x02,	0x00, "Normal screen"},
 	{0x14,	0x01, 0x02,	0x02, "Invert screen"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -229,7 +250,7 @@ static struct BurnDIPInfo whoopeeDIPList[]=
 	{0x13, 0x01, 0xc0, 0x80, "1 Coin  4 Credits"		},
 	{0x13, 0x01, 0xc0, 0xc0, "1 Coin  6 Credits"		},
 
-	{0   , 0xfe, 0   ,    0, "Difficulty"		},
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
 	{0x14, 0x01, 0x03, 0x03, "Hardest"		},
 	{0x14, 0x01, 0x03, 0x02, "Hard"		},
 	{0x14, 0x01, 0x03, 0x00, "Normal"		},
@@ -247,11 +268,11 @@ static struct BurnDIPInfo whoopeeDIPList[]=
 	{0x14, 0x01, 0x30, 0x00, "3"		},
 	{0x14, 0x01, 0x30, 0x10, "5"		},
 
-	{0   , 0xfe, 0   ,    4, "Invulnerability"		},
+	{0   , 0xfe, 0   ,    2, "Invulnerability"		},
 	{0x14, 0x01, 0x40, 0x00, "Off"		},
 	{0x14, 0x01, 0x40, 0x40, "On"		},
 
-	{0   , 0xfe, 0   ,    2, "Region"		},
+	{0   , 0xfe, 0   ,    8, "Region"		},
 	{0x15, 0x01, 0x07, 0x06, "Europe"		},
 	{0x15, 0x01, 0x07, 0x07, "Europe (Nova Apparate GMBH & Co)"		},
 	{0x15, 0x01, 0x07, 0x04, "USA"		},
@@ -261,7 +282,7 @@ static struct BurnDIPInfo whoopeeDIPList[]=
 	{0x15, 0x01, 0x07, 0x02, "Hong Kong (Honest Trading Co.)"		},
 	{0x15, 0x01, 0x07, 0x03, "Taiwan"		},
 
-	{0   , 0xfe, 0   ,    0, "Nudity"		},
+	{0   , 0xfe, 0   ,    2, "Nudity"		},
 	{0x15, 0x01, 0x08, 0x08, "Low"		},
 	{0x15, 0x01, 0x08, 0x00, "High, but censored"		},
 };
@@ -273,6 +294,9 @@ static UINT8 *RamStart, *RamEnd;
 static UINT8 *Rom01;
 static UINT8 *Ram01, *RamPal;
 
+static UINT8 *DrvZ80ROM;
+static UINT8 *DrvZ80RAM;
+
 static INT32 nColCount = 0x0800;
 
 // This routine is called first to determine how much memory is needed (MemEnd-(UINT8 *)0),
@@ -282,38 +306,18 @@ static INT32 MemIndex()
 	UINT8 *Next; Next = Mem;
 	Rom01		= Next; Next += 0x040000;		// 68000 ROM
 	GP9001ROM[0]= Next; Next += nGP9001ROMSize[0];	// GP9001 tile data
+	DrvZ80ROM   = Next; Next += 0x008000;
+
 	RamStart	= Next;
 	Ram01		= Next; Next += 0x003000;		// CPU #0 work RAM
+	DrvZ80RAM	= Next; Next += 0x000200;
 	RamPal		= Next; Next += 0x001000;		// palette
 	GP9001RAM[0]= Next; Next += 0x008000;		// Double size, as the game tests too much memory during POST
 	GP9001Reg[0]= (UINT16*)Next; Next += 0x0100 * sizeof(UINT16);
 	RamEnd		= Next;
+
 	ToaPalette	= (UINT32 *)Next; Next += nColCount * sizeof(UINT32);
 	MemEnd		= Next;
-
-	return 0;
-}
-
-// Scan ram
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
-{
-	struct BurnArea ba;
-
-	if (pnMin) {						// Return minimum compatible version
-		*pnMin = 0x020997;
-	}
-
-	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
-		memset(&ba, 0, sizeof(ba));
-    	ba.Data		= RamStart;
-		ba.nLen		= RamEnd-RamStart;
-		ba.szName	= "All Ram";
-		BurnAcb(&ba);
-
-		SekScan(nAction);				// scan 68000 states
-
-		ToaScanGP9001(nAction, pnMin);
-	}
 
 	return 0;
 }
@@ -329,107 +333,7 @@ static INT32 LoadRoms()
 	return 0;
 }
 
-#ifdef TOAPLAN_SOUND_SAMPLES_HACK
-static void StopAllSamples()
-{
-	for (INT32 i = 0x00; i <= 0x15; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void StopSamplesChannel0()
-{
-	for (INT32 i = 0x01; i <= 0x05; i++) {
-		BurnSampleStop(i);
-		BurnSampleSetLoop(i, 0);
-	}
-}
-
-static void StopSamplesChannel1()
-{
-	for (INT32 i = 0x06; i <= 0x07; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void StopSamplesChannel2()
-{
-	for (INT32 i = 0x08; i <= 0x09; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void StopSamplesChannel3()
-{
-	for (INT32 i = 0x0a; i <= 0x0d; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void StopSamplesChannel4()
-{
-	for (INT32 i = 0x0e; i <= 0x12; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void StopSamplesChannel5()
-{
-	for (INT32 i = 0x13; i <= 0x14; i++) {
-		BurnSampleStop(i);
-	}
-}
-
-static void tekipakiHD647180Write(UINT16 d)
-{
-	if (d == 0xfe) {
-		StopAllSamples();
-	}
-
-	if (d >= 0x01 && d <= 0x03) {
-		StopSamplesChannel0();
-		BurnSampleSetLoop(d, 1);
-		BurnSamplePlay(d);
-	}
-	
-	if (d >= 0x04 && d <= 0x05) {
-		StopSamplesChannel0();
-		BurnSamplePlay(d);
-	}
-
-	if (d >= 0x06 && d <= 0x07) {
-		StopSamplesChannel1();
-		BurnSamplePlay(d);
-	}
-
-	if (d == 0x08 || d == 0x09) {
-		StopSamplesChannel2();
-		BurnSamplePlay(d);
-	}
-
-	if (d >= 0x0a && d <= 0x0d) {
-		StopSamplesChannel3();
-		BurnSamplePlay(d);
-	}
-
-	if (d == 0x0e || d == 0x12) {
-		StopSamplesChannel4();
-		BurnSamplePlay(d);
-	}
-
-	if (d >= 0x13 && d <= 0x14) {
-		StopSamplesChannel5();
-		BurnSamplePlay(d);
-	}
-
-	if (d == 0x15) {
-		BurnSampleStop(d);
-		BurnSamplePlay(d);
-	}
-}
-#endif
-
-UINT8 __fastcall tekipakiReadByte(UINT32 sekAddress)
+static UINT8 __fastcall tekipakiReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 		case 0x180051:								// Player 1 inputs
@@ -443,8 +347,12 @@ UINT8 __fastcall tekipakiReadByte(UINT32 sekAddress)
 			return DrvInput[3];
 		case 0x180011:			   					// Dipswitch 2
 			return DrvInput[4];
-		case 0x180031:								// Dipswitch 3 - Territory
-			return (DrvInput[5] & 0x0F) | 0x10;
+		case 0x180031: {								// Dipswitch 3 - Territory
+			if (whoopeemode)
+				return (DrvInput[5] & 0x0F) | (z80cmdavailable) ? 0x10 : 0x00;
+			else
+				return (DrvInput[5] & 0x0F) | (z80cmdavailable) ? 0x00 : 0x10;
+		}
 
 		case 0x14000D:								// VBlank
 			return ToaVBlankRegister();
@@ -456,7 +364,7 @@ UINT8 __fastcall tekipakiReadByte(UINT32 sekAddress)
 	return 0;
 }
 
-UINT16 __fastcall tekipakiReadWord(UINT32 sekAddress)
+static UINT16 __fastcall tekipakiReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 
@@ -471,8 +379,12 @@ UINT16 __fastcall tekipakiReadWord(UINT32 sekAddress)
 			return DrvInput[3];
 		case 0x180010:								// Dipswitch 2
 			return DrvInput[4];
-		case 0x180030:								// Dipswitch 3 - Territory
-			return (DrvInput[5] & 0x0F) | 0x10;
+		case 0x180030: {								// Dipswitch 3 - Territory
+			if (whoopeemode)
+				return (DrvInput[5] & 0x0F) | (z80cmdavailable) ? 0x10 : 0x00;
+			else
+				return (DrvInput[5] & 0x0F) | (z80cmdavailable) ? 0x00 : 0x10;
+		}
 
 		case 0x140004:
 			return ToaGP9001ReadRAM_Hi(0);
@@ -489,16 +401,16 @@ UINT16 __fastcall tekipakiReadWord(UINT32 sekAddress)
 	return 0;
 }
 
-void __fastcall tekipakiWriteByte(UINT32 /*sekAddress*/, UINT8 /*byteValue*/)
+static void __fastcall tekipakiWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
-//	switch (sekAddress) {
-//
-//		default:
-//			bprintf(PRINT_NORMAL, _T("Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
-//	}
+	switch (sekAddress) {
+		case 0x180041: break; // (coin ctr stuff)
+		default:
+			bprintf(PRINT_NORMAL, _T("Attempt to write byte value %x to location %x\n"), byteValue, sekAddress);
+	}
 }
 
-void __fastcall tekipakiWriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall tekipakiWriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	switch (sekAddress) {
 
@@ -522,9 +434,11 @@ void __fastcall tekipakiWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			break;
 			
 		case 0x180070:
-#ifdef TOAPLAN_SOUND_SAMPLES_HACK
-			tekipakiHD647180Write(wordValue);
-#endif
+			to_mcu = wordValue & 0xff;
+			z80cmdavailable = 1;
+			break;
+
+		case 0x180040: // coin ctr stuff
 			break;
 
 		default:
@@ -532,16 +446,65 @@ void __fastcall tekipakiWriteWord(UINT32 sekAddress, UINT16 wordValue)
 	}
 }
 
+static UINT8 __fastcall tekipakiZ80In(UINT16 nAddress)
+{
+	nAddress &= 0xFF;
+
+	switch (nAddress) {
+		case 0x60: {
+			return (z80cmdavailable) ? 0xff : 0x00;
+		}
+
+		case 0x84: {
+			z80cmdavailable = 0;
+			return to_mcu;
+		}
+
+		case 0x82:
+		    return BurnYM3812Read(0, 0);
+
+		case 0x83:
+			return BurnYM3812Read(0, 1);
+	}
+	
+	return 0;
+}
+
+static void __fastcall tekipakiZ80Out(UINT16 nAddress, UINT8 nValue)
+{
+	nAddress &= 0xFF;
+
+	switch (nAddress) {
+		case 0x82:
+			BurnYM3812Write(0, 0, nValue);
+			break;
+
+		case 0x83:
+			BurnYM3812Write(0, 1, nValue);
+			break;
+	}
+}
+
+INT32 tekipakiSynchroniseStream(INT32 nSoundRate)
+{
+	return (INT64)ZetTotalCycles() * nSoundRate / 10000000;
+}
+
 static INT32 DrvDoReset()
 {
 	SekOpen(0);
 	SekReset();
 	SekClose();
+
+	ZetOpen(0);
+	ZetReset();
+	BurnYM3812Reset();
+	ZetClose();
+
+	to_mcu = 0;
+	z80cmdavailable = 0;
 	
-	BurnSampleReset();
-#ifdef TOAPLAN_SOUND_SAMPLES_HACK
-	StopAllSamples();
-#endif
+	HiscoreReset();
 
 	return 0;
 }
@@ -571,14 +534,16 @@ static INT32 DrvInit()
 		return 1;
 	}
 
+	if (BurnLoadRom(DrvZ80ROM + 0x000000, 4, 1)) return 1;
+
 	{
 		SekInit(0, 0x68000);										// Allocate 68000
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,		0x000000, 0x03FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,		0x080000, 0x082FFF, SM_RAM);
-		SekMapMemory(RamPal,	0x0c0000, 0x0c0FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,		0x000000, 0x03FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x080000, 0x082FFF, MAP_RAM);
+		SekMapMemory(RamPal,	0x0c0000, 0x0c0FFF, MAP_RAM);	// Palette RAM
 
 		SekSetReadWordHandler(0, tekipakiReadWord);
 		SekSetReadByteHandler(0, tekipakiReadByte);
@@ -588,7 +553,20 @@ static INT32 DrvInit()
 		SekClose();
 	}
 
-	nSpriteYOffset = 0x0011;
+	{
+		ZetInit(0);
+		ZetOpen(0);
+
+		ZetSetInHandler(tekipakiZ80In);
+		ZetSetOutHandler(tekipakiZ80Out);
+
+		ZetMapMemory(DrvZ80ROM, 0x0000, 0x3FFF, MAP_ROM);
+		ZetMapMemory(DrvZ80RAM, 0xfe00, 0xFFFF, MAP_RAM);
+
+		ZetClose();
+	}
+
+	nSpriteYOffset = (whoopeemode) ? 0x0001 : 0x0011;
 
 	nLayer0XOffset = -0x01D6;
 	nLayer1XOffset = -0x01D8;
@@ -599,25 +577,36 @@ static INT32 DrvInit()
 	nToaPalLen = nColCount;
 	ToaPalSrc = RamPal;
 	ToaPalInit();
-	
-	BurnSampleInit(0);
-	BurnSampleSetAllRoutesAllSamples(1.00, BURN_SND_ROUTE_BOTH);
 
+	BurnYM3812Init(1, 27000000 / 8, &toaplan1FMIRQHandler, &tekipakiSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 10000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	
 	bDrawScreen = true;
 
 	DrvDoReset();			// Reset machine
 	return 0;
 }
 
+static INT32 WhoopeeInit()
+{
+	whoopeemode = 1;
+
+	return DrvInit();
+}
+
 static INT32 DrvExit()
 {
+	BurnYM3812Exit();
 	ToaPalExit();
 
 	ToaExitGP9001();
 	SekExit();				// Deallocate 68000s
-	BurnSampleExit();
+	ZetExit();
 
 	BurnFree(Mem);
+
+	whoopeemode = 0;
 
 	return 0;
 }
@@ -662,11 +651,15 @@ static INT32 DrvFrame()
 	ToaClearOpposites(&DrvInput[1]);
 
 	SekNewFrame();
+	ZetNewFrame();
 
 	nCyclesTotal[0] = (INT32)((INT64)10000000 * nBurnCPUSpeedAdjust / (0x0100 * 60));
+	nCyclesTotal[1] = INT32(10000000 / 60);
 	nCyclesDone[0] = 0;
+	nCyclesDone[1] = 0;
 	
 	SekOpen(0);
+	ZetOpen(0);
 
 	SekSetCyclesScanline(nCyclesTotal[0] / 262);
 	nToaCyclesDisplayStart = nCyclesTotal[0] - ((nCyclesTotal[0] * (TOA_VBLANK_LINES + 240)) / 262);
@@ -681,7 +674,6 @@ static INT32 DrvFrame()
 		nCurrentCPU = 0;
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 
-
 		// Trigger VBlank interrupt
 		if (!bVBlank && nNext > nToaCyclesVBlankStart) {
 			if (nCyclesDone[nCurrentCPU] < nToaCyclesVBlankStart) {
@@ -694,7 +686,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			// Trigger VBlank interrupt
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -704,11 +696,17 @@ static INT32 DrvFrame()
 			nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
 		}
 
+		BurnTimerUpdateYM3812((i + 1) * (nCyclesTotal[1] / nInterleave));
 	}
-	
-	BurnSampleRender(pBurnSoundOut, nBurnSoundLen);
+
+	BurnTimerEndFrameYM3812(nCyclesTotal[1]);
+
+	if (pBurnSoundOut) {
+		BurnYM3812Update(pBurnSoundOut, nBurnSoundLen);
+	}
 
 	SekClose();
+	ZetClose();
 
 	if (pBurnDraw) {
 		DrvDraw();												// Draw screen if needed
@@ -717,55 +715,65 @@ static INT32 DrvFrame()
 	return 0;
 }
 
-static struct BurnSampleInfo tekipakiSampleDesc[] = {
-#ifdef TOAPLAN_SOUND_SAMPLES_HACK
-#if !defined ROM_VERIFY
-	{ "dm.wav", SAMPLE_NOLOOP },
-	{ "01.wav", SAMPLE_NOLOOP },
-	{ "02.wav", SAMPLE_NOLOOP },
-	{ "03.wav", SAMPLE_NOLOOP },
-	{ "04.wav", SAMPLE_NOLOOP },
-	{ "05.wav", SAMPLE_NOLOOP },
-	{ "06.wav", SAMPLE_NOLOOP },
-	{ "07.wav", SAMPLE_NOLOOP },
-	{ "08.wav", SAMPLE_NOLOOP },
-	{ "09.wav", SAMPLE_NOLOOP },
-	{ "0a.wav", SAMPLE_NOLOOP },
-	{ "0b.wav", SAMPLE_NOLOOP },
-	{ "0c.wav", SAMPLE_NOLOOP },
-	{ "0d.wav", SAMPLE_NOLOOP },
-	{ "0e.wav", SAMPLE_NOLOOP },
-	{ "0f.wav", SAMPLE_NOLOOP },
-	{ "10.wav", SAMPLE_NOLOOP },
-	{ "11.wav", SAMPLE_NOLOOP },
-	{ "12.wav", SAMPLE_NOLOOP },
-	{ "13.wav", SAMPLE_NOLOOP },
-	{ "14.wav", SAMPLE_NOLOOP },
-	{ "15.wav", SAMPLE_NOLOOP },
-#endif
-#endif
-	{ "", 0 }
-};
+// Scan ram
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
+{
+	struct BurnArea ba;
 
-STD_SAMPLE_PICK(tekipaki)
-STD_SAMPLE_FN(tekipaki)
+	if (pnMin) {						// Return minimum compatible version
+		*pnMin = 0x020997;
+	}
+
+	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
+		memset(&ba, 0, sizeof(ba));
+		ba.Data		= RamStart;
+		ba.nLen		= RamEnd-RamStart;
+		ba.szName	= "All Ram";
+		BurnAcb(&ba);
+
+		SekScan(nAction);				// scan 68000 states
+		ZetScan(nAction);
+
+		BurnYM3812Scan(nAction, pnMin);
+
+		ToaScanGP9001(nAction, pnMin);
+
+		SCAN_VAR(to_mcu);
+		SCAN_VAR(z80cmdavailable);
+
+		ToaRecalcPalette = 1;
+		bDrawScreen = true; // get background back ?
+	}
+
+	return 0;
+}
 
 struct BurnDriver BurnDrvTekiPaki = {
-	"tekipaki", NULL, NULL, "tekipaki", "1991",
-	"Teki Paki\0", "No sound (sound MCU not dumped)", "Toaplan", "Toaplan GP9001 based",
+	"tekipaki", NULL, NULL, NULL, "1991",
+	"Teki Paki\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	L"Teki Paki\0\u6D17\u8133\u30B2\u30FC\u30E0\0", NULL, NULL, NULL,
-	1, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PUZZLE, 0,
-	NULL, drvRomInfo, drvRomName, tekipakiSampleInfo, tekipakiSampleName, tekipakiInputInfo, tekipakiDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PUZZLE, 0,
+	NULL, drvRomInfo, drvRomName, NULL, NULL, NULL, NULL, tekipakiInputInfo, tekipakiDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
+	320, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvTekiPakit = {
+	"tekipakit", "tekipaki", NULL, NULL, "1991",
+	"Teki Paki (location test)\0", NULL, "Toaplan", "Toaplan GP9001 based",
+	L"Teki Paki\0\u6D17\u8133\u30B2\u30FC\u30E0 (location test)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PUZZLE, 0,
+	NULL, drvtRomInfo, drvtRomName, NULL, NULL, NULL, NULL, tekipakiInputInfo, tekipakiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvWhoopee = {
 	"whoopee", "pipibibs", NULL, NULL, "1991",
-	"Pipi & Bibis / Whoopee!! (Teki Paki hardware)\0", "No sound (sound MCU not dumped)", "Toaplan", "Toaplan GP9001 based",
+	"Pipi & Bibis / Whoopee!! (Teki Paki hardware)\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	1 | BDF_CLONE, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PLATFORM, 0,
-	NULL, whoopeeRomInfo, whoopeeRomName, NULL, NULL, whoopeeInputInfo, whoopeeDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PLATFORM, 0,
+	NULL, whoopeeRomInfo, whoopeeRomName, NULL, NULL, NULL, NULL, whoopeeInputInfo, whoopeeDIPInfo,
+	WhoopeeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };

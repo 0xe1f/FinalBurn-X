@@ -9,7 +9,9 @@ typedef unsigned short uint16;
 typedef unsigned char uint8;
 
 #ifndef _WIN32
+#ifndef WITH_QTCREATOR
  typedef unsigned long DWORD;
+#endif
 #endif
 
 void _2xpm_lq(void *SrcPtr, void *DstPtr, unsigned long SrcPitch, unsigned long DstPitch, unsigned long SrcW, unsigned long SrcH, int nDepth);
@@ -75,7 +77,7 @@ extern "C" {
 }
 #endif
 
-#define FXF_MMX		((unsigned int)(1 << 31))
+#define FXF_MMX		(unsigned int)(1 << 31)
 
 static struct { TCHAR* pszName; int nZoom; unsigned int nFlags; } SoftFXInfo[] = {
 	{ _T("Plain Software Scale"),			2, 0	   },

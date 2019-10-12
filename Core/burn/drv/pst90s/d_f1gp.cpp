@@ -441,20 +441,10 @@ UINT8 __fastcall f1gp_sound_in(UINT16 port)
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xff, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
-}
-
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 5000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 5000000.0;
 }
 
 static INT32 DrvDoReset()
@@ -685,29 +675,29 @@ static INT32 DrvInit(INT32 nGame)
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM0,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Drv68KROM0 + 0x100000,	0x100000, 0x2fffff, SM_ROM);
-	SekMapMemory(DrvRozVidRAM,		0xd00000, 0xd01fff, SM_ROM);
-	SekMapMemory(DrvRozVidRAM,		0xd02000, 0xd03fff, SM_ROM);
-	SekMapMemory(DrvRozVidRAM,		0xd04000, 0xd05fff, SM_ROM);
-	SekMapMemory(DrvRozVidRAM,		0xd06000, 0xd07fff, SM_ROM);
+	SekMapMemory(Drv68KROM0,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Drv68KROM0 + 0x100000,	0x100000, 0x2fffff, MAP_ROM);
+	SekMapMemory(DrvRozVidRAM,		0xd00000, 0xd01fff, MAP_ROM);
+	SekMapMemory(DrvRozVidRAM,		0xd02000, 0xd03fff, MAP_ROM);
+	SekMapMemory(DrvRozVidRAM,		0xd04000, 0xd05fff, MAP_ROM);
+	SekMapMemory(DrvRozVidRAM,		0xd06000, 0xd07fff, MAP_ROM);
 
 	if (nGame) {
-		SekMapMemory(DrvSprCGRAM1,		0xa00000, 0xa07fff, SM_RAM);
-		SekMapMemory(DrvSprVRAM1,		0xe00000, 0xe00fff, SM_RAM);
+		SekMapMemory(DrvSprCGRAM1,		0xa00000, 0xa07fff, MAP_RAM);
+		SekMapMemory(DrvSprVRAM1,		0xe00000, 0xe00fff, MAP_RAM);
 	} else {
-		SekMapMemory(Drv68KROM0 + 0x300000,	0xa00000, 0xbfffff, SM_ROM);
-		SekMapMemory(DrvZoomRAM,		0xc00000, 0xc3ffff, SM_ROM);
-		SekMapMemory(DrvSprCGRAM1,		0xe00000, 0xe03fff, SM_RAM);
-		SekMapMemory(DrvSprCGRAM2,		0xe04000, 0xe07fff, SM_RAM);
-		SekMapMemory(DrvSprVRAM1,		0xf00000, 0xf003ff, SM_RAM);
-		SekMapMemory(DrvSprVRAM2,		0xf10000, 0xf103ff, SM_RAM);
+		SekMapMemory(Drv68KROM0 + 0x300000,	0xa00000, 0xbfffff, MAP_ROM);
+		SekMapMemory(DrvZoomRAM,		0xc00000, 0xc3ffff, MAP_ROM);
+		SekMapMemory(DrvSprCGRAM1,		0xe00000, 0xe03fff, MAP_RAM);
+		SekMapMemory(DrvSprCGRAM2,		0xe04000, 0xe07fff, MAP_RAM);
+		SekMapMemory(DrvSprVRAM1,		0xf00000, 0xf003ff, MAP_RAM);
+		SekMapMemory(DrvSprVRAM2,		0xf10000, 0xf103ff, MAP_RAM);
 	}
 
-	SekMapMemory(Drv68KRAM0,		0xff8000, 0xffbfff, SM_RAM);
-	SekMapMemory(DrvShareRAM,		0xffc000, 0xffcfff, SM_RAM);
-	SekMapMemory(DrvVidRAM,			0xffd000, 0xffdfff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0xffe000, 0xffefff, SM_RAM);
+	SekMapMemory(Drv68KRAM0,		0xff8000, 0xffbfff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,		0xffc000, 0xffcfff, MAP_RAM);
+	SekMapMemory(DrvVidRAM,			0xffd000, 0xffdfff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0xffe000, 0xffefff, MAP_RAM);
 	SekSetWriteWordHandler(0,		f1gp_main_write_word);
 	SekSetWriteByteHandler(0,		f1gp_main_write_byte);
 	SekSetReadWordHandler(0,		f1gp_main_read_word);
@@ -716,9 +706,9 @@ static INT32 DrvInit(INT32 nGame)
 
 	SekInit(1, 0x68000);
 	SekOpen(1);
-	SekMapMemory(Drv68KROM1,		0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM1,		0xff8000, 0xffbfff, SM_RAM);
-	SekMapMemory(DrvShareRAM,		0xffc000, 0xffcfff, SM_RAM);
+	SekMapMemory(Drv68KROM1,		0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM1,		0xff8000, 0xffbfff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,		0xffc000, 0xffcfff, MAP_RAM);
 	SekClose();
 
 	ZetInit(0);
@@ -735,7 +725,7 @@ static INT32 DrvInit(INT32 nGame)
 	ZetClose();
 
 	INT32 DrvSndROMLen = 0x100000;
-	BurnYM2610Init(8000000, DrvSndROM + 0x100000, &DrvSndROMLen, DrvSndROM, &DrvSndROMLen, &DrvFMIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2610Init(8000000, DrvSndROM + 0x100000, &DrvSndROMLen, DrvSndROM, &DrvSndROMLen, &DrvFMIRQHandler, 0);
 	BurnTimerAttachZet(5000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
@@ -836,13 +826,13 @@ static void draw_16x16_zoom(UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32
 	{
 		INT32 yy = sy + y;
 
-		if (ym[y ^ fy] == -1 || yy < 0 || yy >= nScreenHeight) continue;
+		if (ym[(y ^ fy) % 16] == -1 || yy < 0 || yy >= nScreenHeight) continue;
 
-		INT32 yyz = (ym[y ^ fy] << 4);
+		INT32 yyz = (ym[(y ^ fy) % 16] << 4);
 
 		for (INT32 x = 0; x < 16; x++)
 		{
-			INT16 xxz = xm[x ^ fx];
+			INT16 xxz = xm[(x ^ fx) % 16];
 			if (xxz == -1) continue;
 
 			INT32 xx = sx + x;
@@ -1184,12 +1174,12 @@ static INT32 DrvFrame()
 
 		SekOpen(0);
 		nCyclesDone[0] += SekRun(nCycleSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 		SekClose();
 
 		SekOpen(1);
 		nCyclesDone[1] += SekRun(nCycleSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 		SekClose();
 	}
 
@@ -1292,7 +1282,7 @@ struct BurnDriver BurnDrvF1gp = {
 	"F-1 Grand Prix\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 1, HARDWARE_MISC_POST90S, GBF_RACING, 0,
-	NULL, f1gpRomInfo, f1gpRomName, NULL, NULL, F1gpInputInfo, F1gpDIPInfo,
+	NULL, f1gpRomInfo, f1gpRomName, NULL, NULL, NULL, NULL, F1gpInputInfo, F1gpDIPInfo,
 	F1gpInit, DrvExit, DrvFrame, F1gpDraw, DrvScan, &DrvRecalc, 0x401,
 	240, 320, 3, 4
 };
@@ -1341,7 +1331,7 @@ struct BurnDriverD BurnDrvF1gpb = {
 	"F-1 Grand Prix (Playmark bootleg)\0", NULL, "[Video System Co.] (Playmark bootleg)", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 1, HARDWARE_MISC_POST90S, GBF_RACING, 0,
-	NULL, f1gpbRomInfo, f1gpbRomName, NULL, NULL, F1gpInputInfo, F1gpDIPInfo,
+	NULL, f1gpbRomInfo, f1gpbRomName, NULL, NULL, NULL, NULL, F1gpInputInfo, F1gpDIPInfo,
 	F1gpbInit, DrvExit, DrvFrame, F1gpbDraw, DrvScan, &DrvRecalc, 0x401,
 	240, 320, 3, 4
 };
@@ -1384,7 +1374,7 @@ struct BurnDriver BurnDrvF1gp2 = {
 	"F-1 Grand Prix Part II\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 1, HARDWARE_MISC_POST90S, GBF_RACING, 0,
-	NULL, f1gp2RomInfo, f1gp2RomName, NULL, NULL, F1gp2InputInfo, F1gp2DIPInfo,
+	NULL, f1gp2RomInfo, f1gp2RomName, NULL, NULL, NULL, NULL, F1gp2InputInfo, F1gp2DIPInfo,
 	F1gp2Init, DrvExit, DrvFrame, F1gp2Draw, DrvScan, &DrvRecalc, 0x401,
 	224, 320, 3, 4
 };

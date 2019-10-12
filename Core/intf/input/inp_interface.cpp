@@ -1,5 +1,6 @@
 // Burner Input module
 #include "burner.h"
+#include <vector>
 
 UINT32 nInputSelect = 0;
 bool bInputOkay = false;
@@ -14,6 +15,8 @@ static bool bCinpOkay;
 	extern struct InputInOut InputInOutSDL;
 #elif defined (_XBOX)
 	extern struct InputInOut InputInOutXInput2;
+#elif defined (BUILD_QT)
+    extern struct InputInOut InputInOutQt;
 #endif
 
 static struct InputInOut *pInputInOut[]=
@@ -26,10 +29,20 @@ static struct InputInOut *pInputInOut[]=
 	&InputInOutSDL,
 #elif defined (_XBOX)
 	&InputInOutXInput2,
+#elif defined (BUILD_QT)
+    &InputInOutQt,
 #endif
 };
 
 #define INPUT_LEN (sizeof(pInputInOut) / sizeof(pInputInOut[0]))
+
+std::vector<const InputInOut *> InputGetInterfaces()
+{
+    std::vector<const InputInOut *> list;
+    for (unsigned int i = 0; i < INPUT_LEN; i++)
+        list.push_back(pInputInOut[i]);
+    return list;
+}
 
 static InterfaceInfo InpInfo = { NULL, NULL, NULL };
 
@@ -83,7 +96,11 @@ static INT32 InputTick()
 		if (pgi->nInput == GIT_JOYSLIDER) {
 			// Get state of the axis
 			nAdd = CinpJoyAxis(pgi->Input.Slider.JoyAxis.nJoy, pgi->Input.Slider.JoyAxis.nAxis);
-			nAdd /= 0x100;
+			nAdd /= 0x80;
+				// May 30, 2019 -dink
+				// Was "nAdd /= 0x100;" - Current gamepads w/ thumbsticks
+				// register 0x3f <- 0x80  -> 0xbe, so we must account for that
+				// to be able to get the same range as GIT_KEYSLIDER.
 		}
 
 		// nAdd is now -0x100 to +0x100
@@ -158,6 +175,13 @@ INT32 InputSetCooperativeLevel(const bool bExclusive, const bool bForeground)
 	return pInputInOut[nInputSelect]->SetCooperativeLevel(bExclusive, bForeground);
 }
 
+static bool bLastAF[1000];
+INT32 nAutoFireRate = 12;
+
+static inline INT32 AutofirePick() {
+	return ((nCurrentFrame % nAutoFireRate) > nAutoFireRate-4);
+}
+
 // This will process all PC-side inputs and optionally update the emulated game side.
 INT32 InputMake(bool bCopy)
 {
@@ -230,12 +254,21 @@ INT32 InputMake(bool bCopy)
 				}
 				break;
 			}
-			case GIT_MOUSEAXIS:						// Mouse axis
-				pgi->Input.nVal = (UINT16)(CinpMouseAxis(pgi->Input.MouseAxis.nMouse, pgi->Input.MouseAxis.nAxis) * nAnalogSpeed);
+			case GIT_MOUSEAXIS:	{					// Mouse axis
+				INT32 nMouse = CinpMouseAxis(pgi->Input.MouseAxis.nMouse, pgi->Input.MouseAxis.nAxis) * nAnalogSpeed;
+				// Clip axis to 16 bits (signed)
+				if (nMouse < -32768) {
+					nMouse = -32768;
+				}
+				if (nMouse >  32767) {
+					nMouse =  32767;
+				}
+				pgi->Input.nVal = (UINT16)nMouse;
 				if (bCopy) {
 					*(pgi->Input.pShortVal) = pgi->Input.nVal;
 				}
 				break;
+			}
 			case GIT_JOYAXIS_FULL:	{				// Joystick axis
 				INT32 nJoy = CinpJoyAxis(pgi->Input.JoyAxis.nJoy, pgi->Input.JoyAxis.nAxis);
 
@@ -243,7 +276,7 @@ INT32 InputMake(bool bCopy)
 					nJoy *= nAnalogSpeed;
 					nJoy >>= 13;
 
-					// Clip axis to 8 bits
+					// Clip axis to 16 bits (signed)
 					if (nJoy < -32768) {
 						nJoy = -32768;
 					}
@@ -317,12 +350,33 @@ INT32 InputMake(bool bCopy)
 	}
 
 	for (i = 0; i < nMacroCount; i++, pgi++) {
-		if (pgi->Macro.nMode) {						// Macro is defined
+		if (pgi->Macro.nMode == 1 && pgi->Macro.nSysMacro == 0) { // Macro is defined
 			if (bCopy && CinpState(pgi->Macro.Switch.nCode)) {
 				for (INT32 j = 0; j < 4; j++) {
 					if (pgi->Macro.pVal[j]) {
 						*(pgi->Macro.pVal[j]) = pgi->Macro.nVal[j];
 					}
+				}
+			}
+		}
+		if (pgi->Macro.nSysMacro) { // System-Macro is defined -dink
+			if (CinpState(pgi->Macro.Switch.nCode)) {
+				if (pgi->Macro.pVal[0]) {
+					*(pgi->Macro.pVal[0]) = pgi->Macro.nVal[0];
+					if (pgi->Macro.nSysMacro==15) { //Auto-Fire mode!
+						if (AutofirePick() || bLastAF[i]==0)
+							*(pgi->Macro.pVal[0]) = pgi->Macro.nVal[0];
+						else
+							*(pgi->Macro.pVal[0]) = 0;
+						bLastAF[i] = 1;
+					}
+				}
+			} else { // Disable System-Macro when key up
+				if (pgi->Macro.pVal[0] && pgi->Macro.nSysMacro == 1) {
+					*(pgi->Macro.pVal[0]) = 0;
+				} else {
+					if (pgi->Macro.nSysMacro == 15)
+						bLastAF[i] = 0;
 				}
 			}
 		}
@@ -386,7 +440,7 @@ INT32 InputFind(const INT32 nFlags)
 				}
 
 				// While the movement is within the threshold, treat it as no movement
-				if (nJoyDelta > -0x0100 || nJoyDelta < 0x0100) {
+				if (nJoyDelta > -0x0100 && nJoyDelta < 0x0100) {
 					nDelay++;
 					if (nDelay > 64) {
 						return -1;

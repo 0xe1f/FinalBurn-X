@@ -1,19 +1,13 @@
 // FB Alpha Irem M72 driver module
 // Based on MAME driver by Nicola Salmoria and Nao
 
-/*
-	to do:
-		clean
-		fix/improve sound
-		poundfor inputs
-*/
-
 #include "tiles_generic.h"
 #include "z80_intf.h"
 #include "burn_ym2151.h"
 #include "nec_intf.h"
 #include "irem_cpu.h"
 #include "dac.h"
+#include "burn_gun.h"
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -42,11 +36,10 @@ static UINT8 *scroll;
 static UINT8 *RamPrioBitmap;
 
 static UINT8 *soundlatch;
-static UINT8 *video_enable;
+static UINT8 *video_disable;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
-static INT32 ym2151_previous = 0;
 static UINT8 irqvector;
 static INT32 sample_address;
 static INT32 irq_raster_position;
@@ -61,16 +54,24 @@ static UINT8 DrvJoy5[8];
 static UINT8 DrvDips[2];
 static UINT8 DrvInputs[5];
 static UINT8 DrvReset;
+static INT16 DrvAnalogPort0 = 0;
+static INT16 DrvAnalogPort1 = 0;
+static INT16 DrvAnalogPort2 = 0;
+static INT16 DrvAnalogPort3 = 0;
 
-const static INT32 nInterleave = 284;
+static INT32 nExtraCycles;
 static INT32 nCurrentCycles;
 static INT32 nCyclesDone[2];
 static INT32 nCyclesTotal[2];
 
+static INT32 Clock_16mhz = 0;
+static INT32 Kengo = 0;
+static INT32 CosmicCop = 0;
+static INT32 Poundfor = 0;
 static INT32 m72_video_type = 0;
 static INT32 z80_nmi_enable = 0;
 static INT32 enable_z80_reset = 0; // only if z80 is not rom-based!
-static INT32 m72_irq_base = 0x80;
+static INT32 m72_irq_base = 0;
 static INT32 code_mask[4];
 static INT32 graphics_length[4];
 static INT32 video_offsets[2] = { 0, 0 };
@@ -110,30 +111,28 @@ static struct BurnInputInfo CommonInputList[] = {
 
 STDINPUTINFO(Common)
 
+#define A(a, b, c, d) {a, b, (UINT8*)(c), d}
 static struct BurnInputInfo PoundforInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 coin"},
+	{"P1 Coin",		    BIT_DIGITAL,	DrvJoy2 + 2,	"p1 coin"},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 start"},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 fire 1"},
 	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 fire 2"},
+	A("P1 Trackball X", BIT_ANALOG_REL, &DrvAnalogPort0,"p1 x-axis" ),
+	A("P1 Trackball Y", BIT_ANALOG_REL, &DrvAnalogPort1,"p1 y-axis" ),
 
-	// save space for analog inputs
-	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy5 + 6,	"p2 fire 3"},
-	{"P2 Button 4",		BIT_DIGITAL,	DrvJoy5 + 6,	"p2 fire 4"},
-
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy2 + 3,	"p2 coin"},
+	{"P2 Coin",		    BIT_DIGITAL,	DrvJoy2 + 3,	"p2 coin"},
 	{"P2 Start",		BIT_DIGITAL,	DrvJoy2 + 1,	"p2 start"},
 	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy4 + 6,	"p2 fire 1"},
 	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy4 + 5,	"p2 fire 2"},
-
-	// save space for analog inputs...
-	{"P2 Button 5",		BIT_DIGITAL,	DrvJoy5 + 6,	"p2 fire 5"},
-	{"P2 Button 6",		BIT_DIGITAL,	DrvJoy5 + 6,	"p2 fire 6"},
+	A("P2 Trackball X", BIT_ANALOG_REL, &DrvAnalogPort2,"p2 x-axis" ),
+	A("P2 Trackball Y", BIT_ANALOG_REL, &DrvAnalogPort3,"p2 y-axis" ),
 
 	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"},
 	{"Service",		BIT_DIGITAL,	DrvJoy2 + 4,	"service"},
 	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"},
 	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"},
 };
+#undef A
 
 STDINPUTINFO(Poundfor)
 
@@ -156,15 +155,15 @@ static struct BurnDIPInfo Dip2CoinDIPList[]=
 	{0x17, 0x01, 0x08, 0x00, "Mode 2"			},
 
 	{0   , 0xfe, 0   ,   16, "Coinage"			},
-	{0x17, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits"		},
-	{0x17, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits"		},
-	{0x17, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits"		},
-	{0x17, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits"		},
-	{0x17, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits"		},
+	{0x17, 0x01, 0xf0, 0xa0, "6 Coins 1 Credit"		},
+	{0x17, 0x01, 0xf0, 0xb0, "5 Coins 1 Credit"		},
+	{0x17, 0x01, 0xf0, 0xc0, "4 Coins 1 Credit"		},
+	{0x17, 0x01, 0xf0, 0xd0, "3 Coins 1 Credit"		},
+	{0x17, 0x01, 0xf0, 0xe0, "2 Coins 1 Credit"		},
 	{0x17, 0x01, 0xf0, 0x10, "2 Coins to Start/1 to Cont."	},
 	{0x17, 0x01, 0xf0, 0x30, "3 Coins 2 Credits"		},
 	{0x17, 0x01, 0xf0, 0x20, "4 Coins 3 Credits"		},
-	{0x17, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits"		},
+	{0x17, 0x01, 0xf0, 0xf0, "1 Coin  1 Credit"		},
 	{0x17, 0x01, 0xf0, 0x40, "2 Coins 3 Credits"		},
 	{0x17, 0x01, 0xf0, 0x90, "1 Coin  2 Credits"		},
 	{0x17, 0x01, 0xf0, 0x80, "1 Coin  3 Credits"		},
@@ -177,15 +176,15 @@ static struct BurnDIPInfo Dip2CoinDIPList[]=
 static struct BurnDIPInfo Dip1CoinDIPList[]=
 {
 	{0   , 0xfe, 0   ,   16, "Coinage"			},
-	{0x16, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits"		},
-	{0x16, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits"		},
-	{0x16, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits"		},
-	{0x16, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits"		},
+	{0x16, 0x01, 0xf0, 0xa0, "6 Coins 1 Credit"		},
+	{0x16, 0x01, 0xf0, 0xb0, "5 Coins 1 Credit"		},
+	{0x16, 0x01, 0xf0, 0xc0, "4 Coins 1 Credit"		},
+	{0x16, 0x01, 0xf0, 0xd0, "3 Coins 1 Credit"		},
 	{0x16, 0x01, 0xf0, 0x10, "8 Coins 3 Credits"		},
-	{0x16, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits"		},
+	{0x16, 0x01, 0xf0, 0xe0, "2 Coins 1 Credit"		},
 	{0x16, 0x01, 0xf0, 0x20, "5 Coins 3 Credits"		},
 	{0x16, 0x01, 0xf0, 0x30, "3 Coins 2 Credits"		},
-	{0x16, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits"		},
+	{0x16, 0x01, 0xf0, 0xf0, "1 Coin  1 Credit"		},
 	{0x16, 0x01, 0xf0, 0x40, "2 Coins 3 Credits"		},
 	{0x16, 0x01, 0xf0, 0x90, "1 Coin  2 Credits"		},
 	{0x16, 0x01, 0xf0, 0x80, "1 Coin  3 Credits"		},
@@ -660,14 +659,14 @@ static struct BurnDIPInfo PoundforDIPList[]=
 	{0x0f, 0x01, 0x08, 0x00, "Mode 2"			},
 
 	{0   , 0xfe, 0   ,    16, "Coinage"			},
-	{0x0f, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits"		},
-	{0x0f, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits"		},
-	{0x0f, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits"		},
-	{0x0f, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits"		},
-	{0x0f, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits"		},
+	{0x0f, 0x01, 0xf0, 0xa0, "6 Coins 1 Credit"		},
+	{0x0f, 0x01, 0xf0, 0xb0, "5 Coins 1 Credit"		},
+	{0x0f, 0x01, 0xf0, 0xc0, "4 Coins 1 Credit"		},
+	{0x0f, 0x01, 0xf0, 0xd0, "3 Coins 1 Credit"		},
+	{0x0f, 0x01, 0xf0, 0xe0, "2 Coins 1 Credit"		},
 	{0x0f, 0x01, 0xf0, 0x30, "3 Coins 2 Credits"		},
 	{0x0f, 0x01, 0xf0, 0x20, "4 Coins 3 Credits"		},
-	{0x0f, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits"		},
+	{0x0f, 0x01, 0xf0, 0xf0, "1 Coin  1 Credit"		},
 	{0x0f, 0x01, 0xf0, 0x10, "1 Coin/1 Credit, 1 Coin/Cont."},
 	{0x0f, 0x01, 0xf0, 0x40, "2 Coins 3 Credits"		},
 	{0x0f, 0x01, 0xf0, 0x90, "1 Coin  2 Credits"		},
@@ -685,7 +684,7 @@ STDDIPINFO(Poundfor)
 
 static const UINT8 *protection_code = NULL;
 static const UINT8 *protection_crc = NULL;
-static const INT32           *protection_sample_offsets = NULL;
+static const INT32 *protection_sample_offsets = NULL;
 
 static UINT8 protection_read(INT32 address)
 {
@@ -944,11 +943,10 @@ static void setvector_callback(INT32 param)
 	}
 
 	if (irqvector == 0xff) {
-		ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 	} else {
 		ZetSetVector(irqvector);
-		ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
-		nCyclesDone[1] += ZetRun(1000);
+		ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 	}
 }
 
@@ -965,18 +963,14 @@ static void palette_write(INT32 offset, INT32 offset2)
 		pal += 0x1000 / 2;
 	}
 
-   INT32 r = ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x000]) & 0x1f) << 3) | 
-      ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x000]) & 0x1f) >> 3 );
-   INT32 g = ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x200]) & 0x1f) << 3) |
-      ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x200]) & 0x1f) >> 2);
-   INT32 b = ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x400]) & 0x1f) << 3) |
-      ((BURN_ENDIAN_SWAP_INT16(pal[offset + 0x400]) & 0x1f) >> 2);
-   
+	INT32 r = BURN_ENDIAN_SWAP_INT16(pal[offset + 0x000]) & 0x1f;
+	INT32 g = BURN_ENDIAN_SWAP_INT16(pal[offset + 0x200]) & 0x1f;
+	INT32 b = BURN_ENDIAN_SWAP_INT16(pal[offset + 0x400]) & 0x1f;
 
-	DrvPalette[offset3] = BurnHighCol(r, g, b, 0);
+	DrvPalette[offset3] = BurnHighCol((r << 3) | (r >> 2), (g << 3) | (g >> 2), (b << 3) | (b >> 2), 0);
 }
 
-UINT8 __fastcall m72_main_read(UINT32 address)
+static UINT8 __fastcall m72_main_read(UINT32 address)
 {
 	if ((address & 0xff000) == 0xb0000) {
 		return protection_read(address);
@@ -985,7 +979,7 @@ UINT8 __fastcall m72_main_read(UINT32 address)
 	return 0;
 }
 
-void __fastcall m72_main_write(UINT32 address, UINT8 data)
+static void __fastcall m72_main_write(UINT32 address, UINT8 data)
 {
 	if ((address & 0xff000) == 0xb0000) {
 		protection_write(address, data);
@@ -1007,7 +1001,7 @@ void __fastcall m72_main_write(UINT32 address, UINT8 data)
 	}
 }
 
-void __fastcall rtype2_main_write(UINT32 address, UINT8 data)
+static void __fastcall rtype2_main_write(UINT32 address, UINT8 data)
 {
 	if ((address & 0xff000) == 0xc8000 || (address & 0xff000) == 0xa0000 || (address & 0xff000) == 0xcc000) {
 		if (address & 1) data = 0xff;
@@ -1044,15 +1038,13 @@ void __fastcall rtype2_main_write(UINT32 address, UINT8 data)
 	}
 }
 
-void __fastcall m72_main_write_port(UINT32 port, UINT8 data)
+static void __fastcall m72_main_write_port(UINT32 port, UINT8 data)
 {
-//	bprintf (0, _T("%2.2x, %2.2x wp\n"), port, data);
+	//if (port!=0) bprintf (0, _T("%2.2x, %2.2x wp\n"), port, data);
 
 	switch (port)
 	{
 		case 0x00:
-			bprintf (0, _T("%2.2x, %2.2x mwp\n"), port, data);
-		//	sync_cpus();
 			*soundlatch = data;
 			setvector_callback(Z80_ASSERT);
 		return;
@@ -1066,13 +1058,12 @@ void __fastcall m72_main_write_port(UINT32 port, UINT8 data)
 			// coin counter = data & 3 (&1 = 0, &2 = 1)
 			// flipscreen = ((data & 0x04) >> 2) ^ ((~input_port_read(space->machine, "DSW") >> 8) & 1);
 
-			video_enable[0] = data & 0x08;
+			video_disable[0] = data & 0x08;
 
-	//		bprintf (0, _T("%x\n"), data & 0x10);
 			if (enable_z80_reset) {
 				if (data & 0x10) {
 					z80_reset = 0;
-				} else {
+				} else if (!z80_reset) { // don't reset it if its already resetting - fixes BGM in airduel -dink
 					ZetReset();
 					setvector_callback(VECTOR_INIT);
 					z80_reset = 1;
@@ -1096,9 +1087,14 @@ void __fastcall m72_main_write_port(UINT32 port, UINT8 data)
 
 		case 0x40:
 		case 0x41:
-		case 0x42:
 		case 0x43: // nop
-			bprintf (0, _T("%2.2x, %2.2x\n"), port, data);
+		return;
+
+		case 0x42:
+			if (m72_irq_base == 0) {
+				m72_irq_base = data << 2;
+				//bprintf(0, _T("irq base vector %X.\n"), m72_irq_base);
+			}
 		return;
 
 		case 0x80:
@@ -1123,26 +1119,29 @@ void __fastcall m72_main_write_port(UINT32 port, UINT8 data)
 	}
 }
 
-static UINT16 __fastcall poundfor_trackball_r(INT32 offset)
+static UINT16 __fastcall poundfor_trackball_r(INT32 port)
 {
-	static INT32 prev[4],diff[4];
-//	static const char *const axisnames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
+	static INT32 prev[4] = { 0, 0, 0, 0 };
+	static INT32 diff[4] = { 0, 0, 0, 0 };
 
-#if 0
-	if (offset == 0)
+	INT32 offset = (port / 2) & 0x03;
+
+	BurnTrackballUpdate(0);
+	BurnTrackballUpdate(1);
+
+	INT16 axis[4] = { (INT16)BurnTrackballReadWord(0, 0), (INT16)BurnTrackballReadWord(0, 1), (INT16)BurnTrackballReadWord(1, 0), (INT16)BurnTrackballReadWord(1, 1) };
+
+	if (port == 8)
 	{
-		INT32 i,curr;
+		INT32 curr;
 
-		for (i = 0;i < 4;i++)
+		for (INT32 i = 0; i < 4; i++)
 		{
-			curr = input_port_read(space->machine, axisnames[i]);
+			curr = axis[i];
 			diff[i] = (curr - prev[i]);
 			prev[i] = curr;
 		}
 	}
-#endif
-	prev[0] = 0;
-	diff[0] = diff[1] = diff[2] = diff[3] = ~0;
 	INT32 input = DrvInputs[0] | (DrvInputs[3] << 8);
 
 	switch (offset)
@@ -1161,8 +1160,25 @@ static UINT16 __fastcall poundfor_trackball_r(INT32 offset)
 	return 0;
 }
 
-UINT8 __fastcall m72_main_read_port(UINT32 port)
+static UINT8 __fastcall m72_main_read_port(UINT32 port)
 {
+	if (Poundfor) {
+		if ((port & 0xf8) == 0x08) {
+			UINT16 ret = poundfor_trackball_r(port);
+			return (ret >> ((port & 1) * 8)) & 0xff;
+		}
+
+		switch (port)
+		{
+			case 0x02: return DrvInputs[1];
+			case 0x03: return 0xff;
+			case 0x04: return DrvDips[0];
+			case 0x05: return DrvDips[1];
+		}
+
+		return 0;
+	}
+
 	switch (port)
 	{
 		case 0x00: return DrvInputs[0];
@@ -1173,19 +1189,11 @@ UINT8 __fastcall m72_main_read_port(UINT32 port)
 		case 0x05: return DrvDips[1];
 	}
 
-	if ((port & 0xf8) == 0x08) {
-		INT32 ret = poundfor_trackball_r((port / 2) & 0x03);
-		if (port & 1) return ret >> 8;
-		else return ret;
-	}
-
 	return 0;
 }
 
-void __fastcall m72_sound_write_port(UINT16 port, UINT8 data)
+static void __fastcall m72_sound_write_port(UINT16 port, UINT8 data)
 {
-//	bprintf (0, _T("%2.2x, %2.2x wp\n"), port & 0xff, data);
-
 	switch (port & 0xff)
 	{
 		case 0x00:
@@ -1205,17 +1213,19 @@ void __fastcall m72_sound_write_port(UINT16 port, UINT8 data)
 		return;
 
 		case 0x10: // poundfor
-		case 0x11:
 			sample_address >>= 4;
 			sample_address = (sample_address & 0xff00) | (data << 0);
 			sample_address <<= 4;
 		return;
 
-		case 0x12:
-		case 0x13: // poundfor
+		case 0x11: // poundfor
 			sample_address >>= 4;
 			sample_address = (sample_address & 0x00ff) | (data << 8);
 			sample_address <<= 4;
+		return;
+
+		case 0x12: // poundfor "sample end address" - not used
+		case 0x13:
 		return;
 
 		case 0x80: // rtype2
@@ -1233,21 +1243,22 @@ void __fastcall m72_sound_write_port(UINT16 port, UINT8 data)
 		case 0x82:
 			DACSignedWrite(0, data);
 			sample_address = (sample_address + 1) & 0x3ffff;
+			if (!DrvSndROM[sample_address]) {
+				DACWrite(0, 0); // clear dac @ end of sample, fixes distortion in rtype2 level4 after death while also killing an air-tank
+			}
 		return;
 	}
 }
 
-UINT8 __fastcall m72_sound_read_port(UINT16 port)
+static UINT8 __fastcall m72_sound_read_port(UINT16 port)
 {
-//	if ((port & 0xff) != 0x84 && (port & 0xfe) != 0x00) bprintf (0, _T("%2.2x, rp\n"), port & 0xff);
-
 	switch (port & 0xff)
 	{
 		case 0x00:
 		case 0x01:
 		case 0x40: // poundfor
 		case 0x41: // poundfor
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x80: // rtype2
 		case 0x42: // poundfor
@@ -1266,11 +1277,6 @@ static void m72YM2151IRQHandler(INT32 nStatus)
 	setvector_callback(nStatus ? YM2151_ASSERT : YM2151_CLEAR);
 }
 
-static INT32 m72SyncDAC()
-{
-	return (INT32)(float)(nBurnSoundLen * (ZetTotalCycles() / (3579545.000 / (nBurnFPS / 100.000))));
-}
-
 static INT32 DrvDoReset()
 {
 	memset (AllRam, 0, RamEnd - AllRam);
@@ -1282,17 +1288,20 @@ static INT32 DrvDoReset()
 	ZetOpen(0);
 	ZetReset();
 	setvector_callback(VECTOR_INIT);
-	if (enable_z80_reset) {
-		z80_reset = 1;
-	}
+	z80_reset = (enable_z80_reset) ? 1 : 0;
 	ZetClose();
 
 	BurnYM2151Reset();
 	DACReset();
 
-	ym2151_previous = 0;
+	HiscoreReset();
+
 	sample_address = 0;
 	irq_raster_position = -1;
+	if (!CosmicCop) m72_irq_base = 0;
+	majtitle_rowscroll_enable = 0;
+
+	nExtraCycles = 0;
 
 	return 0;
 }
@@ -1378,7 +1387,7 @@ static void rtype2_main_cpu_map()
 
 static void hharryu_main_cpu_map()
 {
-	VezInit(0, V30_TYPE);
+	VezInit(0, V35_TYPE);
 
 	VezOpen(0);
 	VezMapArea(0x00000, 0x7ffff, 0, DrvV30ROM + 0x000000);
@@ -1653,8 +1662,8 @@ static INT32 MemIndex()
 	DrvProtRAM	= Next; Next += 0x001000;
 	DrvRowScroll	= Next; Next += 0x000800;
 
-	soundlatch	= Next; Next += 0x000001;
-	video_enable	= Next; Next += 0x000001;
+	soundlatch	= Next; Next += 0x000004; // 1
+	video_disable	= Next; Next += 0x000004; // 1
 
 	scroll		= Next; Next += 0x000008;
 
@@ -1668,7 +1677,7 @@ static INT32 MemIndex()
 }
 
 
-static INT32 DrvInit(void (*pCPUMapCallback)(), void (*pSNDMapCallback)(), INT32 (*pRomLoadCallback)(), INT32 irqbase, INT32 z80_nmi, INT32 video_type)
+static INT32 DrvInit(void (*pCPUMapCallback)(), void (*pSNDMapCallback)(), INT32 (*pRomLoadCallback)(), INT32 z80_nmi, INT32 video_type)
 {
 	BurnSetRefreshRate(55.00);
 
@@ -1697,7 +1706,7 @@ static INT32 DrvInit(void (*pCPUMapCallback)(), void (*pSNDMapCallback)(), INT32
 		if (pRomLoadCallback()) return 1;
 	}
 
-	m72_irq_base = irqbase;
+	m72_irq_base = 0; // set by port 42. (programmable interrupt controller)
 	z80_nmi_enable = z80_nmi;
 	m72_video_type = video_type;
 
@@ -1712,13 +1721,27 @@ static INT32 DrvInit(void (*pCPUMapCallback)(), void (*pSNDMapCallback)(), INT32
 			video_offsets[0] = video_offsets[1] = -4;
 		break;
 
-		case 2: // hharry
+		case 2: // hharry, xmultipl
+		case 7: // cosmccop (layer offsets of type 2, flipxy of type 1)
 			video_offsets[0] = -4;
 			video_offsets[1] = -6;
+			if (video_type == 7) m72_video_type = 1; // cosmccop: diff flipx/y handling in draw_layer()
 		break;
 
 		case 4: // poundfor
 			video_offsets[0] = video_offsets[1] = -6;
+			m72_video_type = 1; // rtype
+		break;
+
+		case 5: // kengo
+			video_offsets[0] = -3;
+			video_offsets[1] = -6;
+			m72_video_type = 1; // rtype
+		break;
+
+		case 6: // airduel m82
+			video_offsets[0] = -4;
+			video_offsets[1] = -6;
 			m72_video_type = 1; // rtype
 		break;
 	}
@@ -1728,7 +1751,7 @@ static INT32 DrvInit(void (*pCPUMapCallback)(), void (*pSNDMapCallback)(), INT32
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
-	DACInit(0, 0, 1, m72SyncDAC);
+	DACInit(0, 0, 1, ZetTotalCycles, 3579545);
 	DACSetRoute(0, 0.40, BURN_SND_ROUTE_BOTH);
 
 	DrvDoReset();
@@ -1748,9 +1771,17 @@ static INT32 DrvExit()
 
 	BurnFree(AllMem);
 
+	if (Poundfor)
+		BurnTrackballExit();
+
 	m72_video_type = 0;
 	enable_z80_reset = 0;
 	z80_nmi_enable = 0;
+	m72_irq_base = 0;
+	Kengo = 0;
+	CosmicCop = 0;
+	Poundfor = 0;
+	Clock_16mhz = 0;
 
 	m72_install_protection(NULL,NULL,NULL);
 
@@ -1768,16 +1799,14 @@ static void draw_layer(INT32 layer, INT32 forcelayer, INT32 type, INT32 start, I
 	//	    layer, prio, forcelayer
 	const UINT16 transmask[2][3][2] = {
 		{ { 0xffff, 0x0001 }, { 0x00ff, 0xff01 }, { 0x0001, 0xffff } },
-		{ { 0xffff, 0x0000 }, { 0x00ff, 0xff00 }, {
-            (type == 0) ? (UINT16)0x0007 : (UINT16)0x0001,
-            (type == 0) ? (UINT16)0xfff8 : (UINT16)0xfffe } }
+		{ { 0xffff, 0x0000 }, { 0x00ff, 0xff00 }, { (type == 0) ? (const UINT16)0x0007 : (const UINT16)0x0001, (type == 0) ? (const UINT16)0xfff8 : (const UINT16)0xfffe } }
 	};
 
 	INT32 scrolly = scroll[layer * 4 + 0] | (scroll[layer * 4 + 1] << 8);
 	INT32 scrollx = scroll[layer * 4 + 2] | (scroll[layer * 4 + 3] << 8);
 
 	scrolly = (scrolly + 128) & 0x1ff;
-	scrollx = (scrollx + 64 + video_offsets[layer]) & 0x1ff;
+	scrollx = (scrollx + 64 + video_offsets[layer]) & ((0x200 << (type == 3 && layer == 1)) - 1);
 
 	UINT16 *xscroll = (UINT16*)DrvRowScroll;
 
@@ -1811,7 +1840,7 @@ static void draw_layer(INT32 layer, INT32 forcelayer, INT32 type, INT32 start, I
 			INT32 code  = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 0]);
 			INT32 color = BURN_ENDIAN_SWAP_INT16(vram[offs * 2 + 1]);
 
-			if (type == 1||type==3) {
+			if (type == 1 || type == 3) {
 				flipy = color & 0x0040;
 				flipx = color & 0x0020;
 				prio  = (color & 0x0100) ? 2 : (color & 0x80) ? 1 : 0;
@@ -1852,8 +1881,6 @@ static void draw_layer(INT32 layer, INT32 forcelayer, INT32 type, INT32 start, I
 	}
 }
 
-INT32 start_screen = 0;
-
 static void draw_sprites()
 {
 	UINT16 *sprram = (UINT16*)DrvSprBuf;
@@ -1873,7 +1900,6 @@ static void draw_sprites()
 		INT32 h = 1 << ((attr & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		sy -= start_screen;
 		sx -= 64; // ?
 #if 0
 		if (*flipscreen)
@@ -1942,7 +1968,6 @@ static void majtitle_draw_sprites()
 		h = 1 << ((BURN_ENDIAN_SWAP_INT16(spriteram16_2[offs+2]) & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		sy -= start_screen;
 		sx -= 64; // ?
 #if 0
 		if (flip_screen_get(machine))
@@ -1992,24 +2017,25 @@ static void majtitle_draw_sprites()
 
 static void dodrawline(INT32 start, INT32 finish)
 {
-	if (*video_enable) return;
+	if (*video_disable) return;
 
-	draw_layer(1, 1, m72_video_type, start, finish);
-	draw_layer(0, 1, m72_video_type, start, finish);
+	if (nBurnLayer & 1) draw_layer(1, 1, m72_video_type, start, finish);
+	if (nBurnLayer & 2) draw_layer(0, 1, m72_video_type, start, finish);
 
-	// hacky hack for drawing sprites in scanline... slow.
-	start_screen = start;
-	UINT16 *ptr = pTransDraw;
-	INT32 scrn = nScreenHeight;
-	pTransDraw += start * nScreenWidth;
-	nScreenHeight = finish - start;
-	if (m72_video_type == 3) majtitle_draw_sprites();
-	draw_sprites();
-	pTransDraw = ptr;
-	nScreenHeight = scrn;
+	GenericTilesSetClip(0, -1, start, finish);
+	if (nSpriteEnable & 1) {
+		if (m72_video_type == 3) majtitle_draw_sprites();
+		draw_sprites();
+	}
+	GenericTilesClearClip();
 
-	draw_layer(1, 0, m72_video_type, start, finish);
-	draw_layer(0, 0, m72_video_type, start, finish);
+	if (nBurnLayer & 4) draw_layer(1, 0, m72_video_type, start, finish);
+	if (nBurnLayer & 8) draw_layer(0, 0, m72_video_type, start, finish);
+}
+
+static inline void DrvDrawInitFrame()
+{
+	BurnTransferClear();
 }
 
 static INT32 DrvDraw()
@@ -2021,21 +2047,7 @@ static INT32 DrvDraw()
 		DrvRecalc = 0;
 	}
 
-//	if (*video_enable) {
-//		BurnTransferClear();
-//		BurnTransferCopy(DrvPalette);
-//		return 0;
-//	}
-
-//	draw_layer(1, 1, 0, nScreenHeight);
-//	draw_layer(0, 1, 0, nScreenHeight);
-//	draw_sprites();
-//	draw_layer(1, 0, 0, nScreenHeight);
-//	draw_layer(0, 0, 0, nScreenHeight);
-
 	BurnTransferCopy(DrvPalette);
-
-	BurnTransferClear();
 
 	return 0;
 }
@@ -2051,6 +2063,15 @@ static void compile_inputs()
 		DrvInputs[3] ^= (DrvJoy4[i] & 1) << i;
 		DrvInputs[4] ^= (DrvJoy5[i] & 1) << i;
 	}
+
+	if (Poundfor) {
+		BurnTrackballConfig(0, AXIS_NORMAL, AXIS_REVERSED);
+		BurnTrackballConfig(1, AXIS_NORMAL, AXIS_REVERSED);
+		BurnTrackballFrame(0, DrvAnalogPort0, DrvAnalogPort1, 5, 8);
+		BurnTrackballFrame(1, DrvAnalogPort2, DrvAnalogPort3, 5, 8);
+		BurnTrackballUpdate(0);
+		BurnTrackballUpdate(1);
+	}
 }
 
 static INT32 nPreviousLine = 0;
@@ -2062,17 +2083,21 @@ static void scanline_interrupts(INT32 scanline)
 			dodrawline(nPreviousLine, scanline+1);
 			nPreviousLine = scanline + 1;
 		}
-
-		VezSetIRQLineAndVector(0, (m72_irq_base + 8)/4, VEZ_IRQSTATUS_AUTO);
+		if (Kengo)
+			VezSetIRQLineAndVector(NEC_INPUT_LINE_INTP2, 0xff, CPU_IRQSTATUS_AUTO);
+		else
+			VezSetIRQLineAndVector(0, (m72_irq_base + 8)/4, CPU_IRQSTATUS_AUTO);
 	}
-	else if (scanline == 256) // vblank
+	else if (scanline == 255) // vblank
 	{
 		if (nPreviousLine < nScreenHeight) {
 			dodrawline(nPreviousLine, nScreenHeight);
 			nPreviousLine = 0;
 		}
-
-		VezSetIRQLineAndVector(0, (m72_irq_base + 0)/4, VEZ_IRQSTATUS_AUTO);
+		if (Kengo)
+			VezSetIRQLineAndVector(NEC_INPUT_LINE_INTP0, 0xff, CPU_IRQSTATUS_AUTO);
+		else
+			VezSetIRQLineAndVector(0, (m72_irq_base + 0)/4, CPU_IRQSTATUS_AUTO);
 	}
 
 	if (nPreviousLine >= nScreenHeight) nPreviousLine = 0;
@@ -2080,8 +2105,6 @@ static void scanline_interrupts(INT32 scanline)
 
 static INT32 DrvFrame()
 {
-	INT32 nSoundBufferPos = 0;
-	
 	if (DrvReset) {
 		DrvDoReset();
 	}
@@ -2091,55 +2114,67 @@ static INT32 DrvFrame()
 
 	compile_inputs();
 	
-	// overclocking...
-	nCyclesTotal[0] = (INT32)((INT64)(8000000 / 55) * nBurnCPUSpeedAdjust / 0x0100);
+	INT32 multiplier = 3;
+	INT32 nInterleave = 256 * multiplier;
+	INT32 nSoundBufferPos = 0;
+	INT32 z80samplecount = 0;
+
+	if (Clock_16mhz) // Ken-go, Cosmic Cop
+		nCyclesTotal[0] = (INT32)((INT64)(16000000 / 55) * nBurnCPUSpeedAdjust / 0x0100);
+	else
+		nCyclesTotal[0] = (INT32)((INT64)(8000000 / 55) * nBurnCPUSpeedAdjust / 0x0100);
 	nCyclesTotal[1] = (INT32)((INT64)(3579545 / 55) * nBurnCPUSpeedAdjust / 0x0100);
-	nCyclesDone[0] = nCyclesDone[1] = 0;
+	nCyclesDone[0] = 0;
+	nCyclesDone[1] = nExtraCycles;
+
+	if (pBurnDraw) {
+		DrvDrawInitFrame();
+	}
 
 	VezOpen(0);
 	ZetOpen(0);
 
-//	memset (pBurnSoundOut, 0, nBurnSoundLen * 2 * sizeof(INT16));
-
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nCurrentCycles = ((nCyclesTotal[0] / nInterleave) * 1) / 8; // scanline is 87.5% of scanline time
-
-		for (INT32 j = 0; j < 7; j++) { // increase cpu sync
-			nCyclesDone[0] += VezRun(nCurrentCycles);
-		}
-
-		scanline_interrupts(i);	// run at hblank?
-
-		nCurrentCycles = ((nCyclesTotal[0] / nInterleave) * 1) / 8; // horizontal blank is 12.5% of scanline
-
+		nCurrentCycles = nCyclesTotal[0] / nInterleave;
 		nCyclesDone[0] += VezRun(nCurrentCycles);
-		// vertical lines are ~90% of video time, vblank is ~10%
+
+		if ((i%multiplier)==0)
+			scanline_interrupts(i/multiplier);
 
 		if (z80_reset == 0) {
-			nCyclesDone[1] += ZetRun(nCyclesTotal[1] / nInterleave);
-
-			if (i & 1) {
+			nCyclesDone[1] += ZetRun((nCyclesTotal[1] * (i + 1) / nInterleave) - nCyclesDone[1]);
+			if (i%multiplier==2 && i/multiplier & 1 && z80samplecount < 128) {
 				if (z80_nmi_enable == Z80_FAKE_NMI) {
+					z80samplecount++;
 					if (DrvSndROM[sample_address]) {
 						DACSignedWrite(0, DrvSndROM[sample_address]);
 						sample_address = (sample_address + 1) & 0x3ffff;
+					} else {
+						DACWrite(0, 0); // Clear DAC output buffer at end of sample - fixes distortion in Air Duel & second-to-last level of Mr. Heli
 					}
+
 				} else if (z80_nmi_enable == Z80_REAL_NMI) {
-					 ZetNmi();
+					z80samplecount++;
+					ZetNmi();
 				}
 			}
 		} else {
 			ZetIdle(nCyclesTotal[1] / nInterleave);
 		}
-		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			nSoundBufferPos += nSegmentLength;
+
+		if ((i%multiplier)==0) {
+			if (pBurnSoundOut) {
+				INT32 nSegmentLength = nBurnSoundLen / (nInterleave / multiplier);
+				INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+
+				BurnYM2151Render(pSoundBuf, nSegmentLength);
+
+				nSoundBufferPos += nSegmentLength;
+			}
 		}
 	}
+	nExtraCycles = nCyclesDone[1] - nCyclesTotal[1]; // just for sound
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -2162,6 +2197,42 @@ static INT32 DrvFrame()
 	return 0;
 }
 
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
+{
+	struct BurnArea ba;
+	
+	if (pnMin != NULL) {			// Return minimum compatible version
+		*pnMin = 0x029705;
+	}
+
+	if (nAction & ACB_MEMORY_RAM) {
+		memset(&ba, 0, sizeof(ba));
+		ba.Data	  = AllRam;
+		ba.nLen	  = RamEnd-AllRam;
+		ba.szName = "All Ram";
+		BurnAcb(&ba);
+	}
+
+	if (nAction & ACB_DRIVER_DATA) {
+		ZetScan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		DACScan(nAction, pnMin);
+		VezScan(nAction);
+
+		if (Poundfor)
+			BurnTrackballScan();
+
+		SCAN_VAR(irq_raster_position);
+		SCAN_VAR(m72_irq_base);
+
+		SCAN_VAR(sample_address);
+		SCAN_VAR(irqvector);
+		SCAN_VAR(z80_reset);
+		SCAN_VAR(majtitle_rowscroll_enable);
+	}
+
+	return 0;
+}
 
 
 
@@ -2198,16 +2269,16 @@ STD_ROM_FN(rtype)
 
 static INT32 rtypeInit()
 {
-	return DrvInit(common_040000_040000, sound_ram_map, NULL, 0x80, Z80_NO_NMI, 0);
+	return DrvInit(common_040000_040000, sound_ram_map, NULL, Z80_NO_NMI, 0);
 }
 
 struct BurnDriver BurnDrvRtype = {
 	"rtype", NULL, NULL, NULL, "1987",
-	"R-Type (World)\0", NULL, "Irem", "M72",
+	"R-Type (World)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtypeRomInfo, rtypeRomName, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
-	rtypeInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtypeRomInfo, rtypeRomName, NULL, NULL, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
+	rtypeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2245,11 +2316,11 @@ STD_ROM_FN(rtypej)
 
 struct BurnDriver BurnDrvRtypej = {
 	"rtypej", "rtype", NULL, NULL, "1987",
-	"R-Type (Japan)\0", NULL, "Irem", "M72",
+	"R-Type (Japan)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtypejRomInfo, rtypejRomName, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
-	rtypeInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtypejRomInfo, rtypejRomName, NULL, NULL, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
+	rtypeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2287,11 +2358,11 @@ STD_ROM_FN(rtypejp)
 
 struct BurnDriver BurnDrvRtypejp = {
 	"rtypejp", "rtype", NULL, NULL, "1987",
-	"R-Type (Japan prototype)\0", NULL, "Irem", "M72",
+	"R-Type (Japan prototype)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtypejpRomInfo, rtypejpRomName, NULL, NULL, CommonInputInfo, RtypepDIPInfo,
-	rtypeInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtypejpRomInfo, rtypejpRomName, NULL, NULL, NULL, NULL, CommonInputInfo, RtypepDIPInfo,
+	rtypeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2336,11 +2407,11 @@ STD_ROM_FN(rtypeu)
 
 struct BurnDriver BurnDrvRtypeu = {
 	"rtypeu", "rtype", NULL, NULL, "1987",
-	"R-Type (US)\0", NULL, "Irem (Nintendo of America license)", "M72",
+	"R-Type (US)\0", NULL, "Irem (Nintendo of America license)", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtypeuRomInfo, rtypeuRomName, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
-	rtypeInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtypeuRomInfo, rtypeuRomName, NULL, NULL, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
+	rtypeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2378,11 +2449,11 @@ STD_ROM_FN(rtypeb)
 
 struct BurnDriver BurnDrvRtypeb = {
 	"rtypeb", "rtype", NULL, NULL, "1987",
-	"R-Type (World bootleg)\0", NULL, "bootleg", "M72",
+	"R-Type (World bootleg)\0", NULL, "bootleg", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtypebRomInfo, rtypebRomName, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
-	rtypeInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtypebRomInfo, rtypebRomName, NULL, NULL, NULL, NULL, CommonInputInfo, RtypeDIPInfo,
+	rtypeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2427,16 +2498,16 @@ STD_ROM_FN(xmultipl)
 
 static INT32 xmultiplInit()
 {
-	return DrvInit(common_080000_09c000, sound_rom_map, NULL, 0x20, Z80_REAL_NMI, 0);
+	return DrvInit(common_080000_09c000, sound_rom_map, NULL, Z80_REAL_NMI, 2);
 }
 
 struct BurnDriver BurnDrvXmultipl = {
 	"xmultipl", NULL, NULL, NULL, "1989",
-	"X Multiply (World, M81)\0", NULL, "Irem", "M81",
+	"X Multiply (World, M81)\0", NULL, "Irem", "Irem M81",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, xmultiplRomInfo, xmultiplRomName, NULL, NULL, CommonInputInfo, XmultiplDIPInfo,
-	xmultiplInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, xmultiplRomInfo, xmultiplRomName, NULL, NULL, NULL, NULL, CommonInputInfo, XmultiplDIPInfo,
+	xmultiplInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2470,7 +2541,7 @@ static struct BurnRomInfo xmultiplm72RomDesc[] = {
 
 	{ "t52.v0",		0x20000, 0x2db1bd80, 0x05 | BRF_SND },           // 20 DAC Samples
 
-	{ "xmultipl_i8751h.bin",0x01000, 0xc8ceb3cd, 0x00 | BRF_OPT }, // 21 i8751 Code
+	{ "xmultipl_i8751h.bin",0x01000, 0xc8ceb3cd, 0x00 | BRF_OPT }, 	 // 21 i8751 Code
 };
 
 STD_ROM_PICK(xmultiplm72)
@@ -2480,16 +2551,16 @@ static INT32 xmultiplm72Init()
 {
 	install_protection(xmultiplm72);
 
-	return DrvInit(common_080000_080000, sound_ram_map, NULL, 0x20, Z80_REAL_NMI, 0);
+	return DrvInit(common_080000_080000, sound_ram_map, NULL, Z80_REAL_NMI, 0);
 }
 
 struct BurnDriver BurnDrvXmultiplm72 = {
 	"xmultiplm72", "xmultipl", NULL, NULL, "1989",
-	"X Multiply (Japan, M72)\0", NULL, "Irem", "M72",
+	"X Multiply (Japan, M72)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, xmultiplm72RomInfo, xmultiplm72RomName, NULL, NULL, CommonInputInfo, XmultiplDIPInfo,
-	xmultiplm72Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, xmultiplm72RomInfo, xmultiplm72RomName, NULL, NULL, NULL, NULL, CommonInputInfo, XmultiplDIPInfo,
+	xmultiplm72Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2527,16 +2598,16 @@ static INT32 dbreedRomLoadCallback()
 
 static INT32 dbreedInit()
 {
-	return DrvInit(common_080000_088000, sound_rom_map, dbreedRomLoadCallback, 0x20, Z80_REAL_NMI, 2);
+	return DrvInit(common_080000_088000, sound_rom_map, dbreedRomLoadCallback, Z80_REAL_NMI, 2);
 }
 
 struct BurnDriver BurnDrvDbreed = {
 	"dbreed", NULL, NULL, NULL, "1989",
-	"Dragon Breed (M81 PCB version)\0", NULL, "Irem", "M81",
+	"Dragon Breed (M81 PCB version)\0", NULL, "Irem", "Irem M81",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, dbreedRomInfo, dbreedRomName, NULL, NULL, CommonInputInfo, DbreedDIPInfo,
-	dbreedInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, dbreedRomInfo, dbreedRomName, NULL, NULL, NULL, NULL, CommonInputInfo, DbreedDIPInfo,
+	dbreedInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2574,7 +2645,7 @@ STD_ROM_FN(dbreedm72)
 
 static INT32 dbreedm72RomLoadCallback()
 {
-	memcpy (DrvV30ROM + 0x60000, DrvV30ROM + 0x40000, 0x20000);
+	memmove(DrvV30ROM + 0x60000, DrvV30ROM + 0x40000, 0x20000);
 
 	return 0;
 }
@@ -2583,16 +2654,16 @@ static INT32 dbreedm72Init()
 {
 	install_protection(dbreedm72);
 
-	return DrvInit(common_080000_090000, sound_ram_map, dbreedm72RomLoadCallback, 0x20, Z80_REAL_NMI, 0);
+	return DrvInit(common_080000_090000, sound_ram_map, dbreedm72RomLoadCallback, Z80_REAL_NMI, 0);
 }
 
 struct BurnDriver BurnDrvDbreedm72 = {
 	"dbreedm72", "dbreed", NULL, NULL, "1989",
-	"Dragon Breed (M72 PCB version)\0", NULL, "Irem", "M72",
+	"Dragon Breed (M72 PCB version)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, dbreedm72RomInfo, dbreedm72RomName, NULL, NULL, CommonInputInfo, DbreedDIPInfo,
-	dbreedm72Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, dbreedm72RomInfo, dbreedm72RomName, NULL, NULL, NULL, NULL, CommonInputInfo, DbreedDIPInfo,
+	dbreedm72Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2638,16 +2709,16 @@ static INT32 bchopperInit()
 {
 	install_protection(bchopper);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvBchopper = {
 	"bchopper", NULL, NULL, NULL, "1987",
-	"Battle Chopper\0", NULL, "Irem", "M72",
+	"Battle Chopper\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, bchopperRomInfo, bchopperRomName, NULL, NULL, CommonInputInfo, BchopperDIPInfo,
-	bchopperInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, bchopperRomInfo, bchopperRomName, NULL, NULL, NULL, NULL, CommonInputInfo, BchopperDIPInfo,
+	bchopperInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2679,7 +2750,7 @@ static struct BurnRomInfo mrheliRomDesc[] = {
 
 	{ "c-v0-b.rom",		0x10000, 0xd0c27e58, 0x05 | BRF_SND },           // 18 DAC Samples
 
-	{ "mrheli_i8751.mcu",	0x10000, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 19 i8751 Code
+	{ "mh-c-pr.bin",	0x01000, 0x897dc4ee, 0x00 | BRF_OPT }, // 19 i8751 Code
 };
 
 STD_ROM_PICK(mrheli)
@@ -2689,16 +2760,16 @@ static INT32 mrheliInit()
 {
 	m72_install_protection(bchopper_code, mrheli_crc, bchopper_sample_offsets);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvMrheli = {
 	"mrheli", "bchopper", NULL, NULL, "1987",
-	"Mr. HELI no Dai-Bouken\0", NULL, "Irem", "M72",
+	"Mr. HELI no Dai-Bouken\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, mrheliRomInfo, mrheliRomName, NULL, NULL, CommonInputInfo, BchopperDIPInfo,
-	mrheliInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, mrheliRomInfo, mrheliRomName, NULL, NULL, NULL, NULL, CommonInputInfo, BchopperDIPInfo,
+	mrheliInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2706,33 +2777,40 @@ struct BurnDriver BurnDrvMrheli = {
 // Ninja Spirit
 
 static struct BurnRomInfo nspiritRomDesc[] = {
-	{ "nin-c-h0.rom",	0x10000, 0x035692fa, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
-	{ "nin-c-l0.rom",	0x10000, 0x9a405898, 0x01 | BRF_PRG | BRF_ESS }, //  1
-	{ "nin-c-h1.rom",	0x10000, 0xcbc10586, 0x01 | BRF_PRG | BRF_ESS }, //  2
-	{ "nin-c-l1.rom",	0x10000, 0xb75c9a4d, 0x01 | BRF_PRG | BRF_ESS }, //  3
-	{ "nin-c-h2.rom",	0x10000, 0x8ad818fa, 0x01 | BRF_PRG | BRF_ESS }, //  4
-	{ "nin-c-l2.rom",	0x10000, 0xc52ca78c, 0x01 | BRF_PRG | BRF_ESS }, //  5
-	{ "nin-c-h3.rom",	0x10000, 0x501104ef, 0x01 | BRF_PRG | BRF_ESS }, //  6
-	{ "nin-c-l3.rom",	0x10000, 0xfd7408b8, 0x01 | BRF_PRG | BRF_ESS }, //  7
+	{ "nin_c-h0.6h",	0x10000, 0x035692fa, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "nin_c-l0.6d",	0x10000, 0x9a405898, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "nin_c-h1.6j",	0x10000, 0xcbc10586, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "nin_c-l1.6c",	0x10000, 0xb75c9a4d, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	{ "nin_c-h2.6l",	0x10000, 0x8ad818fa, 0x01 | BRF_PRG | BRF_ESS }, //  4
+	{ "nin_c-l2.6b",	0x10000, 0xc52ca78c, 0x01 | BRF_PRG | BRF_ESS }, //  5
+	{ "nin_c-h3.6m",	0x10000, 0x501104ef, 0x01 | BRF_PRG | BRF_ESS }, //  6
+	{ "nin_c-l3.6a",	0x10000, 0xfd7408b8, 0x01 | BRF_PRG | BRF_ESS }, //  7
 
-	{ "nin-r00.rom",	0x20000, 0x5f61d30b, 0x02 | BRF_GRA },           //  8 Sprites
-	{ "nin-r10.rom",	0x20000, 0x0caad107, 0x02 | BRF_GRA },           //  9
-	{ "nin-r20.rom",	0x20000, 0xef3617d3, 0x02 | BRF_GRA },           // 10
-	{ "nin-r30.rom",	0x20000, 0x175d2a24, 0x02 | BRF_GRA },           // 11
+	{ "nin-r00.7m",		0x20000, 0x5f61d30b, 0x02 | BRF_GRA },           //  8 Sprites
+	{ "nin-r10.7j",		0x20000, 0x0caad107, 0x02 | BRF_GRA },           //  9
+	{ "nin-r20.7f",		0x20000, 0xef3617d3, 0x02 | BRF_GRA },           // 10
+	{ "nin-r30.7d",		0x20000, 0x175d2a24, 0x02 | BRF_GRA },           // 11
 
-	{ "nin-b-a0.rom",	0x10000, 0x63f8f658, 0x03 | BRF_GRA },           // 12 Foreground Tiles
-	{ "nin-b-a1.rom",	0x10000, 0x75eb8306, 0x03 | BRF_GRA },           // 13
-	{ "nin-b-a2.rom",	0x10000, 0xdf532172, 0x03 | BRF_GRA },           // 14
-	{ "nin-b-a3.rom",	0x10000, 0x4dedd64c, 0x03 | BRF_GRA },           // 15
+	{ "nin_b-a0.4c",	0x10000, 0x63f8f658, 0x03 | BRF_GRA },           // 12 Foreground Tiles
+	{ "nin_b-a1.4d",	0x10000, 0x75eb8306, 0x03 | BRF_GRA },           // 13
+	{ "nin_b-a2.4b",	0x10000, 0xdf532172, 0x03 | BRF_GRA },           // 14
+	{ "nin_b-a3.4e",	0x10000, 0x4dedd64c, 0x03 | BRF_GRA },           // 15
 
-	{ "nin-b0.rom",		0x10000, 0x1b0e08a6, 0x04 | BRF_GRA },           // 16 Background Tiles
-	{ "nin-b1.rom",		0x10000, 0x728727f0, 0x04 | BRF_GRA },           // 17
-	{ "nin-b2.rom",		0x10000, 0xf87efd75, 0x04 | BRF_GRA },           // 18
-	{ "nin-b3.rom",		0x10000, 0x98856cb4, 0x04 | BRF_GRA },           // 19
+	{ "b0.4j",			0x10000, 0x1b0e08a6, 0x04 | BRF_GRA },           // 16 Background Tiles
+	{ "b1.4k",			0x10000, 0x728727f0, 0x04 | BRF_GRA },           // 17
+	{ "b2.4h",			0x10000, 0xf87efd75, 0x04 | BRF_GRA },           // 18
+	{ "b3.4f",			0x10000, 0x98856cb4, 0x04 | BRF_GRA },           // 19
 
-	{ "nin-v0.rom",		0x10000, 0xa32e8caf, 0x05 | BRF_SND },           // 20 DAC Samples
+	{ "nin-v0.7a",		0x10000, 0xa32e8caf, 0x05 | BRF_SND },           // 20 DAC Samples
 
-	{ "nspirit_i8751.mcu",	0x01000, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 21 i8751 Code
+	{ "nin_c-pr.1c",	0x01000, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 21 i8751 Code
+	
+	{ "m72_a-8l.8l",	0x00100, 0xb460c438, 0x00 | BRF_OPT },           // 22 Proms
+	{ "m72_a-9l.9l",	0x00100, 0xa4f2c4bc, 0x00 | BRF_OPT },           // 23
+
+	{ "nin_c-3f.3f",	0x00100, 0x5402fc07, 0x00 | BRF_OPT }, 			 // 24 PLDs
+	{ "m72_a-3d.3d",	0x00100, 0xde85dac3, 0x00 | BRF_OPT }, 			 // 25
+	{ "m72_a-4d.4d",	0x00100, 0x59676de1, 0x00 | BRF_OPT }, 			 // 26
 };
 
 STD_ROM_PICK(nspirit)
@@ -2742,16 +2820,16 @@ static INT32 nspiritInit()
 {
 	install_protection(nspirit);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvNspirit = {
 	"nspirit", NULL, NULL, NULL, "1988",
-	"Ninja Spirit\0", NULL, "Irem", "M72",
+	"Ninja Spirit\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, nspiritRomInfo, nspiritRomName, NULL, NULL, CommonInputInfo, NspiritDIPInfo,
-	nspiritInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
+	NULL, nspiritRomInfo, nspiritRomName, NULL, NULL, NULL, NULL, CommonInputInfo, NspiritDIPInfo,
+	nspiritInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2759,33 +2837,33 @@ struct BurnDriver BurnDrvNspirit = {
 // Saigo no Nindou (Japan)
 
 static struct BurnRomInfo nspiritjRomDesc[] = {
-	{ "c-h0",		0x10000, 0x8603fab2, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
-	{ "c-l0",		0x10000, 0xe520fa35, 0x01 | BRF_PRG | BRF_ESS }, //  1
-	{ "nin-c-h1.rom",	0x10000, 0xcbc10586, 0x01 | BRF_PRG | BRF_ESS }, //  2
-	{ "nin-c-l1.rom",	0x10000, 0xb75c9a4d, 0x01 | BRF_PRG | BRF_ESS }, //  3
-	{ "nin-c-h2.rom",	0x10000, 0x8ad818fa, 0x01 | BRF_PRG | BRF_ESS }, //  4
-	{ "nin-c-l2.rom",	0x10000, 0xc52ca78c, 0x01 | BRF_PRG | BRF_ESS }, //  5
-	{ "c-h3",		0x10000, 0x95b63a61, 0x01 | BRF_PRG | BRF_ESS }, //  6
-	{ "c-l3",		0x10000, 0xe754a87a, 0x01 | BRF_PRG | BRF_ESS }, //  7
+	{ "c-h0",			0x10000, 0x8603fab2, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "c-l0",			0x10000, 0xe520fa35, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "nin_c-h1.6j",	0x10000, 0xcbc10586, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "nin_c-l1.6c",	0x10000, 0xb75c9a4d, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	{ "nin_c-h2.6l",	0x10000, 0x8ad818fa, 0x01 | BRF_PRG | BRF_ESS }, //  4
+	{ "nin_c-l2.6b",	0x10000, 0xc52ca78c, 0x01 | BRF_PRG | BRF_ESS }, //  5
+	{ "c-h3",			0x10000, 0x95b63a61, 0x01 | BRF_PRG | BRF_ESS }, //  6
+	{ "c-l3",			0x10000, 0xe754a87a, 0x01 | BRF_PRG | BRF_ESS }, //  7
 
-	{ "nin-r00.rom",	0x20000, 0x5f61d30b, 0x02 | BRF_GRA },           //  8 Sprites
-	{ "nin-r10.rom",	0x20000, 0x0caad107, 0x02 | BRF_GRA },           //  9
-	{ "nin-r20.rom",	0x20000, 0xef3617d3, 0x02 | BRF_GRA },           // 10
-	{ "nin-r30.rom",	0x20000, 0x175d2a24, 0x02 | BRF_GRA },           // 11
+	{ "nin-r00.7m",		0x20000, 0x5f61d30b, 0x02 | BRF_GRA },           //  8 Sprites
+	{ "nin-r10.7j",		0x20000, 0x0caad107, 0x02 | BRF_GRA },           //  9
+	{ "nin-r20.7f",		0x20000, 0xef3617d3, 0x02 | BRF_GRA },           // 10
+	{ "nin-r30.7d",		0x20000, 0x175d2a24, 0x02 | BRF_GRA },           // 11
 
-	{ "nin-b-a0.rom",	0x10000, 0x63f8f658, 0x03 | BRF_GRA },           // 12 Foreground Tiles
-	{ "nin-b-a1.rom",	0x10000, 0x75eb8306, 0x03 | BRF_GRA },           // 13
-	{ "nin-b-a2.rom",	0x10000, 0xdf532172, 0x03 | BRF_GRA },           // 14
-	{ "nin-b-a3.rom",	0x10000, 0x4dedd64c, 0x03 | BRF_GRA },           // 15
+	{ "nin_b-a0.4c",	0x10000, 0x63f8f658, 0x03 | BRF_GRA },           // 12 Foreground Tiles
+	{ "nin_b-a1.4d",	0x10000, 0x75eb8306, 0x03 | BRF_GRA },           // 13
+	{ "nin_b-a2.4b",	0x10000, 0xdf532172, 0x03 | BRF_GRA },           // 14
+	{ "nin_b-a3.4e",	0x10000, 0x4dedd64c, 0x03 | BRF_GRA },           // 15
 
-	{ "nin-b0.rom",		0x10000, 0x1b0e08a6, 0x04 | BRF_GRA },           // 16 Background Tiles
-	{ "nin-b1.rom",		0x10000, 0x728727f0, 0x04 | BRF_GRA },           // 17
-	{ "nin-b2.rom",		0x10000, 0xf87efd75, 0x04 | BRF_GRA },           // 18
-	{ "nin-b3.rom",		0x10000, 0x98856cb4, 0x04 | BRF_GRA },           // 19
+	{ "b0.4j",			0x10000, 0x1b0e08a6, 0x04 | BRF_GRA },           // 16 Background Tiles
+	{ "b1.4k",			0x10000, 0x728727f0, 0x04 | BRF_GRA },           // 17
+	{ "b2.4h",			0x10000, 0xf87efd75, 0x04 | BRF_GRA },           // 18
+	{ "b3.4f",			0x10000, 0x98856cb4, 0x04 | BRF_GRA },           // 19
 
-	{ "nin-v0.rom",		0x10000, 0xa32e8caf, 0x05 | BRF_SND },           // 20 DAC Samples
+	{ "nin-v0.7a",		0x10000, 0xa32e8caf, 0x05 | BRF_SND },           // 20 DAC Samples
 
-	{ "nin_c-pr.bin",	0x01000, 0x802d440a, 0x00 | BRF_OPT },           // 21 i8751 Code
+	{ "nin_c-pr.1c",	0x01000, 0x802d440a, 0x00 | BRF_OPT },           // 21 i8751 Code
 };
 
 STD_ROM_PICK(nspiritj)
@@ -2795,16 +2873,16 @@ static INT32 nspiritjInit()
 {
 	m72_install_protection(nspirit_code, nspiritj_crc, nspirit_sample_offsets);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvNspiritj = {
 	"nspiritj", "nspirit", NULL, NULL, "1988",
-	"Saigo no Nindou (Japan)\0", NULL, "Irem", "M72",
+	"Saigo no Nindou (Japan)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, nspiritjRomInfo, nspiritjRomName, NULL, NULL, CommonInputInfo, NspiritDIPInfo,
-	nspiritjInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
+	NULL, nspiritjRomInfo, nspiritjRomName, NULL, NULL, NULL, NULL, CommonInputInfo, NspiritDIPInfo,
+	nspiritjInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -2843,7 +2921,7 @@ STD_ROM_FN(imgfight)
 
 static INT32 imgfightRomLoadCallback()
 {
-	memcpy (DrvV30ROM + 0x40000, DrvV30ROM + 0x20000, 0x40000);
+	memmove(DrvV30ROM + 0x40000, DrvV30ROM + 0x20000, 0x40000);
 
 	return 0;
 }
@@ -2852,16 +2930,16 @@ static INT32 imgfightInit()
 {
 	install_protection(imgfight);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, imgfightRomLoadCallback, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, imgfightRomLoadCallback, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvImgfight = {
 	"imgfight", NULL, NULL, NULL, "1988",
-	"Image Fight (Japan, revision A)\0", NULL, "Irem", "M72",
+	"Image Fight (Japan, revision A)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
-	NULL, imgfightRomInfo, imgfightRomName, NULL, NULL, CommonInputInfo, ImgfightDIPInfo,
-	imgfightInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
+	NULL, imgfightRomInfo, imgfightRomName, NULL, NULL, NULL, NULL, CommonInputInfo, ImgfightDIPInfo,
+	imgfightInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
@@ -2900,41 +2978,41 @@ STD_ROM_FN(imgfightj)
 
 struct BurnDriver BurnDrvImgfightj = {
 	"imgfightj", "imgfight", NULL, NULL, "1988",
-	"Image Fight (Japan)\0", NULL, "Irem", "M72",
+	"Image Fight (Japan)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
-	NULL, imgfightjRomInfo, imgfightjRomName, NULL, NULL, CommonInputInfo, ImgfightDIPInfo,
-	imgfightInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
+	NULL, imgfightjRomInfo, imgfightjRomName, NULL, NULL, NULL, NULL, CommonInputInfo, ImgfightDIPInfo,
+	imgfightInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
 
-// Air Duel (Japan)
+// Air Duel (World, M82-A-A + M82-B-A)
 
 static struct BurnRomInfo airduelRomDesc[] = {
-	{ "ad-c-h0.bin",	0x20000, 0x12140276, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
-	{ "ad-c-l0.bin",	0x20000, 0x4ac0b91d, 0x01 | BRF_PRG | BRF_ESS }, //  1
-	{ "ad-c-h3.bin",	0x20000, 0x9f7cfca3, 0x01 | BRF_PRG | BRF_ESS }, //  2
-	{ "ad-c-l3.bin",	0x20000, 0x9dd343f7, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	{ "ad_=m82=_a-h0-d.ic52",	0x20000, 0xdbecc726, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "ad_=m82=_a-l0-d.ic60",	0x20000, 0x6a9fcf59, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "ad_=m82=_a-h1-d.ic51",	0x20000, 0xbafc152a, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "ad_=m82=_a-l1-d.ic59",	0x20000, 0x9e2b1ae7, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	
+	{ "ad_=m82=_a-sp-d.ic15",	0x10000, 0x16a858a3, 0x06 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
 
-	{ "ad-00.bin",		0x20000, 0x2f0d599b, 0x02 | BRF_GRA },           //  4 Sprites
-	{ "ad-10.bin",		0x20000, 0x9865856b, 0x02 | BRF_GRA },           //  5
-	{ "ad-20.bin",		0x20000, 0xd392aef2, 0x02 | BRF_GRA },           //  6
-	{ "ad-30.bin",		0x20000, 0x923240c3, 0x02 | BRF_GRA },           //  7
+	{ "ad_=m82=_b-n0-d.ic44",	0x20000, 0x2f0d599b, 0x02 | BRF_GRA },           //  5 Sprites
+	{ "ad_=m82=_b-n1-d.ic45",	0x20000, 0x9865856b, 0x02 | BRF_GRA },           //  6
+	{ "ad_=m82=_b-n2-d.ic46",	0x20000, 0xd392aef2, 0x02 | BRF_GRA },           //  7
+	{ "ad_=m82=_b-n3-d.ic36",	0x20000, 0x923240c3, 0x02 | BRF_GRA },           //  8
 
-	{ "ad-a0.bin",		0x20000, 0xce134b47, 0x03 | BRF_GRA },           //  8 Foreground Tiles
-	{ "ad-a1.bin",		0x20000, 0x097fd853, 0x03 | BRF_GRA },           //  9
-	{ "ad-a2.bin",		0x20000, 0x6a94c1b9, 0x03 | BRF_GRA },           // 10
-	{ "ad-a3.bin",		0x20000, 0x6637c349, 0x03 | BRF_GRA },           // 11
+	{ "ad_=m82=_a-c0-d.ic49",	0x20000, 0xce134b47, 0x03 | BRF_GRA },           //  9 Foreground Tiles
+	{ "ad_=m82=_a-c1-d.ic48",	0x20000, 0x097fd853, 0x03 | BRF_GRA },           // 10
+	{ "ad_=m82=_a-c2-d.ic57",	0x20000, 0x6a94c1b9, 0x03 | BRF_GRA },           // 11
+	{ "ad_=m82=_a-c3-d.ic56",	0x20000, 0x6637c349, 0x03 | BRF_GRA },           // 12
 
-	{ "ad-b0.bin",		0x20000, 0xce134b47, 0x04 | BRF_GRA },           // 12 Background Tiles
-	{ "ad-b1.bin",		0x20000, 0x097fd853, 0x04 | BRF_GRA },           // 13
-	{ "ad-b2.bin",		0x20000, 0x6a94c1b9, 0x04 | BRF_GRA },           // 14
-	{ "ad-b3.bin",		0x20000, 0x6637c349, 0x04 | BRF_GRA },           // 15
+	{ "mt_f0.bin",				0x20000, 0x2d5e05d5, 0x0e | BRF_GRA },           // 17 Sprites 2
+	{ "mt_f1.bin",				0x20000, 0xc68cd65f, 0x0e | BRF_GRA },           // 18
+	{ "mt_f2.bin",				0x20000, 0xa71feb2d, 0x0e | BRF_GRA },           // 19
+	{ "mt_f3.bin",				0x20000, 0x179f7562, 0x0e | BRF_GRA },           // 20
 
-	{ "ad-v0.bin",		0x20000, 0x339f474d, 0x05 | BRF_SND },           // 16 DAC Samples
-
-	{ "airduel_i8751.mcu",	0x10000, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 17 i8751 Code
+	{ "ad_=m82=_a-v0-d.ic12",	0x20000, 0x339f474d, 0x05 | BRF_SND },           // 21 DAC Samples
 };
 
 STD_ROM_PICK(airduel)
@@ -2942,23 +3020,72 @@ STD_ROM_FN(airduel)
 
 static INT32 airduelInit()
 {
-	install_protection(airduel);
-
-	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(majtitle_main_cpu_map, sound_rom_map, NULL, Z80_REAL_NMI, 6);
 }
 
 struct BurnDriver BurnDrvAirduel = {
 	"airduel", NULL, NULL, NULL, "1990",
-	"Air Duel (Japan)\0", NULL, "Irem", "M72",
+	"Air Duel (World, M82-A-A + M82-B-A)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
-	NULL, airduelRomInfo, airduelRomName, NULL, NULL, CommonInputInfo, AirduelDIPInfo,
-	airduelInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
+	NULL, airduelRomInfo, airduelRomName, NULL, NULL, NULL, NULL, CommonInputInfo, AirduelDIPInfo,
+	airduelInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
 
-// R-Type II
+// Air Duel (Japan, M72)
+
+static struct BurnRomInfo airduelm72RomDesc[] = {
+	{ "ad-c-h0.ic40",	0x20000, 0x12140276, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "ad-c-l0.ic37",	0x20000, 0x4ac0b91d, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "ad-c-h3.ic43",	0x20000, 0x9f7cfca3, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "ad-c-l3.ic34",	0x20000, 0x9dd343f7, 0x01 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "ad-00.ic53",		0x20000, 0x2f0d599b, 0x02 | BRF_GRA },           //  4 Sprites
+	{ "ad-10.ic51",		0x20000, 0x9865856b, 0x02 | BRF_GRA },           //  5
+	{ "ad-20.ic49",		0x20000, 0xd392aef2, 0x02 | BRF_GRA },           //  6
+	{ "ad-30.ic47",		0x20000, 0x923240c3, 0x02 | BRF_GRA },           //  7
+
+	{ "ad-a0.ic21",		0x20000, 0xce134b47, 0x03 | BRF_GRA },           //  8 Foreground Tiles
+	{ "ad-a1.ic22",		0x20000, 0x097fd853, 0x03 | BRF_GRA },           //  9
+	{ "ad-a2.ic20",		0x20000, 0x6a94c1b9, 0x03 | BRF_GRA },           // 10
+	{ "ad-a3.ic23",		0x20000, 0x6637c349, 0x03 | BRF_GRA },           // 11
+
+	{ "ad-b0.ic26",		0x20000, 0xce134b47, 0x04 | BRF_GRA },           // 12 Background Tiles
+	{ "ad-b1.ic27",		0x20000, 0x097fd853, 0x04 | BRF_GRA },           // 13
+	{ "ad-b2.ic25",		0x20000, 0x6a94c1b9, 0x04 | BRF_GRA },           // 14
+	{ "ad-b3.ic24",		0x20000, 0x6637c349, 0x04 | BRF_GRA },           // 15
+
+	{ "ad-v0.ic44",		0x20000, 0x339f474d, 0x05 | BRF_SND },           // 16 DAC Samples
+
+	{ "ad_c_pr.mcu",	0x10000, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 17 i8751 Code
+	
+	{ "ad-c-3f.ic13",	0x00104, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP }, // 18 Pals
+};
+
+STD_ROM_PICK(airduelm72)
+STD_ROM_FN(airduelm72)
+
+static INT32 airduelm72Init()
+{
+	install_protection(airduel);
+
+	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, Z80_FAKE_NMI, 0);
+}
+
+struct BurnDriver BurnDrvAirduelm72 = {
+	"airduelm72", "airduel", NULL, NULL, "1990",
+	"Air Duel (Japan, M72)\0", NULL, "Irem", "Irem M72",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_ORIENTATION_VERTICAL | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
+	NULL, airduelm72RomInfo, airduelm72RomName, NULL, NULL, NULL, NULL, CommonInputInfo, AirduelDIPInfo,
+	airduelm72Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	256, 384, 3, 4
+};
+
+
+// R-Type II (World)
 
 static struct BurnRomInfo rtype2RomDesc[] = {
 	{ "rt2-a-h0-d.54",	0x20000, 0xd8ece6f4, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
@@ -2990,16 +3117,16 @@ STD_ROM_FN(rtype2)
 
 static INT32 rtype2Init()
 {
-	return DrvInit(rtype2_main_cpu_map, sound_rom_map, NULL, 0x80, Z80_REAL_NMI, 1);
+	return DrvInit(rtype2_main_cpu_map, sound_rom_map, NULL, Z80_REAL_NMI, 1);
 }
 
 struct BurnDriver BurnDrvRtype2 = {
 	"rtype2", NULL, NULL, NULL, "1989",
-	"R-Type II\0", NULL, "Irem", "M82",
+	"R-Type II (World)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtype2RomInfo, rtype2RomName, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
-	rtype2Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtype2RomInfo, rtype2RomName, NULL, NULL, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
+	rtype2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3029,6 +3156,14 @@ static struct BurnRomInfo rtype2jRomDesc[] = {
 	{ "ic64.9p",		0x20000, 0x3686d555, 0x03 | BRF_GRA },           // 16
 
 	{ "ic14.4c",		0x20000, 0x637172d5, 0x05 | BRF_SND },           // 17 DAC Samples
+	
+	{ "rt2_b-4n-.bin",	0x00100, 0xb460c438, 0x00 | BRF_OPT },           // 18 Proms
+	{ "rt2_b-4p-.bin",	0x00100, 0xa4f2c4bc, 0x00 | BRF_OPT },           // 19
+	
+	{ "rt2-a-2h-.5",	0x00104, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP },
+	{ "rt2-a-5l-.33",	0x00104, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP },
+	{ "rt2-b-3a-.9",	0x00104, 0x00000000, 0x00 | BRF_OPT | BRF_NODUMP },
+	{ "rt2-a-7d-.45",	0x00104, 0x53c1e087, 0x00 | BRF_OPT },
 };
 
 STD_ROM_PICK(rtype2j)
@@ -3036,11 +3171,11 @@ STD_ROM_FN(rtype2j)
 
 struct BurnDriver BurnDrvRtype2j = {
 	"rtype2j", "rtype2", NULL, NULL, "1989",
-	"R-Type II (Japan)\0", NULL, "Irem", "M82",
+	"R-Type II (Japan)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtype2jRomInfo, rtype2jRomName, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
-	rtype2Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtype2jRomInfo, rtype2jRomName, NULL, NULL, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
+	rtype2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3077,11 +3212,11 @@ STD_ROM_FN(rtype2jc)
 
 struct BurnDriver BurnDrvRtype2jc = {
 	"rtype2jc", "rtype2", NULL, NULL, "1989",
-	"R-Type II (Japan, revision C)\0", NULL, "Irem", "M82",
+	"R-Type II (Japan, revision C)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, rtype2jcRomInfo, rtype2jcRomName, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
-	rtype2Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, rtype2jcRomInfo, rtype2jcRomName, NULL, NULL, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
+	rtype2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3114,16 +3249,16 @@ STD_ROM_FN(hharry)
 
 static INT32 hharryInit()
 {
-	return DrvInit(common_080000_0a0000, sound_rom_map, dbreedm72RomLoadCallback, 0x20, Z80_REAL_NMI, 2);
+	return DrvInit(common_080000_0a0000, sound_rom_map, dbreedm72RomLoadCallback, Z80_REAL_NMI, 2);
 }
 
 struct BurnDriver BurnDrvHharry = {
 	"hharry", NULL, NULL, NULL, "1990",
-	"Hammerin' Harry (World)\0", NULL, "Irem", "M82",
+	"Hammerin' Harry (World)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, hharryRomInfo, hharryRomName, NULL, NULL, CommonInputInfo, HharryDIPInfo,
-	hharryInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	NULL, hharryRomInfo, hharryRomName, NULL, NULL, NULL, NULL, CommonInputInfo, HharryDIPInfo,
+	hharryInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3156,16 +3291,16 @@ STD_ROM_FN(hharryu)
 
 static INT32 hharryuInit()
 {
-	return DrvInit(hharryu_main_cpu_map, sound_rom_map, dbreedm72RomLoadCallback, 0x20, Z80_REAL_NMI, 1);
+	return DrvInit(hharryu_main_cpu_map, sound_rom_map, dbreedm72RomLoadCallback, Z80_REAL_NMI, 1);
 }
 
 struct BurnDriver BurnDrvHharryu = {
 	"hharryu", "hharry", NULL, NULL, "1990",
-	"Hammerin' Harry (US)\0", NULL, "Irem America", "M82",
+	"Hammerin' Harry (US)\0", NULL, "Irem America", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, hharryuRomInfo, hharryuRomName, NULL, NULL, CommonInputInfo, HharryDIPInfo,
-	hharryuInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	NULL, hharryuRomInfo, hharryuRomName, NULL, NULL, NULL, NULL, CommonInputInfo, HharryDIPInfo,
+	hharryuInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3198,11 +3333,11 @@ STD_ROM_FN(dkgensan)
 
 struct BurnDriver BurnDrvDkgensan = {
 	"dkgensan", "hharry", NULL, NULL, "1990",
-	"Daiku no Gensan (Japan, M82)\0", NULL, "Irem", "M82",
+	"Daiku no Gensan (Japan, M82)\0", NULL, "Irem", "Irem M82",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, dkgensanRomInfo, dkgensanRomName, NULL, NULL, CommonInputInfo, HharryDIPInfo,
-	hharryuInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	NULL, dkgensanRomInfo, dkgensanRomName, NULL, NULL, NULL, NULL, CommonInputInfo, HharryDIPInfo,
+	hharryuInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3242,21 +3377,71 @@ static INT32 dkgensanm72Init()
 {
 	install_protection(dkgenm72);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, 0x20, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, dbreedm72RomLoadCallback, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvDkgensanm72 = {
 	"dkgensanm72", "hharry", NULL, NULL, "1990",
-	"Daiku no Gensan (Japan, M72)\0", NULL, "Irem", "M72",
+	"Daiku no Gensan (Japan, M72)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, dkgensanm72RomInfo, dkgensanm72RomName, NULL, NULL, CommonInputInfo, HharryDIPInfo,
-	dkgensanm72Init, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	NULL, dkgensanm72RomInfo, dkgensanm72RomName, NULL, NULL, NULL, NULL, CommonInputInfo, HharryDIPInfo,
+	dkgensanm72Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
 
-// Ken-Go
+// Lightning Swords
+
+static struct BurnRomInfo ltswordsRomDesc[] = {
+	{ "h0.ic55",		0x20000, 0x22f342b2, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "l0.ic61",		0x20000, 0x0210d592, 0x01 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "ken_d-sp.rom",	0x10000, 0x233ca1cf, 0x06 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+
+	{ "ken_m31.rom",	0x20000, 0xe00b95a6, 0x02 | BRF_GRA },           //  3 Sprites
+	{ "ken_m21.rom",	0x20000, 0xd7722f87, 0x02 | BRF_GRA },           //  4
+	{ "ken_m32.rom",	0x20000, 0x30a844c4, 0x02 | BRF_GRA },           //  5
+	{ "ken_m22.rom",	0x20000, 0xa00dac85, 0x02 | BRF_GRA },           //  6
+
+	{ "ken_m51.rom",	0x20000, 0x1646cf4f, 0x03 | BRF_GRA },           //  7 Foreground & Background Tiles
+	{ "ken_m57.rom",	0x20000, 0xa9f88d90, 0x03 | BRF_GRA },           //  8
+	{ "ken_m66.rom",	0x20000, 0xe9d17645, 0x03 | BRF_GRA },           //  9
+	{ "ken_m64.rom",	0x20000, 0xdf46709b, 0x03 | BRF_GRA },           // 10
+
+	{ "ken_m14.rom",	0x20000, 0x6651e9b7, 0x05 | BRF_SND },           // 11 DAC Samples
+};
+
+STD_ROM_PICK(ltswords)
+STD_ROM_FN(ltswords)
+
+static INT32 kengoInit()
+{
+	INT32 nRet = DrvInit(hharryu_main_cpu_map, sound_rom_map, NULL, Z80_REAL_NMI, 5);
+
+	if (nRet == 0) {
+		Kengo = 1;
+		Clock_16mhz = 1;
+		VezOpen(0);
+		VezSetDecode((UINT8 *)&gunforce_decryption_table);
+		VezClose();
+	}
+
+	return nRet;
+}
+
+struct BurnDriver BurnDrvLtswords = {
+	"ltswords", NULL, NULL, NULL, "1991",
+	"Lightning Swords\0", NULL, "Irem", "Irem M84?",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
+	NULL, ltswordsRomInfo, ltswordsRomName, NULL, NULL, NULL, NULL, CommonInputInfo, KengoDIPInfo,
+	kengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	384, 256, 4, 3
+};
+
+
+// Ken-Go (set 1)
 
 static struct BurnRomInfo kengoRomDesc[] = {
 	{ "ken_d-h0.rom",	0x20000, 0xf4ddeea5, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
@@ -3280,26 +3465,51 @@ static struct BurnRomInfo kengoRomDesc[] = {
 STD_ROM_PICK(kengo)
 STD_ROM_FN(kengo)
 
-static INT32 kengoInit()
-{
-	INT32 nRet = DrvInit(hharryu_main_cpu_map, sound_rom_map, NULL, 0x60, Z80_REAL_NMI, 1);
-
-	if (nRet == 0) {
-		VezOpen(0);
-		VezSetDecode((UINT8*)gunforce_decryption_table);
-		VezClose();
-	}
-
-	return nRet;
-}
-
-struct BurnDriverD BurnDrvKengo = {
-	"kengo", NULL, NULL, NULL, "1991",
-	"Ken-Go\0", NULL, "Irem", "M84?",
+struct BurnDriver BurnDrvKengo = {
+	"kengo", "ltswords", NULL, NULL, "1991",
+	"Ken-Go (set 1)\0", NULL, "Irem", "Irem M84?",
 	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, kengoRomInfo, kengoRomName, NULL, NULL, CommonInputInfo, KengoDIPInfo,
-	kengoInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
+	NULL, kengoRomInfo, kengoRomName, NULL, NULL, NULL, NULL, CommonInputInfo, KengoDIPInfo,
+	kengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	384, 256, 4, 3
+};
+
+
+// Ken-Go (set 2)
+
+static struct BurnRomInfo kengoaRomDesc[] = {
+	{ "ken-d-h0-.ic55",	0x20000, 0xed3da88c, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "ken-d-l0-.ic61",	0x20000, 0x92c57d8e, 0x01 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "ken_d-sp.rom",	0x10000, 0x233ca1cf, 0x06 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+
+	{ "ken_m31.rom",	0x20000, 0xe00b95a6, 0x02 | BRF_GRA },           //  3 Sprites
+	{ "ken_m21.rom",	0x20000, 0xd7722f87, 0x02 | BRF_GRA },           //  4
+	{ "ken_m32.rom",	0x20000, 0x30a844c4, 0x02 | BRF_GRA },           //  5
+	{ "ken_m22.rom",	0x20000, 0xa00dac85, 0x02 | BRF_GRA },           //  6
+
+	{ "ken_m51.rom",	0x20000, 0x1646cf4f, 0x03 | BRF_GRA },           //  7 Foreground & Background Tiles
+	{ "ken_m57.rom",	0x20000, 0xa9f88d90, 0x03 | BRF_GRA },           //  8
+	{ "ken_m66.rom",	0x20000, 0xe9d17645, 0x03 | BRF_GRA },           //  9
+	{ "ken_m64.rom",	0x20000, 0xdf46709b, 0x03 | BRF_GRA },           // 10
+
+	{ "ken_m14.rom",	0x20000, 0x6651e9b7, 0x05 | BRF_SND },           // 11 DAC Samples
+	
+	{ "ken_b-4n-.ic23",	0x00100, 0xb460c438, 0x00 | BRF_OPT },           // 12 Proms
+	{ "ken_b-4p-.ic24",	0x00100, 0x526f10ca, 0x00 | BRF_OPT },           // 13 
+};
+
+STD_ROM_PICK(kengoa)
+STD_ROM_FN(kengoa)
+
+struct BurnDriver BurnDrvKengoa = {
+	"kengoa", "ltswords", NULL, NULL, "1991",
+	"Ken-Go (set 2)\0", NULL, "Irem", "Irem M84?",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
+	NULL, kengoaRomInfo, kengoaRomName, NULL, NULL, NULL, NULL, CommonInputInfo, KengoDIPInfo,
+	kengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3330,16 +3540,23 @@ STD_ROM_FN(cosmccop)
 
 static INT32 cosmccopInit()
 {
-	return DrvInit(hharryu_main_cpu_map, sound_rom_map, NULL, 0x60, Z80_REAL_NMI, 1);
+	Clock_16mhz = 1;
+
+	INT32 rc = DrvInit(hharryu_main_cpu_map, sound_rom_map, NULL, Z80_REAL_NMI, 7);
+
+	m72_irq_base = 0x60; // Cosmic Cop doesn't write to port 0x42 (irq config), set it manually. (after DrvInit()!)
+	CosmicCop = 1;
+
+	return rc;
 }
 
 struct BurnDriver BurnDrvCosmccop = {
 	"cosmccop", NULL, NULL, NULL, "1991",
-	"Cosmic Cop (World)\0", NULL, "Irem", "M84",
+	"Cosmic Cop (World)\0", NULL, "Irem", "Irem M84",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, cosmccopRomInfo, cosmccopRomName, NULL, NULL, CommonInputInfo, GallopDIPInfo,
-	cosmccopInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, cosmccopRomInfo, cosmccopRomName, NULL, NULL, NULL, NULL, CommonInputInfo, GallopDIPInfo,
+	cosmccopInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3368,6 +3585,8 @@ static struct BurnRomInfo gallopRomDesc[] = {
 	{ "cc-b-b3.bin",	0x10000, 0xd361ba3f, 0x04 | BRF_GRA },           // 15
 
 	{ "cc-c-v0.bin",	0x20000, 0x6247bade, 0x05 | BRF_SND },           // 16 DAC Samples
+	
+	{ "gallop_i8751.mcu", 0x10000, 0x00000000, BRF_NODUMP | BRF_OPT },
 };
 
 STD_ROM_PICK(gallop)
@@ -3376,17 +3595,18 @@ STD_ROM_FN(gallop)
 static INT32 gallopInit()
 {
 	protection_sample_offsets = gallop_sample_offsets;
+	Clock_16mhz = 1;
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvGallop = {
 	"gallop", "cosmccop", NULL, NULL, "1991",
-	"Gallop - Armed police Unit (Japan)\0", NULL, "Irem", "M72",
+	"Gallop - Armed police Unit (Japan)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
-	NULL, gallopRomInfo, gallopRomName, NULL, NULL, CommonInputInfo, GallopDIPInfo,
-	gallopInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_HORSHOOT, 0,
+	NULL, gallopRomInfo, gallopRomName, NULL, NULL, NULL, NULL, CommonInputInfo, GallopDIPInfo,
+	gallopInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3427,16 +3647,16 @@ static INT32 lohtInit()
 {
 	install_protection(loht);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, NULL, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvLoht = {
 	"loht", NULL, NULL, NULL, "1989",
-	"Legend of Hero Tonma\0", NULL, "Irem", "M72",
+	"Legend of Hero Tonma\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, lohtRomInfo, lohtRomName, NULL, NULL, CommonInputInfo, LohtDIPInfo,
-	lohtInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_RUNGUN, 0,
+	NULL, lohtRomInfo, lohtRomName, NULL, NULL, NULL, NULL, CommonInputInfo, LohtDIPInfo,
+	lohtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3444,20 +3664,20 @@ struct BurnDriver BurnDrvLoht = {
 // Legend of Hero Tonma (Japan)
 
 static struct BurnRomInfo lohtjRomDesc[] = {
-	{ "tom_c-h0-",		0x20000, 0x2a752998, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
-	{ "tom_c-l0-",		0x20000, 0xa224d928, 0x01 | BRF_PRG | BRF_ESS }, //  1
-	{ "tom_c-h3-",		0x20000, 0x714778b5, 0x01 | BRF_PRG | BRF_ESS }, //  2
-	{ "tom_c-l3-",		0x20000, 0x2f049b03, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	{ "tom_c-h0-",	0x20000, 0x2a752998, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "tom_c-l0-",	0x20000, 0xa224d928, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "tom_c-h3-",	0x20000, 0x714778b5, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "tom_c-l3-",	0x20000, 0x2f049b03, 0x01 | BRF_PRG | BRF_ESS }, //  3
 
 	{ "r200",		0x20000, 0x0b83265f, 0x02 | BRF_GRA },           //  4 Sprites
 	{ "r210",		0x20000, 0x8ec5f6f3, 0x02 | BRF_GRA },           //  5
 	{ "r220",		0x20000, 0xa41d3bfd, 0x02 | BRF_GRA },           //  6
 	{ "r230",		0x20000, 0x9d81a25b, 0x02 | BRF_GRA },           //  7
 
-	{ "r2a0.a0",		0x10000, 0x3ca3e771, 0x03 | BRF_GRA },           //  8 Foreground Tiles
-	{ "r2a1.a1",		0x10000, 0x7a05ee2f, 0x03 | BRF_GRA },           //  9
-	{ "r2a2.a2",		0x10000, 0x79aa2335, 0x03 | BRF_GRA },           // 10
-	{ "r2a3.a3",		0x10000, 0x789e8b24, 0x03 | BRF_GRA },           // 11
+	{ "r2a0.a0",	0x10000, 0x3ca3e771, 0x03 | BRF_GRA },           //  8 Foreground Tiles
+	{ "r2a1.a1",	0x10000, 0x7a05ee2f, 0x03 | BRF_GRA },           //  9
+	{ "r2a2.a2",	0x10000, 0x79aa2335, 0x03 | BRF_GRA },           // 10
+	{ "r2a3.a3",	0x10000, 0x789e8b24, 0x03 | BRF_GRA },           // 11
 
 	{ "078.b0",		0x10000, 0x44626bf6, 0x04 | BRF_GRA },           // 12 Background Tiles
 	{ "079.b1",		0x10000, 0x464952cf, 0x04 | BRF_GRA },           // 13
@@ -3474,11 +3694,11 @@ STD_ROM_FN(lohtj)
 
 struct BurnDriver BurnDrvLohtj = {
 	"lohtj", "loht", NULL, NULL, "1989",
-	"Legend of Hero Tonma (Japan)\0", NULL, "Irem", "M72",
+	"Legend of Hero Tonma (Japan)\0", NULL, "Irem", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, lohtjRomInfo, lohtjRomName, NULL, NULL, CommonInputInfo, LohtDIPInfo,
-	lohtInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_RUNGUN, 0,
+	NULL, lohtjRomInfo, lohtjRomName, NULL, NULL, NULL, NULL, CommonInputInfo, LohtDIPInfo,
+	lohtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3578,31 +3798,33 @@ static INT32 lohtbRomLoadCallback()
 // Legend of Hero Tonma (bootleg, set 1)
 
 static struct BurnRomInfo lohtbRomDesc[] = {
-	{ "lohtb03.b",		0x20000, 0x8b845a70, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
-	{ "lohtb05.d",		0x20000, 0xe90f7623, 0x01 | BRF_PRG | BRF_ESS }, //  1
-	{ "lohtb02.a",		0x20000, 0x714778b5, 0x01 | BRF_PRG | BRF_ESS }, //  2
-	{ "lohtb04.c",		0x20000, 0x2f049b03, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	{ "lohtb03.b",			0x20000, 0x8b845a70, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "lohtb05.d",			0x20000, 0xe90f7623, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "lohtb02.a",			0x20000, 0x714778b5, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "lohtb04.c",			0x20000, 0x2f049b03, 0x01 | BRF_PRG | BRF_ESS }, //  3
 
-	{ "lohtb01.02",		0x10000, 0xe4bd8f03, 0x06 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+	{ "lohtb01.02",			0x10000, 0xe4bd8f03, 0x06 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
 
-	{ "lohtb14.11",		0x10000, 0xdf5ac5ee, 0x02 | BRF_GRA },           //  5 Sprites
-	{ "lohtb18.15",		0x10000, 0xd7ecf849, 0x02 | BRF_GRA },           //  6
-	{ "lohtb15.12",		0x10000, 0x45220b01, 0x02 | BRF_GRA },           //  7
-	{ "lohtb19.16",		0x10000, 0x35d1a808, 0x02 | BRF_GRA },           //  8
-	{ "lohtb16.13",		0x10000, 0x25b85cfc, 0x02 | BRF_GRA },           //  9
-	{ "lohtb20.17",		0x10000, 0x464d8579, 0x02 | BRF_GRA },           // 10
-	{ "lohtb17.14",		0x10000, 0x763fa4ec, 0x02 | BRF_GRA },           // 11
-	{ "lohtb21.18",		0x10000, 0xa73568c7, 0x02 | BRF_GRA },           // 12
+	{ "lohtb14.11",			0x10000, 0xdf5ac5ee, 0x02 | BRF_GRA },           //  5 Sprites
+	{ "lohtb18.15",			0x10000, 0xd7ecf849, 0x02 | BRF_GRA },           //  6
+	{ "lohtb15.12",			0x10000, 0x45220b01, 0x02 | BRF_GRA },           //  7
+	{ "lohtb19.16",			0x10000, 0x35d1a808, 0x02 | BRF_GRA },           //  8
+	{ "lohtb16.13",			0x10000, 0x25b85cfc, 0x02 | BRF_GRA },           //  9
+	{ "lohtb20.17",			0x10000, 0x464d8579, 0x02 | BRF_GRA },           // 10
+	{ "lohtb17.14",			0x10000, 0x763fa4ec, 0x02 | BRF_GRA },           // 11
+	{ "lohtb21.18",			0x10000, 0xa73568c7, 0x02 | BRF_GRA },           // 12
 
-	{ "lohtb13.10",		0x10000, 0x359f17d4, 0x03 | BRF_GRA },           // 13 Foreground Tiles
-	{ "lohtb11.08",		0x10000, 0x73391e8a, 0x03 | BRF_GRA },           // 14
-	{ "lohtb09.06",		0x10000, 0x7096d390, 0x03 | BRF_GRA },           // 15
-	{ "lohtb07.04",		0x10000, 0x71a27b81, 0x03 | BRF_GRA },           // 16
+	{ "lohtb13.10",			0x10000, 0x359f17d4, 0x03 | BRF_GRA },           // 13 Foreground Tiles
+	{ "lohtb11.08",			0x10000, 0x73391e8a, 0x03 | BRF_GRA },           // 14
+	{ "lohtb09.06",			0x10000, 0x7096d390, 0x03 | BRF_GRA },           // 15
+	{ "lohtb07.04",			0x10000, 0x71a27b81, 0x03 | BRF_GRA },           // 16
 
-	{ "lohtb12.09",		0x10000, 0x4d5e9b53, 0x04 | BRF_GRA },           // 17 Background Tiles
-	{ "lohtb10.07",		0x10000, 0x4f75a26a, 0x04 | BRF_GRA },           // 18
-	{ "lohtb08.05",		0x10000, 0x34854262, 0x04 | BRF_GRA },           // 19
-	{ "lohtb06.03",		0x10000, 0xf923183c, 0x04 | BRF_GRA },           // 20
+	{ "lohtb12.09",			0x10000, 0x4d5e9b53, 0x04 | BRF_GRA },           // 17 Background Tiles
+	{ "lohtb10.07",			0x10000, 0x4f75a26a, 0x04 | BRF_GRA },           // 18
+	{ "lohtb08.05",			0x10000, 0x34854262, 0x04 | BRF_GRA },           // 19
+	{ "lohtb06.03",			0x10000, 0xf923183c, 0x04 | BRF_GRA },           // 20
+
+	{ "gal16v8-25qp.ic3",	0x00117, 0x6acdfafb, 0x00 | BRF_OPT },
 };
 
 STD_ROM_PICK(lohtb)
@@ -3612,16 +3834,16 @@ static INT32 lohtbInit()
 {
 	install_protection(loht);
 
-	return DrvInit(common_080000_0a0000, sound_ram_map, lohtbRomLoadCallback, 0x80, Z80_FAKE_NMI, 0);
+	return DrvInit(common_080000_0a0000, sound_ram_map, lohtbRomLoadCallback, Z80_FAKE_NMI, 0);
 }
 
 struct BurnDriver BurnDrvLohtb = {
 	"lohtb", "loht", NULL, NULL, "1989",
-	"Legend of Hero Tonma (bootleg, set 1)\0", NULL, "bootleg", "M72",
+	"Legend of Hero Tonma (bootleg, set 1)\0", NULL, "bootleg", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, lohtbRomInfo, lohtbRomName, NULL, NULL, CommonInputInfo, LohtDIPInfo,
-	lohtbInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_RUNGUN, 0,
+	NULL, lohtbRomInfo, lohtbRomName, NULL, NULL, NULL, NULL, CommonInputInfo, LohtDIPInfo,
+	lohtbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3667,11 +3889,11 @@ STD_ROM_FN(lohtb2)
 
 struct BurnDriver BurnDrvLohtb2 = {
 	"lohtb2", "loht", NULL, NULL, "1989",
-	"Legend of Hero Tonma (bootleg, set 2)\0", NULL, "bootleg", "M72",
+	"Legend of Hero Tonma (bootleg, set 2)\0", NULL, "bootleg", "Irem M72",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_SCRFIGHT, 0,
-	NULL, lohtb2RomInfo, lohtb2RomName, NULL, NULL, CommonInputInfo, LohtDIPInfo,
-	lohtInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_IREM_M72, GBF_RUNGUN, 0,
+	NULL, lohtb2RomInfo, lohtb2RomName, NULL, NULL, NULL, NULL, CommonInputInfo, LohtDIPInfo,
+	lohtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3704,16 +3926,23 @@ STD_ROM_FN(poundfor)
 
 static INT32 poundforInit()
 {
-	return DrvInit(rtype2_main_cpu_map, sound_rom_map, NULL, 0x80, Z80_FAKE_NMI, 4);
+	INT32 rc = DrvInit(rtype2_main_cpu_map, sound_rom_map, NULL, Z80_FAKE_NMI, 4);
+
+	if (!rc) {
+		Poundfor = 1;
+		BurnTrackballInit(2);
+	}
+
+	return rc;
 }
 
-struct BurnDriverD BurnDrvPoundfor = {
+struct BurnDriver BurnDrvPoundfor = {
 	"poundfor", NULL, NULL, NULL, "1990",
-	"Pound for Pound (World)\0", NULL, "Irem", "M85",
+	"Pound for Pound (World)\0", NULL, "Irem", "Irem M85",
 	NULL, NULL, NULL, NULL,
-	BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
-	NULL, poundforRomInfo, poundforRomName, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
-	poundforInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
+	NULL, poundforRomInfo, poundforRomName, NULL, NULL, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
+	poundforInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
@@ -3744,13 +3973,13 @@ static struct BurnRomInfo poundforjRomDesc[] = {
 STD_ROM_PICK(poundforj)
 STD_ROM_FN(poundforj)
 
-struct BurnDriverD BurnDrvPoundforj = {
+struct BurnDriver BurnDrvPoundforj = {
 	"poundforj", "poundfor", NULL, NULL, "1990",
-	"Pound for Pound (Japan)\0", NULL, "Irem", "M85",
+	"Pound for Pound (Japan)\0", NULL, "Irem", "Irem M85",
 	NULL, NULL, NULL, NULL,
-	BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
-	NULL, poundforjRomInfo, poundforjRomName, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
-	poundforInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
+	NULL, poundforjRomInfo, poundforjRomName, NULL, NULL, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
+	poundforInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
@@ -3781,13 +4010,13 @@ static struct BurnRomInfo poundforuRomDesc[] = {
 STD_ROM_PICK(poundforu)
 STD_ROM_FN(poundforu)
 
-struct BurnDriverD BurnDrvPoundforu = {
+struct BurnDriver BurnDrvPoundforu = {
 	"poundforu", "poundfor", NULL, NULL, "1990",
-	"Pound for Pound (US)\0", NULL, "Irem America", "M85",
+	"Pound for Pound (US)\0", NULL, "Irem America", "Irem M85",
 	NULL, NULL, NULL, NULL,
-	BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
-	NULL, poundforuRomInfo, poundforuRomName, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
-	poundforInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
+	NULL, poundforuRomInfo, poundforuRomName, NULL, NULL, NULL, NULL, PoundforInputInfo, PoundforDIPInfo,
+	poundforInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 384, 3, 4
 };
 
@@ -3825,16 +4054,16 @@ STD_ROM_FN(majtitle)
 
 static INT32 majtitleInit()
 {
-	return DrvInit(majtitle_main_cpu_map, sound_rom_map, NULL, 0x80, Z80_REAL_NMI, 3);
+	return DrvInit(majtitle_main_cpu_map, sound_rom_map, NULL, Z80_REAL_NMI, 3);
 }
 
 struct BurnDriver BurnDrvMajtitle = {
 	"majtitle", NULL, NULL, NULL, "1990",
-	"Major Title (World)\0", NULL, "Irem", "M84",
+	"Major Title (World)\0", NULL, "Irem", "Irem M84",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
-	NULL, majtitleRomInfo, majtitleRomName, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
-	majtitleInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
+	NULL, majtitleRomInfo, majtitleRomName, NULL, NULL, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
+	majtitleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
 
@@ -3872,10 +4101,10 @@ STD_ROM_FN(majtitlej)
 
 struct BurnDriver BurnDrvMajtitlej = {
 	"majtitlej", "majtitle", NULL, NULL, "1990",
-	"Major Title (Japan)\0", NULL, "Irem", "M84",
+	"Major Title (Japan)\0", NULL, "Irem", "Irem M84",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
-	NULL, majtitlejRomInfo, majtitlejRomName, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
-	majtitleInit, DrvExit, DrvFrame, DrvDraw, NULL, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED | BDF_CLONE, 2, HARDWARE_IREM_M72, GBF_SPORTSMISC, 0,
+	NULL, majtitlejRomInfo, majtitlejRomName, NULL, NULL, NULL, NULL, CommonInputInfo, Rtype2DIPInfo,
+	majtitleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };

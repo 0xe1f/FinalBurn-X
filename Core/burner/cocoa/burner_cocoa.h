@@ -49,6 +49,8 @@ int DrvExit();
 //inpdipsw.cpp
 void InpDIPSWResetDIPs();
 
+#define stricmp strcasecmp
+
 //TODO:
 #define szAppBurnVer "1"
 

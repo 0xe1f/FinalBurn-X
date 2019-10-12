@@ -24,7 +24,6 @@ static UINT8 *Drv68KRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
 
-static UINT32 *Palette;
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
@@ -141,7 +140,7 @@ void __fastcall xmen_main_write_byte(UINT32 address, UINT8 data)
 
 		case 0x10804e:
 		case 0x10804f: 
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x10a001:
@@ -182,8 +181,7 @@ void __fastcall xmen_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if ((address & 0xfffff8) == 0x108020) {
-		K053246Write((address & 0x006) | 0, data & 0xff);
-		K053246Write((address & 0x006) | 1, data >> 8);
+		K053246Write((address & 0x006), 0x10000|data);
 		return;
 	}
 }
@@ -280,10 +278,10 @@ UINT8 __fastcall xmen_sound_read(UINT16 address)
 		case 0xe801:
 		case 0xec00:
 		case 0xec01:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0xf002:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -302,15 +300,15 @@ static void K052109Callback(INT32 layer, INT32 , INT32 *, INT32 *color, INT32 *,
 		*color = layer_colorbase[layer] + ((*color & 0x7c) >> 2);
 }
 
-static void K053247Callback(INT32 *code, INT32 *color, INT32 *priority_mask)
+static void XmenK053247Callback(INT32 *code, INT32 *color, INT32 *priority_mask)
 {
 	INT32 pri = (*color & 0x00e0) >> 4;
-	if (pri <= layerpri[2])					*priority_mask = 0;
-	else if (pri > layerpri[2] && pri <= layerpri[1])	*priority_mask = 1;
-	else if (pri > layerpri[1] && pri <= layerpri[0])	*priority_mask = 2;
-	else 							*priority_mask = 3;
+	if (pri <= layerpri[2])					*priority_mask = 0x00;
+	else if (pri > layerpri[2] && pri <= layerpri[1])	*priority_mask = 0xf0;
+	else if (pri > layerpri[1] && pri <= layerpri[0])	*priority_mask = 0xfc;
+	else 							*priority_mask = 0xfe;
 
-	*color = sprite_colorbase + (*color & 0x001f);
+	*color = (sprite_colorbase + (*color & 0x001f)) & 0x7f;
 	*code &= 0x7fff;
 }
 
@@ -360,7 +358,7 @@ static INT32 MemIndex()
 
 	DrvSndROM		= Next; Next += 0x200000;
 
-	Palette			= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
+	konami_palette32	= (UINT32*)Next;
 	DrvPalette		= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 
 	AllRam			= Next;
@@ -382,22 +380,6 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 XOffs[8] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007 };
-	INT32 YOffs[8] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x200000);
-	konami_rom_deinterleave_4(DrvGfxROM1, 0x400000);
-
-	GfxDecode(0x10000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-
-	K053247GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x400000);
-
-	return 0;
-}
-
 static const eeprom_interface xmen_eeprom_intf =
 {
 	7,		 // address bits
@@ -413,6 +395,8 @@ static const eeprom_interface xmen_eeprom_intf =
 
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -428,25 +412,26 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  4, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x100000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  5, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  6, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  7, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x100000,  8, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x200000,  9, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x300000, 10, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  7, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  8, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000004,  9, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000006, 10, 8, 2)) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000, 11, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x200000);
+		K053247GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x400000);
 	}
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(Drv68KRAM + 0x00000,	0x101000, 0x101fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x104000, 0x104fff, SM_RAM);
-	SekMapMemory(Drv68KRAM + 0x01000,	0x110000, 0x113fff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM + 0x00000,	0x101000, 0x101fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x104000, 0x104fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM + 0x01000,	0x110000, 0x113fff, MAP_RAM);
 	SekSetWriteByteHandler(0,		xmen_main_write_byte);
 	SekSetWriteWordHandler(0,		xmen_main_write_word);
 	SekSetReadByteHandler(0,		xmen_main_read_byte);
@@ -468,12 +453,12 @@ static INT32 DrvInit()
 
 	EEPROMInit(&xmen_eeprom_intf);
 
-	K052109Init(DrvGfxROM0, 0x1fffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x1fffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K053247Init(DrvGfxROM1, 0x3fffff, K053247Callback, 1);
-	K053247SetSpriteOffset(-510, 158);
+	K053247Init(DrvGfxROM1, DrvGfxROMExp1, 0x3fffff, XmenK053247Callback, 1);
+	K053247SetSpriteOffset(514, -158);
 
 	BurnYM2151Init(4000000);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 0.20, BURN_SND_ROUTE_LEFT);
@@ -482,8 +467,6 @@ static INT32 DrvInit()
 	K054539Init(0, 48000, DrvSndROM, 0x200000);
 	K054539SetRoute(0, BURN_SND_K054539_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	K054539SetRoute(0, BURN_SND_K054539_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -509,21 +492,6 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void sortlayers(INT32 *layer,INT32 *pri)
-{
-#define SWAP(a,b) \
-	if (pri[a] < pri[b]) \
-	{ \
-		INT32 t; \
-		t = pri[a]; pri[a] = pri[b]; pri[b] = t; \
-		t = layer[a]; layer[a] = layer[b]; layer[b] = t; \
-	}
-
-	SWAP(0,1)
-	SWAP(0,2)
-	SWAP(1,2)
-}
-
 static inline void DrvRecalcPalette()
 {
 	UINT8 r,g,b;
@@ -539,8 +507,7 @@ static inline void DrvRecalcPalette()
 		g = (g << 3) | (g >> 2);
 		b = (b << 3) | (b >> 2);
 
-		Palette[i] = (r << 16) | (g << 8) | b;
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
+		DrvPalette[i] = (r << 16) | (g << 8) | b;
 	}
 }
 
@@ -567,27 +534,17 @@ static INT32 DrvDraw()
 	layer[1] = 1;
 	layer[2] = 2;
 
-	sortlayers(layer,layerpri);
+	konami_sortlayers3(layer,layerpri);
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 16 * bg_colorbase+1;
-	}
+	KonamiClearBitmaps(DrvPalette[16 * bg_colorbase+1]);
 
-	if (nSpriteEnable & 8) K053247SpritesRender(DrvGfxROMExp1, 3);
+	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, 1);
+	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, 4);
 
-	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, DrvGfxROMExp0);
+	if (nSpriteEnable & 1) K053247SpritesRender();
 
-	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, DrvGfxROMExp0);
-
-if (nBurnLayer & 8) {
-	if (nSpriteEnable & 1) K053247SpritesRender(DrvGfxROMExp1, 0);
-	if (nSpriteEnable & 2) K053247SpritesRender(DrvGfxROMExp1, 1);
-	if (nSpriteEnable & 4) K053247SpritesRender(DrvGfxROMExp1, 2);
-}
-
-	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, DrvGfxROMExp0);
-
-	KonamiBlendCopy(Palette, DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -606,7 +563,7 @@ static INT32 DrvFrame()
 			DrvInputs[2] ^= (DrvJoy3[i] & 1) << i;
 		}
 
-	  // Clear Opposites
+	 	// Clear Opposites
 		if ((DrvInputs[1] & 0x0c) == 0) DrvInputs[1] |= 0x0c;
 		if ((DrvInputs[1] & 0x03) == 0) DrvInputs[1] |= 0x03;
 		if ((DrvInputs[0] & 0x0c) == 0) DrvInputs[0] |= 0x0c;
@@ -634,7 +591,7 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += nCyclesSegment;
 
 		if (i == (nInterleave / 2) && interrupt_enable) {
-			SekSetIRQLine(3, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
 		}
 
 		nNext = (i + 1) * nCyclesTotal[1] / nInterleave;
@@ -646,20 +603,19 @@ static INT32 DrvFrame()
 			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			K054539Update(0, pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}
 	}
 
-	if (interrupt_enable) SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+	if (interrupt_enable) SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 	
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
 		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 		if (nSegmentLength) {
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			K054539Update(0, pSoundBuf, nSegmentLength);
 		}
+		K054539Update(0, pBurnSoundOut, nBurnSoundLen);
 	}
 
 	ZetClose();
@@ -672,7 +628,7 @@ static INT32 DrvFrame()
 	return 0;
 }
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -680,7 +636,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029705;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -691,9 +647,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
-
-		K054539Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		K054539Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 		EEPROMScan(nAction, pnMin);
@@ -734,7 +689,7 @@ static struct BurnRomInfo xmenRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_ubb.nv",  0x000080, 0x52f334ba, BRF_OPT },
+	{ "xmen_ubb.nv",    0x000080, 0x52f334ba, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen)
@@ -745,7 +700,7 @@ struct BurnDriver BurnDrvXmen = {
 	"X-Men (4 Players ver UBB)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmenRomInfo, xmenRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmenRomInfo, xmenRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -771,7 +726,7 @@ static struct BurnRomInfo xmenaRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_aea.nv",  0x000080, 0xd73d4f20, BRF_OPT },
+	{ "xmen_aea.nv",    0x000080, 0xd73d4f20, BRF_OPT },
 };
 
 STD_ROM_PICK(xmena)
@@ -782,7 +737,7 @@ struct BurnDriver BurnDrvXmena = {
 	"X-Men (4 Players ver AEA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmenaRomInfo, xmenaRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmenaRomInfo, xmenaRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -808,7 +763,7 @@ static struct BurnRomInfo xmenaaRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_ada.nv",  0x000080, 0xa77a3891, BRF_OPT },
+	{ "xmen_ada.nv",    0x000080, 0xa77a3891, BRF_OPT },
 };
 
 STD_ROM_PICK(xmenaa)
@@ -819,7 +774,7 @@ struct BurnDriver BurnDrvXmenaa = {
 	"X-Men (4 Players ver ADA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmenaaRomInfo, xmenaaRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmenaaRomInfo, xmenaaRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -845,7 +800,7 @@ static struct BurnRomInfo xmeneRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_eba.nv",  0x000080, 0x37f8e77a, BRF_OPT },
+	{ "xmen_eba.nv",    0x000080, 0x37f8e77a, BRF_OPT },
 };
 
 STD_ROM_PICK(xmene)
@@ -856,7 +811,7 @@ struct BurnDriver BurnDrvXmene = {
 	"X-Men (4 Players ver EBA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmeneRomInfo, xmeneRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmeneRomInfo, xmeneRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -882,7 +837,7 @@ static struct BurnRomInfo xmenjRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_jba.nv",  0x000080, 0x7439cea7, BRF_OPT },
+	{ "xmen_jba.nv",    0x000080, 0x7439cea7, BRF_OPT },
 };
 
 STD_ROM_PICK(xmenj)
@@ -893,7 +848,44 @@ struct BurnDriver BurnDrvXmenj = {
 	"X-Men (4 Players ver JBA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmenjRomInfo, xmenjRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmenjRomInfo, xmenjRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	288, 224, 4, 3
+};
+
+
+// X-Men (4 Players ver JEA)
+
+static struct BurnRomInfo xmenjaRomDesc[] = {
+	{ "065-jea04.10d",	0x020000, 0x655a61d6, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "065-jea05.10f",	0x020000, 0x7ea9fc84, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "065-a02.9d",		0x040000, 0xb31dc44c, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "065-a03.9f",		0x040000, 0x13842fe6, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "065-a01.6f",		0x020000, 0x147d3a4d, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "065-a08.15l",	0x100000, 0x6b649aca, 3 | BRF_GRA },           //  5 Background Tiles
+	{ "065-a07.16l",	0x100000, 0xc5dc8fc4, 3 | BRF_GRA },           //  6
+
+	{ "065-a09.2h",		0x100000, 0xea05d52f, 4 | BRF_GRA },           //  7 Sprites
+	{ "065-a10.2l",		0x100000, 0x96b91802, 4 | BRF_GRA },           //  8
+	{ "065-a12.1h",		0x100000, 0x321ed07a, 4 | BRF_GRA },           //  9
+	{ "065-a11.1l",		0x100000, 0x46da948e, 4 | BRF_GRA },           // 10
+
+	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
+
+	{ "xmen_jea.nv",    0x000080, 0xdf5b6bc6, BRF_OPT },
+};
+
+STD_ROM_PICK(xmenja)
+STD_ROM_FN(xmenja)
+
+struct BurnDriver BurnDrvXmenja = {
+	"xmenja", "xmen", NULL, NULL, "1992",
+	"X-Men (4 Players ver JEA)\0", NULL, "Konami", "GX065",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
+	NULL, xmenjaRomInfo, xmenjaRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -919,7 +911,7 @@ static struct BurnRomInfo xmen2peRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_eaa.nv",  0x000080, 0x1cbcb653, BRF_OPT },
+	{ "xmen_eaa.nv",    0x000080, 0x1cbcb653, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen2pe)
@@ -930,7 +922,44 @@ struct BurnDriver BurnDrvXmen2pe = {
 	"X-Men (2 Players ver EAA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmen2peRomInfo, xmen2peRomName, NULL, NULL, Xmen2pInputInfo, NULL,
+	NULL, xmen2peRomInfo, xmen2peRomName, NULL, NULL, NULL, NULL, Xmen2pInputInfo, NULL,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	288, 224, 4, 3
+};
+
+
+// X-Men (2 Players ver UAB)
+
+static struct BurnRomInfo xmen2puRomDesc[] = {
+	{ "065-uab04.10d",	0x020000, 0xff003db1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "065-uab05.10f",	0x020000, 0x4e99a943, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "065-a02.9d",		0x040000, 0xb31dc44c, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "065-a03.9f",		0x040000, 0x13842fe6, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "065-a01.6f",		0x020000, 0x147d3a4d, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "065-a08.15l",	0x100000, 0x6b649aca, 3 | BRF_GRA },           //  5 Background Tiles
+	{ "065-a07.16l",	0x100000, 0xc5dc8fc4, 3 | BRF_GRA },           //  6
+
+	{ "065-a09.2h",		0x100000, 0xea05d52f, 4 | BRF_GRA },           //  7 Sprites
+	{ "065-a10.2l",		0x100000, 0x96b91802, 4 | BRF_GRA },           //  8
+	{ "065-a12.1h",		0x100000, 0x321ed07a, 4 | BRF_GRA },           //  9
+	{ "065-a11.1l",		0x100000, 0x46da948e, 4 | BRF_GRA },           // 10
+
+	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
+
+	{ "xmen_uab.nv",    0x000080, 0x79b76593, BRF_OPT },
+};
+
+STD_ROM_PICK(xmen2pu)
+STD_ROM_FN(xmen2pu)
+
+struct BurnDriver BurnDrvXmen2pu = {
+	"xmen2pu", "xmen", NULL, NULL, "1992",
+	"X-Men (2 Players ver UAB)\0", NULL, "Konami", "GX065",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
+	NULL, xmen2puRomInfo, xmen2puRomName, NULL, NULL, NULL, NULL, Xmen2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -956,7 +985,7 @@ static struct BurnRomInfo xmen2paRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_aaa.nv",  0x000080, 0x750fd447, BRF_OPT },
+	{ "xmen_aaa.nv",    0x000080, 0x750fd447, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen2pa)
@@ -967,7 +996,7 @@ struct BurnDriver BurnDrvXmen2pa = {
 	"X-Men (2 Players ver AAA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmen2paRomInfo, xmen2paRomName, NULL, NULL, Xmen2pInputInfo, NULL,
+	NULL, xmen2paRomInfo, xmen2paRomName, NULL, NULL, NULL, NULL, Xmen2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -993,7 +1022,7 @@ static struct BurnRomInfo xmen2pjRomDesc[] = {
 
 	{ "065-a06.1f",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_jaa.nv",  0x000080, 0x849a9e19, BRF_OPT },
+	{ "xmen_jaa.nv",    0x000080, 0x849a9e19, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen2pj)
@@ -1004,7 +1033,7 @@ struct BurnDriver BurnDrvXmen2pj = {
 	"X-Men (2 Players ver JAA)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmen2pjRomInfo, xmen2pjRomName, NULL, NULL, Xmen2pInputInfo, NULL,
+	NULL, xmen2pjRomInfo, xmen2pjRomName, NULL, NULL, NULL, NULL, Xmen2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -1030,7 +1059,7 @@ static struct BurnRomInfo xmen6pRomDesc[] = {
 
 	{ "065-a06.1d",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_ecb.nv",  0x000080, 0x462c6e1a, BRF_OPT },
+	{ "xmen_ecb.nv",    0x000080, 0x462c6e1a, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen6p)
@@ -1041,7 +1070,7 @@ struct BurnDriverD BurnDrvXmen6p = {
 	"X-Men (6 Players ver ECB)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_CLONE, 6, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmen6pRomInfo, xmen6pRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmen6pRomInfo, xmen6pRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 256, 4, 3
 };
@@ -1067,7 +1096,7 @@ static struct BurnRomInfo xmen6puRomDesc[] = {
 
 	{ "065-a06.1d",		0x200000, 0x5adbcee0, 5 | BRF_SND },           // 11 K054539 Samples
 
-	{ "xmen_ucb.nv",  0x000080, 0xf3d0f682, BRF_OPT },
+	{ "xmen_ucb.nv",    0x000080, 0xf3d0f682, BRF_OPT },
 };
 
 STD_ROM_PICK(xmen6pu)
@@ -1078,7 +1107,7 @@ struct BurnDriverD BurnDrvXmen6pu = {
 	"X-Men (6 Players ver UCB)\0", NULL, "Konami", "GX065",
 	NULL, NULL, NULL, NULL,
 	BDF_CLONE, 6, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, xmen6puRomInfo, xmen6puRomName, NULL, NULL, XmenInputInfo, NULL,
+	NULL, xmen6puRomInfo, xmen6puRomName, NULL, NULL, NULL, NULL, XmenInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 256, 4, 3
 };

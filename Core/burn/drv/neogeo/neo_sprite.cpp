@@ -2,7 +2,7 @@
 
 UINT8* NeoZoomROM;
 
-UINT8* NeoSpriteROM[MAX_SLOT] = { NULL, };
+UINT8* NeoSpriteROM[MAX_SLOT] = { NULL, NULL, };
 
 UINT32 nNeoTileMask[MAX_SLOT];
 INT32 nNeoMaxTile[MAX_SLOT];
@@ -34,6 +34,13 @@ static RenderBankFunction* RenderBank;
 
 static 	UINT16 BankAttrib01, BankAttrib02, BankAttrib03;
 
+static inline UINT32 alpha_blend(UINT32 d, UINT32 s, UINT32 p)
+{
+	INT32 a = 255 - p;
+
+	return (((((s & 0xff00ff) * p) + ((d & 0xff00ff) * a)) & 0xff00ff00) +
+		((((s & 0x00ff00) * p) + ((d & 0x00ff00) * a)) & 0x00ff0000)) >> 8;
+}
 
 // Include the tile rendering functions
 #include "neo_sprite_func.h"
@@ -93,7 +100,6 @@ INT32 NeoRenderSprites()
 		}
 
 		if (nBankSize) {
-
 			nBankXZoom = (BankAttrib01 >> 8) & 0x0F;
 			if (nBankXPos >= 0x01E0) {
 				nBankXPos -= 0x200;
@@ -116,6 +122,8 @@ INT32 NeoRenderSprites()
 
 void NeoUpdateSprites(INT32 nOffset, INT32 nSize)
 {
+	if (!NeoSpriteROMActive) return;
+
 	for (INT32 i = nOffset & ~127; i < nOffset + nSize; i += 128) {
 		bool bTransparent = true;
 		for (INT32 j = i; j < i + 128; j++) {
@@ -140,6 +148,62 @@ void NeoSetSpriteSlot(INT32 nSlot)
 	nNeoMaxTileActive   = nNeoMaxTile[nSlot];
 }
 
+static void NeoBlendInit(INT32 nSlot)
+{
+	TCHAR filename[MAX_PATH];
+
+	_stprintf(filename, _T("%s%s.bld"), szAppBlendPath, BurnDrvGetText(DRV_NAME));
+	
+	FILE *fa = _tfopen(filename, _T("rt"));
+
+	if (fa == NULL) {
+		_stprintf(filename, _T("%s%s.bld"), szAppBlendPath, BurnDrvGetText(DRV_PARENT));
+
+		fa = _tfopen(filename, _T("rt"));
+
+		if (fa == NULL) {
+			return;
+		}
+	}
+
+	bprintf (PRINT_IMPORTANT, _T("Using sprite blending (.bld) table!\n"));
+
+	char szLine[64];
+
+	INT32 table[4] = { 0, 0xff-0x3f, 0xff-0x7f, 0xff-0x7f }; // last one 7f?
+
+	while (1)
+	{
+		if (fgets (szLine, 64, fa) == NULL) break;
+
+		if (strncmp ("Game", szLine, 4) == 0) continue; 	// don't care
+		if (strncmp ("Name", szLine, 4) == 0) continue; 	// don't care
+		if (szLine[0] == ';') continue;				// comment (also don't care)
+
+		INT32 type, single_entry = -1;
+		UINT32 min,max,k;
+
+		for (k = 0; k < strlen(szLine); k++) {
+			if (szLine[k] == '-') { single_entry = k+1; break; }
+		}
+
+		if (single_entry < 0) {
+			sscanf(szLine,"%x %d",&max,&type);
+			min = max;
+		} else {
+			sscanf(szLine,"%x",&min);
+			sscanf(szLine+single_entry,"%x %d",&max,&type);
+		}
+
+		for (k = min; k <= max; k++) {
+			if (k < nNeoTileMask[nSlot] + 1 && NeoTileAttrib[nSlot][k] != 1) 	// ?
+				NeoTileAttrib[nSlot][k] = table[type&3];
+		}
+	}
+
+	fclose (fa);
+}
+
 INT32 NeoInitSprites(INT32 nSlot)
 {
 	// Create a table that indicates if a tile is transparent
@@ -162,6 +226,8 @@ INT32 NeoInitSprites(INT32 nSlot)
 	for (UINT32 i = nNeoMaxTile[nSlot]; i < nNeoTileMask[nSlot] + 1; i++) {
 		NeoTileAttrib[nSlot][i] = 1;
 	}
+
+	if (bBurnUseBlend) NeoBlendInit(nSlot);
 
 	NeoTileAttribActive = NeoTileAttrib[nSlot];
 	NeoSpriteROMActive  = NeoSpriteROM[nSlot];

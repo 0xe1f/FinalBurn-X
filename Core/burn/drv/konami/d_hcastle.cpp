@@ -1,5 +1,6 @@
 // FB Alpha Haunted Castle / Akuma-Jou Dracula driver module
 // Based on MAME driver by Bryan McPhail
+//
 
 #include "tiles_generic.h"
 #include "z80_intf.h"
@@ -79,7 +80,7 @@ static struct BurnDIPInfo HcastleDIPList[]=
 {
 	{0x12, 0xff, 0xff, 0x53, NULL			},
 	{0x13, 0xff, 0xff, 0xff, NULL			},
-	{0x14, 0xff, 0xff, 0xf7, NULL			},
+	{0x14, 0xff, 0xff, 0xff, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Cabinet"		},
 	{0x12, 0x01, 0x04, 0x00, "Upright"		},
@@ -91,11 +92,11 @@ static struct BurnDIPInfo HcastleDIPList[]=
 	{0x12, 0x01, 0x18, 0x08, "Hard"			},
 	{0x12, 0x01, 0x18, 0x00, "Hardest"		},
 
-	{0   , 0xfe, 0   ,    4, "Damage"		},
-	{0x12, 0x01, 0x60, 0x60, "Small"		},
-	{0x12, 0x01, 0x60, 0x40, "Normal"		},
-	{0x12, 0x01, 0x60, 0x20, "Big"			},
-	{0x12, 0x01, 0x60, 0x00, "Biggest"		},
+	{0   , 0xfe, 0   ,    4, "Strength of Player"		},
+	{0x12, 0x01, 0x60, 0x00, "Very Weak"		},
+	{0x12, 0x01, 0x60, 0x20, "Weak"		},
+	{0x12, 0x01, 0x60, 0x40, "Normal"			},
+	{0x12, 0x01, 0x60, 0x60, "Strong"		},
 
 	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x12, 0x01, 0x80, 0x80, "Off"			},
@@ -149,8 +150,8 @@ static struct BurnDIPInfo HcastleDIPList[]=
 	{0x14, 0x01, 0x04, 0x00, "On"			},
 
 	{0   , 0xfe, 0   ,    2, "Allow Continue"	},
-	{0x14, 0x01, 0x08, 0x08, "No"			},
-	{0x14, 0x01, 0x08, 0x00, "Yes"			},
+	{0x14, 0x01, 0x08, 0x08, "Yes"			},
+	{0x14, 0x01, 0x08, 0x00, "No"			},
 };
 
 STDDIPINFO(Hcastle)
@@ -160,7 +161,7 @@ static void bankswitch(INT32 data)
 	*nDrvKonBank = data & 0x0f;
 	INT32 bankaddress = *nDrvKonBank * 0x2000;
 
-	konamiMapMemory(DrvKonROM + 0x10000 + bankaddress, 0x6000, 0x7fff, KON_ROM);
+	konamiMapMemory(DrvKonROM + 0x10000 + bankaddress, 0x6000, 0x7fff, MAP_ROM);
 }
 
 static void playfield_write(INT32 address, INT32 data, UINT8 *ctrl, UINT8 *spr, UINT8 *buf)
@@ -208,11 +209,11 @@ void hcastle_write(UINT16 address, UINT8 data)
 
 		case 0x0408:
 		{
-			float t = konamiTotalCycles() * 1.19318167;
-			t -= ZetTotalCycles();
-			if (t > 1) ZetRun((INT32)t);
+//			float t = konamiTotalCycles() * 1.19318167;
+//			t -= ZetTotalCycles();
+//			if (t > 1) ZetRun((INT32)t);
 
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		}
 		return;
 
@@ -259,7 +260,7 @@ static void sound_bankswitch(INT32 data)
 {
 	INT32 bank_A=(data&0x3);
 	INT32 bank_B=((data>>2)&0x3);
-	bank_A=bank_B;
+
 	k007232_set_bank(0, bank_A, bank_B );
 }
 
@@ -299,7 +300,7 @@ void __fastcall hcastle_sound_write(UINT16 address, UINT8 data)
 	{
 		case 0xa000:
 		case 0xa001:
-			BurnYM3812Write(address & 1, data);
+			BurnYM3812Write(0, address & 1, data);
 		return;
 
 		case 0xc000:
@@ -318,10 +319,10 @@ UINT8 __fastcall hcastle_sound_read(UINT16 address)
 	{
 		case 0xa000:
 		case 0xa001:
-			return BurnYM3812Read(address & 1);
+			return BurnYM3812Read(0, address & 1);
 
 		case 0xd000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -353,6 +354,7 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
+	K007232Reset(0);
 	K051649Reset();
 	BurnYM3812Reset();
 
@@ -405,28 +407,12 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
+static void DrvGfxExpand(UINT8 *src, INT32 len)
 {
-	INT32 Plane[4] = { 0x000, 0x001, 0x002, 0x003 };
-	INT32 XOffs[8] = { 0x008, 0x00c, 0x000, 0x004, 0x018, 0x01c, 0x010, 0x014 };
-	INT32 YOffs[8] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0 };
-
-	UINT8 *tmp = (UINT8*)BurnMalloc(0x100000);
-	if (tmp == NULL) {
-		return 1;
+	for (INT32 i = (len - 1) * 2; i >= 0; i-=2) {
+		src[i+0] = src[i/2] >> 4;
+		src[i+1] = src[i/2] & 0xf;
 	}
-
-	memcpy (tmp, DrvGfxROM0, 0x100000);
-
-	GfxDecode(0x8000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, tmp, DrvGfxROM0);
-
-	memcpy (tmp, DrvGfxROM1, 0x100000);
-
-	GfxDecode(0x8000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, tmp, DrvGfxROM1);
-
-	BurnFree (tmp);
-
-	return 0;
 }
 
 static void DrvPaletteInit()
@@ -454,6 +440,8 @@ static void DrvPaletteInit()
 
 static INT32 DrvInit()
 {
+	BurnSetRefreshRate(59);
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -469,9 +457,11 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvGfxROM0 + 0x00000,  3, 1)) return 1;
 		if (BurnLoadRom(DrvGfxROM0 + 0x80000,  4, 1)) return 1;
+		BurnByteswap(DrvGfxROM0, 0x100000);
 
 		if (BurnLoadRom(DrvGfxROM1 + 0x00000,  5, 1)) return 1;
 		if (BurnLoadRom(DrvGfxROM1 + 0x80000,  6, 1)) return 1;
+		BurnByteswap(DrvGfxROM1, 0x100000);
 
 		if (BurnLoadRom(DrvSndROM  + 0x00000,  7, 1)) return 1;
 
@@ -481,20 +471,21 @@ static INT32 DrvInit()
 		if (BurnLoadRom(DrvPalROM  + 0x00300, 11, 1)) return 1;
 
 		DrvPaletteInit();
-		DrvGfxDecode();
+		DrvGfxExpand(DrvGfxROM0, 0x100000);
+		DrvGfxExpand(DrvGfxROM1, 0x100000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM0,		0x0000, 0x00ff, KON_ROM); //020-03f
-	konamiMapMemory(DrvKonRAM1,		0x0200, 0x02ff, KON_ROM); //220-23f
-	konamiMapMemory(DrvPalRAM,		0x0600, 0x1fff, KON_RAM);
-	konamiMapMemory(DrvPf1RAM,		0x2000, 0x2fff, KON_RAM);
-	konamiMapMemory(DrvSprRAM1,		0x3000, 0x3fff, KON_RAM);
-	konamiMapMemory(DrvPf2RAM,		0x4000, 0x4fff, KON_RAM);
-	konamiMapMemory(DrvSprRAM2,		0x5000, 0x5fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x7fff, KON_ROM);
-	konamiMapMemory(DrvKonROM,		0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM0,		0x0000, 0x00ff, MAP_ROM); //020-03f
+	konamiMapMemory(DrvKonRAM1,		0x0200, 0x02ff, MAP_ROM); //220-23f
+	konamiMapMemory(DrvPalRAM,		0x0600, 0x1fff, MAP_RAM);
+	konamiMapMemory(DrvPf1RAM,		0x2000, 0x2fff, MAP_RAM);
+	konamiMapMemory(DrvSprRAM1,		0x3000, 0x3fff, MAP_RAM);
+	konamiMapMemory(DrvPf2RAM,		0x4000, 0x4fff, MAP_RAM);
+	konamiMapMemory(DrvSprRAM2,		0x5000, 0x5fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x7fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM,		0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(hcastle_write);
 	konamiSetReadHandler(hcastle_read);
 	konamiClose();
@@ -510,9 +501,9 @@ static INT32 DrvInit()
 	ZetSetReadHandler(hcastle_sound_read);
 	ZetClose();
 
-	BurnYM3812Init(3579545, NULL, DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(3579545);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 0.70, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, NULL, DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 3579545);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 0.70, BURN_SND_ROUTE_BOTH);
 
 	K007232Init(0, 3579545, DrvSndROM, 0x80000); // no idea...
 	K007232SetPortWriteHandler(0, DrvK007232VolCallback);
@@ -580,21 +571,28 @@ static void draw_layer(UINT8 *ram, UINT8 *ctrl, UINT8 *gfx, INT32 colbase, INT32
 		INT32 bank  = ((attr & 0x80) >> 7) | ((attr >> bit0) & 0x02) | ((attr >> bit1) & 0x04) | ((attr >> bit2) & 0x08) | ((attr >> bit3) & 0x10);
 
 		code += (bank << 8) + base;
+		sy -= 16; //offset
 
 		if (tilemap_flip) {
 			sx = 0xf8 - sx;
 			sy = 0xf8 - sy;
 
+			if (sx < -7 || sx >= nScreenWidth) continue;
+			if (sy < -7 || sy >= nScreenHeight) continue;
+
 			if (t) {
-				Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, sx, sy-16, color, 4, 0, 0, gfx);
+				Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, gfx);
 			} else {
-				Render8x8Tile_FlipXY_Clip(pTransDraw, code, sx, sy-16, color, 4, 0, gfx);
+				Render8x8Tile_FlipXY_Clip(pTransDraw, code, sx, sy, color, 4, 0, gfx);
 			}
 		} else {
+			if (sx < -7 || sx >= nScreenWidth) continue;
+			if (sy < -7 || sy >= nScreenHeight) continue;
+
 			if (t) {
-				Render8x8Tile_Mask_Clip(pTransDraw, code, sx, sy-16, color, 4, 0, 0, gfx);
+				Render8x8Tile_Mask_Clip(pTransDraw, code, sx, sy, color, 4, 0, 0, gfx);
 			} else {
-				Render8x8Tile_Clip(pTransDraw, code, sx, sy-16, color, 4, 0, gfx);
+				Render8x8Tile_Clip(pTransDraw, code, sx, sy, color, 4, 0, gfx);
 			}
 		}
 	}
@@ -643,6 +641,7 @@ static void draw_sprites(INT32 bank, UINT8 *source, UINT8 *ctrl, UINT8 *gfx, INT
 		{
 			INT32 yy = sy + y * 8;
 			INT32 ey = yflip ? (height-1-y) : y;
+			yy -= 16; //offset
 
 			for (INT32 x = 0; x < width; x++)
 			{
@@ -650,33 +649,35 @@ static void draw_sprites(INT32 bank, UINT8 *source, UINT8 *ctrl, UINT8 *gfx, INT
 				INT32 xx = sx + x * 8;
 
 				INT32 code = number + x_offset[ex] + y_offset[ey];
+				if (xx < -7 || xx >= nScreenWidth) continue;
+				if (yy < -7 || yy >= nScreenHeight) continue;
 
 				if (flipscreen) {
 					if (yflip ^ 0x20) {
 						if (xflip ^ 0x10) {
-							Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, 248-xx, (248-yy)-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, 248-xx, (248-yy), color, 4, 0, 0, gfx);
 						} else {
-							Render8x8Tile_Mask_FlipY_Clip(pTransDraw, code, 248-xx, (248-yy)-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipY_Clip(pTransDraw, code, 248-xx, (248-yy), color, 4, 0, 0, gfx);
 						}
 					} else {
 						if (xflip ^ 0x10) {
-							Render8x8Tile_Mask_FlipX_Clip(pTransDraw, code, 248-xx, (248-yy)-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipX_Clip(pTransDraw, code, 248-xx, (248-yy), color, 4, 0, 0, gfx);
 						} else {
-							Render8x8Tile_Mask_Clip(pTransDraw, code, 248-xx, (248-yy)-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_Clip(pTransDraw, code, 248-xx, (248-yy), color, 4, 0, 0, gfx);
 						}
 					}
 				} else {
 					if (yflip) {
 						if (xflip) {
-							Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, xx, yy-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipXY_Clip(pTransDraw, code, xx, yy, color, 4, 0, 0, gfx);
 						} else {
-							Render8x8Tile_Mask_FlipY_Clip(pTransDraw, code, xx, yy-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipY_Clip(pTransDraw, code, xx, yy, color, 4, 0, 0, gfx);
 						}
 					} else {
 						if (xflip) {
-							Render8x8Tile_Mask_FlipX_Clip(pTransDraw, code, xx, yy-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_FlipX_Clip(pTransDraw, code, xx, yy, color, 4, 0, 0, gfx);
 						} else {
-							Render8x8Tile_Mask_Clip(pTransDraw, code, xx, yy-16, color, 4, 0, 0, gfx);
+							Render8x8Tile_Mask_Clip(pTransDraw, code, xx, yy, color, 4, 0, 0, gfx);
 						}
 					}
 				}
@@ -762,13 +763,16 @@ static INT32 DrvFrame()
 	ZetNewFrame();
 
 	INT32 nCyclesTotal[2] = { 3000000 / 60, 3579545 / 60 };
+	INT32 nInterleave = 30;
 
 	ZetOpen(0);
 	konamiOpen(0);
+	for (INT32 i = 0; i < nInterleave; i++) {
+		konamiRun(nCyclesTotal[0] / nInterleave);
+		BurnTimerUpdateYM3812((i + 1) * (nCyclesTotal[1] / nInterleave));
+	}
 
-	konamiRun(nCyclesTotal[0]);
-	konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
-
+	konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 	BurnTimerEndFrameYM3812(nCyclesTotal[1]);
 
 	if (pBurnSoundOut) {
@@ -803,7 +807,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
 		BurnYM3812Scan(nAction, pnMin);
@@ -852,10 +856,10 @@ STD_ROM_FN(hcastle)
 
 struct BurnDriver BurnDrvHcastle = {
 	"hcastle", NULL, NULL, NULL, "1988",
-	"Haunted Castle (ver. M)\0", NULL, "Konami", "Miscellaneous",
+	"Haunted Castle (ver. M)\0", NULL, "Konami", "GX768",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, hcastleRomInfo, hcastleRomName, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
+	NULL, hcastleRomInfo, hcastleRomName, NULL, NULL, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	256, 224, 4, 3
 };
@@ -890,10 +894,10 @@ STD_ROM_FN(hcastlek)
 
 struct BurnDriver BurnDrvHcastlek = {
 	"hcastlek", "hcastle", NULL, NULL, "1988",
-	"Haunted Castle (ver. K)\0", NULL, "Konami", "Miscellaneous",
+	"Haunted Castle (ver. K)\0", NULL, "Konami", "GX768",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, hcastlekRomInfo, hcastlekRomName, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
+	NULL, hcastlekRomInfo, hcastlekRomName, NULL, NULL, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	256, 224, 4, 3
 };
@@ -928,10 +932,10 @@ STD_ROM_FN(hcastlee)
 
 struct BurnDriver BurnDrvHcastlee = {
 	"hcastlee", "hcastle", NULL, NULL, "1988",
-	"Haunted Castle (ver. E)\0", NULL, "Konami", "Miscellaneous",
+	"Haunted Castle (ver. E)\0", NULL, "Konami", "GX768",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, hcastleeRomInfo, hcastleeRomName, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
+	NULL, hcastleeRomInfo, hcastleeRomName, NULL, NULL, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	256, 224, 4, 3
 };
@@ -966,10 +970,10 @@ STD_ROM_FN(akumajou)
 
 struct BurnDriver BurnDrvAkumajou = {
 	"akumajou", "hcastle", NULL, NULL, "1988",
-	"Akuma-Jou Dracula (Japan ver. P)\0", NULL, "Konami", "Miscellaneous",
+	"Akuma-Jou Dracula (Japan ver. P)\0", NULL, "Konami", "GX768",
 	L"\u60AA\u9B54\u57CE \u30C9\u30E9\u30AD\u30E5\u30E9 (Japan ver. P)\0Akuma-Jou Dracula\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, akumajouRomInfo, akumajouRomName, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
+	NULL, akumajouRomInfo, akumajouRomName, NULL, NULL, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	256, 224, 4, 3
 };
@@ -1004,10 +1008,10 @@ STD_ROM_FN(akumajoun)
 
 struct BurnDriver BurnDrvAkumajoun = {
 	"akumajoun", "hcastle", NULL, NULL, "1988",
-	"Akuma-Jou Dracula (Japan ver. N)\0", NULL, "Konami", "Miscellaneous",
+	"Akuma-Jou Dracula (Japan ver. N)\0", NULL, "Konami", "GX768",
 	L"\u60AA\u9B54\u57CE \u30C9\u30E9\u30AD\u30E5\u30E9 (Japan ver. N)\0Akuma-Jou Dracula\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, akumajounRomInfo, akumajounRomName, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
+	NULL, akumajounRomInfo, akumajounRomName, NULL, NULL, NULL, NULL, HcastleInputInfo, HcastleDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	256, 224, 4, 3
 };

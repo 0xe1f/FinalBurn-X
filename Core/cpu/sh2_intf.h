@@ -1,3 +1,4 @@
+#include <stdint.h>
 
 #ifndef FASTCALL
  #undef __fastcall
@@ -12,6 +13,9 @@ typedef unsigned int (__fastcall *pSh2ReadLongHandler)(unsigned int a);
 typedef void (__fastcall *pSh2WriteLongHandler)(unsigned int a, unsigned int d);
 
 extern int has_sh2;
+extern INT32 cps3speedhack;
+extern INT32 sh2_busyloop_speedhack_mode2;
+
 void __fastcall Sh2WriteByte(unsigned int a, unsigned char d);
 unsigned char __fastcall Sh2ReadByte(unsigned int a);
 
@@ -36,10 +40,6 @@ int Sh2SetWriteWordHandler(int i, pSh2WriteWordHandler pHandler);
 int Sh2SetReadLongHandler(int i, pSh2ReadLongHandler pHandler);
 int Sh2SetWriteLongHandler(int i, pSh2WriteLongHandler pHandler);
 
-#define SH2_IRQSTATUS_NONE	(0x00)
-#define SH2_IRQSTATUS_AUTO	(0x01)
-//#define SH2_IRQSTATUS_ACK	(0x02)
-
 void Sh2SetIRQLine(const int line, const int state);
 
 unsigned int Sh2GetPC(int n);
@@ -48,14 +48,20 @@ void Sh2SetVBR(unsigned int i);
 
 void Sh2BurnUntilInt(int);
 
-int Sh2TotalCycles();
+INT32 Sh2TotalCycles();
 void Sh2NewFrame();
 void Sh2BurnCycles(int cycles);
+void Sh2Idle(int cycles);
+void Sh2SetEatCycles(int i);
 
 int Sh2Scan(int);
 
-#define SH2_READ  (1)
-#define SH2_WRITE (2)
-#define SH2_FETCH (4)
-#define SH2_ROM (SH2_READ | SH2_FETCH)
-#define SH2_RAM (SH2_READ | SH2_WRITE | SH2_FETCH)
+
+void Sh2CheatWriteByte(UINT32 a, UINT8 d); // cheat core
+UINT8 Sh2CheatReadByte(UINT32 a);
+
+extern struct cpu_core_config Sh2Config;
+
+// depreciate this and use BurnTimerAttach directly!
+#define BurnTimerAttachSh2(clock)	\
+	BurnTimerAttach(&Sh2Config, clock)

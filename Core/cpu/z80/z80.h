@@ -6,6 +6,8 @@
 #define Z80_ASSERT_LINE		1
 #define Z80_INPUT_LINE_NMI	32
 
+#include "z80daisy.h"
+
 typedef union
 {
 #ifdef LSB_FIRST
@@ -21,15 +23,18 @@ typedef union
 typedef struct
 {
 	Z80_PAIR	prvpc,pc,sp,af,bc,de,hl,ix,iy;
-	Z80_PAIR	af2,bc2,de2,hl2;
+	Z80_PAIR	af2,bc2,de2,hl2,wz;
 	UINT8	r,r2,iff1,iff2,halt,im,i;
 	UINT8	nmi_state;			/* nmi line state */
 	UINT8	nmi_pending;		/* nmi pending */
 	UINT8	irq_state;			/* irq line state */
+	UINT8   vector;             /* vector */
 	UINT8	after_ei;			/* are we in the EI shadow? */
-	INT32 cycles_left;
+	INT32   cycles_left;
+	INT32   hold_irq;
+
 	const struct z80_irq_daisy_chain *daisy;
-	int		(*irq_callback)(int irqline);
+	int (*irq_callback)(int irqline);
 } Z80_Regs;
 
 enum {
@@ -66,9 +71,10 @@ void Z80GetContext (void *dst);
 void Z80SetContext (void *src);
 int Z80Scan(int nAction);
 INT32 z80TotalCycles();
+void Z80StopExecute();
 
 extern unsigned char Z80Vector;
-
+extern void (*z80edfe_callback)(Z80_Regs *Regs);
 extern int z80_ICount;
 extern UINT32 EA;
 
@@ -90,6 +96,13 @@ int ActiveZ80GetPC();
 int ActiveZ80GetBC();
 int ActiveZ80GetDE();
 int ActiveZ80GetHL();
+int ActiveZ80GetI();
+int ActiveZ80GetIM();
+int ActiveZ80GetSP();
+int ActiveZ80GetPrevPC();
+void ActiveZ80SetIRQHold();
+int ActiveZ80GetVector();
+void ActiveZ80SetVector(INT32 vector);
 
 #endif
 

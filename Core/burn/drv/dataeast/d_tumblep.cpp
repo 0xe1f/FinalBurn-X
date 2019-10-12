@@ -117,7 +117,7 @@ static struct BurnDIPInfo TumblepDIPList[]=
 
 STDDIPINFO(Tumblep)
 
-void __fastcall tumblep_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall tumblep_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x300000, data)
 
@@ -125,24 +125,24 @@ void __fastcall tumblep_main_write_word(UINT32 address, UINT16 data)
 	{
 		case 0x100000:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 }
 
-void __fastcall tumblep_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall tumblep_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
 		case 0x100000:
 		case 0x100001:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 }
 
-UINT16 __fastcall tumblep_main_read_word(UINT32 address)
+static UINT16 __fastcall tumblep_main_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -159,7 +159,7 @@ UINT16 __fastcall tumblep_main_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall tumblep_main_read_byte(UINT32 address)
+static UINT8 __fastcall tumblep_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -267,14 +267,14 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x120000, 0x123fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x140000, 0x1407ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x1a0000, 0x1a07ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x120000, 0x123fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x140000, 0x1407ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x1a0000, 0x1a07ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, MAP_RAM);
 	SekSetWriteWordHandler(0,		tumblep_main_write_word);
 	SekSetWriteByteHandler(0,		tumblep_main_write_byte);
 	SekSetReadWordHandler(0,		tumblep_main_read_word);
@@ -443,7 +443,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	INT32 nInterleave = 256;
+	INT32 nInterleave = 232;
 	INT32 nSoundBufferPos = 0;
 	INT32 nCyclesTotal[2] = { 14000000 / 58, 4027500 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
@@ -458,7 +458,7 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
 		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
 
-		if (i == 240) deco16_vblank = 0x08;
+		if (i == 206) deco16_vblank = 0x08;
 		
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
@@ -468,7 +468,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -507,7 +507,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-	
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
@@ -541,7 +541,7 @@ struct BurnDriver BurnDrvTumblep = {
 	"Tumble Pop (World)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, tumblepRomInfo, tumblepRomName, NULL, NULL, TumblepInputInfo, TumblepDIPInfo,
+	NULL, tumblepRomInfo, tumblepRomName, NULL, NULL, NULL, NULL, TumblepInputInfo, TumblepDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -571,7 +571,7 @@ struct BurnDriver BurnDrvTumblepj = {
 	"Tumble Pop (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, tumblepjRomInfo, tumblepjRomName, NULL, NULL, TumblepInputInfo, TumblepDIPInfo,
+	NULL, tumblepjRomInfo, tumblepjRomName, NULL, NULL, NULL, NULL, TumblepInputInfo, TumblepDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };

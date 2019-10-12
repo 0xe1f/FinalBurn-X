@@ -24,10 +24,10 @@ UINT8 TaitoReset               = 0;
 
 UINT8 TaitoCoinLockout[4]      = { 0, 0, 0, 0 };
 
-INT32 TaitoAnalogPort0         = 0;
-INT32 TaitoAnalogPort1         = 0;
-INT32 TaitoAnalogPort2         = 0;
-INT32 TaitoAnalogPort3         = 0;
+INT16 TaitoAnalogPort0         = 0;
+INT16 TaitoAnalogPort1         = 0;
+INT16 TaitoAnalogPort2         = 0;
+INT16 TaitoAnalogPort3         = 0;
 
 UINT8 *TaitoMem                = NULL;
 UINT8 *TaitoMemEnd             = NULL;
@@ -44,6 +44,7 @@ UINT8 *TaitoSpriteRam          = NULL;
 UINT8 *TaitoSpriteRam2         = NULL;
 UINT8 *TaitoSpriteRamBuffered  = NULL;
 UINT8 *TaitoSpriteRamDelayed   = NULL;
+UINT8 *TaitoSpriteRamDelayed2  = NULL;
 UINT8 *TaitoSpriteExtension    = NULL;
 UINT8 *TaitoVideoRam           = NULL;
 UINT32 *TaitoPalette           = NULL;
@@ -104,7 +105,7 @@ INT32 TaitoDoReset()
 	}
 	
 	if (TaitoNumEEPROM) EEPROMReset();
-	
+
 	TaitoICReset();
 	
 	TaitoZ80Bank = 0;
@@ -153,6 +154,8 @@ UINT32 TaitoMSM5205RomNum = 0;
 UINT32 TaitoMSM6295RomNum = 0;
 UINT32 TaitoES5505RomNum = 0;
 UINT32 TaitoDefaultEEPromNum = 0;
+UINT32 TaitoCCHIPBIOSNum = 0;
+UINT32 TaitoCCHIPEEPROMNum = 0;
 
 UINT32 Taito68KRom1Size = 0;
 UINT32 Taito68KRom2Size = 0;
@@ -172,6 +175,8 @@ UINT32 TaitoMSM5205RomSize = 0;
 UINT32 TaitoMSM6295RomSize = 0;
 UINT32 TaitoES5505RomSize = 0;
 UINT32 TaitoDefaultEEPromSize = 0;
+UINT32 TaitoCCHIPBIOSSize = 0;
+UINT32 TaitoCCHIPEEPROMSize = 0;
 
 UINT32 TaitoCharModulo = 0;
 UINT32 TaitoCharNumPlanes = 0;
@@ -305,9 +310,24 @@ INT32 TaitoLoadRoms(INT32 bLoad)
 				TaitoDefaultEEPromSize += ri.nLen;
 				TaitoDefaultEEPromNum++;
 			}
+			if ((ri.nType & 0xff) == TAITO_CCHIP_EEPROM) {
+				TaitoCCHIPEEPROMSize += ri.nLen;
+				TaitoCCHIPEEPROMNum++;
+			}
 		} while (ri.nLen);
-		
-#if 1 && defined FBA_DEBUG
+
+		{ // Taito C-Chip BIOS starts at idx 0x80 - must do this outside of the while loop
+			ri.nLen = 0;
+			ri.nType = 0;
+			BurnDrvGetRomInfo(&ri, 0x80);
+
+			if ((ri.nType & 0xff) == TAITO_CCHIP_BIOS) {
+				TaitoCCHIPBIOSSize += ri.nLen;
+				TaitoCCHIPBIOSNum++;
+			}
+		}
+
+#if 1 && defined FBNEO_DEBUG
 		if (Taito68KRom1Size) bprintf(PRINT_IMPORTANT, _T("68K #1 Rom Length %06X, (%i roms)\n"), Taito68KRom1Size, Taito68KRom1Num);
 		if (Taito68KRom2Size) bprintf(PRINT_IMPORTANT, _T("68K #2 Rom Length %06X, (%i roms)\n"), Taito68KRom2Size, Taito68KRom2Num);
 		if (Taito68KRom3Size) bprintf(PRINT_IMPORTANT, _T("68K #3 Rom Length %06X, (%i roms)\n"), Taito68KRom3Size, Taito68KRom3Num);
@@ -326,6 +346,8 @@ INT32 TaitoLoadRoms(INT32 bLoad)
 		if (TaitoMSM6295RomSize) bprintf(PRINT_IMPORTANT, _T("MSM6295 Rom Length %08X, (%i roms)\n"), TaitoMSM6295RomSize, TaitoMSM6295RomNum);
 		if (TaitoES5505RomSize) bprintf(PRINT_IMPORTANT, _T("ES5505 Rom Length %08X, (%i roms)\n"), TaitoES5505RomSize, TaitoES5505RomNum);
 		if (TaitoDefaultEEPromSize) bprintf(PRINT_IMPORTANT, _T("Default EEPROM Length %08X, (%i roms)\n"), TaitoDefaultEEPromSize, TaitoDefaultEEPromNum);
+		if (TaitoCCHIPBIOSSize) bprintf(PRINT_IMPORTANT, _T("C-Chip BIOS Length %08X, (%i roms)\n"), TaitoCCHIPBIOSSize, TaitoCCHIPBIOSNum);
+		if (TaitoCCHIPEEPROMSize) bprintf(PRINT_IMPORTANT, _T("C-Chip EEPROM Length %08X, (%i roms)\n"), TaitoCCHIPEEPROMSize, TaitoCCHIPEEPROMNum);
 #endif
 	}
 	
@@ -549,7 +571,7 @@ INT32 TaitoLoadRoms(INT32 bLoad)
 			
 			Offset = 0;
 			i = Taito68KRom1Num + Taito68KRom2Num + Taito68KRom3Num + TaitoZ80Rom1Num + TaitoZ80Rom2Num + TaitoCharRomNum + TaitoCharBRomNum;
-			
+
 			while (i < Taito68KRom1Num + Taito68KRom2Num + Taito68KRom3Num + TaitoZ80Rom1Num + TaitoZ80Rom2Num + TaitoCharRomNum + TaitoCharBRomNum + TaitoSpriteARomNum) {
 				BurnDrvGetRomInfo(&ri, i + 0);
 				
@@ -841,33 +863,44 @@ INT32 TaitoLoadRoms(INT32 bLoad)
 				}
 			}
 		}
+
+		if (TaitoCCHIPEEPROMSize) {
+			Offset = 0;
+			i = Taito68KRom1Num + Taito68KRom2Num + Taito68KRom3Num + TaitoZ80Rom1Num + TaitoZ80Rom2Num + TaitoCharRomNum + TaitoCharBRomNum + TaitoSpriteARomNum + TaitoSpriteBRomNum + TaitoRoadRomNum + TaitoSpriteMapRomNum + TaitoYM2610ARomNum + TaitoYM2610BRomNum + TaitoMSM5205RomNum + TaitoCharPivotRomNum + TaitoMSM6295RomNum + TaitoES5505RomNum + TaitoDefaultEEPromNum;
+			
+			while (i < Taito68KRom1Num + Taito68KRom2Num + Taito68KRom3Num + TaitoZ80Rom1Num + TaitoZ80Rom2Num + TaitoCharRomNum + TaitoCharBRomNum + TaitoSpriteARomNum + TaitoSpriteBRomNum + TaitoRoadRomNum + TaitoSpriteMapRomNum + TaitoYM2610ARomNum + TaitoYM2610BRomNum + TaitoMSM5205RomNum + TaitoCharPivotRomNum + TaitoMSM6295RomNum + TaitoES5505RomNum + TaitoDefaultEEPromNum + TaitoCCHIPEEPROMNum) {
+				BurnDrvGetRomInfo(&ri, i + 0);
+				if ((ri.nType & 0xff) == TAITO_CCHIP_EEPROM) {
+					nRet = BurnLoadRom(cchip_eeprom + Offset, i, 1); if (nRet) return 1;
+
+					BurnDrvGetRomInfo(&ri, i);
+					Offset += ri.nLen;
+				
+					i++;
+				}
+			}
+		}
+
+		if (TaitoCCHIPBIOSSize) { // this should be the last entry.
+			Offset = 0;
+			INT32 idx = 0x80; // default BIOS index
+
+			BurnDrvGetRomInfo(&ri, idx + 0);
+				
+			if ((ri.nType & 0xff) == TAITO_CCHIP_BIOS) {
+				nRet = BurnLoadRom(cchip_rom + Offset, idx, 1); if (nRet) return 1;
+
+				BurnDrvGetRomInfo(&ri, idx);
+				Offset += ri.nLen;
+			}
+		}
 	}
 	
 	return 0;
 }
 
-INT32 TaitoExit()
+void TaitoClearVariables()
 {
-	INT32 i;
-
-	if (TaitoNum68Ks) SekExit();
-	if (TaitoNumZ80s) ZetExit();
-	if (TaitoNumYM2610) BurnYM2610Exit();
-	if (TaitoNumYM2151) BurnYM2151Exit();
-	if (TaitoNumYM2203) BurnYM2203Exit();
-	if (TaitoNumMSM5205) MSM5205Exit();
-	for (i = 0; i < TaitoNumMSM6295; i++) {
-		MSM6295Exit(i);
-	}
-	if (TaitoNumEEPROM) EEPROMExit();
-	
-	TaitoICExit();
-	
-	GenericTilesExit();
-	if (nBurnGunNumPlayers) BurnGunExit();
-	
-	BurnFree(TaitoMem);
-
 	Taito68KRom1Num = 0;
 	Taito68KRom2Num = 0;
 	Taito68KRom3Num = 0;
@@ -886,6 +919,8 @@ INT32 TaitoExit()
 	TaitoMSM6295RomNum = 0;
 	TaitoES5505RomNum = 0;
 	TaitoDefaultEEPromNum = 0;
+	TaitoCCHIPBIOSNum = 0;
+	TaitoCCHIPEEPROMNum = 0;
 
 	Taito68KRom1Size = 0;
 	Taito68KRom2Size = 0;
@@ -905,6 +940,8 @@ INT32 TaitoExit()
 	TaitoMSM6295RomSize = 0;
 	TaitoES5505RomSize = 0;
 	TaitoDefaultEEPromSize = 0;
+	TaitoCCHIPBIOSSize = 0;
+	TaitoCCHIPEEPROMSize = 0;
 	
 	TaitoCharModulo = 0;
 	TaitoCharNumPlanes = 0;
@@ -976,6 +1013,31 @@ INT32 TaitoExit()
 	TaitoDrawFunction = NULL;
 	TaitoMakeInputsFunction = NULL;
 	TaitoResetFunction = NULL;
+}
+
+INT32 TaitoExit()
+{
+	INT32 i;
+
+	if (TaitoNum68Ks) SekExit();
+	if (TaitoNumZ80s) ZetExit();
+	if (TaitoNumYM2610) BurnYM2610Exit();
+	if (TaitoNumYM2151) BurnYM2151Exit();
+	if (TaitoNumYM2203) BurnYM2203Exit();
+	if (TaitoNumMSM5205) MSM5205Exit();
+	for (i = 0; i < TaitoNumMSM6295; i++) {
+		MSM6295Exit(i);
+	}
+	if (TaitoNumEEPROM) EEPROMExit();
 	
+	TaitoICExit();
+	
+	GenericTilesExit();
+	if (nBurnGunNumPlayers) BurnGunExit();
+
+	BurnFree(TaitoMem);
+
+	TaitoClearVariables();
+
 	return 0;
 }

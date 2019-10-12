@@ -6,10 +6,48 @@
 INT32 nHD6309Count = 0;
 static INT32 nActiveCPU = 0;
 
-static HD6309Ext *HD6309CPUContext;
+static HD6309Ext *HD6309CPUContext = NULL;
 
 static INT32 nHD6309CyclesDone[MAX_CPU];
 INT32 nHD6309CyclesTotal;
+
+static void core_set_irq(INT32 cpu, INT32 line, INT32 state)
+{
+	INT32 active = nActiveCPU;
+
+	if (active != cpu)
+	{
+		HD6309Close();
+		HD6309Open(cpu);
+	}
+
+	HD6309SetIRQLine(line, state);
+
+	if (active != cpu)
+	{
+		HD6309Close();
+		HD6309Open(active);
+	}
+}
+
+cpu_core_config HD6309Config =
+{
+	"HD6309",
+	HD6309Open,
+	HD6309Close,
+	HD6309CheatRead,
+	HD6309CheatWriteRom,
+	HD6309GetActive,
+	HD6309TotalCycles,
+	HD6309NewFrame,
+	HD6309Idle,
+	core_set_irq,
+	HD6309Run,
+	HD6309RunEnd,
+	HD6309Reset,
+	0x10000,
+	0
+};
 
 static UINT8 HD6309ReadByteDummyHandler(UINT16)
 {
@@ -32,16 +70,25 @@ static UINT8 HD6309ReadOpArgDummyHandler(UINT16)
 
 void HD6309Reset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Reset called without init\n"));
 #endif
 
 	hd6309_reset();
 }
 
+INT32 HD6309TotalCycles()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309TotalCycles called without init\n"));
+#endif
+
+	return nHD6309CyclesTotal + hd6309_segmentcycles();
+}
+
 void HD6309NewFrame()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309NewFrame called without init\n"));
 #endif
 
@@ -51,73 +98,70 @@ void HD6309NewFrame()
 	nHD6309CyclesTotal = 0;
 }
 
+INT32 HD6309Idle(INT32 cycles)
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Idle called without init\n"));
+	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309Idle called when no CPU open\n"));
+#endif
+	nHD6309CyclesTotal += cycles;
 
-static UINT8 HD6309CheatRead(UINT32 a)
+	return cycles;
+}
+
+UINT8 HD6309CheatRead(UINT32 a)
 {
 	return HD6309ReadByte(a);
 }
 
-static void HD6309CheatWriteRom(UINT32 a, UINT8 d)
+void HD6309CheatWriteRom(UINT32 a, UINT8 d)
 {
 	HD6309WriteRom(a, d);
 }
 
-static cpu_core_config HD6309CheatCpuConfig =
-{
-	HD6309Open,
-	HD6309Close,
-	HD6309CheatRead,
-	HD6309CheatWriteRom,
-	HD6309GetActive,
-	HD6309TotalCycles,
-	HD6309NewFrame,
-	HD6309Run,
-	HD6309RunEnd,
-	HD6309Reset,
-	1<<16,
-	0
-};
-
-INT32 HD6309Init(INT32 num)
+INT32 HD6309Init(INT32 nCPU)
 {
 	DebugCPU_HD6309Initted = 1;
 	
 	nActiveCPU = -1;
-	nHD6309Count = num % MAX_CPU;
-	
-	HD6309CPUContext = (HD6309Ext*)malloc(num * sizeof(HD6309Ext));
+	if ((nCPU+1) > nHD6309Count) nHD6309Count = nCPU+1;
+
+#if defined FBNEO_DEBUG
+	if (nCPU >= MAX_CPU) bprintf(PRINT_ERROR, _T("HD6309Init called too many CPUs! %d, %d is MAX\n"), nCPU, MAX_CPU);
+#endif
+
 	if (HD6309CPUContext == NULL) {
-		return 1;
-	}
-
-	memset(HD6309CPUContext, 0, num * sizeof(HD6309Ext));
-	
-	for (INT32 i = 0; i < num; i++) {
-		HD6309CPUContext[i].ReadByte = HD6309ReadByteDummyHandler;
-		HD6309CPUContext[i].WriteByte = HD6309WriteByteDummyHandler;
-		HD6309CPUContext[i].ReadOp = HD6309ReadOpDummyHandler;
-		HD6309CPUContext[i].ReadOpArg = HD6309ReadOpArgDummyHandler;
-		
-		nHD6309CyclesDone[i] = 0;
-	
-		for (INT32 j = 0; j < (0x0100 * 3); j++) {
-			HD6309CPUContext[i].pMemMap[j] = NULL;
+		HD6309CPUContext = (HD6309Ext*)malloc(MAX_CPU * sizeof(HD6309Ext));
+		if (HD6309CPUContext == NULL) {
+			return 1;
 		}
-	}
-	
-	nHD6309CyclesTotal = 0;
-	
-	hd6309_init();
 
-	for (INT32 i = 0; i < num; i++)
-		CpuCheatRegister(i, &HD6309CheatCpuConfig);
+		memset(HD6309CPUContext, 0, MAX_CPU * sizeof(HD6309Ext));
+	}
+
+	HD6309CPUContext[nCPU].ReadByte = HD6309ReadByteDummyHandler;
+	HD6309CPUContext[nCPU].WriteByte = HD6309WriteByteDummyHandler;
+	HD6309CPUContext[nCPU].ReadOp = HD6309ReadOpDummyHandler;
+	HD6309CPUContext[nCPU].ReadOpArg = HD6309ReadOpArgDummyHandler;
+
+	nHD6309CyclesDone[nCPU] = 0;
+	
+	for (INT32 j = 0; j < (0x0100 * 3); j++) {
+		HD6309CPUContext[nCPU].pMemMap[j] = NULL;
+	}
+
+	nHD6309CyclesTotal = 0;	
+
+	//hd6309_init(); // does nothing.
+
+	CpuCheatRegister(nCPU, &HD6309Config);
 
 	return 0;
 }
 
 void HD6309Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Exit called without init\n"));
 #endif
 
@@ -133,7 +177,7 @@ void HD6309Exit()
 
 void HD6309Open(INT32 num)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Open called without init\n"));
 	if (num >= nHD6309Count) bprintf(PRINT_ERROR, _T("HD6309Open called with invalid index %x\n"), num);
 	if (nActiveCPU != -1) bprintf(PRINT_ERROR, _T("HD6309Open called when CPU already open with index %x\n"), num);
@@ -148,7 +192,7 @@ void HD6309Open(INT32 num)
 
 void HD6309Close()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Close called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309Close called when no CPU open\n"));
 #endif
@@ -162,7 +206,7 @@ void HD6309Close()
 
 INT32 HD6309GetActive()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309GetActive called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309GetActive called when no CPU open\n"));
 #endif
@@ -172,20 +216,24 @@ INT32 HD6309GetActive()
 
 void HD6309SetIRQLine(INT32 vector, INT32 status)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309SetIRQLine called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309SetIRQLine called when no CPU open\n"));
 #endif
 
-	if (status == HD6309_IRQSTATUS_NONE) {
+	if (status == CPU_IRQSTATUS_NONE) {
 		hd6309_set_irq_line(vector, 0);
 	}
 	
-	if (status == HD6309_IRQSTATUS_ACK) {
+	if (status == CPU_IRQSTATUS_ACK) {
 		hd6309_set_irq_line(vector, 1);
 	}
+
+	if (status == CPU_IRQSTATUS_HOLD) {
+		hd6309_set_irq_line(vector, 2);
+	}
 	
-	if (status == HD6309_IRQSTATUS_AUTO) {
+	if (status == CPU_IRQSTATUS_AUTO) {
 		hd6309_set_irq_line(vector, 1);
 		hd6309_execute(0);
 		hd6309_set_irq_line(vector, 0);
@@ -195,7 +243,7 @@ void HD6309SetIRQLine(INT32 vector, INT32 status)
 
 INT32 HD6309Run(INT32 cycles)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Run called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309Run called when no CPU open\n"));
 #endif
@@ -207,17 +255,9 @@ INT32 HD6309Run(INT32 cycles)
 	return cycles;
 }
 
-void HD6309RunEnd()
+UINT32 HD6309GetPC(INT32)
 {
-#if defined FBA_DEBUG
-	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309RunEnd called without init\n"));
-	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309RunEnd called when no CPU open\n"));
-#endif
-}
-
-INT32 HD6309GetPC()
-{
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309GetPC called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309GetPC called when no CPU open\n"));
 #endif
@@ -227,7 +267,7 @@ INT32 HD6309GetPC()
 
 INT32 HD6309MapMemory(UINT8* pMemory, UINT16 nStart, UINT16 nEnd, INT32 nType)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309MapMemory called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309MapMemory called when no CPU open\n"));
 #endif
@@ -236,13 +276,13 @@ INT32 HD6309MapMemory(UINT8* pMemory, UINT16 nStart, UINT16 nEnd, INT32 nType)
 	UINT8 **pMemMap = HD6309CPUContext[nActiveCPU].pMemMap;
 
 	for (UINT16 i = cStart; i <= (nEnd >> 8); i++) {
-		if (nType & HD6309_READ)	{
+		if (nType & MAP_READ)	{
 			pMemMap[0     + i] = pMemory + ((i - cStart) << 8);
 		}
-		if (nType & HD6309_WRITE) {
+		if (nType & MAP_WRITE) {
 			pMemMap[0x100 + i] = pMemory + ((i - cStart) << 8);
 		}
-		if (nType & HD6309_FETCH) {
+		if (nType & MAP_FETCH) {
 			pMemMap[0x200 + i] = pMemory + ((i - cStart) << 8);
 		}
 	}
@@ -252,7 +292,7 @@ INT32 HD6309MapMemory(UINT8* pMemory, UINT16 nStart, UINT16 nEnd, INT32 nType)
 
 INT32 HD6309MemCallback(UINT16 nStart, UINT16 nEnd, INT32 nType)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309MemCallback called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309MemCallback called when no CPU open\n"));
 #endif
@@ -261,13 +301,13 @@ INT32 HD6309MemCallback(UINT16 nStart, UINT16 nEnd, INT32 nType)
 	UINT8 **pMemMap = HD6309CPUContext[nActiveCPU].pMemMap;
 
 	for (UINT16 i = cStart; i <= (nEnd >> 8); i++) {
-		if (nType & HD6309_READ)	{
+		if (nType & MAP_READ)	{
 			pMemMap[0     + i] = NULL;
 		}
-		if (nType & HD6309_WRITE) {
+		if (nType & MAP_WRITE) {
 			pMemMap[0x100 + i] = NULL;
 		}
-		if (nType & HD6309_FETCH) {
+		if (nType & MAP_FETCH) {
 			pMemMap[0x200 + i] = NULL;
 		}
 	}
@@ -277,7 +317,7 @@ INT32 HD6309MemCallback(UINT16 nStart, UINT16 nEnd, INT32 nType)
 
 void HD6309SetReadHandler(UINT8 (*pHandler)(UINT16))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309SetReadHandler called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309SetReadHandler called when no CPU open\n"));
 #endif
@@ -287,7 +327,7 @@ void HD6309SetReadHandler(UINT8 (*pHandler)(UINT16))
 
 void HD6309SetWriteHandler(void (*pHandler)(UINT16, UINT8))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309SetWriteHandler called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309SetWriteHandler called when no CPU open\n"));
 #endif
@@ -297,7 +337,7 @@ void HD6309SetWriteHandler(void (*pHandler)(UINT16, UINT8))
 
 void HD6309SetReadOpHandler(UINT8 (*pHandler)(UINT16))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309SetReadOpHandler called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309SetReadOpHandler called when no CPU open\n"));
 #endif
@@ -307,7 +347,7 @@ void HD6309SetReadOpHandler(UINT8 (*pHandler)(UINT16))
 
 void HD6309SetReadOpArgHandler(UINT8 (*pHandler)(UINT16))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309SetReadOpArgHandler called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309SetReadOpArgHandler called when no CPU open\n"));
 #endif
@@ -381,7 +421,7 @@ UINT8 HD6309ReadOpArg(UINT16 Address)
 
 void HD6309WriteRom(UINT16 Address, UINT8 Data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309WriteRom called without init\n"));
 	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309WriteRom called when no CPU open\n"));
 #endif
@@ -412,7 +452,7 @@ void HD6309WriteRom(UINT16 Address, UINT8 Data)
 
 INT32 HD6309Scan(INT32 nAction)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309Scan called without init\n"));
 #endif
 
@@ -432,9 +472,6 @@ INT32 HD6309Scan(INT32 nAction)
 		ba.szName = szName;
 		BurnAcb(&ba);
 		
-		SCAN_VAR(HD6309CPUContext[i].nCyclesTotal);
-		SCAN_VAR(HD6309CPUContext[i].nCyclesSegment);
-		SCAN_VAR(HD6309CPUContext[i].nCyclesLeft);
 		SCAN_VAR(nHD6309CyclesDone[i]);
 	}
 	

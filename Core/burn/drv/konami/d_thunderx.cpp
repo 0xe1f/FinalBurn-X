@@ -23,7 +23,7 @@ static UINT8 *DrvBankRAM;
 static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
 static UINT8 *soundlatch;
@@ -31,6 +31,7 @@ static UINT8 *nDrvKonamiBank;
 
 static UINT8 *pmcram;
 static UINT8 thunderx_1f98_data;
+static UINT8 layer_priority;
 
 static UINT8 DrvJoy1[8];
 static UINT8 DrvJoy2[8];
@@ -313,7 +314,7 @@ static void thunderx_1f98_w(UINT8 data)
 
 		konamiRun(10);
 
-		konamiSetIrqLine(KONAMI_FIRQ_LINE, KONAMI_HOLD_LINE); // must be delayed
+		konamiSetIrqLine(KONAMI_FIRQ_LINE, CPU_IRQSTATUS_AUTO); // must be delayed
 	}
 
 	thunderx_1f98_data = data;
@@ -322,32 +323,34 @@ static void thunderx_1f98_w(UINT8 data)
 static void scontra_bankswitch(INT32 data)
 {
 	nDrvKonamiBank[0] = data;
+	layer_priority = data & 0x80;
 
 	if (~data & 0x10) {
-		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, MAP_RAM);
 	} else {
-		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, MAP_RAM);
 	}
 
 	INT32 nBank = 0x10000 + (data & 0x0f) * 0x2000;
 
-	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, KON_ROM);
+	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, MAP_ROM);
 }
 
 static void thunderx_videobank(INT32 data)
 {
 	nDrvKonamiBank[0] = data;
+	layer_priority = data & 0x08;
 
 	if (data & 0x01) {
-		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvBankRAM, 0x5800, 0x5fff, MAP_RAM);
 	} else if (data & 0x10) {
 		if (thunderx_1f98_data & 2) {
-			konamiMapMemory(pmcram + 0x800, 0x5800, 0x5fff, KON_RAM);
+			konamiMapMemory(pmcram + 0x800, 0x5800, 0x5fff, MAP_RAM);
 		} else {
-			konamiMapMemory(pmcram, 0x5800, 0x5fff, KON_RAM); // junk?
+			konamiMapMemory(pmcram, 0x5800, 0x5fff, MAP_RAM); // junk?
 		}
 	} else {
-		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, KON_RAM);
+		konamiMapMemory(DrvPalRAM,  0x5800, 0x5fff, MAP_RAM);
 	}
 }
 
@@ -368,7 +371,7 @@ void scontra_main_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x1f88:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x1f8c:
@@ -458,11 +461,11 @@ UINT8 __fastcall scontra_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0xa000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 
 		case 0xc001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 	}
 
 	return 0;
@@ -482,11 +485,17 @@ static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, 
 	*color = layer_colorbase[layer] + ((*color & 0xe0) >> 5);
 }
 
-static void K051960Callback(INT32 *, INT32 *color,INT32 *priority, INT32 *shadow)
+static void K051960Callback(INT32 *, INT32 *color,INT32 *priority, INT32 *)
 {
-	*priority = (*color & 0x30) >> 4;
+	switch (*color & 0x30)
+	{
+		case 0x00: *priority = 0xf0; break;
+		case 0x10: *priority = 0xfe; break;
+		case 0x20: *priority = 0xfc; break;
+		case 0x30: *priority = 0xffff; break;
+	}
+
 	*color = 0x20 + (*color & 0x0f);
-	*shadow = 0;
 }
 
 static void thunderx_set_lines(INT32 lines)
@@ -496,7 +505,7 @@ static void thunderx_set_lines(INT32 lines)
 	INT32 nBank = 0x10000 + (((lines & 0x0f) ^ 0x08) * 0x2000);
 	if (nBank >= 0x28000) nBank -= 0x20000;
 
-	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + nBank, 0x6000, 0x7fff, MAP_ROM); 
 }
 
 static INT32 DrvDoReset()
@@ -513,9 +522,14 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
+	K007232Reset(0);
 	BurnYM2151Reset();
 
 	KonamiICReset();
+
+	layer_priority = 0;
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -556,26 +570,10 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
+static INT32 DrvInit(INT32 type)
 {
-	INT32 Plane0[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 Plane1[4] = { 0x000, 0x008, 0x010, 0x018 };
-	INT32 XOffs[16] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
-			  0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107 };
-	INT32 YOffs[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
-			  0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0 };
+	GenericTilesInit();
 
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x100000 >> thunderx);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x100000 >> thunderx);
-
-	GfxDecode(0x08000 >> thunderx, 4,  8,  8, Plane0, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-	GfxDecode(0x02000 >> thunderx, 4, 16, 16, Plane1, XOffs, YOffs, 0x400, DrvGfxROM1, DrvGfxROMExp1);
-
-	return 0;
-}
-
-static INT32 DrvInit()
-{
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -584,42 +582,42 @@ static INT32 DrvInit()
 	MemIndex();
 
 	{
-		if (strncmp(BurnDrvGetTextA(DRV_NAME), "scontra", 7) == 0) {
+		if (type) {
 			if (BurnLoadRom(DrvKonROM  + 0x010000,  0, 1)) return 1;
 			if (BurnLoadRom(DrvKonROM  + 0x020000,  1, 1)) return 1;
 			memcpy (DrvKonROM + 0x08000, DrvKonROM + 0x18000, 0x8000);
 
 			if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-			if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x000001,  4, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x040000,  5, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x040001,  6, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x060000,  7, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x060001,  8, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x080000,  9, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x080001, 10, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x0c0000, 11, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x0c0001, 12, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x0e0000, 13, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x0e0001, 14, 2)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000001,  4, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000002,  5, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000003,  6, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x080000,  7, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x080001,  8, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x080002,  9, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x080003, 10, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x0c0000, 11, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x0c0001, 12, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x0c0002, 13, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x0c0003, 14, 4)) return 1;
 
-			if (BurnLoadRom(DrvGfxROM1 + 0x000000, 15, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x000001, 16, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x020000, 17, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x020001, 18, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x040000, 19, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x040001, 20, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x060000, 21, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x060001, 22, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x080000, 23, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x080001, 24, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0a0000, 25, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0a0001, 26, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0c0000, 27, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0c0001, 28, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0e0000, 29, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x0e0001, 30, 2)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000000, 15, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000001, 16, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000002, 17, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000003, 18, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040000, 19, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040001, 20, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040002, 21, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040003, 22, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x080000, 23, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x080001, 24, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x080002, 25, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x080003, 26, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x0c0000, 27, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x0c0001, 28, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x0c0002, 29, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x0c0003, 30, 4)) return 1;
 
 			if (BurnLoadRom(DrvSndROM  + 0x000000, 31, 1)) return 1;
 			if (BurnLoadRom(DrvSndROM  + 0x010000, 32, 1)) return 1;
@@ -636,36 +634,37 @@ static INT32 DrvInit()
 
 			if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-			if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x000001,  4, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x020000,  5, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x020001,  6, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x040000,  7, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x040001,  8, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x060000,  9, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM0 + 0x060001, 10, 2)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000001,  4, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000002,  5, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x000003,  6, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x040000,  7, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x040001,  8, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x040002,  9, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM0 + 0x040003, 10, 4)) return 1;
 
-			if (BurnLoadRom(DrvGfxROM1 + 0x000000, 11, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x000001, 12, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x020000, 13, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x020001, 14, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x040000, 15, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x040001, 16, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x060000, 17, 2)) return 1;
-			if (BurnLoadRom(DrvGfxROM1 + 0x060001, 18, 2)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000000, 11, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000001, 12, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000002, 13, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x000003, 14, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040000, 15, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040001, 16, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040002, 17, 4)) return 1;
+			if (BurnLoadRom(DrvGfxROM1 + 0x040003, 18, 4)) return 1;
 
 			thunderx = 1;
 		}
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x100000);
+		K051960GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x100000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM,           0x4000, 0x57ff, KON_RAM);
-	konamiMapMemory(DrvBankRAM,          0x5800, 0x5fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000, 0x6000, 0x7fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM,           0x4000, 0x57ff, MAP_RAM);
+	konamiMapMemory(DrvBankRAM,          0x5800, 0x5fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000, 0x6000, 0x7fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(scontra_main_write);
 	konamiSetReadHandler(scontra_main_read);
 	konamiSetlinesCallback(thunderx_set_lines);
@@ -689,15 +688,13 @@ static INT32 DrvInit()
 	K007232SetPortWriteHandler(0, DrvK007232VolCallback);
 	K007232PCMSetAllRoutes(0, 0.20, BURN_SND_ROUTE_BOTH);
 
-	K052109Init(DrvGfxROM0, 0x0fffff >> thunderx);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x0fffff >> thunderx);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K051960Init(DrvGfxROM1, 0x0fffff >> thunderx);
+	K051960Init(DrvGfxROM1, DrvGfxROMExp1, 0x0fffff >> thunderx);
 	K051960SetCallback(K051960Callback);
 	K051960SetSpriteOffset(8, 0);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -725,34 +722,26 @@ static INT32 DrvExit()
 
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		KonamiRecalcPal(DrvPalRAM, DrvPalette, 0x800);
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x800);
 
 	K052109UpdateScroll();
 
-//	K051960SpritesRender(DrvGfxROMExp1, 3);
-
-	if (nDrvKonamiBank[0] & 0x08)
+	if (layer_priority)
 	{
-		if (nBurnLayer & 1) K052109RenderLayer(2, 1, DrvGfxROMExp0);
-		if (nBurnLayer & 2) K052109RenderLayer(1, 0, DrvGfxROMExp0);
+		if (nBurnLayer & 1) K052109RenderLayer(2, K052109_OPAQUE, 1);
+		if (nBurnLayer & 2) K052109RenderLayer(1, 0, 2);
 	}
 	else
 	{
-		if (nBurnLayer & 8) K052109RenderLayer(2, 1, DrvGfxROMExp0);
-		if (nBurnLayer & 4) K052109RenderLayer(1, 0, DrvGfxROMExp0);
+		if (nBurnLayer & 1) K052109RenderLayer(1, K052109_OPAQUE, 1);
+		if (nBurnLayer & 2) K052109RenderLayer(2, 0, 2);
 	}
 
-	K051960SpritesRender(DrvGfxROMExp1, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(0, 0, 4);
 
-	K051960SpritesRender(DrvGfxROMExp1, 1);
-
-	K051960SpritesRender(DrvGfxROMExp1, 0); // mask?
-
-	K052109RenderLayer(0, 0, DrvGfxROMExp0);
+	if (nSpriteEnable & 1) K051960SpritesRender(-1, -1);
  
-	BurnTransferCopy(DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -808,7 +797,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -845,10 +834,10 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
 		K007232Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
@@ -856,6 +845,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SCAN_VAR(thunderx_1f98_data);
+
+		SCAN_VAR(layer_priority);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -883,31 +874,31 @@ static struct BurnRomInfo scontraRomDesc[] = {
 
 	{ "775-a07a.bin",	0x20000, 0xe716bdf3, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "775-a07e.bin",	0x20000, 0x0986e3a5, 3 | BRF_GRA },           //  4
-	{ "775-f07c.bin",	0x10000, 0xb0b30915, 3 | BRF_GRA },           //  5
-	{ "775-f07g.bin",	0x10000, 0xfbed827d, 3 | BRF_GRA },           //  6
-	{ "775-f07d.bin",	0x10000, 0xf184be8e, 3 | BRF_GRA },           //  7
-	{ "775-f07h.bin",	0x10000, 0x7b56c348, 3 | BRF_GRA },           //  8
-	{ "775-a08a.bin",	0x20000, 0x3ddd11a4, 3 | BRF_GRA },           //  9
-	{ "775-a08e.bin",	0x20000, 0x1007d963, 3 | BRF_GRA },           // 10
-	{ "775-f08c.bin",	0x10000, 0x53abdaec, 3 | BRF_GRA },           // 11
-	{ "775-f08g.bin",	0x10000, 0x3df85a6e, 3 | BRF_GRA },           // 12
+	{ "775-a08a.bin",	0x20000, 0x3ddd11a4, 3 | BRF_GRA },           //  5
+	{ "775-a08e.bin",	0x20000, 0x1007d963, 3 | BRF_GRA },           //  6
+	{ "775-f07c.bin",	0x10000, 0xb0b30915, 3 | BRF_GRA },           //  7
+	{ "775-f07g.bin",	0x10000, 0xfbed827d, 3 | BRF_GRA },           //  8
+	{ "775-f08c.bin",	0x10000, 0x53abdaec, 3 | BRF_GRA },           //  9
+	{ "775-f08g.bin",	0x10000, 0x3df85a6e, 3 | BRF_GRA },           // 10
+	{ "775-f07d.bin",	0x10000, 0xf184be8e, 3 | BRF_GRA },           // 11
+	{ "775-f07h.bin",	0x10000, 0x7b56c348, 3 | BRF_GRA },           // 12
 	{ "775-f08d.bin",	0x10000, 0x102dcace, 3 | BRF_GRA },           // 13
 	{ "775-f08h.bin",	0x10000, 0xad9d7016, 3 | BRF_GRA },           // 14
 
 	{ "775-a05a.bin",	0x10000, 0xa0767045, 4 | BRF_GRA },           // 15 Sprites
 	{ "775-a05e.bin",	0x10000, 0x2f656f08, 4 | BRF_GRA },           // 16
-	{ "775-a05b.bin",	0x10000, 0xab8ad4fd, 4 | BRF_GRA },           // 17
-	{ "775-a05f.bin",	0x10000, 0x1c0eb1b6, 4 | BRF_GRA },           // 18
-	{ "775-f05c.bin",	0x10000, 0x5647761e, 4 | BRF_GRA },           // 19
-	{ "775-f05g.bin",	0x10000, 0xa1692cca, 4 | BRF_GRA },           // 20
-	{ "775-f05d.bin",	0x10000, 0xad676a6f, 4 | BRF_GRA },           // 21
-	{ "775-f05h.bin",	0x10000, 0x3f925bcf, 4 | BRF_GRA },           // 22
-	{ "775-a06a.bin",	0x10000, 0x77a34ad0, 4 | BRF_GRA },           // 23
-	{ "775-a06e.bin",	0x10000, 0x8a910c94, 4 | BRF_GRA },           // 24
-	{ "775-a06b.bin",	0x10000, 0x563fb565, 4 | BRF_GRA },           // 25
-	{ "775-a06f.bin",	0x10000, 0xe14995c0, 4 | BRF_GRA },           // 26
-	{ "775-f06c.bin",	0x10000, 0x5ee6f3c1, 4 | BRF_GRA },           // 27
-	{ "775-f06g.bin",	0x10000, 0x2645274d, 4 | BRF_GRA },           // 28
+	{ "775-a06a.bin",	0x10000, 0x77a34ad0, 4 | BRF_GRA },           // 17
+	{ "775-a06e.bin",	0x10000, 0x8a910c94, 4 | BRF_GRA },           // 18
+	{ "775-a05b.bin",	0x10000, 0xab8ad4fd, 4 | BRF_GRA },           // 19
+	{ "775-a05f.bin",	0x10000, 0x1c0eb1b6, 4 | BRF_GRA },           // 20
+	{ "775-a06b.bin",	0x10000, 0x563fb565, 4 | BRF_GRA },           // 21
+	{ "775-a06f.bin",	0x10000, 0xe14995c0, 4 | BRF_GRA },           // 22
+	{ "775-f05c.bin",	0x10000, 0x5647761e, 4 | BRF_GRA },           // 23
+	{ "775-f05g.bin",	0x10000, 0xa1692cca, 4 | BRF_GRA },           // 24
+	{ "775-f06c.bin",	0x10000, 0x5ee6f3c1, 4 | BRF_GRA },           // 25
+	{ "775-f06g.bin",	0x10000, 0x2645274d, 4 | BRF_GRA },           // 26
+	{ "775-f05d.bin",	0x10000, 0xad676a6f, 4 | BRF_GRA },           // 27
+	{ "775-f05h.bin",	0x10000, 0x3f925bcf, 4 | BRF_GRA },           // 28
 	{ "775-f06d.bin",	0x10000, 0xc8b764fa, 4 | BRF_GRA },           // 29
 	{ "775-f06h.bin",	0x10000, 0xd6595f59, 4 | BRF_GRA },           // 30
 
@@ -926,14 +917,19 @@ static struct BurnRomInfo scontraRomDesc[] = {
 STD_ROM_PICK(scontra)
 STD_ROM_FN(scontra)
 
+static INT32 scontraInit()
+{
+	return DrvInit(1);
+}
+
 struct BurnDriver BurnDrvScontra = {
 	"scontra", NULL, NULL, NULL, "1988",
 	"Super Contra\0", NULL, "Konami", "GX775",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_HORSHOOT, 0,
-	NULL, scontraRomInfo, scontraRomName, NULL, NULL, ThunderxInputInfo, ScontraDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
-	224, 288, 3, 4
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, scontraRomInfo, scontraRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ScontraDIPInfo,
+	scontraInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	224, 304, 3, 4
 };
 
 
@@ -947,31 +943,31 @@ static struct BurnRomInfo scontrajRomDesc[] = {
 
 	{ "775-a07a.bin",	0x20000, 0xe716bdf3, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "775-a07e.bin",	0x20000, 0x0986e3a5, 3 | BRF_GRA },           //  4
-	{ "775-f07c.bin",	0x10000, 0xb0b30915, 3 | BRF_GRA },           //  5
-	{ "775-f07g.bin",	0x10000, 0xfbed827d, 3 | BRF_GRA },           //  6
-	{ "775-f07d.bin",	0x10000, 0xf184be8e, 3 | BRF_GRA },           //  7
-	{ "775-f07h.bin",	0x10000, 0x7b56c348, 3 | BRF_GRA },           //  8
-	{ "775-a08a.bin",	0x20000, 0x3ddd11a4, 3 | BRF_GRA },           //  9
-	{ "775-a08e.bin",	0x20000, 0x1007d963, 3 | BRF_GRA },           // 10
-	{ "775-f08c.bin",	0x10000, 0x53abdaec, 3 | BRF_GRA },           // 11
-	{ "775-f08g.bin",	0x10000, 0x3df85a6e, 3 | BRF_GRA },           // 12
+	{ "775-a08a.bin",	0x20000, 0x3ddd11a4, 3 | BRF_GRA },           //  5
+	{ "775-a08e.bin",	0x20000, 0x1007d963, 3 | BRF_GRA },           //  6
+	{ "775-f07c.bin",	0x10000, 0xb0b30915, 3 | BRF_GRA },           //  7
+	{ "775-f07g.bin",	0x10000, 0xfbed827d, 3 | BRF_GRA },           //  8
+	{ "775-f08c.bin",	0x10000, 0x53abdaec, 3 | BRF_GRA },           //  9
+	{ "775-f08g.bin",	0x10000, 0x3df85a6e, 3 | BRF_GRA },           // 10
+	{ "775-f07d.bin",	0x10000, 0xf184be8e, 3 | BRF_GRA },           // 11
+	{ "775-f07h.bin",	0x10000, 0x7b56c348, 3 | BRF_GRA },           // 12
 	{ "775-f08d.bin",	0x10000, 0x102dcace, 3 | BRF_GRA },           // 13
 	{ "775-f08h.bin",	0x10000, 0xad9d7016, 3 | BRF_GRA },           // 14
 
 	{ "775-a05a.bin",	0x10000, 0xa0767045, 4 | BRF_GRA },           // 15 Sprites
 	{ "775-a05e.bin",	0x10000, 0x2f656f08, 4 | BRF_GRA },           // 16
-	{ "775-a05b.bin",	0x10000, 0xab8ad4fd, 4 | BRF_GRA },           // 17
-	{ "775-a05f.bin",	0x10000, 0x1c0eb1b6, 4 | BRF_GRA },           // 18
-	{ "775-f05c.bin",	0x10000, 0x5647761e, 4 | BRF_GRA },           // 19
-	{ "775-f05g.bin",	0x10000, 0xa1692cca, 4 | BRF_GRA },           // 20
-	{ "775-f05d.bin",	0x10000, 0xad676a6f, 4 | BRF_GRA },           // 21
-	{ "775-f05h.bin",	0x10000, 0x3f925bcf, 4 | BRF_GRA },           // 22
-	{ "775-a06a.bin",	0x10000, 0x77a34ad0, 4 | BRF_GRA },           // 23
-	{ "775-a06e.bin",	0x10000, 0x8a910c94, 4 | BRF_GRA },           // 24
-	{ "775-a06b.bin",	0x10000, 0x563fb565, 4 | BRF_GRA },           // 25
-	{ "775-a06f.bin",	0x10000, 0xe14995c0, 4 | BRF_GRA },           // 26
-	{ "775-f06c.bin",	0x10000, 0x5ee6f3c1, 4 | BRF_GRA },           // 27
-	{ "775-f06g.bin",	0x10000, 0x2645274d, 4 | BRF_GRA },           // 28
+	{ "775-a06a.bin",	0x10000, 0x77a34ad0, 4 | BRF_GRA },           // 17
+	{ "775-a06e.bin",	0x10000, 0x8a910c94, 4 | BRF_GRA },           // 18
+	{ "775-a05b.bin",	0x10000, 0xab8ad4fd, 4 | BRF_GRA },           // 19
+	{ "775-a05f.bin",	0x10000, 0x1c0eb1b6, 4 | BRF_GRA },           // 20
+	{ "775-a06b.bin",	0x10000, 0x563fb565, 4 | BRF_GRA },           // 21
+	{ "775-a06f.bin",	0x10000, 0xe14995c0, 4 | BRF_GRA },           // 22
+	{ "775-f05c.bin",	0x10000, 0x5647761e, 4 | BRF_GRA },           // 23
+	{ "775-f05g.bin",	0x10000, 0xa1692cca, 4 | BRF_GRA },           // 24
+	{ "775-f06c.bin",	0x10000, 0x5ee6f3c1, 4 | BRF_GRA },           // 25
+	{ "775-f06g.bin",	0x10000, 0x2645274d, 4 | BRF_GRA },           // 26
+	{ "775-f05d.bin",	0x10000, 0xad676a6f, 4 | BRF_GRA },           // 27
+	{ "775-f05h.bin",	0x10000, 0x3f925bcf, 4 | BRF_GRA },           // 28
 	{ "775-f06d.bin",	0x10000, 0xc8b764fa, 4 | BRF_GRA },           // 29
 	{ "775-f06h.bin",	0x10000, 0xd6595f59, 4 | BRF_GRA },           // 30
 
@@ -994,10 +990,10 @@ struct BurnDriver BurnDrvScontraj = {
 	"scontraj", "scontra", NULL, NULL, "1988",
 	"Super Contra (Japan)\0", NULL, "Konami", "GX775",
 	L"Super \u9B42\u6597\u7F85 \u30A8\u30A4\u30EA\u30A2\u30F3 \u306E\u9006\u8972 (Japan)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT | GBF_HORSHOOT, 0,
-	NULL, scontrajRomInfo, scontrajRomName, NULL, NULL, ThunderxInputInfo, ScontraDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
-	224, 288, 3, 4
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, scontrajRomInfo, scontrajRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ScontraDIPInfo,
+	scontraInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	224, 304, 3, 4
 };
 
 
@@ -1011,19 +1007,19 @@ static struct BurnRomInfo thunderxRomDesc[] = {
 
 	{ "873c06a.f6",		0x10000, 0x0e340b67, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "873c06c.f5",		0x10000, 0xef0e72cd, 3 | BRF_GRA },           //  4
-	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  5
-	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  6
-	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  7
-	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  8
+	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  5
+	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  6
+	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  7
+	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  8
 	{ "873c07b.e4",		0x10000, 0x12a2b8ba, 3 | BRF_GRA },           //  9
 	{ "873c07d.e3",		0x10000, 0xfae9f965, 3 | BRF_GRA },           // 10
 
 	{ "873c04a.f11",	0x10000, 0xf7740bf3, 4 | BRF_GRA },           // 11 Sprites
 	{ "873c04c.f10",	0x10000, 0x5dacbd2b, 4 | BRF_GRA },           // 12
-	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 13
-	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 14
-	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 15
-	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 16
+	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 13
+	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 14
+	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 15
+	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 16
 	{ "873c05b.e9",		0x10000, 0x81059b99, 4 | BRF_GRA },           // 17
 	{ "873c05d.e8",		0x10000, 0x7fa3d7df, 4 | BRF_GRA },           // 18
 
@@ -1033,13 +1029,18 @@ static struct BurnRomInfo thunderxRomDesc[] = {
 STD_ROM_PICK(thunderx)
 STD_ROM_FN(thunderx)
 
+static INT32 thunderxInit()
+{
+	return DrvInit(0);
+}
+
 struct BurnDriver BurnDrvThunderx = {
 	"thunderx", NULL, NULL, NULL, "1988",
 	"Thunder Cross (set 1)\0", NULL, "Konami", "GX873",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, thunderxRomInfo, thunderxRomName, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, thunderxRomInfo, thunderxRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
+	thunderxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };
 
@@ -1054,19 +1055,19 @@ static struct BurnRomInfo thunderxaRomDesc[] = {
 
 	{ "873c06a.f6",		0x10000, 0x0e340b67, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "873c06c.f5",		0x10000, 0xef0e72cd, 3 | BRF_GRA },           //  4
-	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  5
-	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  6
-	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  7
-	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  8
+	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  5
+	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  6
+	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  7
+	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  8
 	{ "873c07b.e4",		0x10000, 0x12a2b8ba, 3 | BRF_GRA },           //  9
 	{ "873c07d.e3",		0x10000, 0xfae9f965, 3 | BRF_GRA },           // 10
 
 	{ "873c04a.f11",	0x10000, 0xf7740bf3, 4 | BRF_GRA },           // 11 Sprites
 	{ "873c04c.f10",	0x10000, 0x5dacbd2b, 4 | BRF_GRA },           // 12
-	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 13
-	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 14
-	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 15
-	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 16
+	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 13
+	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 14
+	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 15
+	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 16
 	{ "873c05b.e9",		0x10000, 0x81059b99, 4 | BRF_GRA },           // 17
 	{ "873c05d.e8",		0x10000, 0x7fa3d7df, 4 | BRF_GRA },           // 18
 
@@ -1080,9 +1081,9 @@ struct BurnDriver BurnDrvThunderxa = {
 	"thunderxa", "thunderx", NULL, NULL, "1988",
 	"Thunder Cross (set 2)\0", NULL, "Konami", "GX873",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, thunderxaRomInfo, thunderxaRomName, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, thunderxaRomInfo, thunderxaRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
+	thunderxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };
 
@@ -1097,19 +1098,19 @@ static struct BurnRomInfo thunderxbRomDesc[] = {
 
 	{ "873c06a.f6",		0x10000, 0x0e340b67, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "873c06c.f5",		0x10000, 0xef0e72cd, 3 | BRF_GRA },           //  4
-	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  5
-	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  6
-	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  7
-	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  8
+	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  5
+	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  6
+	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  7
+	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  8
 	{ "873c07b.e4",		0x10000, 0x12a2b8ba, 3 | BRF_GRA },           //  9
 	{ "873c07d.e3",		0x10000, 0xfae9f965, 3 | BRF_GRA },           // 10
 
 	{ "873c04a.f11",	0x10000, 0xf7740bf3, 4 | BRF_GRA },           // 11 Sprites
 	{ "873c04c.f10",	0x10000, 0x5dacbd2b, 4 | BRF_GRA },           // 12
-	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 13
-	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 14
-	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 15
-	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 16
+	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 13
+	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 14
+	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 15
+	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 16
 	{ "873c05b.e9",		0x10000, 0x81059b99, 4 | BRF_GRA },           // 17
 	{ "873c05d.e8",		0x10000, 0x7fa3d7df, 4 | BRF_GRA },           // 18
 
@@ -1123,9 +1124,9 @@ struct BurnDriver BurnDrvThunderxb = {
 	"thunderxb", "thunderx", NULL, NULL, "1988",
 	"Thunder Cross (set 3)\0", NULL, "Konami", "GX873",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, thunderxbRomInfo, thunderxbRomName, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, thunderxbRomInfo, thunderxbRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
+	thunderxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };
 
@@ -1140,19 +1141,19 @@ static struct BurnRomInfo thunderxjRomDesc[] = {
 
 	{ "873c06a.f6",		0x10000, 0x0e340b67, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "873c06c.f5",		0x10000, 0xef0e72cd, 3 | BRF_GRA },           //  4
-	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  5
-	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  6
-	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  7
-	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  8
+	{ "873c07a.f4",		0x10000, 0xa8aab84f, 3 | BRF_GRA },           //  5
+	{ "873c07c.f3",		0x10000, 0x2521009a, 3 | BRF_GRA },           //  6
+	{ "873c06b.e6",		0x10000, 0x97ad202e, 3 | BRF_GRA },           //  7
+	{ "873c06d.e5",		0x10000, 0x8393d42e, 3 | BRF_GRA },           //  8
 	{ "873c07b.e4",		0x10000, 0x12a2b8ba, 3 | BRF_GRA },           //  9
 	{ "873c07d.e3",		0x10000, 0xfae9f965, 3 | BRF_GRA },           // 10
 
 	{ "873c04a.f11",	0x10000, 0xf7740bf3, 4 | BRF_GRA },           // 11 Sprites
 	{ "873c04c.f10",	0x10000, 0x5dacbd2b, 4 | BRF_GRA },           // 12
-	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 13
-	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 14
-	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 15
-	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 16
+	{ "873c05a.f9",		0x10000, 0xd73e107d, 4 | BRF_GRA },           // 13
+	{ "873c05c.f8",		0x10000, 0x59903200, 4 | BRF_GRA },           // 14
+	{ "873c04b.e11",	0x10000, 0x9ac581da, 4 | BRF_GRA },           // 15
+	{ "873c04d.e10",	0x10000, 0x44a4668c, 4 | BRF_GRA },           // 16
 	{ "873c05b.e9",		0x10000, 0x81059b99, 4 | BRF_GRA },           // 17
 	{ "873c05d.e8",		0x10000, 0x7fa3d7df, 4 | BRF_GRA },           // 18
 
@@ -1166,8 +1167,8 @@ struct BurnDriver BurnDrvThunderxj = {
 	"thunderxj", "thunderx", NULL, NULL, "1988",
 	"Thunder Cross (Japan)\0", NULL, "Konami", "GX873",
 	L"Thunder Cross\0\u30B5\u30F3\u30C0\u30FC\u30AF\u30ED\u30B9 (Japan)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, thunderxjRomInfo, thunderxjRomName, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, thunderxjRomInfo, thunderxjRomName, NULL, NULL, NULL, NULL, ThunderxInputInfo, ThunderxDIPInfo,
+	thunderxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };

@@ -1,13 +1,12 @@
 // FB Alpha Arkanoid driver module
 // Based on MAME driver by Brad Oliver and MANY others.
 
+// TODO: hw timer countdown @ bootup runs too slow? (maybe?)
+
 #include "tiles_generic.h"
 #include "z80_intf.h"
 #include "taito_m68705.h"
-#include "driver.h"
-extern "C" {
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *RamEnd;
@@ -21,7 +20,6 @@ static UINT8 *DrvZ80RAM;
 static UINT8 *DrvMcuRAM;
 static UINT8 *DrvVidRAM;
 static UINT8 *DrvSprRAM;
-static INT16 *pAY8910Buffer[3];
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
@@ -38,12 +36,19 @@ static UINT8 DrvJoy2[8];
 static UINT8 DrvDips[1];
 static UINT8 DrvReset;
 static UINT16 DrvAxis[2];
-static UINT32 nAnalogAxis[2] = {0,0};
+static UINT32 nAnalogAxis[2] = { 0, 0 };
 
-static INT32 arkanoid_bootleg_id;
+static INT32 nCyclesDone[2] = { 0, 0 };
+static INT32 nExtraCycles[2];
+
+static INT32 arkanoid_bootleg_id = 0;
+
 static INT32 use_mcu;
-
 static UINT8 arkanoid_bootleg_cmd;
+static UINT8 portC_latch = 0;
+static INT32 mcu_on = 0;
+static UINT32 m68705_timer = 0;
+static UINT32 m68705_timer_count = 0;
 
 enum {
 	ARKUNK=0,
@@ -119,7 +124,7 @@ STDINPUTINFO(Hexa)
 
 static struct BurnDIPInfo arkanoidDIPList[]=
 {
-	{0x0b, 0xff, 0xff, 0xff, NULL                     },
+	{0x0b, 0xff, 0xff, 0xfe, NULL                     },
 
 	{0   , 0xfe, 0   , 2   , "Allow Continue"         },
 	{0x0b, 0x01, 0x01, 0x01, "No"       		  },
@@ -128,6 +133,10 @@ static struct BurnDIPInfo arkanoidDIPList[]=
 	{0   , 0xfe, 0   , 2   , "Flip Screen"            },
 	{0x0b, 0x01, 0x02, 0x02, "Off"			  },
 	{0x0b, 0x01, 0x02, 0x00, "On"			  },
+
+	{0   , 0xfe, 0   , 2   , "Service Mode"            },
+	{0x0b, 0x01, 0x04, 0x04, "Off"			  },
+	{0x0b, 0x01, 0x04, 0x00, "On"			  },
 
 	{0   , 0xfe, 0   , 2   , "Difficulty"             },
 	{0x0b, 0x01, 0x08, 0x08, "Easy"     		  },
@@ -150,7 +159,7 @@ static struct BurnDIPInfo arkanoidDIPList[]=
 
 STDDIPINFO(arkanoid)
 
-static struct BurnDIPInfo arknoidjDIPList[]=
+static struct BurnDIPInfo arkanoidjDIPList[]=
 {
 	{0x0b, 0xff, 0xff, 0x7f, NULL                     },
 
@@ -183,7 +192,7 @@ static struct BurnDIPInfo arknoidjDIPList[]=
 	{0x0b, 0x01, 0x80, 0x80, "Cocktail"    		  },
 };
 
-STDDIPINFO(arknoidj)
+STDDIPINFO(arkanoidj)
 
 static struct BurnDIPInfo ark1ballDIPList[]=
 {
@@ -775,7 +784,10 @@ static UINT8 arkanoid_bootleg_d008_read()
 	return 0;
 }
 
-UINT8 __fastcall arkanoid_read(UINT16 address)
+void arkanoid_taito_mcu_write(INT32 data); // forwards..
+static void arkanoid_mcu_sync();
+
+static UINT8 __fastcall arkanoid_read(UINT16 address)
 {
 	switch (address)
 	{
@@ -791,6 +803,8 @@ UINT8 __fastcall arkanoid_read(UINT16 address)
 			if (use_mcu) {
 				ret &= 0x3f;
 
+				arkanoid_mcu_sync();
+
 				if (!main_sent) ret |= 0x40;
 				if (!mcu_sent ) ret |= 0x80;
 			}
@@ -802,6 +816,7 @@ UINT8 __fastcall arkanoid_read(UINT16 address)
 
 		case 0xd018:
 			if (use_mcu) {
+				arkanoid_mcu_sync();
 				return standard_taito_mcu_read();
 			} else {
 				return DrvInputs[2];
@@ -811,12 +826,10 @@ UINT8 __fastcall arkanoid_read(UINT16 address)
 			return arkanoid_bootleg_f002_read();
 	}
 
-	if (address >= 0xf000) return DrvZ80ROM[address];
-
 	return 0;
 }
 
-void __fastcall arkanoid_write(UINT16 address, UINT8 data)
+static void __fastcall arkanoid_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -831,16 +844,28 @@ void __fastcall arkanoid_write(UINT16 address, UINT8 data)
 			*gfxbank     = (data >> 5) & 1;
 			*palettebank = (data >> 6) & 1;
 			*paddleselect= (data >> 2) & 1;
+
+			if (use_mcu) {
+				arkanoid_mcu_sync();
+				UINT8 last_mcu_on = mcu_on;
+				mcu_on = (data >> 7) & 1;
+
+				if (mcu_on && last_mcu_on == 0 && use_mcu) {
+					INT32 tc = m6805TotalCycles();
+					m68705Reset(); // this clears the cycle counter, but we need to preserve it.
+					m6805Idle(tc); // keep arkanoid_mcu_sync() happy. :)
+				}
+			}
 		}
 		break;
-	
+
 		case 0xd010: // watchdog
 		break;
 
 		case 0xd018:
 			if (use_mcu) {
-				from_main = data;
-				main_sent = 1;
+				arkanoid_mcu_sync();
+				arkanoid_taito_mcu_write(data);
 			} else {
 				arkanoid_bootleg_d018_write(data);
 			}
@@ -858,7 +883,7 @@ static void bankswitch(INT32 data)
 	ZetMapArea(0x8000, 0xbfff, 2, DrvZ80ROM + bank);
 }
 
-void __fastcall hexa_write(UINT16 address, UINT8 data)
+static void __fastcall hexa_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -875,26 +900,121 @@ void __fastcall hexa_write(UINT16 address, UINT8 data)
 	}
 }
 
+static void arkanoid_set_timer(INT32 val)
+{
+	if (val == -1) { // off
+		m68705_timer = 0;
+		m68705_timer_count = 0;
+	} else { // on
+		if (m68705_timer == 0) // if was off, zero counter
+			m68705_timer_count = 0;
+		m68705_timer = (3000000 / 4) / (1 << (val & 0x7));
+	}
+}
+
+static void arkanoid_timer_fire()
+{
+	tdr_reg++;
+	if (tdr_reg == 0x00) tcr_reg |= 0x80; // if we overflowed, set the int bit
+
+	m68705SetIrqLine(M68705_INT_TIMER, ((tcr_reg & 0xc0) == 0x80) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
+}
+
+static void arkanoid_tcr_write(UINT8 data)
+{
+	if ((tcr_reg ^ data) & 0x20) {
+		arkanoid_set_timer((data & 0x20) ? -1 : (data & 0x7));
+	}
+
+	if ((((tcr_reg & 0x07) != (data & 0x07)) || (data & 0x08)) && ((data & 0x20) == 0)) {
+		arkanoid_set_timer(data & 0x7);
+	}
+
+	tcr_reg = data;
+
+	m68705SetIrqLine(M68705_INT_TIMER, ((tcr_reg & 0xc0) == 0x80) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
+}
+
 static void arkanoid_m68705_portC_write(UINT8 *data)
 {
-	if ((ddrC & 0x04) && (~*data & 0x04) && (portC_out & 0x04))
-	{
+	portC_out = *data | 0xf0;
+	UINT8 portC_diff = (portC_latch ^ (portC_out | (~ddrC)));
+	portC_latch = (portC_out | (~ddrC));
+
+	if ((portC_diff & 0x04) && (portC_latch & 0x04)) {
 		main_sent = 0;
-		portA_in = from_main;
+		m68705SetIrqLine(0, CPU_IRQSTATUS_NONE);
 	}
-	if ((ddrC & 0x08) && (~*data & 0x08) && (portC_out & 0x08))
-	{
+
+	portA_in = (~portC_latch & 0x04) ? from_main : 0xff;
+
+	if (~portC_latch & 0x08) {
 		mcu_sent = 1;
 		from_mcu = portA_out;
 	}
-
-	portC_out = *data;
 }
 
 static void arkanoid_m68705_portB_read()
 {
-	ddrB = 0xff;
-	portB_out = (*paddleselect) ? DrvInputs[3] : DrvInputs[2];
+	portB_in = (*paddleselect) ? DrvInputs[3] : DrvInputs[2];
+}
+
+static void arkanoid_m68705_portC_read()
+{
+	portC_in = 0;
+	if (main_sent) portC_in |= 0x01;
+	if (!mcu_sent) portC_in |= 0x02;
+}
+
+static INT32 arkanoid_mcu_run(INT32 cyc)
+{
+	if (cyc < 1) return 0;
+
+	INT32 ran = ((mcu_on) ? m6805Run(cyc) : m6805Idle(cyc));
+
+	nCyclesDone[1] += ran;
+
+	if (m68705_timer && mcu_on) {
+		m68705_timer_count += ran;
+		if (m68705_timer_count >= m68705_timer) {
+			m68705_timer_count -= m68705_timer;
+			arkanoid_timer_fire();
+		}
+	}
+
+	return ran;
+}
+
+static void arkanoid_mcu_sync()
+{
+	INT32 cyc = (ZetTotalCycles() / 8) - m6805TotalCycles();
+	if (cyc > 0) {
+		arkanoid_mcu_run(cyc);
+	}
+}
+
+static void arkanoid_mcu_reset()
+{
+	m67805_taito_reset();
+
+	portC_latch = 0;
+	mcu_on = 0;
+
+	ZetOpen(0);
+	arkanoid_mcu_sync(); // bring the cycle counters in sync (with mcu_on == 0)
+	ZetClose();
+
+	tcr_w = arkanoid_tcr_write;
+
+	arkanoid_set_timer(-1);
+}
+
+
+void arkanoid_taito_mcu_write(INT32 data)
+{
+	from_main = data;
+	main_sent = 1;
+	m68705SetIrqLine(0, CPU_IRQSTATUS_ACK);
 }
 
 static m68705_interface arkanoid_m68705_interface = {
@@ -906,7 +1026,7 @@ static m68705_interface arkanoid_m68705_interface = {
 	NULL,
 	NULL,
 	arkanoid_m68705_portB_read,
-	standard_m68705_portC_in
+	arkanoid_m68705_portC_read
 };
 
 static UINT8 ay8910_read_port_4(UINT32)
@@ -976,6 +1096,7 @@ static INT32 GetRoms()
 
 	for (INT32 i = 0; !BurnDrvGetRomName(&pRomName, i, 0); i++) {
 
+		memset(&ri, 0, sizeof(ri));
 		BurnDrvGetRomInfo(&ri, i);
 
 		if ((ri.nType & 7) == 1) {
@@ -985,6 +1106,9 @@ static INT32 GetRoms()
 		}
 
 		if ((ri.nType & 7) == 2) {
+			char *szName = NULL;
+			BurnDrvGetRomName(&szName, i, 0);
+			bprintf(0, _T("  * Using protection MCU %S (%X bytes)\n"), szName, ri.nLen);
 			if (BurnLoadRom(DrvMcuROM, i, 1)) return 1;
 			use_mcu = 1;
 			continue;
@@ -1015,13 +1139,18 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
-	m67805_taito_reset();
+	arkanoid_mcu_reset();
+
+	ZetNewFrame(); // z80 doesn't clear cycles in reset
+	m6805NewFrame(); // m6805 clears cycles in reset.  They need to be sync'd or mcu dies.
 
 	AY8910Reset(0);
 
 	nAnalogAxis[0] = 0;
 	nAnalogAxis[1] = 0;
 	arkanoid_bootleg_cmd = 0;
+
+	nExtraCycles[0] = nExtraCycles[1] = 0;
 
 	return 0;
 }
@@ -1049,14 +1178,10 @@ static INT32 MemIndex()
 	flipscreen		= Next; Next += 0x000001;
 	gfxbank			= Next; Next += 0x000001;
 	palettebank		= Next; Next += 0x000001;
-	paddleselect		= Next; Next += 0x000001;
+	paddleselect    = Next; Next += 0x000001;
 	bankselect		= Next; Next += 0x000001;
 
 	RamEnd			= Next;
-
-	pAY8910Buffer[0]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[1]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[2]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
 
 	MemEnd			= Next;
 
@@ -1079,18 +1204,11 @@ static INT32 DrvInit()
 
 	ZetInit(0);
 	ZetOpen(0);
-	ZetMapArea(0x0000, 0xbfff, 0, DrvZ80ROM);
-	ZetMapArea(0x0000, 0xbfff, 2, DrvZ80ROM);
-	ZetMapArea(0xc000, 0xc7ff, 0, DrvZ80RAM);
-	ZetMapArea(0xc000, 0xc7ff, 1, DrvZ80RAM);
-	ZetMapArea(0xc000, 0xc7ff, 2, DrvZ80RAM);
-	ZetMapArea(0xe000, 0xe7ff, 0, DrvVidRAM);
-	ZetMapArea(0xe000, 0xe7ff, 1, DrvVidRAM);
-	ZetMapArea(0xe000, 0xe7ff, 2, DrvVidRAM);
-	ZetMapArea(0xe800, 0xefff, 0, DrvSprRAM);
-	ZetMapArea(0xe800, 0xefff, 1, DrvSprRAM);
-	ZetMapArea(0xe800, 0xefff, 2, DrvSprRAM);
-	ZetMapArea(0xf000, 0xffff, 2, DrvZ80ROM + 0xf000);
+	ZetMapMemory(DrvZ80ROM,			0x0000, 0xbfff, MAP_ROM);
+	ZetMapMemory(DrvZ80RAM,			0xc000, 0xc7ff, MAP_RAM);
+	ZetMapMemory(DrvVidRAM,			0xe000, 0xe7ff, MAP_RAM);
+	ZetMapMemory(DrvSprRAM,			0xe800, 0xefff, MAP_RAM);
+
 	if (arkanoid_bootleg_id == HEXA) {
 		ZetSetWriteHandler(hexa_write);
 	} else {
@@ -1101,9 +1219,12 @@ static INT32 DrvInit()
 
 	m67805_taito_init(DrvMcuROM, DrvMcuRAM, &arkanoid_m68705_interface);
 
-	AY8910Init(0, 1500000, nBurnSoundRate, &ay8910_read_port_5, &ay8910_read_port_4, NULL, NULL);
-	AY8910SetAllRoutes(0, 0.33, BURN_SND_ROUTE_BOTH);
-	if (arkanoid_bootleg_id == HEXA) AY8910SetAllRoutes(0, 0.50, BURN_SND_ROUTE_BOTH);
+	AY8910Init(0, 1500000, 0);
+	AY8910SetPorts(0, &ay8910_read_port_5, &ay8910_read_port_4, NULL, NULL);
+	AY8910SetAllRoutes(0, 0.20, BURN_SND_ROUTE_BOTH);
+	if (arkanoid_bootleg_id == HEXA) {
+		AY8910SetAllRoutes(0, 0.50, BURN_SND_ROUTE_BOTH);
+	}
 
 	GenericTilesInit();
 
@@ -1217,40 +1338,45 @@ static INT32 DrvFrame()
 		DrvInputs[3] = (~nAnalogAxis[1] >> 8) & 0xfe;
 	}
 
-	INT32 nInterleave = 100;
-	INT32 nCyclesTotal[2] = { 6000000 / 60, 3000000 / 60 };
-	INT32 nCyclesDone[2] = { 0, 0 };
+	INT32 nInterleave = 264;
+	INT32 nCyclesTotal[2] = { (INT32)((double)6000000 / 59.185606), (INT32)((double)3000000 / 4 / 59.185606) }; // m68705 has a /4 divider!
+
+	nCyclesDone[0] = nExtraCycles[0];
+	nCyclesDone[1] = nExtraCycles[1];
 
 	ZetOpen(0);
 	m6805Open(0);
 
 	for (INT32 i = 0; i < nInterleave; i++) {
-		INT32 nSegment = nCyclesTotal[0] / nInterleave;
-		nCyclesDone[0] += ZetRun(nSegment);
+		nCyclesDone[0] += ZetRun((nCyclesTotal[0] * (i + 1) / nInterleave) - nCyclesDone[0]);
+
+		if (i == 240-1) {
+			ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+
+			if (pBurnDraw) { // jets on thusters @ cutscene flicker wrong on one side if drawn at end of frame.
+				DrvDraw();
+			}
+		}
 
 		if (use_mcu) {
-			nSegment = nCyclesTotal[1] / nInterleave;
-			nCyclesDone[1] += m6805Run(nSegment);
+			arkanoid_mcu_run((nCyclesTotal[1] * (i + 1) / nInterleave) - nCyclesDone[1]);
 		}
 	}
-
-	ZetRaiseIrq(0);
 
 	m6805Close();
 	ZetClose();
 
-	if (pBurnSoundOut) {
-		AY8910Render(&pAY8910Buffer[0], pBurnSoundOut, nBurnSoundLen, 0);
-	}
+	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
+	nExtraCycles[1] = nCyclesDone[1] - nCyclesTotal[1];
 
-	if (pBurnDraw) {
-		DrvDraw();
+	if (pBurnSoundOut) {
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	return 0;
 }
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -1258,7 +1384,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029707;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -1277,6 +1403,11 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		SCAN_VAR(nAnalogAxis[0]);
 		SCAN_VAR(nAnalogAxis[1]);
 		SCAN_VAR(arkanoid_bootleg_cmd);
+		SCAN_VAR(nExtraCycles);
+		SCAN_VAR(portC_latch);
+		SCAN_VAR(mcu_on);
+		SCAN_VAR(m68705_timer);
+		SCAN_VAR(m68705_timer_count);
 	}
 
 	return 0;
@@ -1295,14 +1426,48 @@ static INT32 HexaScan(INT32 nAction, INT32 *pnMin)
 	return 0;
 }
 
+/* rom numbering, with guesses:
+	A75 01   = Z80 code 1/2 v1.0 Japan
+	A75 01-1 = Z80 code 1/2 v1.1 Japan and USA/Romstar
+	A75 02   = Z80 code 2/2 v1.0 Japan
+	A75 03   = GFX 1/3
+	A75 04   = GFX 2/3
+	A75 05   = GFX 3/3
+	A75 06   = MC68705P5 MCU code, v1.0 Japan and v1.0 USA/Romstar
+	A75 07   = PROM red
+	A75 08   = PROM green
+	A75 09   = PROM blue
+	A75 10   = Z80 code 2/2 v1.1 USA/Romstar
+	A75 11   = Z80 code 2/2 v1.2 Japan (paired with 01-1 v1.1 Japan)
+	(A75 12 through 17 are unknown, could be another two sets of z80 code plus mc68705p5)
+	A75 18   = Z80 code v2.0 2/2 USA/Romstar
+	A75 19   = Z80 code v2.0 1/2 USA/Romstar
+	A75 20   = MC68705P5 MCU code, v2.0 USA/Romstar
+	A75 21   = Z80 code v2.0 1/2 Japan
+	A75 22   = Z80 code v2.0 2/2 Japan
+	A75 23   = MC68705P5 MCU code, v2.0 Japan
+	A75 24   = Z80 code v2.1 1/2 Japan
+	A75 25   = Z80 code v2.1 2/2 Japan
+	A75 26   = MC68705P5 MCU code, v2.1 Japan
+	A75 27   = Z80 code 1/2 Tournament
+	A75 28   = Z80 code 2/2 Tournament
+	A75 29   = GFX 1/3 Tournament
+	A75 30   = GFX 2/3 Tournament
+	A75 31   = GFX 3/3 Tournament
+	A75 32   = MC68705P5 MCU code, Tournament
+	A75 33   = PROM red Tournament
+	A75 34   = PROM green Tournament
+	A75 35   = PROM blue Tournament
+	(one of the 21/22/23 or 24/25/26 sets is likely 'world'? or are these really two japan sets?)
+*/
 
-// Arkanoid (World)
+// Arkanoid (World, oldest rev)
 
 static struct BurnRomInfo arkanoidRomDesc[] = {
 	{ "a75-01-1.ic17",0x8000, 0x5bcda3b0, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "a75-11.ic16",  0x8000, 0xeafd7191, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-06.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75__06.ic14", 0x0800, 0x0be83647, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1314,7 +1479,8 @@ static struct BurnRomInfo arkanoidRomDesc[] = {
 	
 	{ "arkanoid1_68705p3.ic14", 0x0800, 0x1b68e2d8, 0 | BRF_PRG | BRF_OPT },  //  9 Decapped roms
 	{ "arkanoid_mcu.ic14",      0x0800, 0x4e44b50a, 0 | BRF_PRG | BRF_OPT },  // 10
-	{ "arkanoid_68705p5.ic14",  0x0800, 0x0be83647, 0 | BRF_PRG | BRF_OPT },  // 11
+	{ "a75__06.ic14",  0x0800, 0x0be83647, 0 | BRF_PRG | BRF_OPT },  // 11
+	{ "a75-06__bootleg_68705.ic14", 0x0800, 0x515d77b6, 0 | BRF_OPT },
 };
 
 STD_ROM_PICK(arkanoid)
@@ -1322,10 +1488,10 @@ STD_ROM_FN(arkanoid)
 
 struct BurnDriver BurnDrvarkanoid = {
 	"arkanoid", NULL, NULL, NULL, "1986",
-	"Arkanoid (World)\0", NULL, "Taito Corporation Japan", "Arkanoid",
+	"Arkanoid (World, oldest rev)\0", NULL, "Taito Corporation Japan", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkanoidRomInfo, arkanoidRomName, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
+	NULL, arkanoidRomInfo, arkanoidRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1333,11 +1499,11 @@ struct BurnDriver BurnDrvarkanoid = {
 
 // Arkanoid (US)
 
-static struct BurnRomInfo arknoiduRomDesc[] = {
+static struct BurnRomInfo arkanoiduRomDesc[] = {
 	{ "a75-19.ic17",  0x8000, 0xd3ad37d7, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "a75-18.ic16",  0x8000, 0xcdc08301, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-20.ic14",  0x0800, 0xde518e47, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75__20.ic14", 0x0800, 0x3994ee92, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1348,46 +1514,49 @@ static struct BurnRomInfo arknoiduRomDesc[] = {
 	{ "a75-09.ic22",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
 };
 
-STD_ROM_PICK(arknoidu)
-STD_ROM_FN(arknoidu)
+STD_ROM_PICK(arkanoidu)
+STD_ROM_FN(arkanoidu)
 
-struct BurnDriver BurnDrvarknoidu = {
+struct BurnDriver BurnDrvarkanoidu = {
 	"arkanoidu", "arkanoid", NULL, NULL, "1986",
 	"Arkanoid (US)\0", NULL, "Taito America Corporation (Romstar license)", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arknoiduRomInfo, arknoiduRomName, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
+	NULL, arkanoiduRomInfo, arkanoiduRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
 
 
-// Arkanoid (US, older)
+// Arkanoid (US, oldest rev)
+// Observed on a real TAITO J1100075A pcb (with K1100181A sticker), pcb is white painted, and has a "ROMSTAR(C) // All Rights Reserved // Serial No. // No 14128" sticker 
 
-static struct BurnRomInfo arknoiuoRomDesc[] = {
-	{ "a75-01-1.ic17",0x8000, 0x5bcda3b0, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
-	{ "a75-10.ic16",  0x8000, 0xa1769e15, 1 | BRF_ESS | BRF_PRG }, //  1
+static struct BurnRomInfo arkanoiduoRomDesc[] = {
+	{ "a75__01-1.ic17",	0x8000, 0x5bcda3b0, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
+	{ "a75__10.ic16",  	0x8000, 0xa1769e15, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-06.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75__06.ic14",  	0x0800, 0x0be83647, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
-	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
-	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
-	{ "a75-05.ic62",  0x8000, 0xc76374e2, 3 | BRF_GRA },	       //  5
+	{ "a75__03.ic64",  	0x8000, 0x038b74ba, 3 | BRF_GRA },	         //  3 Graphics
+	{ "a75__04.ic63",  	0x8000, 0x71fae199, 3 | BRF_GRA },	         //  4
+	{ "a75__05.ic62",  	0x8000, 0xc76374e2, 3 | BRF_GRA },	         //  5
 
-	{ "a75-07.ic24",  0x0200, 0x0af8b289, 4 | BRF_GRA },	       //  6 Color Proms
-	{ "a75-08.ic23",  0x0200, 0xabb002fb, 4 | BRF_GRA },	       //  7
-	{ "a75-09.ic23",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
+	{ "a75-07.ic24",  	0x0200, 0x0af8b289, 4 | BRF_GRA },	         //  6 Color Proms
+	{ "a75-08.ic23",  	0x0200, 0xabb002fb, 4 | BRF_GRA },	         //  7
+	{ "a75-09.ic22",  	0x0200, 0xa7c6c277, 4 | BRF_GRA },	         //  8
+	
+	{ "a75__03,alternate.ic64", 0x8000, 0x983d4485, 0 | BRF_PRG | BRF_OPT },  //  10
 };
 
-STD_ROM_PICK(arknoiuo)
-STD_ROM_FN(arknoiuo)
+STD_ROM_PICK(arkanoiduo)
+STD_ROM_FN(arkanoiduo)
 
-struct BurnDriver BurnDrvarknoiuo = {
+struct BurnDriver BurnDrvarkanoiduo = {
 	"arkanoiduo", "arkanoid", NULL, NULL, "1986",
-	"Arkanoid (US, older)\0", NULL, "Taito America Corporation (Romstar license)", "Arkanoid",
+	"Arkanoid (US, oldest rev)\0", NULL, "Taito America Corporation (Romstar license)", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arknoiuoRomInfo, arknoiuoRomName, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
+	NULL, arkanoiduoRomInfo, arkanoiduoRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1399,7 +1568,7 @@ static struct BurnRomInfo arkatourRomDesc[] = {
 	{ "a75-27.ic17",  0x8000, 0xe3b8faf5, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "a75-28.ic16",  0x8000, 0x326aca4d, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-32.ic14",  0x0800, 0xd3249559, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75__32.ic14", 0x0800, 0x8c20d15c, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-29.ic64",  0x8000, 0x5ddea3cf, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-30.ic63",  0x8000, 0x5fcf2e85, 3 | BRF_GRA },	       //  4
@@ -1418,7 +1587,7 @@ struct BurnDriver BurnDrvarkatour = {
 	"Tournament Arkanoid (US)\0", NULL, "Taito America Corporation (Romstar license)", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkatourRomInfo, arkatourRomName, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
+	NULL, arkatourRomInfo, arkatourRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1426,11 +1595,11 @@ struct BurnDriver BurnDrvarkatour = {
 
 // Arkanoid (Japan)
 
-static struct BurnRomInfo arknoidjRomDesc[] = {
-	{ "a75-21.ic17",  0x8000, 0xbf0455fc, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
-	{ "a75-22.ic16",  0x8000, 0x3a2688d3, 1 | BRF_ESS | BRF_PRG }, //  1
+static struct BurnRomInfo arkanoidjRomDesc[] = {
+	{ "a75_24.ic17",  0x8000, 0x3f2b27e9, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
+	{ "a75_25.ic16",  0x8000, 0xc13b2038, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-23.ic14",  0x0800, 0x0a4abef6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75__26.ic14", 0x0800, 0x1c4d212b, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1441,15 +1610,78 @@ static struct BurnRomInfo arknoidjRomDesc[] = {
 	{ "a75-09.ic22",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
 };
 
-STD_ROM_PICK(arknoidj)
-STD_ROM_FN(arknoidj)
+STD_ROM_PICK(arkanoidj)
+STD_ROM_FN(arkanoidj)
 
-struct BurnDriver BurnDrvarknoidj = {
+struct BurnDriver BurnDrvarkanoidj = {
 	"arkanoidj", "arkanoid", NULL, NULL, "1986",
 	"Arkanoid (Japan)\0", NULL, "Taito Corporation", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arknoidjRomInfo, arknoidjRomName, NULL, NULL, DrvInputInfo, arknoidjDIPInfo,
+	NULL, arkanoidjRomInfo, arkanoidjRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 256, 3, 4
+};
+
+// Arkanoid (Japan, older rev)
+
+static struct BurnRomInfo arkanoidjaRomDesc[] = {
+	{ "a75-21.ic17",  0x8000, 0xbf0455fc, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
+	{ "a75-22.ic16",  0x8000, 0x3a2688d3, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	// the handcrafted value at 0x351 (0x9ddb) seems incorrect compared to other sets? 
+	//(but it appears the value is never used, and the data it would usually point to does not exist in the program rom?)
+	{ "a75-23.ic14",  0x0800, 0x543fed28, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+
+	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
+	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
+	{ "a75-05.ic62",  0x8000, 0xc76374e2, 3 | BRF_GRA },	       //  5
+
+	{ "a75-07.ic24",  0x0200, 0x0af8b289, 4 | BRF_GRA },	       //  6 Color Proms
+	{ "a75-08.ic23",  0x0200, 0xabb002fb, 4 | BRF_GRA },	       //  7
+	{ "a75-09.ic22",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
+};
+
+STD_ROM_PICK(arkanoidja)
+STD_ROM_FN(arkanoidja)
+
+struct BurnDriver BurnDrvarkanoidja = {
+	"arkanoidja", "arkanoid", NULL, NULL, "1986",
+	"Arkanoid (Japan, older rev)\0", NULL, "Taito Corporation", "Arkanoid",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
+	NULL, arkanoidjaRomInfo, arkanoidjaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 256, 3, 4
+};
+
+
+// Arkanoid (Japan, oldest rev)
+
+static struct BurnRomInfo arkanoidjbRomDesc[] = {
+	{ "a75-01-1.ic17",0x8000, 0x5bcda3b0, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
+	{ "a75-02.ic16",  0x8000, 0xbbc33ceb, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "a75__06.ic14", 0x0800, 0x0be83647, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+
+	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
+	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
+	{ "a75-05.ic62",  0x8000, 0xc76374e2, 3 | BRF_GRA },	       //  5
+
+	{ "a75-07.ic24",  0x0200, 0x0af8b289, 4 | BRF_GRA },	       //  6 Color Proms
+	{ "a75-08.ic23",  0x0200, 0xabb002fb, 4 | BRF_GRA },	       //  7
+	{ "a75-09.ic22",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
+};
+
+STD_ROM_PICK(arkanoidjb)
+STD_ROM_FN(arkanoidjb)
+
+struct BurnDriver BurnDrvarkanoidjb = {
+	"arkanoidjb", "arkanoid", NULL, NULL, "1986",
+	"Arkanoid (Japan, oldest rev)\0", NULL, "Taito Corporation", "Arkanoid",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
+	NULL, arkanoidjbRomInfo, arkanoidjbRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1457,11 +1689,11 @@ struct BurnDriver BurnDrvarknoidj = {
 
 // Arkanoid (bootleg with MCU set 1)
 
-static struct BurnRomInfo arkmcublRomDesc[] = {
+static struct BurnRomInfo arkanoidjblRomDesc[] = {
 	{ "e1.6d",        0x8000, 0xdd4f2b72, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "e2.6f",        0x8000, 0xbbc33ceb, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-06.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "68705p3.6i",   0x0800, 0x389a8cfb, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-03.rom",   0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-04.rom",   0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1474,28 +1706,27 @@ static struct BurnRomInfo arkmcublRomDesc[] = {
 	{ "68705p3.6i",   0x0800, 0x389a8cfb, 0 | BRF_OPT | BRF_PRG }, //  9 Another MCU?
 };
 
-STD_ROM_PICK(arkmcubl)
-STD_ROM_FN(arkmcubl)
+STD_ROM_PICK(arkanoidjbl)
+STD_ROM_FN(arkanoidjbl)
 
-struct BurnDriver BurnDrvarkmcubl = {
-	"arkanoidjb", "arkanoid", NULL, NULL, "1986",
+struct BurnDriver BurnDrvarkanoidjbl = {
+	"arkanoidjbl", "arkanoid", NULL, NULL, "1986",
 	"Arkanoid (bootleg with MCU set 1)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkmcublRomInfo, arkmcublRomName, NULL, NULL, DrvInputInfo, arknoidjDIPInfo,
+	NULL, arkanoidjblRomInfo, arkanoidjblRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
 
 
-
 // Arkanoid (bootleg with MCU set 2)
 
-static struct BurnRomInfo arkanoidjb2RomDesc[] = {
+static struct BurnRomInfo arkanoidjbl2RomDesc[] = {
 	{ "1.ic81",       0x8000, 0x9ff93dc2, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "2.ic82",       0x8000, 0xbbc33ceb, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-06.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75-06__bootleg_68705.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a75-03.ic64",  0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a75-04.ic63",  0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1503,18 +1734,18 @@ static struct BurnRomInfo arkanoidjb2RomDesc[] = {
 
 	{ "a75-07.ic24",  0x0200, 0x0af8b289, 4 | BRF_GRA },	       //  6 Color Proms
 	{ "a75-08.ic23",  0x0200, 0xabb002fb, 4 | BRF_GRA },	       //  7
-	{ "a75-09.ic23",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
+	{ "a75-09.ic22",  0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  8
 };
 
-STD_ROM_PICK(arkanoidjb2)
-STD_ROM_FN(arkanoidjb2)
+STD_ROM_PICK(arkanoidjbl2)
+STD_ROM_FN(arkanoidjbl2)
 
-struct BurnDriver BurnDrvarkanoidjb2 = {
-	"arkanoidjb2", "arkanoid", NULL, NULL, "1986",
+struct BurnDriver BurnDrvarkanoidjbl2 = {
+	"arkanoidjbl2", "arkanoid", NULL, NULL, "1986",
 	"Arkanoid (bootleg with MCU set 2)\0", NULL, "bootleg (Beta)", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkanoidjb2RomInfo, arkanoidjb2RomName, NULL, NULL, DrvInputInfo, arknoidjDIPInfo,
+	NULL, arkanoidjbl2RomInfo, arkanoidjbl2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1523,7 +1754,7 @@ struct BurnDriver BurnDrvarkanoidjb2 = {
 // Arkanoid (bootleg with MCU, alt)
 // f205v id 318
 
-static struct BurnRomInfo arkmcublaRomDesc[] = {
+static struct BurnRomInfo arkanoidjblaRomDesc[] = {
 	{ "1.3f.ic81",    0x8000, 0x9ff93dc2, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
 	{ "2.4f.ic82",    0x8000, 0xbbc33ceb, 1 | BRF_ESS | BRF_PRG }, //  1
 
@@ -1540,15 +1771,15 @@ static struct BurnRomInfo arkmcublaRomDesc[] = {
 	{ "68705p3.6i",   0x0800, 0x389a8cfb, 0 | BRF_OPT | BRF_PRG }, //  9 Another MCU?
 };
 
-STD_ROM_PICK(arkmcubla)
-STD_ROM_FN(arkmcubla)
+STD_ROM_PICK(arkanoidjbla)
+STD_ROM_FN(arkanoidjbla)
 
-struct BurnDriver BurnDrvarkmcubla = {
-	"arkanoidjba", "arkanoid", NULL, NULL, "1986",
+struct BurnDriver BurnDrvarkanoidjbla = {
+	"arkanoidjbla", "arkanoid", NULL, NULL, "1986",
 	"Arkanoid (bootleg with MCU, alt)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkmcublaRomInfo, arkmcublaRomName, NULL, NULL, DrvInputInfo, arknoidjDIPInfo,
+	NULL, arkanoidjblaRomInfo, arkanoidjblaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1558,9 +1789,9 @@ struct BurnDriver BurnDrvarkmcubla = {
 
 static struct BurnRomInfo ark1ballRomDesc[] = {
 	{ "a-1.7d",       0x8000, 0xdd4f2b72, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
-	{ "2palline.7f",  0x8000, 0xed6b62ab, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "ark_2__1_palline.7f",  0x8000, 0xed6b62ab, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-06.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
+	{ "a75-06__bootleg_68705.ic14",  0x0800, 0x515d77b6, 2 | BRF_ESS | BRF_PRG }, //  2 M68705 MCU
 
 	{ "a-3.3a",       0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  3 Graphics
 	{ "a-4.3d",       0x8000, 0x71fae199, 3 | BRF_GRA },	       //  4
@@ -1579,7 +1810,7 @@ struct BurnDriver BurnDrvark1ball = {
 	"Arkanoid (bootleg with MCU, harder)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, ark1ballRomInfo, ark1ballRomName, NULL, NULL, DrvInputInfo, ark1ballDIPInfo,
+	NULL, ark1ballRomInfo, ark1ballRomName, NULL, NULL, NULL, NULL, DrvInputInfo, ark1ballDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1611,7 +1842,7 @@ struct BurnDriver BurnDrvark1balla = {
 	"Arkanoid (bootleg with MCU, harder, alt)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, ark1ballaRomInfo, ark1ballaRomName, NULL, NULL, DrvInputInfo, ark1ballDIPInfo,
+	NULL, ark1ballaRomInfo, ark1ballaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, ark1ballDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1647,7 +1878,7 @@ struct BurnDriver BurnDrvarkangc = {
 	"Arkanoid (Game Corporation bootleg, set 1)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkangcRomInfo, arkangcRomName, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
+	NULL, arkangcRomInfo, arkangcRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
 	arkangcInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1683,7 +1914,7 @@ struct BurnDriver BurnDrvarkangc2 = {
 	"Arkanoid (Game Corporation bootleg, set 2)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkangc2RomInfo, arkangc2RomName, NULL, NULL, DrvInputInfo, arkangc2DIPInfo,
+	NULL, arkangc2RomInfo, arkangc2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkangc2DIPInfo,
 	arkangc2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1719,7 +1950,7 @@ struct BurnDriver BurnDrvarkblock = {
 	"Block (Game Corporation bootleg, set 1)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkblockRomInfo, arkblockRomName, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
+	NULL, arkblockRomInfo, arkblockRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
 	arkblockInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1755,7 +1986,7 @@ struct BurnDriver BurnDrvarkbloc2 = {
 	"Block (Game Corporation bootleg, set 2)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkbloc2RomInfo, arkbloc2RomName, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
+	NULL, arkbloc2RomInfo, arkbloc2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkangcDIPInfo,
 	arkbloc2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1764,12 +1995,12 @@ struct BurnDriver BurnDrvarkbloc2 = {
 // Arkanoid (bootleg on Block hardware)
 
 static struct BurnRomInfo arkgcblRomDesc[] = {
-	{ "16.6e",        0x8000, 0xb0f73900, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
-	{ "17.6f",        0x8000, 0x9827f297, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "electric__16.6e",   0x8000, 0xb0f73900, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 Code
+	{ "electric__17.6f",   0x8000, 0x9827f297, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "a75-03.rom",   0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  2 Graphics
-	{ "a75-04.rom",   0x8000, 0x71fae199, 3 | BRF_GRA },	       //  3
-	{ "a75-05.rom",   0x8000, 0xc76374e2, 3 | BRF_GRA },	       //  4
+	{ "electric__18.3a",   0x8000, 0x038b74ba, 3 | BRF_GRA },	       //  2 Graphics
+	{ "electric__19.3c",   0x8000, 0x71fae199, 3 | BRF_GRA },	       //  3
+	{ "electric__20.3d",   0x8000, 0xc76374e2, 3 | BRF_GRA },	       //  4
 	
 	{ "82s129.5k",    0x0100, 0xfa70b64d, 4 | BRF_GRA },	       //  5 Color Proms
 	{ "82s129.5jk",   0x0100, 0xcca69884, 4 | BRF_GRA },	       //  6
@@ -1796,7 +2027,7 @@ struct BurnDriver BurnDrvarkgcbl = {
 	"Arkanoid (bootleg on Block hardware)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkgcblRomInfo, arkgcblRomName, NULL, NULL, DrvInputInfo, arkgcblDIPInfo,
+	NULL, arkgcblRomInfo, arkgcblRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkgcblDIPInfo,
 	arkgcblInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1832,7 +2063,7 @@ struct BurnDriver BurnDrvpaddle2 = {
 	"Paddle 2 (bootleg on Block hardware)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, paddle2RomInfo, paddle2RomName, NULL, NULL, DrvInputInfo, paddle2DIPInfo,
+	NULL, paddle2RomInfo, paddle2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, paddle2DIPInfo,
 	paddle2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1861,7 +2092,7 @@ struct BurnDriver BurnDrvarkatayt = {
 	"Arkanoid (Tayto bootleg)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arkataytRomInfo, arkataytRomName, NULL, NULL, DrvInputInfo, arknoidjDIPInfo,
+	NULL, arkataytRomInfo, arkataytRomName, NULL, NULL, NULL, NULL, DrvInputInfo, arkanoidjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1890,7 +2121,7 @@ struct BurnDriver BurnDrvarktayt2 = {
 	"Arkanoid (Tayto bootleg, harder)\0", NULL, "bootleg", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, arktayt2RomInfo, arktayt2RomName, NULL, NULL, DrvInputInfo, arktayt2DIPInfo,
+	NULL, arktayt2RomInfo, arktayt2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, arktayt2DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 256, 3, 4
 };
@@ -1909,6 +2140,8 @@ static struct BurnRomInfo tetrsarkRomDesc[] = {
 	{ "a75-07.bpr",   0x0200, 0x0af8b289, 4 | BRF_GRA },	       //  5 Color Proms
 	{ "a75-08.bpr",   0x0200, 0xabb002fb, 4 | BRF_GRA },	       //  6
 	{ "a75-09.bpr",   0x0200, 0xa7c6c277, 4 | BRF_GRA },	       //  7
+	
+	{ "14_mc68705p5_rom.bin", 0x0800, 0xdfbc4239, 0 | BRF_OPT },	// 8 MCU
 };
 
 STD_ROM_PICK(tetrsark)
@@ -1933,8 +2166,8 @@ struct BurnDriver BurnDrvtetrsark = {
 	"tetrsark", NULL, NULL, NULL, "198?",
 	"Tetris (D.R. Korea)\0", "Wrong colors", "D.R. Korea", "Arkanoid",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_BREAKOUT, 0,
-	NULL, tetrsarkRomInfo, tetrsarkRomName, NULL, NULL, tetrsarkInputInfo, tetrsarkDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_PUZZLE, 0,
+	NULL, tetrsarkRomInfo, tetrsarkRomName, NULL, NULL, NULL, NULL, tetrsarkInputInfo, tetrsarkDIPInfo,
 	tetrsarkInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	256, 224, 4, 3
 };
@@ -1970,7 +2203,7 @@ struct BurnDriver BurnDrvHexa = {
 	"Hexa\0", NULL, "D. R. Korea", "Arkanoid",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_TAITO_MISC, GBF_PUZZLE, 0,
-	NULL, hexaRomInfo, hexaRomName, NULL, NULL, HexaInputInfo, HexaDIPInfo,
+	NULL, hexaRomInfo, hexaRomName, NULL, NULL, NULL, NULL, HexaInputInfo, HexaDIPInfo,
 	HexaInit, DrvExit, DrvFrame, DrvDraw, HexaScan, &DrvRecalc, 0x100,
 	256, 224, 4, 3
 };

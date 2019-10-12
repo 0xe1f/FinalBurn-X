@@ -31,8 +31,8 @@ typedef struct
 	UINT8	md; 		/* Special mode register */
 	UINT8	ireg;		/* First opcode */
 	UINT8	irq_state[2];
-	int 	extra_cycles; /* cycles used up by interrupts */
-	int 	(*irq_callback)(int irqline);
+	UINT8	irq_hold[2];
+	INT32 	extra_cycles; /* cycles used up by interrupts */
 	UINT8	int_state;	/* SYNC and CWAI flags */
 	UINT8	nmi_state;
 } hd6309_Regs;
@@ -46,6 +46,7 @@ void hd6309_init();
 void hd6309_reset(void);
 int hd6309_get_pc();
 int hd6309_execute(int cycles);
+int hd6309_segmentcycles();
 void hd6309_set_irq_line(int irqline, int state);
 void hd6309_get_context(void *dst);
 void hd6309_set_context(void *src);

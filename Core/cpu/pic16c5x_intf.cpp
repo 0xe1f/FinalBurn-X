@@ -1,4 +1,5 @@
 #include "burnint.h"
+#include "pic16c5x_intf.h"
 
 void pic16c5xDoReset(INT32 type, INT32 *rom, INT32 *ram);
 extern INT32 pic16c5xScanCpu(INT32 nAction, INT32* pnMin);
@@ -11,12 +12,36 @@ INT32 nPic16c5xCpuType = -1;
 static UINT8 *pic16c5x_rom = NULL;
 static UINT8 *pic16c5x_ram = NULL;
 
-UINT8 (*pPic16c5xReadPort)(UINT16 port) = NULL;
-void (*pPic16c5xWritePort)(UINT16 port, UINT8 data) = NULL;
+static UINT8 (*pPic16c5xReadPort)(UINT16 port) = NULL;
+static void (*pPic16c5xWritePort)(UINT16 port, UINT8 data) = NULL;
 
-UINT16 pic16c5x_read_op(UINT16 address)
+static void core_set_irq(INT32,INT32,INT32)
 {
-#if defined FBA_DEBUG
+	// not for this hardware
+}
+
+cpu_core_config pic16c5xConfig =
+{
+	"pic16c5x",
+	pic16c5xOpen,
+	pic16c5xClose,
+	pic16c5xCheatRead,
+	pic16c5xCheatWrite, 
+	pic16c5xGetActive,
+	pic16c5xTotalCycles,
+	pic16c5xNewFrame,
+	pic16c5xIdle,
+	core_set_irq,
+	pic16c5xRun,
+	pic16c5xRunEnd,
+	pic16c5xReset,
+	0x7ff,
+	0
+};
+
+UINT16 pic16c5xFetch(UINT16 address)
+{
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5x_read_op called without init\n"));
 #endif
 
@@ -27,9 +52,9 @@ UINT16 pic16c5x_read_op(UINT16 address)
 	return ROM[address];
 }
 
-UINT8 pic16c5x_read_byte(UINT16 address)
+UINT8 pic16c5xRead(UINT16 address)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5x_read_byte called without init\n"));
 #endif
 
@@ -44,14 +69,14 @@ UINT8 pic16c5x_read_byte(UINT16 address)
 	return pic16c5x_ram[address];
 }
 
-void pic16c5x_write_byte(UINT16 address, UINT8 data)
+void pic16c5xWrite(UINT16 address, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5x_write_byte called without init\n"));
 #endif
 
 	address &= ram_address_mask;
-	
+
 	if (nPic16c5xCpuType == 0x16C57 || nPic16c5xCpuType == 0x16C58) {
 		if (address >= 0x60 && address <= 0x6f) {
 			// mirror
@@ -59,13 +84,13 @@ void pic16c5x_write_byte(UINT16 address, UINT8 data)
 			return;
 		}
 	}
-		
+
 	pic16c5x_ram[address] = data;
 }
 
-UINT8 pic16c5x_read_port(UINT16 port)
+UINT8 pic16c5xReadPort(UINT16 port)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5x_read_port called without init\n"));
 #endif
 
@@ -76,9 +101,9 @@ UINT8 pic16c5x_read_port(UINT16 port)
 	return 0;
 }
 
-void pic16c5x_write_port(UINT16 port, UINT8 data)
+void pic16c5xWritePort(UINT16 port, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5x_write_port called without init\n"));
 #endif
 
@@ -88,16 +113,41 @@ void pic16c5x_write_port(UINT16 port, UINT8 data)
 	}
 }
 
+void pic16c5xSetReadPortHandler(UINT8 (*pReadPort)(UINT16 port))
+{
+	pPic16c5xReadPort = pReadPort;
+}
+
+void pic16c5xSetWritePortHandler(void (*pWritePort)(UINT16 port, UINT8 data))
+{
+	pPic16c5xWritePort = pWritePort;
+}
+
 void pic16c5xReset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5xReset called without init\n"));
 #endif
 
 	pic16c5xDoReset(nPic16c5xCpuType, &rom_address_mask, &ram_address_mask);
 }
 
-void pic16c5xInit(INT32 type, UINT8 *mem)
+INT32 pic16c5xGetActive()
+{
+	return 0; // only one cpu supported atm
+}
+
+UINT8 pic16c5xCheatRead(UINT32 address)
+{
+	return pic16c5xRead(address);
+}
+
+void pic16c5xCheatWrite(UINT32 address, UINT8 data)
+{
+	pic16c5xWrite(address, data);
+}
+
+void pic16c5xInit(INT32 /*nCPU*/, INT32 type, UINT8 *mem)
 {
 	DebugCPU_PIC16C5XInitted = 1;
 	
@@ -108,25 +158,47 @@ void pic16c5xInit(INT32 type, UINT8 *mem)
 	pic16c5x_rom = mem;
 	
 	pic16c5x_ram = (UINT8*)BurnMalloc(ram_address_mask + 1);
+
+	CpuCheatRegister(0/*nCPU*/, &pic16c5xConfig);
 }
 
 void pic16c5xExit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5xExit called without init\n"));
 #endif
 
 	pic16c5x_rom = NULL;
 	nPic16c5xCpuType = -1;
 	
-	BurnFree(pic16c5x_ram);
-	
+	if (pic16c5x_ram) {
+		BurnFree(pic16c5x_ram);
+		pic16c5x_ram = NULL;
+	}
+
+	pPic16c5xReadPort = NULL;
+	pPic16c5xWritePort = NULL;
+
 	DebugCPU_PIC16C5XInitted = 0;
 }
 
-INT32 pic16c5xScan(INT32 nAction,INT32 */*pnMin*/)
+void pic16c5xOpen(INT32)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5xOpen called without init\n"));
+#endif
+}
+
+void pic16c5xClose()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5xClose called without init\n"));
+#endif
+}
+
+INT32 pic16c5xScan(INT32 nAction)
+{
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_PIC16C5XInitted) bprintf(PRINT_ERROR, _T("pic16c5xScan called without init\n"));
 #endif
 

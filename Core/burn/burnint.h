@@ -10,17 +10,11 @@
 #include <string.h>
 #include <assert.h>
 
-#if defined(__LIBRETRO__) && defined(_MSC_VER)
-#include <tchar.h>
-#else
 #include "tchar.h"
-#endif
-
-#ifdef __LIBRETRO_OPTIMIZATIONS__
-#include "burn_libretro_opts.h"
-#endif
 
 #include "burn.h"
+#include "burn_sound.h"
+#include "joyprocess.h"
 
 #ifdef LSB_FIRST
 typedef union
@@ -37,30 +31,6 @@ typedef union
 #else
 // define the above union and BURN_ENDIAN_SWAP macros in the following platform specific header
 #include "burn_endian.h"
-#endif
-
-#ifdef NO_UNALIGNED_MEM
-#define BURN_UNALIGNED_READ16(x) (\
-	(UINT16) ((UINT8 *) (x))[1] << 8 | \
-	(UINT16) ((UINT8 *) (x))[0])
-#define BURN_UNALIGNED_READ32(x) (\
-	(UINT32) ((UINT8 *) (x))[3] << 24 | \
-	(UINT32) ((UINT8 *) (x))[2] << 16 | \
-	(UINT32) ((UINT8 *) (x))[1] << 8 | \
-	(UINT32) ((UINT8 *) (x))[0])
-#define BURN_UNALIGNED_WRITE16(x, y) ( \
-	((UINT8 *) (x))[0] = (UINT8) (y), \
-	((UINT8 *) (x))[1] = (UINT8) ((y) >> 8))
-#define BURN_UNALIGNED_WRITE32(x, y) ( \
-	((UINT8 *) (x))[0] = (UINT8) (y), \
-	((UINT8 *) (x))[1] = (UINT8) ((y) >> 8), \
-	((UINT8 *) (x))[2] = (UINT8) ((y) >> 16), \
-	((UINT8 *) (x))[3] = (UINT8) ((y) >> 24))
-#else
-#define BURN_UNALIGNED_READ16(x) (*(UINT16 *) (x))
-#define BURN_UNALIGNED_READ32(x) (*(UINT32 *) (x))
-#define BURN_UNALIGNED_WRITE16(x, y) (*(UINT16 *) (x) = (y))
-#define BURN_UNALIGNED_WRITE32(x, y) (*(UINT32 *) (x) = (y))
 #endif
 
 // ---------------------------------------------------------------------------
@@ -80,12 +50,14 @@ struct BurnDriver {
 
 	INT32 Flags;			// See burn.h
 	INT32 Players;		// Max number of players a game supports (so we can remove single player games from netplay)
-	UINT32 Hardware;		// Which type of hardware the game runs on
+	INT32 Hardware;		// Which type of hardware the game runs on
 	INT32 Genre;
 	INT32 Family;
 	INT32 (*GetZipName)(char** pszName, UINT32 i);				// Function to get possible zip names
 	INT32 (*GetRomInfo)(struct BurnRomInfo* pri, UINT32 i);		// Function to get the length and crc of each rom
 	INT32 (*GetRomName)(char** pszName, UINT32 i, INT32 nAka);	// Function to get the possible names for each rom
+	INT32 (*GetHDDInfo)(struct BurnHDDInfo* pri, UINT32 i);			// Function to get hdd info
+	INT32 (*GetHDDName)(char** pszName, UINT32 i, INT32 nAka);		// Function to get the possible names for each hdd
 	INT32 (*GetSampleInfo)(struct BurnSampleInfo* pri, UINT32 i);		// Function to get the sample flags
 	INT32 (*GetSampleName)(char** pszName, UINT32 i, INT32 nAka);	// Function to get the possible names for each sample
 	INT32 (*GetInputInfo)(struct BurnInputInfo* pii, UINT32 i);	// Function to get the input info for the game
@@ -105,23 +77,46 @@ struct BurnDriver {
 
 // burn.cpp
 INT32 BurnSetRefreshRate(double dRefreshRate);
-INT32 BurnByteswap(UINT8* pm,INT32 nLen);
+INT32 BurnByteswap(UINT8* pMem, INT32 nLen);
+void BurnNibbleExpand(UINT8 *source, UINT8 *dst, INT32 length, INT32 swap, UINT8 nxor);
 INT32 BurnClearScreen();
 
+
+// recording / netgame helper
+#ifndef __LIBRETRO__
+INT32 is_netgame_or_recording();
+#else
+inline static INT32 is_netgame_or_recording()
+{
+	return kNetGame;
+}
+#endif
+
+
 // load.cpp
+
+/*
+	Flags for use with BurnLoadRomExt
+
+	GROUP(x)		load this many bytes, then skip by nGap from start position (flag is optional)
+	REVERSE			load the bytes in a group in reverse order (0,1,2,3 -> 3,2,1,0)
+	INVERT			Src ^= 0xff
+	BYTESWAP		change order of bytes from 0,1,2,3 to 1,0,3,2
+	NIBBLES			Dest[0] = (byte & & 0xf); Dest[1] = (byte >> 4) & 0xf;
+	XOR			Dest ^= Src
+*/
+
+#define LD_GROUP(x)	((x) & 0xff) // 256 - plenty
+#define LD_REVERSE	(1<<8)
+#define LD_INVERT	(1<<9)
+#define LD_BYTESWAP	(1<<10)
+#define LD_NIBBLES	(1<<11)
+#define LD_XOR		(1<<12)
+
+INT32 BurnLoadRomExt(UINT8 *Dest, INT32 i, INT32 nGap, INT32 nFlags);
 INT32 BurnLoadRom(UINT8* Dest, INT32 i, INT32 nGap);
-INT32 BurnXorRom(UINT8* Dest, INT32 i, INT32 nGap);
+INT32 BurnXorRom(UINT8 *Dest, INT32 i, INT32 nGap);
 INT32 BurnLoadBitField(UINT8* pDest, UINT8* pSrc, INT32 nField, INT32 nSrcLen);
-
-// ---------------------------------------------------------------------------
-// Colour-depth independant image transfer
-
-extern UINT16* pTransDraw;
-
-void BurnTransferClear();
-INT32 BurnTransferCopy(UINT32* pPalette);
-void BurnTransferExit();
-INT32 BurnTransferInit();
 
 // ---------------------------------------------------------------------------
 // Plotting pixels
@@ -145,6 +140,7 @@ inline static void PutPix(UINT8* pPix, UINT32 c)
 // Setting up cpus for cheats
 
 struct cpu_core_config {
+	char cpu_name[32];
 	void (*open)(INT32);		// cpu open
 	void (*close)();		// cpu close
 
@@ -152,7 +148,10 @@ struct cpu_core_config {
 	void (*write)(UINT32, UINT8);	// write
 	INT32 (*active)();		// active cpu
 	INT32 (*totalcycles)();		// total cycles
-	void (*newframe)();		// new frame
+	void (*newframe)();		// new frame'
+	INT32 (*idle)(INT32);	// idle cycles
+
+	void (*irq)(INT32, INT32, INT32);	// set irq, cpu, line, status
 
 	INT32 (*run)(INT32);		// execute cycles
 	void (*runend)();		// end run
@@ -166,9 +165,11 @@ void CpuCheatRegister(INT32 type, cpu_core_config *config);
 
 // burn_memory.cpp
 void BurnInitMemoryManager();
-UINT8 *BurnMalloc(INT32 size);
-void _BurnFree(void *ptr);
-#define BurnFree(x)		_BurnFree(x); x = NULL;
+UINT8 *_BurnMalloc(INT32 size, char *file, INT32 line); // internal use only :)
+UINT8 *BurnRealloc(void *ptr, INT32 size);
+void _BurnFree(void *ptr); // internal use only :)
+#define BurnFree(x) do {_BurnFree(x); x = NULL; } while (0)
+#define BurnMalloc(x) _BurnMalloc(x, __FILE__, __LINE__)
 void BurnExitMemoryManager();
 
 // ---------------------------------------------------------------------------
@@ -179,6 +180,9 @@ void BurnExitMemoryManager();
 #define BURN_SND_ROUTE_LEFT			1
 #define BURN_SND_ROUTE_RIGHT		2
 #define BURN_SND_ROUTE_BOTH			(BURN_SND_ROUTE_LEFT | BURN_SND_ROUTE_RIGHT)
+// the following 2 are only supported in ay8910 and flt_rc
+#define BURN_SND_ROUTE_PANLEFT      4
+#define BURN_SND_ROUTE_PANRIGHT     8
 
 // ---------------------------------------------------------------------------
 // Debug Tracker
@@ -186,14 +190,22 @@ void BurnExitMemoryManager();
 extern UINT8 Debug_BurnTransferInitted;
 extern UINT8 Debug_BurnGunInitted;
 extern UINT8 Debug_BurnLedInitted;
+extern UINT8 Debug_BurnShiftInitted;
 extern UINT8 Debug_HiscoreInitted;
 extern UINT8 Debug_GenericTilesInitted;
 
 extern UINT8 DebugDev_8255PPIInitted;
+extern UINT8 DebugDev_8257DMAInitted;
 extern UINT8 DebugDev_EEPROMInitted;
 extern UINT8 DebugDev_PandoraInitted;
 extern UINT8 DebugDev_SeibuSndInitted;
+extern UINT8 DebugDev_SknsSprInitted;
+extern UINT8 DebugDev_SlapsticInitted;
+extern UINT8 DebugDev_T5182Initted;
 extern UINT8 DebugDev_TimeKprInitted;
+extern UINT8 DebugDev_Tms34061Initted;
+extern UINT8 DebugDev_V3021Initted;
+extern UINT8 DebugDev_VDCInitted;
 
 extern UINT8 DebugSnd_AY8910Initted;
 extern UINT8 DebugSnd_Y8950Initted;
@@ -206,25 +218,31 @@ extern UINT8 DebugSnd_YM2612Initted;
 extern UINT8 DebugSnd_YM3526Initted;
 extern UINT8 DebugSnd_YM3812Initted;
 extern UINT8 DebugSnd_YMF278BInitted;
+extern UINT8 DebugSnd_YMF262Initted;
+extern UINT8 DebugSnd_C6280Initted;
 extern UINT8 DebugSnd_DACInitted;
 extern UINT8 DebugSnd_ES5506Initted;
 extern UINT8 DebugSnd_ES8712Initted;
 extern UINT8 DebugSnd_FilterRCInitted;
 extern UINT8 DebugSnd_ICS2115Initted;
 extern UINT8 DebugSnd_IremGA20Initted;
+extern UINT8 DebugSnd_K005289Initted;
 extern UINT8 DebugSnd_K007232Initted;
 extern UINT8 DebugSnd_K051649Initted;
 extern UINT8 DebugSnd_K053260Initted;
 extern UINT8 DebugSnd_K054539Initted;
 extern UINT8 DebugSnd_MSM5205Initted;
+extern UINT8 DebugSnd_MSM5232Initted;
 extern UINT8 DebugSnd_MSM6295Initted;
 extern UINT8 DebugSnd_NamcoSndInitted;
+extern UINT8 DebugSnd_NESAPUSndInitted;
 extern UINT8 DebugSnd_RF5C68Initted;
 extern UINT8 DebugSnd_SAA1099Initted;
 extern UINT8 DebugSnd_SamplesInitted;
 extern UINT8 DebugSnd_SegaPCMInitted;
 extern UINT8 DebugSnd_SN76496Initted;
 extern UINT8 DebugSnd_UPD7759Initted;
+extern UINT8 DebugSnd_VLM5030Initted;
 extern UINT8 DebugSnd_X1010Initted;
 extern UINT8 DebugSnd_YMZ280BInitted;
 

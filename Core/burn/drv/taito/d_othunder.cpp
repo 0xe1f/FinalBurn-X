@@ -1,3 +1,5 @@
+// Based on MAME driver by David Graves
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
@@ -7,14 +9,14 @@
 #include "eeprom.h"
 #include "burn_gun.h"
 
-static void OthunderDraw();
-
 static double OthunderYM2610AY8910RouteMasterVol;
 static double OthunderYM2610Route1MasterVol;
 static double OthunderYM2610Route2MasterVol;
 static UINT8 *OthunderPan;
 
+#ifdef BUILD_A68K
 static bool bUseAsm68KCoreOldValue = false;
+#endif
 
 #define A(a, b, c, d) {a, b, (UINT8*)(c), d}
 
@@ -119,7 +121,7 @@ static struct BurnDIPInfo OthunderDIPList[]=
 	{0x0f, 0x01, 0x30, 0x30, "40"                             },
 	{0x0f, 0x01, 0x30, 0x20, "50"                             },
 	
-	{0   , 0xfe, 0   , 2   , "Flip Screen"                    },
+	{0   , 0xfe, 0   , 2   , "Language"                    },
 	{0x0f, 0x01, 0x80, 0x00, "English"                        },
 	{0x0f, 0x01, 0x80, 0x80, "Japanese"                       },
 	
@@ -184,7 +186,7 @@ static struct BurnDIPInfo OthunderjDIPList[]=
 	{0x0f, 0x01, 0x30, 0x30, "40"                             },
 	{0x0f, 0x01, 0x30, 0x20, "50"                             },
 	
-	{0   , 0xfe, 0   , 2   , "Flip Screen"                    },
+	{0   , 0xfe, 0   , 2   , "language"                    },
 	{0x0f, 0x01, 0x80, 0x00, "English"                        },
 	{0x0f, 0x01, 0x80, 0x80, "Japanese"                       },
 	
@@ -253,7 +255,7 @@ static struct BurnDIPInfo OthunderuDIPList[]=
 	{0x0f, 0x01, 0x40, 0x00, "1 Coin 1 Credit"                },
 	{0x0f, 0x01, 0x40, 0x40, "Same as Start"                  },
 	
-	{0   , 0xfe, 0   , 2   , "Flip Screen"                    },
+	{0   , 0xfe, 0   , 2   , "language"                    },
 	{0x0f, 0x01, 0x80, 0x00, "English"                        },
 	{0x0f, 0x01, 0x80, 0x80, "Japanese"                       },
 	
@@ -268,27 +270,27 @@ static struct BurnDIPInfo OthunderuDIPList[]=
 STDDIPINFO(Othunderu)
 
 static struct BurnRomInfo OthunderRomDesc[] = {
-	{ "b67-20.63",             0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-23.64",             0x20000, 0x789e9daa, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-14.61",             0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-15.62",             0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-20-1.ic63",         0x20000, 0x851a453b, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-23-1.ic64",         0x20000, 0x6e4f3d56, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
 	
-	{ "b67-13.40",             0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
 	
-	{ "b67-06.66",             0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
 	
-	{ "b67-01",                0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-02",                0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-03",                0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-04",                0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
 	
-	{ "b67-05.43",             0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
 	
-	{ "b67-08",                0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
 	
-	{ "b67-07",                0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
 	
-	{ "eeprom-othunder.bin",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
 	
 	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
 	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
@@ -299,28 +301,60 @@ static struct BurnRomInfo OthunderRomDesc[] = {
 STD_ROM_PICK(Othunder)
 STD_ROM_FN(Othunder)
 
+static struct BurnRomInfo OthunderoRomDesc[] = {
+	{ "b67-20.ic63",           0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-23.ic64",           0x20000, 0x789e9daa, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	
+	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
+	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
+	{ "pal20l8b-b67-12.ic37",  0x00144, 0xa47c2798, BRF_OPT },
+	{ "pal20l8b-b67-10.ic33",  0x00144, 0x4ced09c7, BRF_OPT },
+};
+
+STD_ROM_PICK(Othundero)
+STD_ROM_FN(Othundero)
+
 static struct BurnRomInfo OthunderuRomDesc[] = {
-	{ "b67-20-1.63",           0x20000, 0x851a453b, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-22-1.64",           0x20000, 0x19480dc0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-14.61",             0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-15.62",             0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-20-1.ic63",         0x20000, 0x851a453b, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-22-1.ic64",         0x20000, 0x19480dc0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
 	
-	{ "b67-13.40",             0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
 	
-	{ "b67-06.66",             0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
 	
-	{ "b67-01",                0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-02",                0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-03",                0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-04",                0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
 	
-	{ "b67-05.43",             0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
 	
-	{ "b67-08",                0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
 	
-	{ "b67-07",                0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
 	
-	{ "eeprom-othunder.bin",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
 	
 	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
 	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
@@ -332,27 +366,27 @@ STD_ROM_PICK(Othunderu)
 STD_ROM_FN(Othunderu)
 
 static struct BurnRomInfo OthunderuoRomDesc[] = {
-	{ "b67-20.63",             0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-22.64",             0x20000, 0x0f99ad3c, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-14.61",             0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-15.62",             0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-20.ic63",           0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-22.ic64",           0x20000, 0x0f99ad3c, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
 	
-	{ "b67-13.40",             0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
 	
-	{ "b67-06.66",             0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
 	
-	{ "b67-01",                0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-02",                0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-03",                0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-04",                0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
 	
-	{ "b67-05.43",             0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
 	
-	{ "b67-08",                0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
 	
-	{ "b67-07",                0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
 	
-	{ "eeprom-othunder.bin",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
 	
 	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
 	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
@@ -364,27 +398,27 @@ STD_ROM_PICK(Othunderuo)
 STD_ROM_FN(Othunderuo)
 
 static struct BurnRomInfo OthunderjRomDesc[] = {
-	{ "b67-20.63",             0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-21.64",             0x20000, 0x9690fc86, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-14.61",             0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
-	{ "b67-15.62",             0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-20.ic63",           0x20000, 0x21439ea2, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-21.ic64",           0x20000, 0x9690fc86, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
 	
-	{ "b67-13.40",             0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
 	
-	{ "b67-06.66",             0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
 	
-	{ "b67-01",                0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-02",                0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-03",                0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
-	{ "b67-04",                0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
 	
-	{ "b67-05.43",             0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
 	
-	{ "b67-08",                0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
 	
-	{ "b67-07",                0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
 	
-	{ "eeprom-othunder.bin",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
 	
 	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
 	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
@@ -394,6 +428,39 @@ static struct BurnRomInfo OthunderjRomDesc[] = {
 
 STD_ROM_PICK(Othunderj)
 STD_ROM_FN(Othunderj)
+
+static struct BurnRomInfo OthunderjscRomDesc[] = {
+	// SC stands for Shopping Center. It was put in a smaller, single player cabinet aimed at children
+	{ "b67-24.ic63",           0x20000, 0x18670e0b, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-25.ic64",           0x20000, 0x3d422991, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-14.ic61",           0x20000, 0x7f3dd724, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "b67-15.ic62",           0x20000, 0xe84f62d0, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	
+	{ "b67-13.ic40",           0x10000, 0x2936b4b1, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+	
+	{ "b67-06.ic66",           0x80000, 0xb9a38d64, BRF_GRA | TAITO_CHARS},
+	
+	{ "b67-01.ic1",            0x80000, 0x81ad9acb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-02.ic2",            0x80000, 0xc20cd2fb, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-03.ic3",            0x80000, 0xbc9019ed, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	{ "b67-04.ic4",            0x80000, 0x2af4c8af, BRF_GRA | TAITO_SPRITESA_BYTESWAP32 },
+	
+	{ "b67-05.ic43",           0x80000, 0x9593e42b, BRF_GRA | TAITO_SPRITEMAP },
+	
+	{ "b67-08.ic67",           0x80000, 0x458f41fb, BRF_SND | TAITO_YM2610A },
+	
+	{ "b67-07.ic44",           0x80000, 0x4f834357, BRF_SND | TAITO_YM2610B },
+	
+	{ "93c46_eeprom-othunder.ic86",   0x00080, 0x3729b844, BRF_PRG | TAITO_DEFAULT_EEPROM },
+	
+	{ "plhs18p8b-b67-09.ic15", 0x00149, 0x62035487, BRF_OPT },
+	{ "pal16l8a-b67-11.ic36",  0x00104, 0x3177fb06, BRF_OPT },
+	{ "pal20l8b-b67-12.ic37",  0x00144, 0xa47c2798, BRF_OPT },
+	{ "pal20l8b-b67-10.ic33",  0x00144, 0x4ced09c7, BRF_OPT },
+};
+
+STD_ROM_PICK(Othunderjsc)
+STD_ROM_FN(Othunderjsc)
 
 static INT32 MemIndex()
 {
@@ -497,7 +564,7 @@ void __fastcall Othunder68KWriteByte(UINT32 a, UINT8 d)
 		case 0x500005:
 		case 0x500007: {
 			nTaitoCyclesDone[0] += SekRun(10);
-			SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 			return;
 		}
 		
@@ -573,7 +640,7 @@ void __fastcall Othunder68KWriteWord(UINT32 a, UINT16 d)
 		case 0x500004:
 		case 0x500006: {
 			nTaitoCyclesDone[0] += SekRun(10);
-			SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 			return;
 		}
 		
@@ -664,6 +731,7 @@ void __fastcall OthunderZ80Write(UINT16 a, UINT8 d)
 
 			rVol = OthunderPan[0] * 100 / 0x1f;
 			lVol = OthunderPan[1] * 100 / 0x1f;
+			if (rVol == 0) rVol = 100; // Fixes player gunshot can only be heard through the left speaker.
 			BurnYM2610SetLeftVolume(BURN_SND_YM2610_YM2610_ROUTE_1, OthunderYM2610Route1MasterVol * lVol / 100.0);
 			BurnYM2610SetRightVolume(BURN_SND_YM2610_YM2610_ROUTE_1, OthunderYM2610Route1MasterVol * rVol / 100.0);
 
@@ -728,21 +796,7 @@ static const UINT8 othunder_default_eeprom[128] = {
 
 static void OthunderFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 OthunderSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / (16000000 / 4);
-}
-
-static double OthunderGetTime()
-{
-	return (double)ZetTotalCycles() / (16000000 / 4);
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 CharPlaneOffsets[4]   = { 0, 1, 2, 3 };
@@ -752,16 +806,18 @@ static INT32 SpritePlaneOffsets[4] = { 0, 8, 16, 24 };
 static INT32 SpriteXOffsets[16]    = { 32, 33, 34, 35, 36, 37, 38, 39, 0, 1, 2, 3, 4, 5, 6, 7 };
 static INT32 SpriteYOffsets[8]     = { 0, 64, 128, 192, 256, 320, 384, 448 };
 
+#ifdef BUILD_A68K
 static void SwitchToMusashi()
 {
 	if (bBurnUseASMCPUEmulation) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 		bprintf(PRINT_NORMAL, _T("Switching to Musashi 68000 core\n"));
 #endif
 		bUseAsm68KCoreOldValue = bBurnUseASMCPUEmulation;
 		bBurnUseASMCPUEmulation = false;
 	}
 }
+#endif
 
 static INT32 OthunderInit()
 {
@@ -804,20 +860,22 @@ static INT32 OthunderInit()
 	
 	TC0100SCNInit(0, TaitoNumChar, 4, 8, 1, NULL);
 	TC0110PCRInit(1, 0x1000);
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 	TC0220IOCInit();
 	
 	if (TaitoLoadRoms(1)) return 1;
 
+#ifdef BUILD_A68K
 	SwitchToMusashi();
+#endif
 	
 	// Setup the 68000 emulation
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1            , 0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Taito68KRam1            , 0x080000, 0x08ffff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0]         , 0x200000, 0x20ffff, SM_READ);
-	SekMapMemory(TaitoSpriteRam          , 0x400000, 0x4005ff, SM_RAM);
+	SekMapMemory(Taito68KRom1            , 0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1            , 0x080000, 0x08ffff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0]         , 0x200000, 0x20ffff, MAP_READ);
+	SekMapMemory(TaitoSpriteRam          , 0x400000, 0x4005ff, MAP_RAM);
 	SekSetReadWordHandler(0, Othunder68KReadWord);
 	SekSetWriteWordHandler(0, Othunder68KWriteWord);
 	SekSetReadByteHandler(0, Othunder68KReadByte);
@@ -837,7 +895,7 @@ static INT32 OthunderInit()
 	ZetMapArea(0xc000, 0xdfff, 2, TaitoZ80Ram1               );
 	ZetClose();	
 	
-	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &OthunderFMIRQHandler, OthunderSynchroniseStream, OthunderGetTime, 0);
+	BurnYM2610Init(16000000 / 2, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &OthunderFMIRQHandler, 0);
 	BurnTimerAttachZet(16000000 / 4);
 	OthunderYM2610AY8910RouteMasterVol = 0.25;
 	OthunderYM2610Route1MasterVol = 1.00;
@@ -848,7 +906,6 @@ static INT32 OthunderInit()
 	if (!EEPROMAvailable()) EEPROMFill(TaitoDefaultEEProm, 0, 128);
 	
 	TaitoMakeInputsFunction = OthunderMakeInputs;
-	TaitoDrawFunction = OthunderDraw;
 	TaitoIrqLine = 5;
 	TaitoFrameInterleave = 100;
 	TaitoFlipScreenX = 1;
@@ -868,14 +925,16 @@ static INT32 OthunderExit()
 {
 	TaitoExit();
 	
+#ifdef BUILD_A68K
 	// Switch back CPU core if needed
 	if (bUseAsm68KCoreOldValue) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 		bprintf(PRINT_NORMAL, _T("Switching back to A68K core\n"));
 #endif
 		bUseAsm68KCoreOldValue = false;
 		bBurnUseASMCPUEmulation = true;
 	}
+#endif
 	
 	return 0;
 }
@@ -1038,7 +1097,7 @@ static void OthunderRenderSprites(INT32 PriorityDraw)
 	}
 }
 
-static void OthunderDraw()
+static INT32 OthunderDraw()
 {
 	INT32 Disable = TC0100SCNCtrl[0][6] & 0xf7;
 	
@@ -1062,6 +1121,8 @@ static void OthunderDraw()
 	for (INT32 i = 0; i < nBurnGunNumPlayers; i++) {
 		BurnGunDrawTarget(i, BurnGunX[i] >> 8, BurnGunY[i] >> 8);
 	}
+
+	return 0;
 }
 
 static INT32 OthunderFrame()
@@ -1086,7 +1147,7 @@ static INT32 OthunderFrame()
 		nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 		nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 		nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-		if (i == (TaitoFrameInterleave - 1)) SekSetIRQLine(TaitoIrqLine, SEK_IRQSTATUS_AUTO);
+		if (i == (TaitoFrameInterleave - 1)) SekSetIRQLine(TaitoIrqLine, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		
 		ZetOpen(0);
@@ -1096,10 +1157,12 @@ static INT32 OthunderFrame()
 	
 	ZetOpen(0);
 	BurnTimerEndFrame(nTaitoCyclesTotal[1]);
-	BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	if (pBurnSoundOut) {
+		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	}
 	ZetClose();
 	
-	if (pBurnDraw) TaitoDrawFunction();
+	if (pBurnDraw) BurnDrvRedraw();
 
 	return 0;
 }
@@ -1150,31 +1213,41 @@ static INT32 OthunderScan(INT32 nAction, INT32 *pnMin)
 
 struct BurnDriver BurnDrvOthunder = {
 	"othunder", NULL, NULL, NULL, "1988",
-	"Operation Thunderbolt (World)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	"Operation Thunderbolt (World, rev 1)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, OthunderRomInfo, OthunderRomName, NULL, NULL, OthunderInputInfo, OthunderDIPInfo,
-	OthunderInit, OthunderExit, OthunderFrame, NULL, OthunderScan,
+	NULL, OthunderRomInfo, OthunderRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
+	NULL, 0x1000, 320, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvOthundero = {
+	"othundero", "othunder", NULL, NULL, "1988",
+	"Operation Thunderbolt (World)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
+	NULL, OthunderoRomInfo, OthunderoRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderuDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
 	NULL, 0x1000, 320, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvOthunderu = {
 	"othunderu", "othunder", NULL, NULL, "1988",
-	"Operation Thunderbolt (US)\0", NULL, "Taito America Corporation", "Taito Misc",
+	"Operation Thunderbolt (US, rev 1)\0", NULL, "Taito America Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, OthunderuRomInfo, OthunderuRomName, NULL, NULL, OthunderInputInfo, OthunderuDIPInfo,
-	OthunderInit, OthunderExit, OthunderFrame, NULL, OthunderScan,
+	NULL, OthunderuRomInfo, OthunderuRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderuDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
 	NULL, 0x1000, 320, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvOthunderuo = {
 	"othunderuo", "othunder", NULL, NULL, "1988",
-	"Operation Thunderbolt (US, older)\0", NULL, "Taito America Corporation", "Taito Misc",
+	"Operation Thunderbolt (US)\0", NULL, "Taito America Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, OthunderuoRomInfo, OthunderuoRomName, NULL, NULL, OthunderInputInfo, OthunderuDIPInfo,
-	OthunderInit, OthunderExit, OthunderFrame, NULL, OthunderScan,
+	NULL, OthunderuoRomInfo, OthunderuoRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderuDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
 	NULL, 0x1000, 320, 240, 4, 3
 };
 
@@ -1183,7 +1256,17 @@ struct BurnDriver BurnDrvOthunderj = {
 	"Operation Thunderbolt (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, OthunderjRomInfo, OthunderjRomName, NULL, NULL, OthunderInputInfo, OthunderjDIPInfo,
-	OthunderInit, OthunderExit, OthunderFrame, NULL, OthunderScan,
+	NULL, OthunderjRomInfo, OthunderjRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderjDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
+	NULL, 0x1000, 320, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvOthunderjsc = {
+	"othunderjsc", "othunder", NULL, NULL, "1988",
+	"Operation Thunderbolt (Japan, SC)\0", NULL, "Taito Corporation", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
+	NULL, OthunderjscRomInfo, OthunderjscRomName, NULL, NULL, NULL, NULL, OthunderInputInfo, OthunderjDIPInfo,
+	OthunderInit, OthunderExit, OthunderFrame, OthunderDraw, OthunderScan,
 	NULL, 0x1000, 320, 240, 4, 3
 };

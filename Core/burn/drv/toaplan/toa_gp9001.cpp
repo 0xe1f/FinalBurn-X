@@ -31,6 +31,7 @@ UINT8* GP9001RAM[2];
 UINT16* GP9001Reg[2];
 
 UINT8* GP9001Pointer[2];
+UINT32 GP9001PointerCfg[2];
 INT32 GP9001Regnum[2];
 
 static UINT32* pTileQueue[32];
@@ -95,6 +96,8 @@ static void RenderSpriteQueue(INT32 i, INT32 nPriority)
 	UINT32 nSpriteNumber;
 	INT32 x, y, xoff, yoff;
 	INT32 nFlip;
+	INT32 nMultiConnectorX = GP9001Reg[i][6] & 0x1ff;
+	INT32 nMultiConnectorY = GP9001Reg[i][7] & 0x1ff;
 
 	UINT8*** pMySpriteQueue = &pSpriteQueue[i << 4];
 
@@ -116,6 +119,14 @@ static void RenderSpriteQueue(INT32 i, INT32 nPriority)
 		nSpriteYSize = pSpriteInfo[6] & 0x0F;
 		nSpriteYPos = ((pSpriteInfo[7] << 1) | (pSpriteInfo[6] >> 7)) + GP9001Reg[i][7] + nSpriteYOffset;
 		nSpriteYPos &= 0x01FF;
+
+		if (pSpriteInfo[1] & 0x40) { // Multi-Connected sprite mode.
+			nSpriteXPos = (nMultiConnectorX + (((pSpriteInfo[5] << 1) | (pSpriteInfo[4] >> 7)))) & 0x1ff;
+			nSpriteYPos = (nMultiConnectorY + (((pSpriteInfo[7] << 1) | (pSpriteInfo[6] >> 7)))) & 0x1ff;
+		}
+
+		nMultiConnectorX = nSpriteXPos;
+		nMultiConnectorY = nSpriteYPos;
 
 		if (nFlip & 2) {
 			xoff = -8;
@@ -602,9 +613,15 @@ INT32 ToaScanGP9001(INT32 nAction, INT32* pnMin)
 
 		SCAN_VAR(nSpriteBuffer);
 
-		SCAN_VAR(GP9001Pointer);
+		SCAN_VAR(GP9001PointerCfg);
 		SCAN_VAR(GP9001Regnum);
 		SCAN_VAR(GP9001TileBank);
+		if (nAction & ACB_WRITE) {
+			for (INT32 i = 0; i < nControllers; i++) {
+				//bprintf(0, _T("ncontrgp9001: %X\n"), i);
+				ToaGP9001SetRAMPointer(GP9001PointerCfg[i], i);
+			}
+		}
 	}
 
 	return 0;

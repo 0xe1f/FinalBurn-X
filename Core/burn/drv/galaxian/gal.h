@@ -6,11 +6,7 @@
 #include "s2650_intf.h"
 #include "sn76496.h"
 #include "flt_rc.h"
-
-#include "driver.h"
-extern "C" {
- #include "ay8910.h"
-}
+#include "ay8910.h"
 
 // ROM types
 #define GAL_ROM_Z80_PROG1				1
@@ -71,6 +67,7 @@ extern UINT8 GalPaletteBank;
 extern UINT8 GalSpriteClipStart;
 extern UINT8 GalSpriteClipEnd;
 extern UINT8 FroggerAdjust;
+extern UINT8 Dingo;
 extern UINT8 GalBackgroundRed;
 extern UINT8 GalBackgroundGreen;
 extern UINT8 GalBackgroundBlue;
@@ -168,20 +165,22 @@ void MoonwarDrawBullets(INT32, INT32 x, INT32 y);
 void MshuttleDrawBullets(INT32, INT32 x, INT32 y);
 void DarkplntDrawBullets(INT32, INT32 x, INT32 y);
 void DambustrDrawBullets(INT32 Offs, INT32 x, INT32 y);
-void GalDraw();
+INT32 GalDraw();
 void DkongjrmRenderFrame();
 void DambustrRenderFrame();
 void FantastcRenderFrame();
 void TimefgtrRenderFrame();
 void ScramblerRenderFrame();
+void ZigZagRenderFrame();
 
 // gal_run.cpp
 extern UINT8 GalInputPort0[8];
 extern UINT8 GalInputPort1[8];
 extern UINT8 GalInputPort2[8];
 extern UINT8 GalInputPort3[8];
+extern UINT8 GalInputPort4[8];
 extern UINT8 GalDip[7];
-extern UINT8 GalInput[4];
+extern UINT8 GalInput[5];
 extern UINT8 GalReset;
 extern UINT8 GalFakeDip;
 extern INT32           GalAnalogPort0;
@@ -244,11 +243,13 @@ extern UINT8 KingballSpeechDip;
 extern UINT16 ScrambleProtectionState;
 extern UINT8 ScrambleProtectionResult;
 extern UINT8 MoonwarPortSelect;
+extern UINT8 MoonwarDialX[2];
 extern UINT8 MshuttleAY8910CS;
 extern UINT8 GmgalaxSelectedGame;
 extern UINT8 Fourin1Bank;
 extern UINT8 GameIsGmgalax;
 extern UINT8 GameIsBagmanmc;
+extern UINT8 GameIsMoonwar;
 extern UINT8 CavelonBankSwitch;
 extern UINT8 GalVBlank;
 
@@ -270,9 +271,8 @@ INT32 GalFrame();
 INT32 GalScan(INT32 nAction, INT32 *pnMin);
 
 // gal_sound.cpp
-extern INT16* pFMBuffer;
-extern INT16* pAY8910Buffer[9];
 extern UINT8 GalSoundType;
+extern UINT8 GalSoundSubType;
 extern UINT8 HunchbksSoundIrqFire;
 extern UINT8 GalLastPort2;
 extern UINT8 GalShootEnable;

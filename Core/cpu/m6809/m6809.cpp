@@ -131,9 +131,10 @@ static m6809_Regs m6809;
 #define DPD 	m6809.dp.d
 #define CC  	m6809.cc
 
-static PAIR ea;         /* effective address */
-#define EA	ea.w.l
-#define EAD ea.d
+#define ea      m6809.ea
+#define EA      ea.w.l
+#define EAD     ea.d
+#define EAB     ea.b.l
 
 #define CHANGE_PC change_pc(PCD)
 
@@ -164,6 +165,8 @@ static PAIR ea;         /* effective address */
 		CC |= CC_IF | CC_II;			/* inhibit FIRQ and IRQ */		\
 		PCD=RM16(0xfff6);												\
 		CHANGE_PC;														\
+	    if (m6809.irq_hold[M6809_FIRQ_LINE])                            \
+            m6809_set_irq_line(M6809_FIRQ_LINE, 0);                     \
 	}																	\
 	else																\
 	if( m6809.irq_state[M6809_IRQ_LINE]!=M6809_CLEAR_LINE && !(CC & CC_II) )	\
@@ -191,10 +194,13 @@ static PAIR ea;         /* effective address */
 		CC |= CC_II;					/* inhibit IRQ */				\
 		PCD=RM16(0xfff8);												\
 		CHANGE_PC;														\
+	    if (m6809.irq_hold[M6809_IRQ_LINE])                             \
+            m6809_set_irq_line(M6809_IRQ_LINE, 0);                      \
 	}
 
 /* public globals */
 static int m6809_ICount;
+static int m6809_segmentcycles;
 
 /* these are re-defined in m6809.h TO RAM, ROM or functions in cpuintrf.c */
 #define RM(Addr)		M6809_RDMEM(Addr)
@@ -288,7 +294,7 @@ CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N,CC_N
 #define SIGNED(b) ((UINT16)(b&0x80?b|0xff00:b))
 
 /* macros for addressing modes (postbytes have their own code) */
-#define DIRECT	EAD = DPD; IMMBYTE(ea.b.l)
+#define DIRECT	EAD = DPD; IMMBYTE(EAB)
 #define IMM8	EAD = PCD; PC++
 #define IMM16	EAD = PCD; PC+=2
 #define EXTENDED IMMWORD(ea)
@@ -425,6 +431,7 @@ void m6809_reset(void)
 	m6809.nmi_state = M6809_CLEAR_LINE;
 	m6809.irq_state[0] = M6809_CLEAR_LINE;
 	m6809.irq_state[1] = M6809_CLEAR_LINE;
+	m6809.extra_cycles = 0;
 
 	DPD = 0;			/* Reset direct page register */
 
@@ -433,6 +440,15 @@ void m6809_reset(void)
 
 	PCD = RM16(0xfffe);
 	CHANGE_PC;
+}
+
+void m6809_reset_hard(void)
+{
+	int (*irq_callback)(int irqline) = m6809.irq_callback;
+	memset(&m6809, 0, sizeof(m6809));
+	m6809.irq_callback = irq_callback;
+
+	m6809_reset();
 }
 
 /*
@@ -447,6 +463,10 @@ static void m6809_exit(void)
  ****************************************************************************/
 void m6809_set_irq_line(int irqline, int state)
 {
+	int hold = 0;
+
+	if (state == 2) { hold = 1; state = 1; }
+
 	if (irqline == M6809_INPUT_LINE_NMI)
 	{
 		if (m6809.nmi_state == state) return;
@@ -485,6 +505,7 @@ void m6809_set_irq_line(int irqline, int state)
 	{
 //	    LOG(("M6809#%d set_irq_line %d, %d\n", cpu_getactivecpu(), irqline, state));
 		m6809.irq_state[irqline] = state;
+		m6809.irq_hold[irqline] = hold;
 		if (state == M6809_CLEAR_LINE) return;
 		CHECK_IRQ_LINES;
 	}
@@ -496,10 +517,30 @@ void m6809_set_irq_line(int irqline, int state)
 /* includes the actual opcode implementations */
 #include "6809ops.c"
 
+UINT16 m6809_get_pc()
+{
+	return m6809.pc.w.l;
+}
+
+UINT16 m6809_get_prev_pc()
+{
+	return m6809.ppc.w.l;
+}
+
+static int m6809_running = 0;
+
+void m6809_end_timeslice()
+{
+	m6809_running = 0;
+}
+
 /* execute instructions on this CPU until icount expires */
 int m6809_execute(int cycles)	/* NS 970908 */
 {
-    m6809_ICount = cycles - m6809.extra_cycles;
+	m6809_running = 1;
+	m6809_segmentcycles = cycles;
+
+	m6809_ICount = cycles - m6809.extra_cycles;
 	m6809.extra_cycles = 0;
 
 	if (m6809.int_state & (M6809_CWAI | M6809_SYNC))
@@ -782,14 +823,24 @@ int m6809_execute(int cycles)	/* NS 970908 */
             m6809_ICount -= cycles1[m6809.ireg];
 #endif
 
-		} while( m6809_ICount > 0 );
+		} while( m6809_ICount > 0 && m6809_running);
 
         m6809_ICount -= m6809.extra_cycles;
 		m6809.extra_cycles = 0;
     }
 
-    return cycles - m6809_ICount;   /* NS 970908 */
+	cycles = cycles - m6809_ICount;   /* NS 970908 */
+
+	m6809_segmentcycles = m6809_ICount = 0;
+
+	return cycles;
 }
+
+int m6809_get_segmentcycles()
+{
+	return m6809_segmentcycles - m6809_ICount;
+}
+
 
 M6809_INLINE void fetch_effective_address( void )
 {

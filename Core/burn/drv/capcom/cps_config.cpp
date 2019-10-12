@@ -383,6 +383,14 @@ static const struct GfxRange mapper_pang3_table[] = {
 	{ 0              ,                        0,      0, 0 }
 };
 
+static const struct GfxRange mapper_pokonyan_table[] = {
+	{ GFXTYPE_SPRITES, 0x0000, 0x2fff, 0 },
+	{ GFXTYPE_SCROLL1, 0x7000, 0x7fff, 0 },
+	{ GFXTYPE_SCROLL3, 0x3000, 0x3fff, 0 },
+	{ GFXTYPE_SCROLL2, 0x4000, 0x6fff, 0 },
+	{ 0              ,      0,      0, 0 }
+};
+
 static const struct GfxRange mapper_sfzch_table[] = {
 	{ GFXTYPE_SPRITES | GFXTYPE_SCROLL1 | GFXTYPE_SCROLL2 | GFXTYPE_SCROLL3, 0x00000, 0x1ffff, 0 },
 	{ 0                                                                    ,       0,       0, 0 }
@@ -397,6 +405,16 @@ static const struct GfxRange mapper_cps2_table[] =
 static const struct GfxRange mapper_frog_table[] = {
 	{ GFXTYPE_SPRITES | GFXTYPE_SCROLL1 | GFXTYPE_SCROLL2 | GFXTYPE_SCROLL3, 0x00001, 0x1ffff, 0 },
 	{ 0                                                                    ,       0,       0, 0 }
+};
+
+static const struct GfxRange mapper_KNM10B_table[] = {
+	{ GFXTYPE_SPRITES, 0x00000, 0x07fff, 0 },
+	{ GFXTYPE_SPRITES, 0x08000, 0x0ffff, 1 },
+	{ GFXTYPE_SPRITES, 0x10000, 0x17fff, 2 },
+	{ GFXTYPE_SCROLL2, 0x04000, 0x07fff, 2 },
+	{ GFXTYPE_SCROLL1, 0x01000, 0x01fff, 2 },
+	{ GFXTYPE_SCROLL3, 0x02000, 0x03fff, 2 },
+	{ 0              ,       0,       0, 0 }
 };
 
 void SetGfxMapper(INT32 MapperId)
@@ -753,6 +771,15 @@ void SetGfxMapper(INT32 MapperId)
 			return;
 		}
 		
+		case mapper_pokon: {
+			GfxBankSizes[0] = 0x8000;
+			GfxBankSizes[1] = 0x8000;
+			GfxBankSizes[2] = 0x8000;
+			GfxBankSizes[3] = 0x0000;
+			GfxBankMapper = mapper_pokonyan_table;
+			return;
+		}
+		
 		case mapper_sfzch: {
 			GfxBankSizes[0] = 0x20000;
 			GfxBankSizes[1] = 0x00000;
@@ -777,6 +804,15 @@ void SetGfxMapper(INT32 MapperId)
 			GfxBankSizes[2] = 0x00000;
 			GfxBankSizes[3] = 0x00000;
 			GfxBankMapper = mapper_frog_table;
+			return;
+		}
+		
+		case mapper_KNM10B: {
+			GfxBankSizes[0] = 0x8000;
+			GfxBankSizes[1] = 0x8000;
+			GfxBankSizes[2] = 0x8000;
+			GfxBankSizes[3] = 0x0000;
+			GfxBankMapper = mapper_KNM10B_table;
 			return;
 		}
 	}
@@ -1149,7 +1185,7 @@ void SetCpsBId(INT32 CpsBId, INT32 bStars)
 			nCpsPalCtrlReg = 0x4a;
   			
 			CpsLayEn[1] = 0x08;
-			CpsLayEn[2] = 0x10;
+			CpsLayEn[2] = 0x14;
 			CpsLayEn[3] = 0x02;
 			if (bStars) {
 				CpsLayEn[4] = 0x00;

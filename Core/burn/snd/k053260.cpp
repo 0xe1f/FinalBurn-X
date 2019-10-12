@@ -1,6 +1,53 @@
+// copyright-holders:Ernesto Corvi, Alex W. Jackson
 /*********************************************************
 
-    Konami 053260 PCM Sound Chip
+    Konami 053260 KDSC
+
+    The 053260 is a four voice PCM/ADPCM sound chip that
+    also incorporates four 8-bit ports for communication
+    between a main CPU and audio CPU. The chip's output
+    is compatible with a YM3012 DAC, and it has a digital
+    auxiliary input compatible with the output of a YM2151.
+    Some games (e.g. Simpsons) only connect one channel of
+    the YM2151, but others (e.g. Thunder Cross II) connect
+    both channels for stereo mixing.
+
+    The 053260 has a 21-bit address bus and 8-bit data bus
+    to ROM, allowing it to access up to 2 megabytes of
+    sample data. Sample data can be either signed 8-bit
+    PCM or a custom 4-bit ADPCM format. It is possible for
+    two 053260 chips to share access to the same ROMs
+    (used by Over Drive)
+
+    The 053260 has separate address and data buses to the
+    audio CPU controlling it and to the main CPU. Both data
+    buses are 8 bit. The audio CPU address bus has 6 lines
+    (64 addressable registers, but fewer than 48 are
+    actually used) while the main CPU "bus" has only 1 line
+    (2 addressable registers). All registers on the audio
+    CPU side seem to be either read-only or write-only,
+    although some games write 0 to all the registers in a
+    loop at startup (including otherwise read-only or
+    entirely unused registers).
+    On the main CPU side, reads and writes to the same
+    address access different communication ports.
+
+    The sound data ROMs of Simpsons and Vendetta have
+    "headers" listing all the samples in the ROM, their
+    formats ("PCM" or "KADPCM"), start and end addresses.
+    The header data doesn't seem to be used by the hardware
+    (none of the other games have headers) but provides
+    useful information about the chip.
+
+    2004-02-28 (Oliver Achten)
+    Fixed ADPCM decoding. Games sound much better now.
+
+    2014-10-06 (Alex W. Jackson)
+    Rewrote from scratch in C++; implemented communication
+    ports properly; used the actual up counters instead of
+    converting to fractional sample position; fixed ADPCM
+    decoding bugs; added documentation.
+
 
 *********************************************************/
 
@@ -21,21 +68,22 @@ struct k053260_channel_def {
 	UINT32		start;
 	UINT32		bank;
 	UINT32		volume;
-	INT32					play;
+	INT32		play;
 	UINT32		pan;
 	UINT32		pos;
-	INT32					loop;
-	INT32					ppcm; /* packed PCM ( 4 bit signed ) */
-	INT32					ppcm_data;
+	INT32		loop;
+	INT32		ppcm; /* packed PCM ( 4 bit signed ) */
+	INT32		ppcm_data;
 };
+
 struct k053260_chip_def {
-	INT32								mode;
-	INT32								regs[0x30];
-	UINT8					*rom;
-	INT32								rom_size;
-	UINT32					*delta_table;
+	INT32		mode;
+	INT32		regs[0x30];
+	UINT8		*rom;
+	INT32		rom_size;
+	UINT32		*delta_table;
 	k053260_channel_def channels[4];
-	
+
 	double		gain[2];
 	INT32		output_dir[2];
 };
@@ -70,7 +118,7 @@ static void InitDeltaTable(INT32 rate, INT32 clock ) {
 
 void K053260Reset(INT32 chip)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Reset called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K053260Reset called with invalid chip %x\n"), chip);
 #endif
@@ -106,27 +154,28 @@ K053260_INLINE INT32 limit( INT32 val, INT32 max, INT32 min ) {
 
 void K053260Update(INT32 chip, INT16 *pBuf, INT32 length)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Update called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K053260Update called with invalid chip %x\n"), chip);
 #endif
 
-	static const INT32 dpcmcnv[] = { 0,1,2,4,8,16,32,64, -128, -64, -32, -16, -8, -4, -2, -1};
+	static const INT8 dpcmcnv[] = { 0,1,2,4,8,16,32,64, -128, -64, -32, -16, -8, -4, -2, -1};
 
-	INT32 i, j, lvol[4], rvol[4], play[4], loop[4], ppcm_data[4], ppcm[4];
+	INT32 lvol[4], rvol[4], play[4], loop[4], ppcm[4];
 	UINT8 *rom[4];
 	UINT32 delta[4], end[4], pos[4];
 	INT32 dataL, dataR;
+	INT8 ppcm_data[4];
 	INT8 d;
 	ic = &Chips[chip];
 
 	/* precache some values */
-	for ( i = 0; i < 4; i++ ) {
-		rom[i]= &ic->rom[ic->channels[i].start + ( ic->channels[i].bank << 16 )];
+	for ( int i = 0; i < 4; i++ ) {
+		rom[i]= &ic->rom[ic->channels[i].start + ( ic->channels[i].bank << 16 ) + 1];
 		delta[i] = (ic->delta_table[ic->channels[i].rate] * nUpdateStep) >> 15;
 		lvol[i] = ic->channels[i].volume * ic->channels[i].pan;
 		rvol[i] = ic->channels[i].volume * ( 8 - ic->channels[i].pan );
-		end[i] = ic->channels[i].size;
+		end[i] = ic->channels[i].size - 1;
 		pos[i] = ic->channels[i].pos;
 		play[i] = ic->channels[i].play;
 		loop[i] = ic->channels[i].loop;
@@ -136,11 +185,11 @@ void K053260Update(INT32 chip, INT16 *pBuf, INT32 length)
 			delta[i] /= 2;
 	}
 
-		for ( j = 0; j < length; j++ ) {
+		for ( int j = 0; j < length; j++ ) {
 
 			dataL = dataR = 0;
 
-			for ( i = 0; i < 4; i++ ) {
+			for ( int i = 0; i < 4; i++ ) {
 				/* see if the voice is on */
 				if ( play[i] ) {
 					/* see if we're done */
@@ -170,13 +219,7 @@ void K053260Update(INT32 chip, INT16 *pBuf, INT32 length)
 								newdata = ( ( rom[i][pos[i] >> BASE_SHIFT] ) ) & 0x0f; /*low nybble*/
 							}
 
-							ppcm_data[i] = (( ( ppcm_data[i] * 62 ) >> 6 ) + dpcmcnv[newdata]);
-
-							if ( ppcm_data[i] > 127 )
-								ppcm_data[i] = 127;
-							else
-								if ( ppcm_data[i] < -128 )
-									ppcm_data[i] = -128;
+							ppcm_data[i] += dpcmcnv[newdata];
 						}
 
 						d = ppcm_data[i];
@@ -217,13 +260,15 @@ void K053260Update(INT32 chip, INT16 *pBuf, INT32 length)
 			nLeftSample = BURN_SND_CLIP(nLeftSample);
 			nRightSample = BURN_SND_CLIP(nRightSample);
 		
-			pBuf[0] += nLeftSample;
-			pBuf[1] += nRightSample;
+//			pBuf[0] += nLeftSample;
+//			pBuf[1] += nRightSample;
+			pBuf[0] = BURN_SND_CLIP(pBuf[0] + nLeftSample);
+			pBuf[1] = BURN_SND_CLIP(pBuf[1] + nRightSample);
 			pBuf += 2;
 		}
 
 	/* update the regs now */
-	for ( i = 0; i < 4; i++ ) {
+	for ( int i = 0; i < 4; i++ ) {
 		ic->channels[i].pos = pos[i];
 		ic->channels[i].play = play[i];
 		ic->channels[i].ppcm_data = ppcm_data[i];
@@ -251,7 +296,7 @@ void K053260Init(INT32 chip, INT32 clock, UINT8 *rom, INT32 nLen)
 	for ( i = 0; i < 0x30; i++ )
 		ic->regs[i] = 0;
 
-	ic->delta_table = (UINT32* )malloc( 0x1000 * sizeof(UINT32) );
+	ic->delta_table = (UINT32* )BurnMalloc( 0x1000 * sizeof(UINT32) );
 
 	InitDeltaTable( rate, clock );
 	
@@ -269,7 +314,7 @@ void K053260Init(INT32 chip, INT32 clock, UINT8 *rom, INT32 nLen)
 
 void K053260SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260SetRoute called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K053260SetRoute called with invalid chip %x\n"), chip);
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("K053260SetRoute called with invalid index %i\n"), nIndex);
@@ -283,17 +328,16 @@ void K053260SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void K053260Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Exit called without init\n"));
 #endif
+
+	if (!DebugSnd_K053260Initted) return;
 
 	for (INT32 i = 0; i < 2; i++) {
 		ic = &Chips[i];
 
-		if (ic->delta_table) {
-			free (ic->delta_table);
-			ic->delta_table = NULL;
-		}
+		BurnFree (ic->delta_table);
 	}
 	
 	nUpdateStep = 0;
@@ -321,7 +365,7 @@ K053260_INLINE void check_bounds(INT32 channel ) {
 
 void K053260Write(INT32 chip, INT32 offset, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Write called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K053260Write called with invalid chip %x\n"), chip);
 #endif
@@ -440,7 +484,7 @@ void K053260Write(INT32 chip, INT32 offset, UINT8 data)
 
 UINT8 K053260Read(INT32 chip, INT32 offset)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Read called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K053260Read called with invalid chip %x\n"), chip);
 #endif
@@ -478,9 +522,9 @@ UINT8 K053260Read(INT32 chip, INT32 offset)
 	return ic->regs[offset];
 }
 
-INT32 K053260Scan(INT32 nAction)
+void K053260Scan(INT32 nAction, INT32 *)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K053260Initted) bprintf(PRINT_ERROR, _T("K053260Scan called without init\n"));
 #endif
 
@@ -488,30 +532,30 @@ INT32 K053260Scan(INT32 nAction)
 	char szName[32];
 
 	if ((nAction & ACB_DRIVER_DATA) == 0) {
-		return 1;
+		return;
 	}
 
 	for (INT32 i = 0; i < 2; i++) {
 		ic = &Chips[i];
 
-		sprintf(szName, "k053260 regs %d", 0);
+		memset(&ba, 0, sizeof(ba));
+		sprintf(szName, "k053260 regs %d", i);
 		ba.Data		= ic->regs;
-		ba.nLen		= 0x30 * sizeof(INT32);
+		ba.nLen		= sizeof(ic->regs);
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
-		sprintf(szName, "k053260 channels # %d", 0);
+		memset(&ba, 0, sizeof(ba));
+		sprintf(szName, "k053260 channels # %d", i);
 		ba.Data		= ic->channels;
-		ba.nLen		= 4 * sizeof(k053260_channel_def);
+		ba.nLen		= sizeof(ic->channels);
 		ba.nAddress = 0;
 		ba.szName	= szName;
 		BurnAcb(&ba);
 
 		SCAN_VAR(ic->mode);
 	}
-
-	return 0;
 }
 
 #undef K053260_INLINE

@@ -261,9 +261,9 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(DrvVidRAM,		0xffc000, 0xffc7ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0xffc800, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(DrvVidRAM,		0xffc000, 0xffc7ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0xffc800, 0xffffff, MAP_RAM);
 	SekSetWriteByteHandler(0,	xorworld_write_byte);
 	SekSetReadByteHandler(0,	xorworld_read_byte);
 	SekClose();
@@ -364,8 +364,8 @@ static INT32 DrvFrame()
 	for (INT32 i = 0; i < 4; i++)
 	{
 		SekRun((10000000 / 60) / 4);
-		if (i == 0 || i == 2) SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
-		if (/*i==1||*/i == 3) SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
+		if (i == 0 || i == 2) SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
+		if (/*i==1||*/i == 3) SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
 	}
 
 	if (pBurnSoundOut) {
@@ -400,7 +400,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
 
-		saa1099Scan(0, nAction);
+		saa1099Scan(nAction, pnMin);
 
 		EEPROMScan(nAction, pnMin);
 	}
@@ -431,7 +431,7 @@ struct BurnDriver BurnDrvXorworld = {
 	"Xor World (prototype)\0", NULL, "Gaelco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, xorworldRomInfo, xorworldRomName, NULL, NULL, XorworldInputInfo, XorworldDIPInfo,
+	NULL, xorworldRomInfo, xorworldRomName, NULL, NULL, NULL, NULL, XorworldInputInfo, XorworldDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	256, 224, 4, 3
 };

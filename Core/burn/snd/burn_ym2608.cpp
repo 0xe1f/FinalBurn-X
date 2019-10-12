@@ -1,5 +1,4 @@
 #include "burnint.h"
-#include "burn_sound.h"
 #include "burn_ym2608.h"
 
 void (*BurnYM2608Update)(INT16* pSoundBuf, INT32 nSegmentEnd);
@@ -42,7 +41,7 @@ static INT32 YM2608StreamCallbackDummy(INT32)
 
 static void AY8910Render(INT32 nSegmentLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608 AY8910Render called without init\n"));
 #endif
 
@@ -63,7 +62,7 @@ static void AY8910Render(INT32 nSegmentLength)
 
 static void YM2608Render(INT32 nSegmentLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("YM2608Render called without init\n"));
 #endif
 
@@ -86,7 +85,7 @@ static void YM2608Render(INT32 nSegmentLength)
 
 static void YM2608UpdateResample(INT16* pSoundBuf, INT32 nSegmentEnd)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("YM2608UpdateResample called without init\n"));
 #endif
 
@@ -200,7 +199,7 @@ static void YM2608UpdateResample(INT16* pSoundBuf, INT32 nSegmentEnd)
 
 static void YM2608UpdateNormal(INT16* pSoundBuf, INT32 nSegmentEnd)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("YM2608UpdateNormal called without init\n"));
 #endif
 
@@ -293,7 +292,7 @@ static void YM2608UpdateNormal(INT16* pSoundBuf, INT32 nSegmentEnd)
 
 void BurnYM2608UpdateRequest()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608UpdateRequest called without init\n"));
 #endif
 
@@ -302,7 +301,7 @@ void BurnYM2608UpdateRequest()
 
 static void BurnAY8910UpdateRequest()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608 BurnAY8910UpdateRequest called without init\n"));
 #endif
 
@@ -314,7 +313,7 @@ static void BurnAY8910UpdateRequest()
 
 void BurnYM2608Reset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608Reset called without init\n"));
 #endif
 
@@ -325,30 +324,31 @@ void BurnYM2608Reset()
 
 void BurnYM2608Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608Exit called without init\n"));
 #endif
+
+	if (!DebugSnd_YM2608Initted) return;
 
 	YM2608Shutdown();
 	AY8910Exit(0);
 
 	BurnTimerExit();
 
-	if (pBuffer) {
-		free(pBuffer);
-		pBuffer = NULL;
-	}
-	if (pAYBuffer) {
-		free(pAYBuffer);
-		pAYBuffer = NULL;
-	}
+	BurnFree(pBuffer);
+	BurnFree(pAYBuffer);
 	
 	bYM2608AddSignal = 0;
 	
 	DebugSnd_YM2608Initted = 0;
 }
 
-INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM2608ADPCMSize, FM_IRQHANDLER IRQCallback, INT32 (*StreamCallback)(INT32), double (*GetTimeCallback)(), INT32 bAddSignal)
+INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM2608ADPCMSize, UINT8* YM2608IROM, FM_IRQHANDLER IRQCallback, INT32 bAddSignal)
+{
+	return BurnYM2608Init(nClockFrequency, YM2608ADPCMROM, nYM2608ADPCMSize, YM2608IROM, IRQCallback, BurnSynchroniseStream, BurnGetTime, bAddSignal);
+}
+
+INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM2608ADPCMSize, UINT8* YM2608IROM, FM_IRQHANDLER IRQCallback, INT32 (*StreamCallback)(INT32), double (*GetTimeCallback)(), INT32 bAddSignal)
 {
 	DebugSnd_YM2608Initted = 1;
 	
@@ -360,7 +360,7 @@ INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM260
 		BurnYM2608Update = YM2608UpdateDummy;
 
 		AY8910InitYM(0, nClockFrequency, 11025, NULL, NULL, NULL, NULL, BurnAY8910UpdateRequest);
-		YM2608Init(1, nClockFrequency, 11025, (void**)(&YM2608ADPCMROM), nYM2608ADPCMSize, &BurnOPNTimerCallback, IRQCallback);
+		YM2608Init(1, nClockFrequency, 11025, (void**)(&YM2608ADPCMROM), nYM2608ADPCMSize, YM2608IROM, &BurnOPNTimerCallback, IRQCallback);
 		return 0;
 	}
 
@@ -385,12 +385,12 @@ INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM260
 	}
 
 	AY8910InitYM(0, nClockFrequency, nBurnYM2608SoundRate, NULL, NULL, NULL, NULL, BurnAY8910UpdateRequest);
-	YM2608Init(1, nClockFrequency, nBurnYM2608SoundRate, (void**)(&YM2608ADPCMROM), nYM2608ADPCMSize, &BurnOPNTimerCallback, IRQCallback);
+	YM2608Init(1, nClockFrequency, nBurnYM2608SoundRate, (void**)(&YM2608ADPCMROM), nYM2608ADPCMSize, YM2608IROM, &BurnOPNTimerCallback, IRQCallback);
 
-	pBuffer = (INT16*)malloc(4096 * 6 * sizeof(INT16));
+	pBuffer = (INT16*)BurnMalloc(4096 * 6 * sizeof(INT16));
 	memset(pBuffer, 0, 4096 * 6 * sizeof(INT16));
 
-	pAYBuffer = (INT32*)malloc(4096 * sizeof(INT32));
+	pAYBuffer = (INT32*)BurnMalloc(4096 * sizeof(INT32));
 	memset(pAYBuffer, 0, 4096 * sizeof(INT32));
 
 	nYM2608Position = 0;
@@ -411,7 +411,7 @@ INT32 BurnYM2608Init(INT32 nClockFrequency, UINT8* YM2608ADPCMROM, INT32* nYM260
 
 void BurnYM2608SetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608SetRoute called without init\n"));
 	if (nIndex < 0 || nIndex > 2) bprintf(PRINT_ERROR, _T("BurnYM2608SetRoute called with invalid index %i\n"), nIndex);
 #endif
@@ -422,7 +422,7 @@ void BurnYM2608SetRoute(INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void BurnYM2608Scan(INT32 nAction, INT32* pnMin)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_YM2608Initted) bprintf(PRINT_ERROR, _T("BurnYM2608Scan called without init\n"));
 #endif
 

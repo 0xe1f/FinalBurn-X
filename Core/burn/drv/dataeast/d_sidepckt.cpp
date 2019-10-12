@@ -1,3 +1,6 @@
+// based on MAME driver by Ernesto Corvi
+
+// Notes: driver needs some fixing up gfx-wise
 #include "tiles_generic.h"
 #include "m6809_intf.h"
 #include "m6502_intf.h"
@@ -355,7 +358,7 @@ static void SidecpcktI8751Write(UINT8 Data)
 	static const INT32 table_2[] = { 0x8e, 0x42, 0xad, 0x58, 0xec, 0x85, 0xdd, 0x4c, 0xad, 0x9f, 0x00, 0x4c, 0x7e, 0x42, 0xa2, 0xff };
 	static const INT32 table_3[] = { 0xbd, 0x73, 0x80, 0xbd, 0x73, 0xa7, 0xbd, 0x73, 0xe0, 0x7e, 0x72, 0x56, 0xff, 0xff, 0xff, 0xff };
 
-	M6809SetIRQLine(M6809_FIRQ_LINE, M6809_IRQSTATUS_AUTO);
+	M6809SetIRQLine(M6809_FIRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (InMath == 1) {
 		InMath=2;
@@ -394,9 +397,9 @@ static void SidecpcktI8751Write(UINT8 Data)
 		}
 
 		case 6: {
-			if (CurrentTable == 1) I8751Return = table_1[CurrentPtr++];
-			if (CurrentTable == 2) I8751Return = table_2[CurrentPtr++];
-			if (CurrentTable == 3) I8751Return = table_3[CurrentPtr++];
+			if (CurrentTable == 1) I8751Return = table_1[CurrentPtr++ % 3];
+			if (CurrentTable == 2) I8751Return = table_2[CurrentPtr++ % 0xf];
+			if (CurrentTable == 3) I8751Return = table_3[CurrentPtr++ % 0xf];
 			break;
 		}
 	}
@@ -408,7 +411,7 @@ static void SidecpcktjI8751Write(UINT8 Data)
 	static const INT32 table_2[] = { 0x8e, 0x42, 0xb2, 0x58, 0xec, 0x85, 0xdd, 0x4c, 0xad, 0x9f, 0x00, 0x4c, 0x7e, 0x42, 0xa7, 0xff };
 	static const INT32 table_3[] = { 0xbd, 0x71, 0xc8, 0xbd, 0x71, 0xef, 0xbd, 0x72, 0x28, 0x7e, 0x70, 0x9e, 0xff, 0xff, 0xff, 0xff };
 
-	M6809SetIRQLine(M6809_FIRQ_LINE, M6809_IRQSTATUS_AUTO);
+	M6809SetIRQLine(M6809_FIRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (InMath == 1) {
 		InMath = 2;
@@ -447,15 +450,15 @@ static void SidecpcktjI8751Write(UINT8 Data)
 		}
 
 		case 6: {
-			if (CurrentTable == 1) I8751Return = table_1[CurrentPtr++];
-			if (CurrentTable == 2) I8751Return = table_2[CurrentPtr++];
-			if (CurrentTable == 3) I8751Return = table_3[CurrentPtr++];
+			if (CurrentTable == 1) I8751Return = table_1[CurrentPtr++ % 3];
+			if (CurrentTable == 2) I8751Return = table_2[CurrentPtr++ % 0xf];
+			if (CurrentTable == 3) I8751Return = table_3[CurrentPtr++ % 0xf];
 			break;
 		}
 	}
 }
 
-UINT8 SidepcktM6809ReadByte(UINT16 Address)
+static UINT8 SidepcktM6809ReadByte(UINT16 Address)
 {
 	switch (Address) {
 		case 0x3000: {
@@ -491,12 +494,12 @@ UINT8 SidepcktM6809ReadByte(UINT16 Address)
 	return 0;
 }
 
-void SidepcktM6809WriteByte(UINT16 Address, UINT8 Data)
+static void SidepcktM6809WriteByte(UINT16 Address, UINT8 Data)
 {
 	switch (Address) {
 		case 0x3004: {
 			DrvSoundLatch = Data;
-			M6502SetIRQLine(M6502_INPUT_LINE_NMI, M6502_IRQSTATUS_AUTO);
+			M6502SetIRQLine(M6502_INPUT_LINE_NMI, CPU_IRQSTATUS_AUTO);
 			return;
 		}
 		
@@ -516,7 +519,7 @@ void SidepcktM6809WriteByte(UINT16 Address, UINT8 Data)
 	}
 }
 
-UINT8 SidepcktSoundReadByte(UINT16 Address)
+static UINT8 SidepcktSoundReadByte(UINT16 Address)
 {
 	switch (Address) {
 		case 0x3000: {
@@ -531,7 +534,7 @@ UINT8 SidepcktSoundReadByte(UINT16 Address)
 	return 0;
 }
 
-void SidepcktSoundWriteByte(UINT16 Address, UINT8 Data)
+static void SidepcktSoundWriteByte(UINT16 Address, UINT8 Data)
 {
 	switch (Address) {
 		case 0x1000: {
@@ -560,28 +563,13 @@ void SidepcktSoundWriteByte(UINT16 Address, UINT8 Data)
 	}
 }
 
-inline static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)(M6809TotalCycles() * nSoundRate / 2000000);
-}
-
-inline static double DrvGetTime()
-{
-	return (double)M6809TotalCycles() / 2000000;
-}
-
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		M6502SetIRQLine(M6502_IRQ_LINE, M6502_IRQSTATUS_ACK);
+		M6502SetIRQLine(M6502_IRQ_LINE, CPU_IRQSTATUS_ACK);
 	} else {
-		M6502SetIRQLine(M6502_IRQ_LINE, M6502_IRQSTATUS_NONE);
+		M6502SetIRQLine(M6502_IRQ_LINE, CPU_IRQSTATUS_NONE);
 	}
-}
-
-static INT32 DrvYM3526SynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)M6502TotalCycles() * nSoundRate / 1500000;
 }
 
 static INT32 CharPlaneOffsets[3]   = { 0, 0x40000, 0x80000 };
@@ -661,34 +649,34 @@ static INT32 DrvInit()
 		
 	BurnFree(DrvTempRom);
 	
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809Ram + 0x0000, 0x0000, 0x0fff, M6809_RAM);
-	M6809MapMemory(DrvVideoRam         , 0x1000, 0x13ff, M6809_RAM);
-	M6809MapMemory(DrvM6809Ram + 0x1000, 0x1400, 0x17ff, M6809_RAM);
-	M6809MapMemory(DrvColourRam        , 0x1800, 0x1bff, M6809_RAM);
-	M6809MapMemory(DrvM6809Ram + 0x1400, 0x1c00, 0x1fff, M6809_RAM);
-	M6809MapMemory(DrvSpriteRam        , 0x2000, 0x20ff, M6809_RAM);
-	M6809MapMemory(DrvM6809Ram + 0x1800, 0x2100, 0x24ff, M6809_RAM);
-	M6809MapMemory(DrvM6809Rom + 0x4000, 0x4000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809Ram + 0x0000, 0x0000, 0x0fff, MAP_RAM);
+	M6809MapMemory(DrvVideoRam         , 0x1000, 0x13ff, MAP_RAM);
+	M6809MapMemory(DrvM6809Ram + 0x1000, 0x1400, 0x17ff, MAP_RAM);
+	M6809MapMemory(DrvColourRam        , 0x1800, 0x1bff, MAP_RAM);
+	M6809MapMemory(DrvM6809Ram + 0x1400, 0x1c00, 0x1fff, MAP_RAM);
+	M6809MapMemory(DrvSpriteRam        , 0x2000, 0x20ff, MAP_RAM);
+	M6809MapMemory(DrvM6809Ram + 0x1800, 0x2100, 0x24ff, MAP_RAM);
+	M6809MapMemory(DrvM6809Rom + 0x4000, 0x4000, 0xffff, MAP_ROM);
 	M6809SetReadHandler(SidepcktM6809ReadByte);
 	M6809SetWriteHandler(SidepcktM6809WriteByte);
 	M6809Close();
 	
 	M6502Init(0, TYPE_M6502);
 	M6502Open(0);
-	M6502MapMemory(DrvM6502Ram            , 0x0000, 0x0fff, M6502_RAM);
-	M6502MapMemory(DrvM6502Rom            , 0x8000, 0xffff, M6502_ROM);
+	M6502MapMemory(DrvM6502Ram            , 0x0000, 0x0fff, MAP_RAM);
+	M6502MapMemory(DrvM6502Rom            , 0x8000, 0xffff, MAP_ROM);
 	M6502SetReadHandler(SidepcktSoundReadByte);
 	M6502SetWriteHandler(SidepcktSoundWriteByte);
 	M6502Close();	
 	
-	BurnYM2203Init(1, 1500000, NULL, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(1, 1500000, NULL, 0);
 	BurnTimerAttachM6809(2000000);
 	BurnYM2203SetAllRoutes(0, 0.25, BURN_SND_ROUTE_BOTH);
 	
-	BurnYM3526Init(3000000, &DrvFMIRQHandler, &DrvYM3526SynchroniseStream, 1);
-	BurnTimerAttachM6502YM3526(1500000);
+	BurnYM3526Init(3000000, &DrvFMIRQHandler, 1);
+	BurnTimerAttachYM3526(&M6502Config, 1500000);
 	BurnYM3526SetRoute(BURN_SND_YM3526_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 	
 	GenericTilesInit();
@@ -849,7 +837,7 @@ static void DrawSprites()
 	}
 }
 
-static void DrvDraw()
+static INT32 DrvDraw()
 {
 	BurnTransferClear();
 	DrvCalcPalette();
@@ -857,6 +845,8 @@ static void DrvDraw()
 	if (nSpriteEnable & 0x02) DrawSprites();
 	if (nBurnLayer & 0x04) DrvRenderBgLayer(1);
 	BurnTransferCopy(DrvPalette);
+
+	return 0;
 }
 
 static INT32 DrvFrame()
@@ -880,7 +870,7 @@ static INT32 DrvFrame()
 		nCurrentCPU = 0;
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 		BurnTimerUpdate(nNext);
-		if (i == (nInterleave - 1)) M6809SetIRQLine(0x20, M6809_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) M6809SetIRQLine(0x20, CPU_IRQSTATUS_AUTO);
 		
 		nCurrentCPU = 1;
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
@@ -918,14 +908,14 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 	}
-	
+
 	if (nAction & ACB_DRIVER_DATA) {
 		M6809Scan(nAction);
 		M6502Scan(nAction);
-		
+
 		BurnYM2203Scan(nAction, pnMin);
 		BurnYM3526Scan(nAction, pnMin);
-	
+
 		SCAN_VAR(I8751Return);
 		SCAN_VAR(CurrentPtr);
 		SCAN_VAR(CurrentTable);
@@ -942,8 +932,8 @@ struct BurnDriver BurnDrvSidepckt = {
 	"Side Pocket (World)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 3, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
-	NULL, DrvRomInfo, DrvRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	SidepcktInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, DrvRomInfo, DrvRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	SidepcktInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
 
@@ -952,8 +942,8 @@ struct BurnDriver BurnDrvSidepcktj = {
 	"Side Pocket (Japan)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 3, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
-	NULL, DrvjRomInfo, DrvjRomName, NULL, NULL, DrvInputInfo, DrvjDIPInfo,
-	SidepcktjInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, DrvjRomInfo, DrvjRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvjDIPInfo,
+	SidepcktjInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
 
@@ -962,8 +952,8 @@ struct BurnDriver BurnDrvSidepcktb = {
 	"Side Pocket (bootleg set 1)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 3, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
-	NULL, DrvbRomInfo, DrvbRomName, NULL, NULL, DrvInputInfo, DrvbDIPInfo,
-	SidepcktbInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, DrvbRomInfo, DrvbRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvbDIPInfo,
+	SidepcktbInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
 
@@ -972,7 +962,7 @@ struct BurnDriver BurnDrvSidepcktb2 = {
 	"Side Pocket (bootleg set 2)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 3, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
-	NULL, Drvb2RomInfo, Drvb2RomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	SidepcktbInit, DrvExit, DrvFrame, NULL, DrvScan,
+	NULL, Drvb2RomInfo, Drvb2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	SidepcktbInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };

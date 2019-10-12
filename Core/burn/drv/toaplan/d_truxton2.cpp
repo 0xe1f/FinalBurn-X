@@ -1,3 +1,6 @@
+// FB Alpha Truxton 2 driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 // Truxton 2
 
@@ -58,10 +61,10 @@ static struct BurnDIPInfo truxton2DIPList[] = {
 	{0x16,	0xFF, 0x0F,	0x02, NULL},
 
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Screen type"},
 	{0x14,	0x01, 0x02,	0x00, "Normal screen"},
 	{0x14,	0x01, 0x02,	0x02, "Invert screen"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -124,7 +127,7 @@ static struct BurnDIPInfo truxton2DIPList[] = {
 	{0x15,	0x01, 0x30,	0x01, "5"},
 	{0x15,	0x01, 0x30,	0x02, "4"},
 	{0x15,	0x01, 0x30,	0x03, "2"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Cheating"},
     {0x15,	0x01, 0x40,	0x00, "Normal game"},
     {0x15,	0x01, 0x40,	0x40, "No-death & stop mode"},
 	{0,		0xFE, 0,	2,	  "Continue play"},
@@ -171,9 +174,9 @@ UINT8 __fastcall truxton2ReadByte(UINT32 sekAddress)
 			return DrvInput[5];
 
 		case 0x700011:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0x700017:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		default: {
 //			printf("Attempt to read byte value of location %x\n", sekAddress);
@@ -215,9 +218,9 @@ UINT16 __fastcall truxton2ReadWord(UINT32 sekAddress)
 			return DrvInput[5];
 
 		case 0x700010:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0x700016:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		default: {
 // 			printf("Attempt to read word value of location %x\n", sekAddress);
@@ -234,7 +237,7 @@ void __fastcall truxton2WriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x700011:
-			MSM6295Command(0, byteValue);
+			MSM6295Write(0, byteValue);
 			break;
 
 		case 0x700015:
@@ -275,7 +278,7 @@ void __fastcall truxton2WriteWord(UINT32 sekAddress, UINT16 wordValue)
 			break;
 
 		case 0x700010:
-			MSM6295Command(0, wordValue & 0xFF);
+			MSM6295Write(0, wordValue & 0xFF);
 			break;
 		case 0x700014:
 			BurnYM2151SelectRegister(wordValue);
@@ -315,12 +318,14 @@ static INT32 DrvDoReset()
 {
 	SekOpen(0);
 	nIRQPending = 0;
-    SekSetIRQLine(0, SEK_IRQSTATUS_NONE);
+    SekSetIRQLine(0, CPU_IRQSTATUS_NONE);
 	SekReset();
 	SekClose();
 
 	MSM6295Reset(0);
 	BurnYM2151Reset();
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -400,7 +405,7 @@ static INT32 DrvFrame()
 			}
 
 			nIRQPending  = 1;
-			SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
 
 			ToaBufferGP9001Sprites();
 
@@ -504,8 +509,8 @@ static INT32 DrvScan(INT32 nAction, INT32* pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		MSM6295Scan(0, nAction);
-		BurnYM2151Scan(nAction);
+		MSM6295Scan(nAction, pnMin);
+		BurnYM2151Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 
@@ -546,12 +551,12 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,			0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,			0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(RamPal,		0x300000, 0x300FFF, SM_RAM);	// Palette RAM
-		SekMapMemory(ExtraTRAM,		0x400000, 0x401FFF, SM_RAM);
-		SekMapMemory(ExtraTSelect,	0x402000, 0x402FFF, SM_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
-		SekMapMemory(ExtraTScroll,	0x403000, 0x403FFF, SM_RAM);	// 0x203000 - Offset; 0x503200 - RAM
+		SekMapMemory(Rom01,			0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,			0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x300000, 0x300FFF, MAP_RAM);	// Palette RAM
+		SekMapMemory(ExtraTRAM,		0x400000, 0x401FFF, MAP_RAM);
+		SekMapMemory(ExtraTSelect,	0x402000, 0x402FFF, MAP_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
+		SekMapMemory(ExtraTScroll,	0x403000, 0x403FFF, MAP_RAM);	// 0x203000 - Offset; 0x503200 - RAM
 
 		SekSetReadWordHandler(0, truxton2ReadWord);
 		SekSetReadByteHandler(0, truxton2ReadByte);
@@ -577,7 +582,7 @@ static INT32 DrvInit()
 	BurnYM2151Init(27000000 / 8);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
-	MSM6295Init(0, 27000000 / 10 / 132, 1);
+	MSM6295Init(0, 16000000 / 4 / MSM6295_PIN7_LOW, 1);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
 
 	bDrawScreen = true;
@@ -606,8 +611,8 @@ struct BurnDriver BurnDrvTruxton2 = {
 	"truxton2", NULL, NULL, NULL, "1992",
 	"Truxton II\0Tatsujin Oh\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	L"Truxton II\0\u9054\u4EBA\u738B\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, truxton2RomInfo, truxton2RomName, NULL, NULL, truxton2InputInfo, truxton2DIPInfo,
+	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_ONLY, GBF_VERSHOOT, 0,
+	NULL, truxton2RomInfo, truxton2RomName, NULL, NULL, NULL, NULL, truxton2InputInfo, truxton2DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };

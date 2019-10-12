@@ -1,5 +1,3 @@
-#ifndef _BURN_LED_H
-#define _BURN_LED_H
 
 #define LED_COLOR_RED			0xff0000
 #define LED_COLOR_GREEN			0x00ff00
@@ -30,5 +28,3 @@ void BurnLEDRender();
 void BurnLEDExit();
 
 INT32 BurnLEDScan(INT32 nAction, INT32 *pnMin);
-
-#endif

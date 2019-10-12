@@ -38,8 +38,6 @@ static UINT8 *DrvShareRAM;
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
-static INT16 *SoundBuffer;
-
 static UINT8 *flipscreen;
 
 static UINT8 DrvJoy1[16];
@@ -231,7 +229,7 @@ static struct BurnDIPInfo Dassault4DIPList[]=
 
 STDDIPINFO(Dassault4)
 
-void __fastcall dassault_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall dassault_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x220000, data)
 	deco16_write_control_word(1, address, 0x260000, data)
@@ -240,7 +238,7 @@ void __fastcall dassault_main_write_word(UINT32 address, UINT16 data)
 	{
 		case 0x180000:
 			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x1c000c:
@@ -255,13 +253,13 @@ void __fastcall dassault_main_write_word(UINT32 address, UINT16 data)
 	}
 }
 
-void __fastcall dassault_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall dassault_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
 		case 0x180001:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x1c000b:
@@ -280,7 +278,7 @@ void __fastcall dassault_main_write_byte(UINT32 address, UINT8 data)
 	}
 }
 
-UINT16 __fastcall dassault_main_read_word(UINT32 address)
+static UINT16 __fastcall dassault_main_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -308,7 +306,7 @@ UINT16 __fastcall dassault_main_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall dassault_main_read_byte(UINT32 address)
+static UINT8 __fastcall dassault_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -348,7 +346,7 @@ UINT8 __fastcall dassault_main_read_byte(UINT32 address)
 	return 0;
 }
 
-UINT16 __fastcall dassault_sub_read_word(UINT32 address)
+static UINT16 __fastcall dassault_sub_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -360,7 +358,7 @@ UINT16 __fastcall dassault_sub_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall dassault_sub_read_byte(UINT32 address)
+static UINT8 __fastcall dassault_sub_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -372,7 +370,7 @@ UINT8 __fastcall dassault_sub_read_byte(UINT32 address)
 	return 0;
 }
 
-void __fastcall dassault_sub_write_word(UINT32 address, UINT16 )
+static void __fastcall dassault_sub_write_word(UINT32 address, UINT16 )
 {
 	switch (address)
 	{
@@ -383,7 +381,7 @@ void __fastcall dassault_sub_write_word(UINT32 address, UINT16 )
 	}
 }
 
-void __fastcall dassault_sub_write_byte(UINT32 address, UINT8 )
+static void __fastcall dassault_sub_write_byte(UINT32 address, UINT8 )
 {
 	switch (address)
 	{
@@ -397,11 +395,11 @@ void __fastcall dassault_sub_write_byte(UINT32 address, UINT8 )
 static void set_cpuA_irq(INT32 state)
 {
 	if (SekGetActive() == 0) { // main
-		SekSetIRQLine(5, state ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+		SekSetIRQLine(5, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 	} else {
 		SekClose();
 		SekOpen(0);
-		SekSetIRQLine(5, state ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+		SekSetIRQLine(5, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 		SekClose();
 		SekOpen(1);
 	}
@@ -410,17 +408,17 @@ static void set_cpuA_irq(INT32 state)
 static void set_cpuB_irq(INT32 state)
 {
 	if (SekGetActive() == 1) { // sub
-		SekSetIRQLine(6, state ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+		SekSetIRQLine(6, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 	} else {
 		SekClose();
 		SekOpen(1);
-		SekSetIRQLine(6, state ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+		SekSetIRQLine(6, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 		SekClose();
 		SekOpen(0);
 	}
 }
 
-void __fastcall dassault_irq_write_word(UINT32 address, UINT16 data)
+static void __fastcall dassault_irq_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xffffffc) == 0x3feffc) {
 		if (address & 2) {
@@ -433,7 +431,7 @@ void __fastcall dassault_irq_write_word(UINT32 address, UINT16 data)
 	*((UINT16*)(DrvShareRAM + (address & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
 }
 
-void __fastcall dassault_irq_write_byte(UINT32 address, UINT8 data)
+static void __fastcall dassault_irq_write_byte(UINT32 address, UINT8 data)
 {
 	if ((address & 0xffffffc) == 0x3feffc) {
 		if (address & 2) {
@@ -446,7 +444,7 @@ void __fastcall dassault_irq_write_byte(UINT32 address, UINT8 data)
 	DrvShareRAM[(address & 0xfff)^1] = data;
 }
 
-UINT16 __fastcall dassault_irq_read_word(UINT32 address)
+static UINT16 __fastcall dassault_irq_read_word(UINT32 address)
 {
 	if ((address & 0xffffffc) == 0x3feffc) {
 		if (address & 2) {
@@ -459,7 +457,7 @@ UINT16 __fastcall dassault_irq_read_word(UINT32 address)
 	return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvShareRAM + (address & 0xffe))));
 }
 
-UINT8 __fastcall dassault_irq_read_byte(UINT32 address)
+static UINT8 __fastcall dassault_irq_read_byte(UINT32 address)
 {
 	if (SekGetPC(0) == 0x114c && (DrvShareRAM[0] & 0x80) && (address & ~1) == 0x3fe000) SekRunEnd();
 
@@ -547,9 +545,6 @@ static INT32 MemIndex()
 	flipscreen	= Next; Next += 0x000001;
 
 	RamEnd		= Next;
-	
-	SoundBuffer = (INT16*)Next; Next += nBurnSoundLen * 2 * sizeof(INT16);
-
 	MemEnd		= Next;
 
 	return 0;
@@ -628,24 +623,24 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM0,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(DrvPalRAM,				0x100000, 0x103fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],			0x200000, 0x201fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],			0x202000, 0x203fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],		0x212000, 0x212fff, SM_WRITE);
-	SekMapMemory(deco16_pf_ram[2],			0x240000, 0x240fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],			0x242000, 0x242fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],		0x252000, 0x252fff, SM_WRITE);
-	SekMapMemory(Drv68KRAM0,			0x3f8000, 0x3fbfff, SM_RAM);
-	SekMapMemory(DrvSprRAM1,			0x3fc000, 0x3fcfff, SM_RAM);
-	SekMapMemory(DrvShareRAM,			0x3fe000, 0x3fefff, SM_FETCH);
+	SekMapMemory(Drv68KROM0,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(DrvPalRAM,				0x100000, 0x103fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],			0x200000, 0x201fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],			0x202000, 0x203fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],		0x212000, 0x212fff, MAP_WRITE);
+	SekMapMemory(deco16_pf_ram[2],			0x240000, 0x240fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],			0x242000, 0x242fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],		0x252000, 0x252fff, MAP_WRITE);
+	SekMapMemory(Drv68KRAM0,			0x3f8000, 0x3fbfff, MAP_RAM);
+	SekMapMemory(DrvSprRAM1,			0x3fc000, 0x3fcfff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,			0x3fe000, 0x3fefff, MAP_FETCH);
 
 	SekSetWriteWordHandler(0,			dassault_main_write_word);
 	SekSetWriteByteHandler(0,			dassault_main_write_byte);
 	SekSetReadWordHandler(0,			dassault_main_read_word);
 	SekSetReadByteHandler(0,			dassault_main_read_byte);
 
-	SekMapHandler(1,				0x3fe000, 0x3fefff, SM_WRITE | SM_READ);
+	SekMapHandler(1,				0x3fe000, 0x3fefff, MAP_WRITE | MAP_READ);
 	SekSetWriteWordHandler(1,			dassault_irq_write_word);
 	SekSetWriteByteHandler(1,			dassault_irq_write_byte);
 	SekSetReadWordHandler(1,			dassault_irq_read_word);
@@ -654,17 +649,17 @@ static INT32 DrvInit()
 
 	SekInit(1, 0x68000);
 	SekOpen(1);
-	SekMapMemory(Drv68KROM1,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM1,			0x3f8000, 0x3fbfff, SM_RAM);
-	SekMapMemory(DrvSprRAM0,			0x3fc000, 0x3fcfff, SM_RAM);
-	SekMapMemory(DrvShareRAM,			0x3fe000, 0x3fefff, SM_FETCH);
+	SekMapMemory(Drv68KROM1,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM1,			0x3f8000, 0x3fbfff, MAP_RAM);
+	SekMapMemory(DrvSprRAM0,			0x3fc000, 0x3fcfff, MAP_RAM);
+	SekMapMemory(DrvShareRAM,			0x3fe000, 0x3fefff, MAP_FETCH);
 
 	SekSetWriteWordHandler(0,			dassault_sub_write_word);
 	SekSetWriteByteHandler(0,			dassault_sub_write_byte);
 	SekSetReadWordHandler(0,			dassault_sub_read_word);
 	SekSetReadByteHandler(0,			dassault_sub_read_byte);
 
-	SekMapHandler(1,				0x3fe000, 0x3fefff, SM_WRITE | SM_READ);
+	SekMapHandler(1,				0x3fe000, 0x3fefff, MAP_WRITE | MAP_READ);
 
 	SekSetWriteWordHandler(1,			dassault_irq_write_word);
 	SekSetWriteByteHandler(1,			dassault_irq_write_byte);
@@ -787,7 +782,15 @@ static void draw_sprites(INT32 bpp)
 
 			while (multi >= 0)
 			{
-				if (!bpp) {
+				if (!bpp)
+				{
+					// hack around lack of alpha blending support for < 32bit color depths
+					// let's make these flicker rather than disabling them or drawing them solid
+					if (alpha != 0xff && (nCurrentFrame % 3) == 2) { // only draw every third frame
+						multi--;
+						continue;
+					}
+
 					deco16_draw_prio_sprite(pTransDraw, gfx, sprite - multi * inc, (color << 4) + coloff, x, y + mult * multi, flipx, flipy, pmask, 1 << bank);
 				} else {
 					deco16_draw_alphaprio_sprite(DrvPalette, gfx, sprite - multi * inc, (color << 4) + coloff, x, y + mult * multi, flipx, flipy, pmask, 1 << bank, alpha);	
@@ -837,9 +840,9 @@ static INT32 DrvDraw()
 		break;
 	}
 
-	if (nSpriteEnable & 1) draw_sprites(0);
-
 	if (nBurnLayer & 8) deco16_draw_layer(0, pTransDraw, DECO16_LAYER_PRIORITY(0xff));
+
+	if (nSpriteEnable & 1) draw_sprites(0);
 
 	BurnTransferCopy(DrvPalette);
 
@@ -877,40 +880,37 @@ static INT32 DrvFrame()
 	{
 		SekOpen(0);
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
-		if (i == (nInterleave - 1)) SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		SekClose();
 
 		SekOpen(1);
 		nCyclesDone[1] += SekRun(nCyclesDone[0] - nCyclesDone[1]);
-		if (i == (nInterleave - 1)) SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 		SekClose();
 
-		nCyclesDone[1] += h6280Run(nCyclesTotal[2] / nInterleave);
+		BurnTimerUpdate((i + 1) * nCyclesTotal[2] / nInterleave);
 
 		if (i == 248) deco16_vblank = 0x08;
-		
-		INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
-		deco16SoundUpdate(pSoundBuf, nSegmentLength);
-		nSoundBufferPos += nSegmentLength;
+
+		if (pBurnSoundOut && i%7 == 6) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 7);
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
 	}
 
 	BurnTimerEndFrame(nCyclesTotal[2]);
 
 	if (pBurnSoundOut) {
-		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
-		
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 
 		if (nSegmentLength) {
 			deco16SoundUpdate(pSoundBuf, nSegmentLength);
 		}
-		
-		for (INT32 i = 0; i < nBurnSoundLen; i++) {
-			pBurnSoundOut[(i << 1) + 0] += SoundBuffer[(i << 1) + 0];
-			pBurnSoundOut[(i << 1) + 1] += SoundBuffer[(i << 1) + 1];
-		}
+
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	h6280Close();
@@ -940,7 +940,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-	
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
@@ -1014,8 +1014,8 @@ struct BurnDriver BurnDrvThndzone = {
 	"thndzone", NULL, NULL, NULL, "1991",
 	"Thunder Zone (World, Rev 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 4, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, thndzoneRomInfo, thndzoneRomName, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
+	BDF_GAME_WORKING, 4, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, thndzoneRomInfo, thndzoneRomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };
@@ -1084,8 +1084,8 @@ struct BurnDriver BurnDrvThndzonea = {
 	"thndzonea", "thndzone", NULL, NULL, "1991",
 	"Thunder Zone (World)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, thndzoneaRomInfo, thndzoneaRomName, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, thndzoneaRomInfo, thndzoneaRomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };
@@ -1154,8 +1154,8 @@ struct BurnDriver BurnDrvThndzone4 = {
 	"thndzone4", "thndzone", NULL, NULL, "1991",
 	"Thunder Zone (World 4 Players)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, thndzone4RomInfo, thndzone4RomName, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, thndzone4RomInfo, thndzone4RomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };
@@ -1230,8 +1230,8 @@ struct BurnDriver BurnDrvThndzonej = {
 	"thndzonej", "thndzone", NULL, NULL, "1991",
 	"Thunder Zone (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, thndzonejRomInfo, thndzonejRomName, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, thndzonejRomInfo, thndzonejRomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, ThndzoneDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };
@@ -1300,8 +1300,8 @@ struct BurnDriver BurnDrvDassault = {
 	"dassault", "thndzone", NULL, NULL, "1991",
 	"Desert Assault (US)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, dassaultRomInfo, dassaultRomName, NULL, NULL, ThndzoneInputInfo, DassaultDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, dassaultRomInfo, dassaultRomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, DassaultDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };
@@ -1370,8 +1370,8 @@ struct BurnDriver BurnDrvDassault4 = {
 	"dassault4", "thndzone", NULL, NULL, "1991",
 	"Desert Assault (US 4 Players)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, dassault4RomInfo, dassault4RomName, NULL, NULL, ThndzoneInputInfo, Dassault4DIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, dassault4RomInfo, dassault4RomName, NULL, NULL, NULL, NULL, ThndzoneInputInfo, Dassault4DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	320, 240, 4, 3
 };

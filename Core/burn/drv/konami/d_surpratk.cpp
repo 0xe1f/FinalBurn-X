@@ -19,7 +19,6 @@ static UINT8 *DrvBankRAM;
 static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 
-static UINT32  *Palette;
 static UINT32  *DrvPalette;
 static UINT8 DrvRecalc;
 
@@ -143,8 +142,8 @@ static struct BurnDIPInfo SuratkjDIPList[]=
 static struct BurnDIPInfo BonusQuizDIPList[]=
 {
 	{0   , 0xfe, 0   ,    2, "Bonus Quiz"		},
-	{0x15, 0x01, 0x80, 0x80, "Include"			},
-	{0x15, 0x01, 0x80, 0x00, "Except"			},
+	{0x15, 0x01, 0x80, 0x80, "Include"		},
+	{0x15, 0x01, 0x80, 0x00, "Except"		},
 };
 
 STDDIPINFO(Suratkj)
@@ -253,10 +252,10 @@ static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, 
 static void K053245Callback(INT32 *code, INT32 *color, INT32 *priority)
 {
 	INT32 pri = 0x20 | ((*color & 0x60) >> 2);
-	if (pri <= layerpri[2])                           *priority = 0;
-	else if (pri > layerpri[2] && pri <= layerpri[1]) *priority = 1;
-	else if (pri > layerpri[1] && pri <= layerpri[0]) *priority = 2;
-	else 	                                          *priority = 3;
+	if (pri <= layerpri[2])                           *priority = 0x00;
+	else if (pri > layerpri[2] && pri <= layerpri[1]) *priority = 0xf0;
+	else if (pri > layerpri[1] && pri <= layerpri[0]) *priority = 0xfc;
+	else 	                                          *priority = 0xfe;
 
 	*code &= 0xfff;
 	*color = sprite_colorbase + (*color & 0x1f);
@@ -265,7 +264,7 @@ static void K053245Callback(INT32 *code, INT32 *color, INT32 *priority)
 static void supratk_set_lines(INT32 lines)
 {
 	nDrvRomBank[0] = lines;
-	konamiMapMemory(DrvKonROM + 0x10000 + ((lines & 0x1f) * 0x2000), 0x2000, 0x3fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + 0x10000 + ((lines & 0x1f) * 0x2000), 0x2000, 0x3fff, MAP_ROM); 
 }
 
 static void DrvYM2151IRQHandler(INT32 nStatus)
@@ -303,7 +302,6 @@ static INT32 MemIndex()
 
 	DrvKonROM		= Next; Next += 0x050000;
 
-	Palette			= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 
 	AllRam			= Next;
@@ -320,24 +318,10 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 XOffs[8] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007 };
-	INT32 YOffs[8] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x080000);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x080000);
-
-	GfxDecode(0x4000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-
-	K053245GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x80000);
-
-	return 0;
-}
-
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	int nLen = MemEnd - (UINT8 *)0;
@@ -350,30 +334,31 @@ static INT32 DrvInit()
 		if (BurnLoadRom(DrvKonROM  + 0x030000,  1, 1)) return 1;
 		memcpy (DrvKonROM + 0x08000, DrvKonROM + 0x48000, 0x8000);
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x040000,  3, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  2, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  3, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  4, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x040000,  5, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  4, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  5, 4, 2)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x080000);
+		K053245GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x080000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM,           0x0800, 0x1fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000, 0x2000, 0x3fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM,           0x0800, 0x1fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000, 0x2000, 0x3fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(supratk_write);
 	konamiSetReadHandler(supratk_read);
 	konamiSetlinesCallback(supratk_set_lines);
 	konamiClose();
 
-	K052109Init(DrvGfxROM0, 0x7ffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x7ffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K053245Init(0, DrvGfxROM1, 0x7ffff, K053245Callback);
+	K053245Init(0, DrvGfxROM1, DrvGfxROMExp1, 0x7ffff, K053245Callback);
 	K053245SetSpriteOffset(0, -112, 16);
 
 	BurnYM2151Init(3579545);
@@ -381,9 +366,8 @@ static INT32 DrvInit()
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
-	GenericTilesInit();
-
 	DrvDoReset();
+	konami_set_highlight_over_sprites_mode(1);
 
 	return 0;
 }
@@ -404,47 +388,9 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void DrvRecalcPal()
-{
-	UINT8 r,g,b;
-	UINT16 *p = (UINT16*)DrvPalRAM;
-	for (INT32 i = 0; i < 0x1000 / 2; i++) {
-		UINT16 d = BURN_ENDIAN_SWAP_INT16((p[i] << 8) | (p[i] >> 8));
-
-		b = (d >> 10) & 0x1f;
-		g = (d >>  5) & 0x1f;
-		r = (d >>  0) & 0x1f;
-
-		r = (r << 3) | (r >> 2);
-		g = (g << 3) | (g >> 2);
-		b = (b << 3) | (b >> 2);
-
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
-		Palette[i] = (r << 16) | (g << 8) | b;
-	}
-}
-
-// stolen directly from mame
-static void sortlayers(INT32 *layer,INT32 *pri)
-{
-#define SWAP(a,b) \
-	if (pri[a] < pri[b]) \
-	{ \
-		INT32 t; \
-		t = pri[a]; pri[a] = pri[b]; pri[b] = t; \
-		t = layer[a]; layer[a] = layer[b]; layer[b] = t; \
-	}
-
-	SWAP(0,1)
-	SWAP(0,2)
-	SWAP(1,2)
-}
-
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		DrvRecalcPal();
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x1000);
 
 	K052109UpdateScroll();
 
@@ -463,22 +409,17 @@ static INT32 DrvDraw()
 	layer[1] = 1;
 	layer[2] = 2;
 
-	sortlayers(layer,layerpri);
+	konami_sortlayers3(layer,layerpri);
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 16 * bg_colorbase;
-	}
+	KonamiClearBitmaps(DrvPalette[16 * bg_colorbase]);
 
-	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, DrvGfxROMExp0);
-	if (nSpriteEnable & 4) K053245SpritesRender(0, DrvGfxROMExp1, 2); // right?
-	if (nSpriteEnable & 8) K053245SpritesRender(0, DrvGfxROMExp1, 3);
-	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, DrvGfxROMExp0);
-	if (nSpriteEnable & 2) K053245SpritesRender(0, DrvGfxROMExp1, 1);
-	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, DrvGfxROMExp0);
+	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, 1);
+	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, 4);
 
-	if (nSpriteEnable & 1) K053245SpritesRender(0, DrvGfxROMExp1, 0); // used?
+	if (nSpriteEnable & 1) K053245SpritesRender(0);
 
-	KonamiBlendCopy(Palette, DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -497,7 +438,7 @@ static INT32 DrvFrame()
 			DrvInputs[2] ^= (DrvJoy3[i] & 1) << i;
 		}
 
-	  // Clear Opposites
+	  	// Clear Opposites
 		if ((DrvInputs[0] & 0x18) == 0) DrvInputs[0] |= 0x18;
 		if ((DrvInputs[0] & 0x06) == 0) DrvInputs[0] |= 0x06;
 		if ((DrvInputs[1] & 0x18) == 0) DrvInputs[1] |= 0x18;
@@ -505,7 +446,7 @@ static INT32 DrvFrame()
 	}
 	
 	INT32 nSoundBufferPos = 0;
-	INT32 nInterleave = 10;
+	INT32 nInterleave = 256;
 	INT32 nCyclesTotal = (((3000000 / 60) * 133) / 100); // 33% overclock
 	INT32 nCyclesDone = 0;
 
@@ -514,17 +455,23 @@ static INT32 DrvFrame()
 	for (INT32 i = 0; i < nInterleave; i++)	{
 		INT32 nSegment = (nCyclesTotal / nInterleave) * (i + 1);
 
+		if (i == 240) {
+			if (K052109_irq_enabled) {
+				nCyclesDone += konamiRun(10); // avoid irq masking from ym2151-generated irq's
+				konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_HOLD);
+				nCyclesDone += konamiRun(10);
+			}
+		}
+
 		nCyclesDone += konamiRun(nSegment - nCyclesDone);
-		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
+
+		if (pBurnSoundOut && i%8 == 7) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 8);
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}	
 	}
-
-	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -543,7 +490,7 @@ static INT32 DrvFrame()
 	return 0;
 }
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -551,7 +498,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029705;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -559,9 +506,9 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 
-		BurnYM2151Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 	}
@@ -600,10 +547,10 @@ struct BurnDriver BurnDrvSuratk = {
 	"suratk", NULL, NULL, NULL, "1990",
 	"Surprise Attack (World ver. K)\0", NULL, "Konami", "GX911",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT | GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, suratkRomInfo, suratkRomName, NULL, NULL, SurpratkInputInfo, SurpratkDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, suratkRomInfo, suratkRomName, NULL, NULL, NULL, NULL, SurpratkInputInfo, SurpratkDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
-	288, 224, 4, 3
+	304, 224, 4, 3
 };
 
 
@@ -627,10 +574,10 @@ struct BurnDriver BurnDrvSuratka = {
 	"suratka", "suratk", NULL, NULL, "1990",
 	"Surprise Attack (Asia ver. L)\0", NULL, "Konami", "GX911",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT | GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, suratkaRomInfo, suratkaRomName, NULL, NULL, SurpratkInputInfo, SurpratkDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, suratkaRomInfo, suratkaRomName, NULL, NULL, NULL, NULL, SurpratkInputInfo, SurpratkDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
-	288, 224, 4, 3
+	304, 224, 4, 3
 };
 
 
@@ -654,8 +601,8 @@ struct BurnDriver BurnDrvSuratkj = {
 	"suratkj", "suratk", NULL, NULL, "1990",
 	"Surprise Attack (Japan ver. M)\0", NULL, "Konami", "GX911",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT | GBF_SCRFIGHT | GBF_PLATFORM, 0,
-	NULL, suratkjRomInfo, suratkjRomName, NULL, NULL, SurpratkInputInfo, SuratkjDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, suratkjRomInfo, suratkjRomName, NULL, NULL, NULL, NULL, SurpratkInputInfo, SuratkjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
-	288, 224, 4, 3
+	304, 224, 4, 3
 };

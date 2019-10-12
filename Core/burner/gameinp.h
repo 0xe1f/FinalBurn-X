@@ -1,7 +1,3 @@
-#ifndef _GAMEINP_H
-#define _GAMEINP_H
-
-#include "burn.h"
 
 struct giConstant {
 	UINT8 nConst;				// The constant value
@@ -53,7 +49,7 @@ struct giInput {
 };
 
 struct giForce {
-	UINT8 nInput;				// The input to apply force feedback efects to
+	UINT8 nInput;				// The input to apply force feedback effects to
 	UINT8 nEffect;				// The effect to use
 };
 
@@ -66,7 +62,8 @@ struct giMacro {
 
 	struct giSwitch Switch;
 
-	char szName[33];					// Maximum name length 16 chars
+	char szName[33];			// Maximum name length 16 chars
+	UINT8 nSysMacro;			// mappable system macro (1) or Auto-Fire (15)
 };
 
 #define GIT_CONSTANT		(0x01)
@@ -101,4 +98,3 @@ struct GameInp {
 	};
 };
 
-#endif

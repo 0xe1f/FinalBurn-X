@@ -1,3 +1,5 @@
+// Based on MAME driver by David Graves
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
@@ -8,11 +10,14 @@
 #include "burn_gun.h"
 #include "timekpr.h"
 
-static void SlapshotDraw();
-static void Opwolf3Draw();
 static TaitoF2SpriteBufferUpdate TaitoF2SpriteBufferFunction;
 
+static INT32 CheckTimeKeeper = 0; // for gun auto-calibration
+static INT32 Opwolf3mode = 0;
+
+#ifdef BUILD_A68K
 static bool bUseAsm68KCoreOldValue = false;
+#endif
 
 #define A(a, b, c, d) {a, b, (UINT8*)(c), d}
 
@@ -219,7 +224,9 @@ static INT32 MemIndex()
 static INT32 SlapshotDoReset()
 {
 	TaitoDoReset();
-	
+
+	CheckTimeKeeper = 1;
+
 	return 0;
 }
 
@@ -258,7 +265,7 @@ void __fastcall Slapshot68KWriteByte(UINT32 a, UINT8 d)
 		TimeKeeperWrite((a - 0xa00000) >> 1, d);
 		return;
 	}
-	
+
 	TC0360PRIHalfWordWrite_Map(0xb00000)
 
 	if (a >= 0xc00000 && a <= 0xc0000f) {
@@ -300,6 +307,10 @@ UINT16 __fastcall Slapshot68KReadWord(UINT32 a)
 
 void __fastcall Slapshot68KWriteWord(UINT32 a, UINT16 d)
 {
+	if (a < 0x10000) return; // silly bad writes to rom area
+
+	if (a == 0xe80000) return; // gun "rumble"
+
 	TC0480SCPCtrlWordWrite_Map(0x830000)
 	
 	if (a >= 0xc00000 && a <= 0xc0000f) {
@@ -356,7 +367,7 @@ void __fastcall Opwolf3Gun68KWriteByte(UINT32 a, UINT8 d)
 		case 0xe00002:
 		case 0xe00004:
 		case 0xe00006: {
-			SekSetIRQLine(3, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
 			return;
 		}
 		
@@ -453,21 +464,7 @@ void __fastcall SlapshotZ80Write(UINT16 a, UINT8 d)
 
 static void SlapshotFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 SlapshotSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double SlapshotGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000;
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 CharPlaneOffsets[4]          = { 0, 1, 2, 3 };
@@ -478,16 +475,18 @@ static INT32 SpriteXOffsets[16]           = { 4, 0, 12, 8, 20, 16, 28, 24, 36, 3
 static INT32 SpriteYOffsets[16]           = { 0, 64, 128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960 };
 static INT32 Opwolf3SpritePlaneOffsets[6] = { 0x2000000, 0x2000001, 0, 1, 2, 3 };
 
+#ifdef BUILD_A68K
 static void SwitchToMusashi()
 {
 	if (bBurnUseASMCPUEmulation) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 		bprintf(PRINT_NORMAL, _T("Switching to Musashi 68000 core\n"));
 #endif
 		bUseAsm68KCoreOldValue = bBurnUseASMCPUEmulation;
 		bBurnUseASMCPUEmulation = false;
 	}
 }
+#endif
 
 static INT32 MachineInit()
 {
@@ -508,25 +507,30 @@ static INT32 MachineInit()
 	MemIndex();
 	
 	GenericTilesInit();
+
+	TaitoPriorityMap = pPrioDraw;
 	
 	TC0480SCPInit(TaitoNumChar, 3, 30, 9, -1, 1, -2);
+	TC0480SCPSetPriMap(TaitoPriorityMap);
 	TC0480SCPSetColourBase(256);
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 	TC0360PRIInit();
 	TC0640FIOInit();
 	
 	if (TaitoLoadRoms(1)) return 1;
 	
+#ifdef BUILD_A68K
 	SwitchToMusashi();
+#endif
 	
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1            , 0x000000, Taito68KRom1Size - 1, SM_ROM);
-	SekMapMemory(Taito68KRam1            , 0x500000, 0x50ffff, SM_RAM);
-	SekMapMemory(TaitoSpriteRam          , 0x600000, 0x60ffff, SM_RAM);
-	SekMapMemory(TaitoSpriteExtension    , 0x700000, 0x701fff, SM_RAM);
-	SekMapMemory(TC0480SCPRam            , 0x800000, 0x80ffff, SM_RAM);
-	SekMapMemory(TaitoPaletteRam         , 0x900000, 0x907fff, SM_RAM);
+	SekMapMemory(Taito68KRom1            , 0x000000, Taito68KRom1Size - 1, MAP_ROM);
+	SekMapMemory(Taito68KRam1            , 0x500000, 0x50ffff, MAP_RAM);
+	SekMapMemory(TaitoSpriteRam          , 0x600000, 0x60ffff, MAP_RAM);
+	SekMapMemory(TaitoSpriteExtension    , 0x700000, 0x701fff, MAP_RAM);
+	SekMapMemory(TC0480SCPRam            , 0x800000, 0x80ffff, MAP_RAM);
+	SekMapMemory(TaitoPaletteRam         , 0x900000, 0x907fff, MAP_RAM);
 	SekSetReadWordHandler(0, Slapshot68KReadWord);
 	SekSetWriteWordHandler(0, Slapshot68KWriteWord);
 	SekSetReadByteHandler(0, Slapshot68KReadByte);
@@ -546,14 +550,13 @@ static INT32 MachineInit()
 	ZetMapArea(0xc000, 0xdfff, 2, TaitoZ80Ram1               );
 	ZetClose();	
 	
-	BurnYM2610Init(8000000, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &SlapshotFMIRQHandler, SlapshotSynchroniseStream, SlapshotGetTime, 0);
+	BurnYM2610Init(8000000, TaitoYM2610ARom, (INT32*)&TaitoYM2610ARomSize, TaitoYM2610BRom, (INT32*)&TaitoYM2610BRomSize, &SlapshotFMIRQHandler, 0);
 	BurnTimerAttachZet(4000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 	BurnYM2610SetRoute(BURN_SND_YM2610_AY8910_ROUTE, 0.25, BURN_SND_ROUTE_BOTH);
 	
 	TaitoMakeInputsFunction = TC0640FIOMakeInputs;
-	TaitoDrawFunction = SlapshotDraw;
 
 	nTaitoCyclesTotal[0] = 14364000 / 60;
 	nTaitoCyclesTotal[1] = 4000000 / 60;
@@ -677,7 +680,7 @@ static INT32 Opwolf3Init()
 	BurnFree(TempRom);
 	
 	SekOpen(0);
-	SekMapHandler(1, 0xe00000, 0xe00007, SM_RAM);
+	SekMapHandler(1, 0xe00000, 0xe00007, MAP_RAM);
 	SekSetReadWordHandler(1, Opwolf3Gun68KReadWord);
 	SekSetWriteWordHandler(1, Opwolf3Gun68KWriteWord);
 	SekSetReadByteHandler(1, Opwolf3Gun68KReadByte);
@@ -685,8 +688,8 @@ static INT32 Opwolf3Init()
 	SekClose();
 	
 	TaitoMakeInputsFunction = Opwolf3MakeInputs;
-	TaitoDrawFunction = Opwolf3Draw;
-	
+	Opwolf3mode = 1;
+
 	BurnGunInit(2, true);
 
 	SlapshotDoReset();
@@ -698,17 +701,21 @@ static INT32 SlapshotExit()
 {
 	TaitoExit();
 	
+#ifdef BUILD_A68K
 	// Switch back CPU core if needed
 	if (bUseAsm68KCoreOldValue) {
-#if 1 && defined FBA_DEBUG
+#if 1 && defined FBNEO_DEBUG
 		bprintf(PRINT_NORMAL, _T("Switching back to A68K core\n"));
 #endif
 		bUseAsm68KCoreOldValue = false;
 		bBurnUseASMCPUEmulation = true;
 	}
+#endif
 	
 	TimeKeeperExit();
-	
+
+	Opwolf3mode = 0;
+
 	return 0;
 }
 
@@ -734,7 +741,7 @@ static void SlapshotCalcPalette()
 	}
 }
 
-static void SlapshotDraw()
+static INT32 SlapshotDraw()
 {
 	UINT8 Layer[4];
 	UINT16 Priority = TC0480SCPGetBgPriority();
@@ -744,44 +751,66 @@ static void SlapshotDraw()
 	Layer[2] = (Priority & 0x00f0) >>  4;
 	Layer[3] = (Priority & 0x000f) >>  0;
 	
-	TaitoF2TilePriority[Layer[0]] = TC0360PRIRegs[4] & 0x0f;
-	TaitoF2TilePriority[Layer[1]] = TC0360PRIRegs[4] >> 4;
-	TaitoF2TilePriority[Layer[2]] = TC0360PRIRegs[5] & 0x0f;
-	TaitoF2TilePriority[Layer[3]] = TC0360PRIRegs[5] >> 4;
-	
+	TaitoF2TilePriority[0] = TC0360PRIRegs[4] & 0x0f;
+	TaitoF2TilePriority[1] = TC0360PRIRegs[4] >> 4;
+	TaitoF2TilePriority[2] = TC0360PRIRegs[5] & 0x0f;
+	TaitoF2TilePriority[3] = TC0360PRIRegs[5] >> 4;
+
 	TaitoF2SpritePriority[0] = TC0360PRIRegs[6] & 0x0f;
 	TaitoF2SpritePriority[1] = TC0360PRIRegs[6] >> 4;
 	TaitoF2SpritePriority[2] = TC0360PRIRegs[7] & 0x0f;
 	TaitoF2SpritePriority[3] = TC0360PRIRegs[7] >> 4;
-	
+
 	SlapshotCalcPalette();
-	BurnTransferClear();	
-	
-	TaitoF2MakeSpriteList();
-	
-	for (INT32 i = 0; i < 16; i++) {
-		if (TaitoF2TilePriority[0] == i) TC0480SCPTilemapRender(Layer[0], 0, TaitoChars);
-		if (TaitoF2TilePriority[1] == i) TC0480SCPTilemapRender(Layer[1], 0, TaitoChars);
-		if (TaitoF2TilePriority[2] == i) TC0480SCPTilemapRender(Layer[2], 0, TaitoChars);
-		if (TaitoF2TilePriority[3] == i) TC0480SCPTilemapRender(Layer[3], 0, TaitoChars);
-		if (TaitoF2SpritePriority[3] == i) TaitoF2RenderSpriteList(TaitoF2SpritePriority[3]);
-		if (TaitoF2SpritePriority[2] == i) TaitoF2RenderSpriteList(TaitoF2SpritePriority[2]);
-		if (TaitoF2SpritePriority[1] == i) TaitoF2RenderSpriteList(TaitoF2SpritePriority[1]);
-		if (TaitoF2SpritePriority[0] == i) TaitoF2RenderSpriteList(TaitoF2SpritePriority[0]);
+	BurnTransferClear();
+
+	if (nBurnLayer & 1) TC0480SCPTilemapRenderPrio(Layer[0], 0, 1, TaitoChars);
+	if (nBurnLayer & 2) TC0480SCPTilemapRenderPrio(Layer[1], 0, 2, TaitoChars);
+	if (nBurnLayer & 4) TC0480SCPTilemapRenderPrio(Layer[2], 0, 4, TaitoChars);
+	if (nBurnLayer & 8) TC0480SCPTilemapRenderPrio(Layer[3], 0, 8, TaitoChars);
+
+	{ // sprite layer
+		TaitoF2MakeSpriteList();
+
+		INT32 primasks[4] = { 0, 0, 0, 0 };
+
+		for (INT32 i = 0; i < 4; i++) {
+			if (TaitoF2SpritePriority[i] < TaitoF2TilePriority[Layer[0]]) primasks[i] |= 0xaaaa;
+			if (TaitoF2SpritePriority[i] < TaitoF2TilePriority[Layer[1]]) primasks[i] |= 0xcccc;
+			if (TaitoF2SpritePriority[i] < TaitoF2TilePriority[Layer[2]]) primasks[i] |= 0xf0f0;
+			if (TaitoF2SpritePriority[i] < TaitoF2TilePriority[Layer[3]]) primasks[i] |= 0xff00;
+		}
+
+		if (nSpriteEnable & 1)
+			TaitoF2RenderSpriteListPriMasks((INT32 *)&primasks);
 	}
-	
+
 	TC0480SCPRenderCharLayer();
-	
+
 	BurnTransferCopy(TaitoPalette);
+
+	return 0;
 }
 
-static void Opwolf3Draw()
+static void Opwolf3Defaults()
 {
-	SlapshotDraw();
-	
-	for (INT32 i = 0; i < nBurnGunNumPlayers; i++) {
-		BurnGunDrawTarget(i, BurnGunX[i] >> 8, BurnGunY[i] >> 8);
+	UINT8 opwolf3tkprdata[80] = {
+		// first 64 bytes of 8192
+		0x45,0x41,0x53,0x54,0x00,0x08,0x05,0x08,0x05,0x08,0xa5,0x77,0xa5,0x77,0x11,0x03,
+		0x0e,0x00,0x01,0x39,0x41,0x00,0x00,0x7f,0xff,0xff,0xff,0x00,0x00,0x00,0x00,0x00,
+		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+		0x02,0x00,0x02,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xe4,0x00,0x00,0x00,
+		// last 16 bytes of 8192
+		0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x26,0x22,0x03,0x14,0x03,0x17
+	};
+
+	UINT8 *tkprdat = TimeKeeperGetRaw();
+	if (tkprdat) {
+		memset(tkprdat, 0, 8192);
+		memmove(tkprdat, opwolf3tkprdata, 64);
+		memmove(tkprdat + 0x1ff0, opwolf3tkprdata + 64, 16);
 	}
+
 }
 
 static INT32 SlapshotFrame()
@@ -789,6 +818,15 @@ static INT32 SlapshotFrame()
 	INT32 nInterleave = 100;
 
 	if (TaitoReset) SlapshotDoReset();
+
+	if (CheckTimeKeeper) {
+		CheckTimeKeeper = 0;
+		if (Opwolf3mode && TimeKeeperIsEmpty()) {
+			bprintf(0, _T("Operation Wolf 3 default calibrations loaded..\n"));
+			Opwolf3Defaults();
+		}
+	}
+
 
 	TaitoMakeInputsFunction();
 	
@@ -808,23 +846,25 @@ static INT32 SlapshotFrame()
 		nNext = (i + 1) * nTaitoCyclesTotal[nCurrentCPU] / nInterleave;
 		nTaitoCyclesSegment = nNext - nTaitoCyclesDone[nCurrentCPU];
 		nTaitoCyclesDone[nCurrentCPU] += SekRun(nTaitoCyclesSegment);
-		if (i == 10) { SekSetIRQLine(6, SEK_IRQSTATUS_AUTO); nTaitoCyclesDone[0] += SekRun(200000 - 500); }
-		if (i == (nInterleave - 1)) SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+		if (i == 83) { SekSetIRQLine(6, CPU_IRQSTATUS_AUTO); }
+		if (i == (nInterleave - 1)) SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		
 		ZetOpen(0);
-		BurnTimerUpdate(i * (nTaitoCyclesTotal[1] / nInterleave));
+		BurnTimerUpdate((i + 1) * (nTaitoCyclesTotal[1] / nInterleave));
 		ZetClose();
 	}
 	
 	ZetOpen(0);
 	BurnTimerEndFrame(nTaitoCyclesTotal[1]);
-	BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	if (pBurnSoundOut) {
+		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+	}
 	ZetClose();
 	
 	TaitoF2HandleSpriteBuffering();
 	
-	if (pBurnDraw) TaitoDrawFunction();
+	if (pBurnDraw) BurnDrvRedraw();
 	
 	TaitoF2SpriteBufferFunction();
 
@@ -866,12 +906,10 @@ static INT32 SlapshotScan(INT32 nAction, INT32 *pnMin)
 	}
 	
 	if (nAction & ACB_WRITE) {
-		if (TaitoZ80Bank) {
-			ZetOpen(0);
-			ZetMapArea(0x4000, 0x7fff, 0, TaitoZ80Rom1 + 0x4000 + (TaitoZ80Bank * 0x4000));
-			ZetMapArea(0x4000, 0x7fff, 2, TaitoZ80Rom1 + 0x4000 + (TaitoZ80Bank * 0x4000));
-			ZetClose();
-		}		
+		ZetOpen(0);
+		ZetMapArea(0x4000, 0x7fff, 0, TaitoZ80Rom1 + 0x4000 + (TaitoZ80Bank * 0x4000));
+		ZetMapArea(0x4000, 0x7fff, 2, TaitoZ80Rom1 + 0x4000 + (TaitoZ80Bank * 0x4000));
+		ZetClose();
 	}
 	
 	return 0;
@@ -893,8 +931,8 @@ struct BurnDriver BurnDrvSlapshot = {
 	"Slap Shot (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SPORTSMISC, 0,
-	NULL, SlapshotRomInfo, SlapshotRomName, NULL, NULL, SlapshotInputInfo, SlapshotDIPInfo,
-	SlapshotInit, SlapshotExit, SlapshotFrame, NULL, SlapshotScan,
+	NULL, SlapshotRomInfo, SlapshotRomName, NULL, NULL, NULL, NULL, SlapshotInputInfo, SlapshotDIPInfo,
+	SlapshotInit, SlapshotExit, SlapshotFrame, SlapshotDraw, SlapshotScan,
 	NULL, 0x2000, 320, 224, 4, 3
 };
 
@@ -903,8 +941,8 @@ struct BurnDriver BurnDrvOpwolf3 = {
 	"Operation Wolf 3 (World)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, Opwolf3RomInfo, Opwolf3RomName, NULL, NULL, Opwolf3InputInfo, Opwolf3DIPInfo,
-	Opwolf3Init, SlapshotExit, SlapshotFrame, NULL, Opwolf3Scan,
+	NULL, Opwolf3RomInfo, Opwolf3RomName, NULL, NULL, NULL, NULL, Opwolf3InputInfo, Opwolf3DIPInfo,
+	Opwolf3Init, SlapshotExit, SlapshotFrame, SlapshotDraw, Opwolf3Scan,
 	NULL, 0x2000, 320, 224, 4, 3
 };
 
@@ -913,7 +951,7 @@ struct BurnDriver BurnDrvOpwolf3u = {
 	"Operation Wolf 3 (US)\0", NULL, "Taito America Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SHOOT, 0,
-	NULL, Opwolf3uRomInfo, Opwolf3uRomName, NULL, NULL, Opwolf3InputInfo, Opwolf3DIPInfo,
-	Opwolf3Init, SlapshotExit, SlapshotFrame, NULL, Opwolf3Scan,
+	NULL, Opwolf3uRomInfo, Opwolf3uRomName, NULL, NULL, NULL, NULL, Opwolf3InputInfo, Opwolf3DIPInfo,
+	Opwolf3Init, SlapshotExit, SlapshotFrame, SlapshotDraw, Opwolf3Scan,
 	NULL, 0x2000, 320, 224, 4, 3
 };

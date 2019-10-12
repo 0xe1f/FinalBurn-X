@@ -9,8 +9,10 @@ public:
 		 double Freq2, double Q2, double Gain2);
 
 	void Filter(INT16 *Buff, INT32 Tam);
+	void FilterMono(INT16 *Buff, INT32 Tam);
 	void SetParam(double Freq, double SampleRate, double Q, double Gain,
-		      double Freq2, double Q2, double Gain2);
+				  double Freq2, double Q2, double Gain2);
+	void Reset(void);
 
 private:
 	INT32 a0, a1, a2, b0, b1, b2;

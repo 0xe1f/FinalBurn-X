@@ -24,8 +24,7 @@ static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
 
-static UINT32  *Palette;
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
 static UINT8 *nDrvRomBank;
@@ -170,7 +169,7 @@ void parodius_main_write(UINT16 address, UINT8 data)
 
 		case 0x3fc8:
 			ZetSetVector(0xff);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x3fcc:
@@ -292,11 +291,11 @@ UINT8 __fastcall parodius_sound_read(UINT16 address)
 		case 0xf800:
 			return 0xff;
 		case 0xf801:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 	}
 
 	if (address >= 0xfc00 && address <= 0xfc2f) {
-		if ((address & 0x3e) == 0x00) ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+		if ((address & 0x3e) == 0x00) ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 
 		return K053260Read(0, address & 0x3f);
 	}
@@ -314,10 +313,10 @@ static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, 
 static void K053245Callback(INT32 *code, INT32 *color, INT32 *priority)
 {
 	INT32 pri = 0x20 | ((*color & 0x60) >> 2);
-	if (pri <= layerpri[2])                           *priority = 0;
-	else if (pri > layerpri[2] && pri <= layerpri[1]) *priority = 1;
-	else if (pri > layerpri[1] && pri <= layerpri[0]) *priority = 2;
-	else 	                                          *priority = 3;
+	if (pri <= layerpri[2])                           *priority = 0x00;
+	else if (pri > layerpri[2] && pri <= layerpri[1]) *priority = 0xf0;
+	else if (pri > layerpri[1] && pri <= layerpri[0]) *priority = 0xfc;
+	else 	                                          *priority = 0xfe;
 
 	*code &= 0x1fff;
 	*color = sprite_colorbase + (*color & 0x1f);
@@ -327,7 +326,7 @@ static void parodius_set_lines(INT32 lines)
 {
 	nDrvRomBank[0] = lines;
 
-	konamiMapMemory(DrvKonROM + 0x10000 + ((~lines & 0x0f) * 0x4000), 0x6000, 0x9fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + 0x10000 + ((~lines & 0x0f) * 0x4000), 0x6000, 0x9fff, MAP_ROM); 
 }
 
 static INT32 DrvDoReset()
@@ -367,7 +366,6 @@ static INT32 MemIndex()
 
 	DrvSndROM		= Next; Next += 0x080000;
 
-	Palette			= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 
 	AllRam			= Next;
@@ -386,24 +384,10 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 XOffs[8] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007 };
-	INT32 YOffs[8] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x100000);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x100000);
-
-	GfxDecode(0x8000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-
-	K053245GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x100000);
-
-	return 0;
-}
-
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -418,22 +402,23 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x080000,  4, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  3, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  4, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x080000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  5, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  6, 4, 2)) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000,  7, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x100000);
+		K053245GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x100000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM,		0x0800, 0x1fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x9fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x0a000,	0xa000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM,		0x0800, 0x1fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x9fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x0a000,	0xa000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(parodius_main_write);
 	konamiSetReadHandler(parodius_main_read);
 	konamiSetlinesCallback(parodius_set_lines);
@@ -450,11 +435,11 @@ static INT32 DrvInit()
 	ZetSetReadHandler(parodius_sound_read);
 	ZetClose();
 
-	K052109Init(DrvGfxROM0, 0xfffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0xfffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K053245Init(0, DrvGfxROM1, 0xfffff, K053245Callback);
+	K053245Init(0, DrvGfxROM1, DrvGfxROMExp1, 0xfffff, K053245Callback);
 	K053245SetSpriteOffset(0, -112, -16);
 
 	BurnYM2151Init(3579545);
@@ -464,8 +449,6 @@ static INT32 DrvInit()
 	K053260Init(0, 3579545, DrvSndROM, 0x80000);
 	K053260SetRoute(0, BURN_SND_K053260_ROUTE_1, 0.70, BURN_SND_ROUTE_LEFT);
 	K053260SetRoute(0, BURN_SND_K053260_ROUTE_2, 0.70, BURN_SND_ROUTE_RIGHT);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -489,46 +472,9 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void sortlayers(INT32 *layer,INT32 *pri)
-{
-#define SWAP(a,b) \
-	if (pri[a] < pri[b]) \
-	{ \
-		INT32 t; \
-		t = pri[a]; pri[a] = pri[b]; pri[b] = t; \
-		t = layer[a]; layer[a] = layer[b]; layer[b] = t; \
-	}
-
-	SWAP(0,1)
-	SWAP(0,2)
-	SWAP(1,2)
-}
-
-static void DrvRecalcPal()
-{
-	UINT8 r,g,b;
-	UINT16 *p = (UINT16*)DrvPalRAM;
-	for (INT32 i = 0; i < 0x1000 / 2; i++) {
-		UINT16 d = (BURN_ENDIAN_SWAP_INT16(p[i]) << 8) | (BURN_ENDIAN_SWAP_INT16(p[i]) >> 8);
-
-		b = (d >> 10) & 0x1f;
-		g = (d >>  5) & 0x1f;
-		r = (d >>  0) & 0x1f;
-
-		r = (r << 3) | (r >> 2);
-		g = (g << 3) | (g >> 2);
-		b = (b << 3) | (b >> 2);
-
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
-		Palette[i] = (r << 16) | (g << 8) | b;
-	}
-}
-
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		DrvRecalcPal();
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x1000);
 
 	K052109UpdateScroll();
 
@@ -547,22 +493,17 @@ static INT32 DrvDraw()
 	layer[1] = 1;
 	layer[2] = 2;
 
-	sortlayers(layer,layerpri);
+	konami_sortlayers3(layer,layerpri);
+	
+	KonamiClearBitmaps(DrvPalette[16 * bg_colorbase]);
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 16 * bg_colorbase;
-	}
+	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, 1);
+	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, 4);
 
-	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, DrvGfxROMExp0);
-	if (nSpriteEnable & 4) K053245SpritesRender(0, DrvGfxROMExp1, 2); // right?
-	if (nSpriteEnable & 8) K053245SpritesRender(0, DrvGfxROMExp1, 3);
-	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, DrvGfxROMExp0);
-	if (nSpriteEnable & 2) K053245SpritesRender(0, DrvGfxROMExp1, 1);
-	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, DrvGfxROMExp0);
+	if (nSpriteEnable & 1) K053245SpritesRender(0);
 
-	if (nSpriteEnable & 1) K053245SpritesRender(0, DrvGfxROMExp1, 0); // used (back)?
-
-	KonamiBlendCopy(Palette, DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -621,7 +562,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -658,10 +599,10 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 	}
@@ -701,7 +642,7 @@ struct BurnDriver BurnDrvParodius = {
 	"Parodius DA! (World, set 1)\0", NULL, "Konami", "GX955",
 	L"Parodius \u30D1\u30ED\u30C7\u30A3\u30A6\u30B9\u3060\uFF01 \uFF0D\u795E\u8A71\u304B\u3089\u304A\u7B11\u3044\u3078\uFF0D (World, set 1)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, parodiusRomInfo, parodiusRomName, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
+	NULL, parodiusRomInfo, parodiusRomName, NULL, NULL, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -732,7 +673,7 @@ struct BurnDriver BurnDrvParodiuse = {
 	"Parodius DA! (World, set 2)\0", NULL, "Konami", "GX955",
 	L"Parodius \u30D1\u30ED\u30C7\u30A3\u30A6\u30B9\u3060\uFF01 \uFF0D\u795E\u8A71\u304B\u3089\u304A\u7B11\u3044\u3078\uFF0D (World, set 2)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, parodiuseRomInfo, parodiuseRomName, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
+	NULL, parodiuseRomInfo, parodiuseRomName, NULL, NULL, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -763,7 +704,7 @@ struct BurnDriver BurnDrvParodiusj = {
 	"Parodius DA! (Japan)\0", NULL, "Konami", "GX955",
 	L"Parodius \u30D1\u30ED\u30C7\u30A3\u30A6\u30B9\u3060\uFF01 \uFF0D\u795E\u8A71\u304B\u3089\u304A\u7B11\u3044\u3078\uFF0D (Japan)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, parodiusjRomInfo, parodiusjRomName, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
+	NULL, parodiusjRomInfo, parodiusjRomName, NULL, NULL, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -794,7 +735,7 @@ struct BurnDriver BurnDrvParodiusa = {
 	"Parodius DA! (Asia)\0", NULL, "Konami", "GX955",
 	L"Parodius \u30D1\u30ED\u30C7\u30A3\u30A6\u30B9\u3060\uFF01 \uFF0D\u795E\u8A71\u304B\u3089\u304A\u7B11\u3044\u3078\uFF0D (Asia)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, parodiusaRomInfo, parodiusaRomName, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
+	NULL, parodiusaRomInfo, parodiusaRomName, NULL, NULL, NULL, NULL, ParodiusInputInfo, ParodiusDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };

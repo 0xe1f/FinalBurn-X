@@ -30,8 +30,6 @@ static UINT8 *DrvSprBuf;
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
-static INT16 *SoundBuffer;
-
 static UINT8 *flipscreen;
 
 static UINT8 DrvJoy1[16];
@@ -99,7 +97,7 @@ static struct BurnDIPInfo CbusterDIPList[]=
 	{0x13, 0x01, 0x40, 0x40, "Off"			},
 	{0x13, 0x01, 0x40, 0x00, "On"			},
 
-	{0   , 0xfe, 0   ,    0, "Lives"		},
+	{0   , 0xfe, 0   ,    4, "Lives"		},
 	{0x14, 0x01, 0x03, 0x01, "1"			},
 	{0x14, 0x01, 0x03, 0x00, "2"			},
 	{0x14, 0x01, 0x03, 0x03, "3"			},
@@ -111,18 +109,18 @@ static struct BurnDIPInfo CbusterDIPList[]=
 	{0x14, 0x01, 0x0c, 0x04, "Hard"			},
 	{0x14, 0x01, 0x0c, 0x00, "Hardest"		},
 
-	{0   , 0xfe, 0   ,    4, "Allow Continue"	},
+	{0   , 0xfe, 0   ,    2, "Allow Continue"	},
 	{0x14, 0x01, 0x40, 0x00, "No"			},
 	{0x14, 0x01, 0x40, 0x40, "Yes"			},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"		},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x14, 0x01, 0x80, 0x80, "Off"			},
 	{0x14, 0x01, 0x80, 0x00, "On"			},
 };
 
 STDDIPINFO(Cbuster)
 
-void __fastcall cbuster_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall cbuster_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0xb5000, data)
 	deco16_write_control_word(1, address, 0xb6000, data)
@@ -136,12 +134,12 @@ void __fastcall cbuster_main_write_word(UINT32 address, UINT16 data)
 
 		case 0xbc002:
 			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 }
 
-void __fastcall cbuster_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall cbuster_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -152,7 +150,7 @@ void __fastcall cbuster_main_write_byte(UINT32 address, UINT8 data)
 
 		case 0xbc003:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0xbc004:
@@ -176,7 +174,7 @@ void __fastcall cbuster_main_write_byte(UINT32 address, UINT8 data)
 	}
 }
 
-UINT16 __fastcall cbuster_main_read_word(UINT32 address)
+static UINT16 __fastcall cbuster_main_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -200,7 +198,7 @@ UINT16 __fastcall cbuster_main_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall cbuster_main_read_byte(UINT32 address)
+static UINT8 __fastcall cbuster_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -303,9 +301,6 @@ static INT32 MemIndex()
 	flipscreen	= Next; Next += 0x000001;
 
 	RamEnd		= Next;
-	
-	SoundBuffer = (INT16*)Next; Next += nBurnSoundLen * 2 * sizeof(INT16);
-
 	MemEnd		= Next;
 
 	return 0;
@@ -410,19 +405,19 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,			0x080000, 0x083fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x0a0000, 0x0a1fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x0a2000, 0x0a2fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x0a4000, 0x0a47ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x0a6000, 0x0a67ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x0a8000, 0x0a8fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x0aa000, 0x0abfff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x0ac000, 0x0ac7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x0ae000, 0x0ae7ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x0b0000, 0x0b07ff, SM_RAM);
-	SekMapMemory(DrvPalRAM0,		0x0b8000, 0x0b8fff, SM_RAM);
-	SekMapMemory(DrvPalRAM1,		0x0b9000, 0x0b9fff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,			0x080000, 0x083fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x0a0000, 0x0a1fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x0a2000, 0x0a2fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x0a4000, 0x0a47ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x0a6000, 0x0a67ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x0a8000, 0x0a8fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x0aa000, 0x0abfff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x0ac000, 0x0ac7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x0ae000, 0x0ae7ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x0b0000, 0x0b07ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM0,		0x0b8000, 0x0b8fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM1,		0x0b9000, 0x0b9fff, MAP_RAM);
 	SekSetWriteWordHandler(0,		cbuster_main_write_word);
 	SekSetWriteByteHandler(0,		cbuster_main_write_byte);
 	SekSetReadWordHandler(0,		cbuster_main_read_word);
@@ -431,6 +426,8 @@ static INT32 DrvInit()
 
 	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 1, NULL, 0.45, 1006875, 0.75, 2013750, 0.60);
 	BurnYM2203SetAllRoutes(0, 0.60, BURN_SND_ROUTE_BOTH);
+
+	deco16_music_tempofix = 1;
 
 	GenericTilesInit();
 
@@ -600,7 +597,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	INT32 nInterleave = 256;
+	INT32 nInterleave = 232;
 	INT32 nSoundBufferPos = 0;
 	INT32 nCyclesTotal[2] = { 12000000 / 58, 8055000 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
@@ -615,38 +612,36 @@ static INT32 DrvFrame()
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
-		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / nInterleave);
 
-		if (i == 240) deco16_vblank = 0x08;
-		
-		INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
-		deco16SoundUpdate(pSoundBuf, nSegmentLength);
-		nSoundBufferPos += nSegmentLength;
+
+		if (i == 206) deco16_vblank = 0x08;
+
+		if (pBurnSoundOut) {
+			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
 	}
 
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 	BurnTimerEndFrame(nCyclesTotal[1]);
 
 	if (pBurnSoundOut) {
-		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
-		
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 
 		if (nSegmentLength) {
 			deco16SoundUpdate(pSoundBuf, nSegmentLength);
 		}
-		
-		for (INT32 i = 0; i < nBurnSoundLen; i++) {
-			pBurnSoundOut[(i << 1) + 0] += SoundBuffer[(i << 1) + 0];
-			pBurnSoundOut[(i << 1) + 1] += SoundBuffer[(i << 1) + 1];
-		}
+
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	h6280Close();
 	SekClose();
-	
+
 	if (pBurnDraw) {
 		DrvDraw();
 	}
@@ -672,7 +667,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-		
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
@@ -685,29 +680,29 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // Crude Buster (World FX version)
 
 static struct BurnRomInfo cbusterRomDesc[] = {
-	{ "fx01.rom",		0x20000, 0xddae6d83, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "fx00.rom",		0x20000, 0x5bc2c0de, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "fx03.rom",		0x20000, 0xc3d65bf9, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "fx02.rom",		0x20000, 0xb875266b, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "fx01.7l",		0x20000, 0xddae6d83, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "fx00.4l",		0x20000, 0x5bc2c0de, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fx03.9l",		0x20000, 0xc3d65bf9, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fx02.6l",		0x20000, 0xb875266b, 1 | BRF_PRG | BRF_ESS }, //  3
 
-	{ "fu11-.rom",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+	{ "fu11-.19h",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
 
-	{ "mab-00",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
-	{ "fu05-.rom",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
-	{ "fu06-.rom",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
+	{ "mab-00.4c",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "fu05-.6c",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
+	{ "fu06-.7c",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
 
-	{ "mab-01",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
+	{ "mab-01.19a",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
 
-	{ "mab-02",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
-	{ "mab-03",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
-	{ "fu07-.rom",		0x10000, 0xca8d0bb3, 5 | BRF_GRA },           // 11
-	{ "fu08-.rom",		0x10000, 0xc6afc5c8, 5 | BRF_GRA },           // 12
-	{ "fu09-.rom",		0x10000, 0x526809ca, 5 | BRF_GRA },           // 13
-	{ "fu10-.rom",		0x10000, 0x6be6d50e, 5 | BRF_GRA },           // 14
+	{ "mab-02.10a",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
+	{ "mab-03.11a",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
+	{ "fu07-.4a",		0x10000, 0xca8d0bb3, 5 | BRF_GRA },           // 11
+	{ "fu08-.5a",		0x10000, 0xc6afc5c8, 5 | BRF_GRA },           // 12
+	{ "fu09-.7a",		0x10000, 0x526809ca, 5 | BRF_GRA },           // 13
+	{ "fu10-.8a",		0x10000, 0x6be6d50e, 5 | BRF_GRA },           // 14
 
-	{ "fu12-.rom",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
+	{ "fu12-.16k",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
 
-	{ "fu13-.rom",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
+	{ "fu13-.21e",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
 
 	{ "mb7114h.18e",	0x00100, 0x3645b70f, 8 | BRF_OPT },           // 17 Unused PROMs
 };
@@ -720,7 +715,7 @@ struct BurnDriver BurnDrvCbuster = {
 	"Crude Buster (World FX version)\0",NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	NULL, cbusterRomInfo, cbusterRomName, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
+	NULL, cbusterRomInfo, cbusterRomName, NULL, NULL, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -729,29 +724,29 @@ struct BurnDriver BurnDrvCbuster = {
 // Crude Buster (World FU version)
 
 static struct BurnRomInfo cbusterwRomDesc[] = {
-	{ "fu01-.rom",		0x20000, 0x0203e0f8, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "fu00-.rom",		0x20000, 0x9c58626d, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "fu03-.rom",		0x20000, 0xdef46956, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "fu02-.rom",		0x20000, 0x649c3338, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "fu01-.7l",		0x20000, 0x0203e0f8, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "fu00-.4l",		0x20000, 0x9c58626d, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fu03-.9l",		0x20000, 0xdef46956, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fu02-.6l",		0x20000, 0x649c3338, 1 | BRF_PRG | BRF_ESS }, //  3
 
-	{ "fu11-.rom",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+	{ "fu11-.19h",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
 
-	{ "mab-00",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
-	{ "fu05-.rom",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
-	{ "fu06-.rom",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
+	{ "mab-00.4c",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "fu05-.6c",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
+	{ "fu06-.7c",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
 
-	{ "mab-01",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
+	{ "mab-01.19a",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
 
-	{ "mab-02",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
-	{ "mab-03",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
-	{ "fu07-.rom",		0x10000, 0xca8d0bb3, 5 | BRF_GRA },           // 11
-	{ "fu08-.rom",		0x10000, 0xc6afc5c8, 5 | BRF_GRA },           // 12
-	{ "fu09-.rom",		0x10000, 0x526809ca, 5 | BRF_GRA },           // 13
-	{ "fu10-.rom",		0x10000, 0x6be6d50e, 5 | BRF_GRA },           // 14
+	{ "mab-02.10a",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
+	{ "mab-03.11a",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
+	{ "fu07-.4a",		0x10000, 0xca8d0bb3, 5 | BRF_GRA },           // 11
+	{ "fu08-.5a",		0x10000, 0xc6afc5c8, 5 | BRF_GRA },           // 12
+	{ "fu09-.7a",		0x10000, 0x526809ca, 5 | BRF_GRA },           // 13
+	{ "fu10-.8a",		0x10000, 0x6be6d50e, 5 | BRF_GRA },           // 14
 
-	{ "fu12-.rom",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
+	{ "fu12-.16k",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
 
-	{ "fu13-.rom",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
+	{ "fu13-.21e",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
 
 	{ "mb7114h.18e",	0x00100, 0x3645b70f, 8 | BRF_OPT },           // 17 Unused PROMs
 };
@@ -764,38 +759,38 @@ struct BurnDriver BurnDrvCbusterw = {
 	"Crude Buster (World FU version)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	NULL, cbusterwRomInfo, cbusterwRomName, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
+	NULL, cbusterwRomInfo, cbusterwRomName, NULL, NULL, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
 
-// Crude Buster (Japan)
+// Crude Buster (Japan FR revision 1)
 
 static struct BurnRomInfo cbusterjRomDesc[] = {
-	{ "fr01-1",		0x20000, 0xaf3c014f, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "fr00-1",		0x20000, 0xf666ad52, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "fr03",		0x20000, 0x02c06118, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "fr02",		0x20000, 0xb6c34332, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "fr01-1.7l",		0x20000, 0xaf3c014f, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "fr00-1.4l",		0x20000, 0xf666ad52, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fr03.9l",		0x20000, 0x02c06118, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fr02.6l",		0x20000, 0xb6c34332, 1 | BRF_PRG | BRF_ESS }, //  3
 
-	{ "fu11-.rom",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+	{ "fu11-.19h",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
 
-	{ "mab-00",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
-	{ "fu05-.rom",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
-	{ "fu06-.rom",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
+	{ "mab-00.4c",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "fr05-1.6c",		0x10000, 0xb1f0d910, 3 | BRF_GRA },           //  6
+	{ "fr06-1.7c",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
 
-	{ "mab-01",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
+	{ "mab-01.19a",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
 
-	{ "mab-02",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
-	{ "mab-03",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
-	{ "fr07",		0x10000, 0x52c85318, 5 | BRF_GRA },           // 11
-	{ "fr08",		0x10000, 0xea25fbac, 5 | BRF_GRA },           // 12
-	{ "fr09",		0x10000, 0xf8363424, 5 | BRF_GRA },           // 13
-	{ "fr10",		0x10000, 0x241d5760, 5 | BRF_GRA },           // 14
+	{ "mab-02.10a",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
+	{ "mab-03.11a",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
+	{ "fr07.4a",		0x10000, 0x52c85318, 5 | BRF_GRA },           // 11
+	{ "fr08.5a",		0x10000, 0xea25fbac, 5 | BRF_GRA },           // 12
+	{ "fr09.7a",		0x10000, 0xf8363424, 5 | BRF_GRA },           // 13
+	{ "fr10.8a",		0x10000, 0x241d5760, 5 | BRF_GRA },           // 14
 
-	{ "fu12-.rom",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
+	{ "fu12-.16k",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
 
-	{ "fu13-.rom",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
+	{ "fu13-.21e",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
 
 	{ "mb7114h.18e",	0x00100, 0x3645b70f, 8 | BRF_OPT },           // 17 Unused PROMs
 };
@@ -805,41 +800,41 @@ STD_ROM_FN(cbusterj)
 
 struct BurnDriver BurnDrvCbusterj = {
 	"cbusterj", "cbuster", NULL, NULL, "1990",
-	"Crude Buster (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
+	"Crude Buster (Japan FR revision 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	NULL, cbusterjRomInfo, cbusterjRomName, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
+	NULL, cbusterjRomInfo, cbusterjRomName, NULL, NULL, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
 
-// Two Crude (US)
+// Two Crude (US FT revision 1)
 
 static struct BurnRomInfo twocrudeRomDesc[] = {
-	{ "ft01",		0x20000, 0x08e96489, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "ft00",		0x20000, 0x6765c445, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "ft03",		0x20000, 0x28002c99, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "ft02",		0x20000, 0x37ea0626, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "ft01-1.7l",		0x20000, 0x7342ffc4, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "ft00-1.4l",		0x20000, 0x3f5f535f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "ft03.9l",		0x20000, 0x28002c99, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "ft02.6l",		0x20000, 0x37ea0626, 1 | BRF_PRG | BRF_ESS }, //  3
 
-	{ "fu11-.rom",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+	{ "ft11-.19h",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
 
-	{ "mab-00",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
-	{ "fu05-.rom",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
-	{ "fu06-.rom",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
+	{ "mab-00.4c",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "ft05-1.6c",		0x10000, 0xb1f0d910, 3 | BRF_GRA },           //  6
+	{ "ft06-1.7c",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
 
-	{ "mab-01",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
+	{ "mab-01.19a",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
 
-	{ "mab-02",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
-	{ "mab-03",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
-	{ "ft07",		0x10000, 0xe3465c25, 5 | BRF_GRA },           // 11
-	{ "ft08",		0x10000, 0xc7f1d565, 5 | BRF_GRA },           // 12
-	{ "ft09",		0x10000, 0x6e3657b9, 5 | BRF_GRA },           // 13
-	{ "ft10",		0x10000, 0xcdb83560, 5 | BRF_GRA },           // 14
+	{ "mab-02.10a",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
+	{ "mab-03.11a",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
+	{ "ft07-.4a",		0x10000, 0xe3465c25, 5 | BRF_GRA },           // 11
+	{ "ft08-.5a",		0x10000, 0xc7f1d565, 5 | BRF_GRA },           // 12
+	{ "ft09-.7a",		0x10000, 0x6e3657b9, 5 | BRF_GRA },           // 13
+	{ "ft10-.8a",		0x10000, 0xcdb83560, 5 | BRF_GRA },           // 14
 
-	{ "fu12-.rom",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
+	{ "ft12-.16k",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
 
-	{ "fu13-.rom",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
+	{ "ft13-.21e",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
 
 	{ "mb7114h.18e",	0x00100, 0x3645b70f, 8 | BRF_OPT },           // 17 Unused PROMs
 };
@@ -849,10 +844,54 @@ STD_ROM_FN(twocrude)
 
 struct BurnDriver BurnDrvTwocrude = {
 	"twocrude", "cbuster", NULL, NULL, "1990",
-	"Two Crude (US)\0", NULL, "Data East USA", "DECO IC16",
+	"Two Crude (US FT revision 1)\0", NULL, "Data East USA", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	NULL, twocrudeRomInfo, twocrudeRomName, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
+	NULL, twocrudeRomInfo, twocrudeRomName, NULL, NULL, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	256, 240, 4, 3
+};
+
+
+// Two Crude (US FT version)
+
+static struct BurnRomInfo twocrudeaRomDesc[] = {
+	{ "ft01.7l",		0x20000, 0x08e96489, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "ft00.4l",		0x20000, 0x6765c445, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "ft03.9l",		0x20000, 0x28002c99, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "ft02.6l",		0x20000, 0x37ea0626, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "ft11-.19h",		0x10000, 0x65f20f10, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+
+	{ "mab-00.4c",		0x80000, 0x660eaabd, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "ft05-.6c",		0x10000, 0x8134d412, 3 | BRF_GRA },           //  6
+	{ "ft06-.7c",		0x10000, 0x2f914a45, 3 | BRF_GRA },           //  7
+
+	{ "mab-01.19a",		0x80000, 0x1080d619, 4 | BRF_GRA },           //  8 Background Tiles
+
+	{ "mab-02.10a",		0x80000, 0x58b7231d, 5 | BRF_GRA },           //  9 Sprites
+	{ "mab-03.11a",		0x80000, 0x76053b9d, 5 | BRF_GRA },           // 10
+	{ "ft07-.4a",		0x10000, 0xe3465c25, 5 | BRF_GRA },           // 11
+	{ "ft08-.5a",		0x10000, 0xc7f1d565, 5 | BRF_GRA },           // 12
+	{ "ft09-.7a",		0x10000, 0x6e3657b9, 5 | BRF_GRA },           // 13
+	{ "ft10-.8a",		0x10000, 0xcdb83560, 5 | BRF_GRA },           // 14
+
+	{ "ft12-.16k",		0x20000, 0x2d1d65f2, 6 | BRF_SND },           // 15 OKI M6295 Samples 0
+
+	{ "ft13-.21e",		0x20000, 0xb8525622, 7 | BRF_SND },           // 16 OKI M6295 Samples 1
+
+	{ "mb7114h.18e",	0x00100, 0x3645b70f, 8 | BRF_OPT },           // 17 Unused PROMs
+};
+
+STD_ROM_PICK(twocrudea)
+STD_ROM_FN(twocrudea)
+
+struct BurnDriver BurnDrvTwocrudea = {
+	"twocrudea", "cbuster", NULL, NULL, "1990",
+	"Two Crude (US FT version)\0", NULL, "Data East USA", "DECO IC16",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	NULL, twocrudeaRomInfo, twocrudeaRomName, NULL, NULL, NULL, NULL, CbusterInputInfo, CbusterDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };

@@ -23,7 +23,7 @@ static UINT8 *DrvBankRAM;
 static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
 static UINT8 *soundlatch;
@@ -139,9 +139,9 @@ static void set_ram_bank(INT32 data)
 	nDrvRamBank[0] = data;
 
 	if (data & 0x20) {
-		konamiMapMemory(DrvPalRAM,  0x0000, 0x03ff, KON_RAM);
+		konamiMapMemory(DrvPalRAM,  0x0000, 0x03ff, MAP_RAM);
 	} else {
-		konamiMapMemory(DrvBankRAM, 0x0000, 0x03ff, KON_RAM);
+		konamiMapMemory(DrvBankRAM, 0x0000, 0x03ff, MAP_RAM);
 	}
 }
 
@@ -157,9 +157,7 @@ void aliens_main_write(UINT16 address, UINT8 data)
 		case 0x5f8c:
 			*soundlatch = data;
 			ZetSetVector(0xff);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
-
-			//ZetRaiseIrq(0xff);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 
@@ -229,10 +227,10 @@ UINT8 __fastcall aliens_sound_read(UINT16 address)
 	{
 		case 0xa000:
 		case 0xa001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0xc000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -259,7 +257,7 @@ static void aliens_set_lines(INT32 lines)
 
 	INT32 nBank = (lines & 0x1f) * 0x2000;
 
-	konamiMapMemory(DrvKonROM + 0x10000 + nBank, 0x2000, 0x3fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + 0x10000 + nBank, 0x2000, 0x3fff, MAP_ROM); 
 }
 
 static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, INT32 *, INT32 *)
@@ -273,18 +271,16 @@ static void K051960Callback(INT32 *code, INT32 *color,INT32 *priority, INT32 *sh
 {
 	switch (*color & 0x70)
 	{
-		case 0x10: *priority = 0x00; break;
-		case 0x00: *priority = 0x01; break;
-		case 0x40: *priority = 0x02; break;
-
+		case 0x10: *priority = 0x00; break; 
+		case 0x00: *priority = 0xf0; break;
+		case 0x40: *priority = 0xfc; break;
 		case 0x20:
-		case 0x60: *priority = 0x03; break;
-
-		// when are these used?
-		case 0x50: *priority = 0x04; break;
+		case 0x60: *priority = 0xfe; break;
+		case 0x50: *priority = 0xcc; break;
 		case 0x30:
-		case 0x70: *priority = 0x05; break;
+		case 0x70: *priority = 0xee; break;
 	}
+
 	*code |= (*color & 0x80) << 6;
 	*code &= 0x3fff;
 	*color = 16 + (*color & 0x0f);
@@ -305,6 +301,7 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
+	K007232Reset(0);
 	BurnYM2151Reset();
 
 	KonamiICReset();
@@ -347,26 +344,10 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane0[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 Plane1[4] = { 0x000, 0x008, 0x010, 0x018 };
-	INT32 XOffs[16] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
-			  0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107 };
-	INT32 YOffs[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
-			  0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x200000);
-	konami_rom_deinterleave_2(DrvGfxROM1, 0x200000);
-
-	GfxDecode(0x10000, 4,  8,  8, Plane0, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-	GfxDecode(0x04000, 4, 16, 16, Plane1, XOffs, YOffs, 0x400, DrvGfxROM1, DrvGfxROMExp1);
-
-	return 0;
-}
-
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -381,27 +362,28 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x080000,  4, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x100000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x180000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  3, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  4, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x100000,  5, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x100002,  6, 4, LD_GROUP(2))) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  7, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x080000,  8, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x100000,  9, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x180000, 10, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  7, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  8, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x100000,  9, 4, LD_GROUP(2))) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x100002, 10, 4, LD_GROUP(2))) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000, 11, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x200000);
+		K051960GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x200000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvBankRAM,          0x0000, 0x03ff, KON_RAM);
-	konamiMapMemory(DrvKonRAM,           0x0400, 0x1fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000, 0x2000, 0x3fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvBankRAM,          0x0000, 0x03ff, MAP_RAM);
+	konamiMapMemory(DrvKonRAM,           0x0400, 0x1fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000, 0x2000, 0x3fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x08000, 0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(aliens_main_write);
 	konamiSetReadHandler(aliens_main_read);
 	konamiSetlinesCallback(aliens_set_lines);
@@ -418,11 +400,11 @@ static INT32 DrvInit()
 	ZetSetReadHandler(aliens_sound_read);
 	ZetClose();
 
-	K052109Init(DrvGfxROM0, 0x1fffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x1fffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K051960Init(DrvGfxROM1, 0x1fffff);
+	K051960Init(DrvGfxROM1, DrvGfxROMExp1, 0x1fffff);
 	K051960SetCallback(K051960Callback);
 	K051960SetSpriteOffset(8, 0);
 
@@ -433,8 +415,6 @@ static INT32 DrvInit()
 	K007232Init(0, 3579545, DrvSndROM, 0x40000);
 	K007232SetPortWriteHandler(0, DrvK007232VolCallback);
 	K007232PCMSetAllRoutes(0, 0.20, BURN_SND_ROUTE_BOTH);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -460,28 +440,19 @@ static INT32 DrvExit()
 
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		KonamiRecalcPal(DrvPalRAM, DrvPalette, 0x400);
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x400);
 
 	K052109UpdateScroll();
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x0040;
-	}
+	KonamiClearBitmaps(DrvPalette[0x0040]);
 
-	K051960SpritesRender(DrvGfxROMExp1, 3);
-	K052109RenderLayer(1, 0, DrvGfxROMExp0);
-	K051960SpritesRender(DrvGfxROMExp1, 2); 
-	K052109RenderLayer(2, 0, DrvGfxROMExp0);
-	K051960SpritesRender(DrvGfxROMExp1, 1);
-	K052109RenderLayer(0, 0, DrvGfxROMExp0);
-	K051960SpritesRender(DrvGfxROMExp1, 0);
+	if (nBurnLayer & 1) K052109RenderLayer(1, 0, 1);
+	if (nBurnLayer & 2) K052109RenderLayer(2, 0, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(0, 0, 4);
 
-	K051960SpritesRender(DrvGfxROMExp1, 4);
-	K051960SpritesRender(DrvGfxROMExp1, 5);
+	if (nSpriteEnable & 1) K051960SpritesRender(-1, -1);
 
-	BurnTransferCopy(DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -539,7 +510,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	if (K051960_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	if (K051960_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -576,10 +547,10 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
 		K007232Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
@@ -605,13 +576,13 @@ static struct BurnRomInfo aliensRomDesc[] = {
 	{ "875_b03.g04",	0x08000, 0x1ac4d283, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -627,7 +598,7 @@ struct BurnDriver BurnDrvAliens = {
 	"Aliens (World set 1)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliensRomInfo, aliensRomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliensRomInfo, aliensRomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -642,13 +613,13 @@ static struct BurnRomInfo aliens2RomDesc[] = {
 	{ "875_b03.g04",	0x08000, 0x1ac4d283, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -664,7 +635,7 @@ struct BurnDriver BurnDrvAliens2 = {
 	"Aliens (World set 2)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliens2RomInfo, aliens2RomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliens2RomInfo, aliens2RomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -679,13 +650,13 @@ static struct BurnRomInfo aliens3RomDesc[] = {
 	{ "875_b03.g04",	0x08000, 0x1ac4d283, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -701,7 +672,7 @@ struct BurnDriver BurnDrvAliens3 = {
 	"Aliens (World set 3)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliens3RomInfo, aliens3RomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliens3RomInfo, aliens3RomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -716,13 +687,13 @@ static struct BurnRomInfo aliensuRomDesc[] = {
 	{ "875_b03.g04",	0x08000, 0x1ac4d283, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -738,7 +709,7 @@ struct BurnDriver BurnDrvAliensu = {
 	"Aliens (US)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliensuRomInfo, aliensuRomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliensuRomInfo, aliensuRomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -753,13 +724,13 @@ static struct BurnRomInfo aliensjRomDesc[] = {
 	{ "875_k03.g04",	0x08000, 0xbd86264d, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -775,7 +746,7 @@ struct BurnDriver BurnDrvAliensj = {
 	"Aliens (Japan set 1)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliensjRomInfo, aliensjRomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliensjRomInfo, aliensjRomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -790,13 +761,13 @@ static struct BurnRomInfo aliensj2RomDesc[] = {
 	{ "875_k03.g04",	0x08000, 0xbd86264d, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -812,7 +783,7 @@ struct BurnDriver BurnDrvAliensj2 = {
 	"Aliens (Japan set 2)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliensj2RomInfo, aliensj2RomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliensj2RomInfo, aliensj2RomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -827,13 +798,13 @@ static struct BurnRomInfo aliensaRomDesc[] = {
 	{ "875_k03.g04",	0x08000, 0xbd86264d, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "875b11.k13",		0x80000, 0x89c5c885, 3 | BRF_GRA },           //  3 Background Tiles
-	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  4
-	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  5
+	{ "875b12.k19",		0x80000, 0xea6bdc17, 3 | BRF_GRA },           //  4
+	{ "875b07.j13",		0x40000, 0xe9c56d66, 3 | BRF_GRA },           //  5
 	{ "875b08.j19",		0x40000, 0xf9387966, 3 | BRF_GRA },           //  6
 
 	{ "875b10.k08",		0x80000, 0x0b1035b1, 4 | BRF_GRA },           //  7 Sprites
-	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  8
-	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  9
+	{ "875b09.k02",		0x80000, 0xe76b3c19, 4 | BRF_GRA },           //  8
+	{ "875b06.j08",		0x40000, 0x081a0566, 4 | BRF_GRA },           //  9
 	{ "875b05.j02",		0x40000, 0x19a261f2, 4 | BRF_GRA },           // 10
 
 	{ "875b04.e05",		0x40000, 0x4e209ac8, 5 | BRF_SND },           // 11 K007232 Samples
@@ -849,7 +820,7 @@ struct BurnDriver BurnDrvAliensa = {
 	"Aliens (Asia)\0", NULL, "Konami", "GX875",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_PLATFORM | GBF_HORSHOOT, 0,
-	NULL, aliensaRomInfo, aliensaRomName, NULL, NULL, AliensInputInfo, AliensDIPInfo,
+	NULL, aliensaRomInfo, aliensaRomName, NULL, NULL, NULL, NULL, AliensInputInfo, AliensDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };

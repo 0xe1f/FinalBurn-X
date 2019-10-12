@@ -2,12 +2,13 @@
 // Based on MAME driver by Zsolt Vasvari
 
 // To do:
-//	Hook up pokey (once ported) and verify bootleg set 2 sound
+//	verify bootleg set 2 sound
 
 #include "tiles_generic.h"
 #include "m6502_intf.h"
 #include "slapstic.h"
 #include "sn76496.h"
+#include "pokey.h"
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -37,20 +38,20 @@ static UINT8 DrvInputs[2];
 static UINT8 DrvReset;
 
 static struct BurnInputInfo AtetrisInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 1,	"p1 coin"	},
-	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 left"	},
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 1,	"p1 coin"	},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy2 + 3,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 right"	},
 	{"P1 Button",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 fire 1"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p2 coin"	},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 5,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 7,	"p2 left"	},
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy1 + 0,	"p2 coin"	},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy2 + 5,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy2 + 7,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 6,	"p2 right"	},
 	{"P2 Button",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
 
-	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
-	{"Dips",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Dips",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 };
 
 STDINPUTINFO(Atetris)
@@ -119,39 +120,44 @@ static inline void DrvPaletteUpdate(UINT16 offset)
 	DrvPalette[offset] = BurnHighCol(r, g, b, 0);
 }
 
+static INT32 allpot0(INT32 offs)
+{
+    return (DrvInputs[0] & ~0x40) | (vblank << 6);
+}
+
+static INT32 allpot1(INT32 offs)
+{
+    return DrvInputs[1];
+}
+
 static UINT8 atetris_read(UINT16 address)
 {
 	if ((address & 0xc000) == 0x4000) {
 		return atetris_slapstic_read(address);
 	}
 
-// Remove if/when Pokey support is added!
-#if 0
 	if (is_Bootleg)
-#endif
 	{
 		switch (address & ~0x03e0)
 		{
 			case 0x2808:
-				return DrvInputs[0] | vblank;
+                return (DrvInputs[0] & ~0x40) | (vblank << 6);
 
 			case 0x2818:
 				return DrvInputs[1];
 		}
 	}
-#if 0
 	else
 	{
 		switch (address & ~0x03ef)
 		{
 			case 0x2800:
-				return 0; // pokey1
+				return pokey_read(0, address & 0xf);
 
 			case 0x2810:
-				return 0; // pokey2
+				return pokey_read(1, address & 0xf);
 		}
 	}
-#endif
 	return 0;
 }
 
@@ -192,13 +198,15 @@ static void atetris_write(UINT16 address, UINT8 data)
 	{
 		switch (address & ~0x03ef)
 		{
-			case 0x2800: 	// pokey1
+			case 0x2800:
+				pokey1_w(address & 0xf, data);
 			return;
 
-			case 0x2810: 	// pokey2
+			case 0x2810:
+				pokey2_w(address & 0xf, data);
 			return;
 		}
-	}			
+    }
 
 	switch (address & ~0x03ff)
 	{
@@ -211,7 +219,7 @@ static void atetris_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x3800:
-			M6502SetIRQLine(0, M6502_IRQSTATUS_NONE);
+			M6502SetIRQLine(0, CPU_IRQSTATUS_NONE);
 		return;
 
 		case 0x3c00:
@@ -232,10 +240,19 @@ static INT32 DrvDoReset(INT32 full_reset)
 
 	SlapsticReset();
 
+	HiscoreReset();
+
 	watchdog = 0;
 	nvram_enable = 0;
 
 	return 0;
+}
+
+static tilemap_callback( atetris )
+{
+	INT32 attr = DrvVidRAM[offs * 2 + 1];
+
+	TILE_SET_INFO(0, DrvVidRAM[offs * 2 + 0] | ((attr & 0x07) << 8), attr >> 4, 0);
 }
 
 static void DrvGfxExpand()
@@ -290,21 +307,19 @@ static INT32 CommonInit(INT32 boot)
 
 	M6502Init(0, TYPE_M6502);
 	M6502Open(0);
-	M6502MapMemory(Drv6502RAM,		0x0000, 0x0fff, M6502_RAM);
-	M6502MapMemory(DrvVidRAM,		0x1000, 0x1fff, M6502_RAM);
-	M6502MapMemory(DrvPalRAM,		0x2000, 0x20ff, M6502_ROM);
-	M6502MapMemory(DrvPalRAM,		0x2100, 0x21ff, M6502_ROM);
-	M6502MapMemory(DrvPalRAM,		0x2200, 0x22ff, M6502_ROM);
-	M6502MapMemory(DrvPalRAM,		0x2300, 0x23ff, M6502_ROM);
-	M6502MapMemory(DrvNVRAM,		0x2400, 0x25ff, M6502_ROM);
-	M6502MapMemory(DrvNVRAM,		0x2600, 0x27ff, M6502_ROM);
-	M6502MapMemory(Drv6502ROM + 0x8000,	0x8000, 0xffff, M6502_ROM);
+	M6502MapMemory(Drv6502RAM,		0x0000, 0x0fff, MAP_RAM);
+	M6502MapMemory(DrvVidRAM,		0x1000, 0x1fff, MAP_RAM);
+	M6502MapMemory(DrvPalRAM,		0x2000, 0x20ff, MAP_ROM);
+	M6502MapMemory(DrvPalRAM,		0x2100, 0x21ff, MAP_ROM);
+	M6502MapMemory(DrvPalRAM,		0x2200, 0x22ff, MAP_ROM);
+	M6502MapMemory(DrvPalRAM,		0x2300, 0x23ff, MAP_ROM);
+	M6502MapMemory(DrvNVRAM,		0x2400, 0x25ff, MAP_ROM);
+	M6502MapMemory(DrvNVRAM,		0x2600, 0x27ff, MAP_ROM);
+	M6502MapMemory(Drv6502ROM + 0x8000,	0x8000, 0xffff, MAP_ROM);
 	M6502SetReadHandler(atetris_read);
 	M6502SetReadOpHandler(atetris_read);
 	M6502SetReadOpArgHandler(atetris_read);
-	M6502SetReadMemIndexHandler(atetris_read);
 	M6502SetWriteHandler(atetris_write);
-	M6502SetWriteMemIndexHandler(atetris_write);
 	M6502Close();
 
 	SlapsticInit(101);
@@ -312,17 +327,22 @@ static INT32 CommonInit(INT32 boot)
 	is_Bootleg = boot;
 	master_clock = boot ? (14745600 / 8) : (14318180 / 8);
 
-	if (is_Bootleg)	// Bootleg set 2 sound system
-	{
+	if (is_Bootleg) { // Bootleg set 2 sound system
 		SN76496Init(0, master_clock, 0);
 		SN76496Init(1, master_clock, 1);
 		SN76496Init(2, master_clock, 1);
 		SN76496SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
 		SN76496SetRoute(1, 0.50, BURN_SND_ROUTE_BOTH);
 		SN76496SetRoute(2, 0.50, BURN_SND_ROUTE_BOTH);
+	} else {
+        PokeyInit(master_clock, 2, 1.00, 0);
+        PokeyAllPotCallback(0, allpot0);
+        PokeyAllPotCallback(1, allpot1);
 	}
 
 	GenericTilesInit();
+	GenericTilemapInit(0, scan_rows_map_scan, atetris_map_callback, 8, 8, 64, 32);
+	GenericTilemapSetGfx(0, DrvGfxROM, 4, 8, 8, 0x20000, 0, 0xf);
 
 	memset (DrvNVRAM, 0xff, 0x200);
 
@@ -337,30 +357,16 @@ static INT32 DrvExit()
 
 	M6502Exit();
 
-	if (is_Bootleg)	// Bootleg set 2 sound system
-	{
+	if (is_Bootleg) { // Bootleg set 2 sound system
 		SN76496Exit();
+	} else {
+		PokeyExit();
 	}
+	SlapsticExit();
 
 	BurnFree (AllMem);
 
 	return 0;
-}
-
-static void DrawLayer()
-{
-	for (INT32 offs = 0; offs < 64 * 32; offs++)
-	{
-		INT32 sx = (offs & 0x3f) * 8;
-		INT32 sy = (offs / 0x40) * 8;
-
-		if (sx >= nScreenWidth || sy >= nScreenHeight) continue;
-
-		INT32 code  = DrvVidRAM[offs * 2 + 0] | ((DrvVidRAM[offs * 2 + 1] & 0x07) << 8);
-		INT32 color = DrvVidRAM[offs * 2 + 1] >> 4;
-
-		Render8x8Tile(pTransDraw, code, sx, sy, color, 4, 0, DrvGfxROM);
-	}
 }
 
 static INT32 DrvDraw()
@@ -373,7 +379,7 @@ static INT32 DrvDraw()
 		DrvRecalc = 0;
 	}
 
-	DrawLayer();
+	GenericTilemapDraw(0, pTransDraw, -1);
 
 	BurnTransferCopy(DrvPalette);
 
@@ -406,26 +412,26 @@ static INT32 DrvFrame()
 
 	M6502Open(0);
 
-	vblank = 0;
+	vblank = 1;
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nCyclesDone[0] += M6502Run(nCyclesTotal[0] / nInterleave);
+        CPU_RUN(0, M6502);
 
-		if (i == 16 || i == 48 || i == 80 || i == 112 || i == 146 || i == 176 || i == 208 || i == 240)
-			M6502SetIRQLine(0, (i & 0x20) ? M6502_IRQSTATUS_ACK : M6502_IRQSTATUS_NONE);
+        if (i == 48 || i == 112 || i == 176 || i == 240) {
+            M6502SetIRQLine(0, CPU_IRQSTATUS_ACK);
+        }
 
-		if (i == 240) vblank = 0x40;
+		if (i == 240) vblank = 0;
 	}
 
 	M6502Close();
 
 	if (pBurnSoundOut) {
-		if (is_Bootleg)	// Bootleg set 2 sound system
-		{
-			SN76496Update(0, pBurnSoundOut, nBurnSoundLen);
-			SN76496Update(1, pBurnSoundOut, nBurnSoundLen);
-			SN76496Update(2, pBurnSoundOut, nBurnSoundLen);
+		if (is_Bootleg) { // Bootleg set 2 sound system
+			SN76496Update(pBurnSoundOut, nBurnSoundLen);
+		} else {
+			pokey_update(pBurnSoundOut, nBurnSoundLen);
 		}
 	}
 
@@ -465,6 +471,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		if (is_Bootleg)	// Bootleg set 2 sound system
 		{
 			SN76496Scan(nAction, pnMin);
+		} else {
+			pokey_scan(nAction, pnMin);
 		}
 
 		SCAN_VAR(nvram_enable);
@@ -496,10 +504,10 @@ static INT32 DrvInit()
 
 struct BurnDriver BurnDrvAtetris = {
 	"atetris", NULL, NULL, NULL, "1988",
-	"Tetris (set 1)\0", "No sound", "Atari Games", "Miscellaneous",
+	"Tetris (set 1)\0", NULL, "Atari Games", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetrisRomInfo, atetrisRomName, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetrisRomInfo, atetrisRomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	336, 240, 4, 3
 };
@@ -518,10 +526,10 @@ STD_ROM_FN(atetrisa)
 
 struct BurnDriver BurnDrvAtetrisa = {
 	"atetrisa", "atetris", NULL, NULL, "1988",
-	"Tetris (set 2)\0", "No sound", "Atari Games", "Miscellaneous",
+	"Tetris (set 2)\0", NULL, "Atari Games", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetrisaRomInfo, atetrisaRomName, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetrisaRomInfo, atetrisaRomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	336, 240, 4, 3
 };
@@ -542,10 +550,10 @@ STD_ROM_FN(atetrisb)
 
 struct BurnDriver BurnDrvAtetrisb = {
 	"atetrisb", "atetris", NULL, NULL, "1988",
-	"Tetris (bootleg set 1)\0", "No sound", "bootleg", "Miscellaneous",
+	"Tetris (bootleg set 1)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetrisbRomInfo, atetrisbRomName, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetrisbRomInfo, atetrisbRomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	336, 240, 4, 3
 };
@@ -557,6 +565,17 @@ static struct BurnRomInfo atetrisb2RomDesc[] = {
 	{ "k1-01",		0x10000, 0xfa056809, 1 | BRF_ESS | BRF_PRG }, //  0 6502 Code
 
 	{ "136066-1101.35a",	0x10000, 0x84a1939f, 2 | BRF_GRA },           //  1 Graphics Tiles
+	
+	{ "4-pal16l8-a.9n",		0x00104, 0x3630e734, 0 | BRF_OPT },
+	{ "5-pal16l8-a.9m",		0x00104, 0x53b64be1, 0 | BRF_OPT },
+	{ "a-gal16v8-b.bin",	0x00117, 0xb1dfab0f, 0 | BRF_OPT },
+	{ "b-gal16v8-b.bin",	0x00117, 0xb1dfab0f, 0 | BRF_OPT },
+	{ "2-pal16r4-a.3r",		0x00104, 0xd71bdf27, 0 | BRF_OPT },
+	{ "1-pal16l8-a.3g",		0x00104, 0xdcf0d2fe, 0 | BRF_OPT },
+	{ "3-pal16r4-a.8p",		0x00104, 0xe007edf2, 0 | BRF_OPT },
+	{ "c-gal16v8-b.bin",	0x00117, 0xe1a9db0b, 0 | BRF_OPT },
+	
+	{ "m3-7603-5.prom1",		0x00020, 0x79656af3, 0 | BRF_OPT },
 };
 
 STD_ROM_PICK(atetrisb2)
@@ -571,8 +590,8 @@ struct BurnDriver BurnDrvAtetrisb2 = {
 	"atetrisb2", "atetris", NULL, NULL, "1988",
 	"Tetris (bootleg set 2)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetrisb2RomInfo, atetrisb2RomName, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetrisb2RomInfo, atetrisb2RomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetrisDIPInfo,
 	BootInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	336, 240, 4, 3
 };
@@ -591,10 +610,10 @@ STD_ROM_FN(atetrisc)
 
 struct BurnDriver BurnDrvAtetrisc = {
 	"atetrisc", "atetris", NULL, NULL, "1989",
-	"Tetris (cocktail set 1)\0", "No sound", "Atari Games", "Miscellaneous",
+	"Tetris (cocktail set 1)\0", NULL, "Atari Games", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetriscRomInfo, atetriscRomName, NULL, NULL, AtetrisInputInfo, AtetriscDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetriscRomInfo, atetriscRomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetriscDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	240, 336, 3, 4
 };
@@ -613,10 +632,10 @@ STD_ROM_FN(atetrisc2)
 
 struct BurnDriver BurnDrvAtetrisc2 = {
 	"atetrisc2", "atetris", NULL, NULL, "1989",
-	"Tetris (cocktail set 2)\0", "No sound", "Atari Games", "Miscellaneous",
+	"Tetris (cocktail set 2)\0", NULL, "Atari Games", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, atetrisc2RomInfo, atetrisc2RomName, NULL, NULL, AtetrisInputInfo, AtetriscDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, atetrisc2RomInfo, atetrisc2RomName, NULL, NULL, NULL, NULL, AtetrisInputInfo, AtetriscDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	240, 336, 3, 4
 };

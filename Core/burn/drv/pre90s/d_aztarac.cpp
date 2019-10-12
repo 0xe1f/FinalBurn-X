@@ -4,11 +4,8 @@
 #include "burnint.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
-#include "burn_vector.h"
-#include "driver.h"
-extern "C" {
+#include "vector.h"
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -29,7 +26,6 @@ static INT32 sound_irq_timer;
 static INT32 sound_status;
 
 static INT32 sound_initialized = 0;
-static INT16 *pFMBuffer[12];
 
 static INT32 xcenter;
 static INT32 ycenter;
@@ -51,19 +47,18 @@ static UINT8 DialInputs[2];
 #define A(a, b, c, d) {a, b, (UINT8*)(c), d}
 
 static struct BurnInputInfo AztaracInputList[] = {
-	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 4,		"p1 coin"	},
+	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 4,		"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy1 + 2,		"p1 start"	},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 1,		"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 0,		"p1 fire 2"	},
 	
-	A("Left/Right", 	BIT_ANALOG_REL, &DrvAnalogPort0,	"p1 x-axis"  ),
-	A("Up/Down",		BIT_ANALOG_REL, &DrvAnalogPort1,	"p1 y-axis"  ),
+	A("Left/Right", 	BIT_ANALOG_REL, &DrvAnalogPort0,	"p1 x-axis"     ),
+	A("Up/Down",		BIT_ANALOG_REL, &DrvAnalogPort1,	"p1 y-axis"     ),
 	{"Aim Left",		BIT_DIGITAL,	DialInputs + 0,		"p1 fire 3"	},
 	{"Aim Right",		BIT_DIGITAL,	DialInputs + 1,		"p1 fire 4"	},
 	
-
-	{"Reset",			BIT_DIGITAL,	&DrvReset,			"reset"		},
-	{"Service",			BIT_DIGITAL,    DrvJoy1 + 7,  		"service"	},
+	{"Reset",		BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Service",		BIT_DIGITAL,    DrvJoy1 + 7,  		"service"	},
 };
 
 STDINPUTINFO(Aztarac)
@@ -139,7 +134,7 @@ static inline void sync_cpu()
 	if (cycles > 0)	ZetRun(cycles);
 }
 
-void __fastcall aztarac_write_word(UINT32 address, UINT16 data)
+static void __fastcall aztarac_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff00) == 0x022000) {
 		*((UINT16*)(DrvNVRAM + (address & 0xfe))) = data | 0xfff0;
@@ -152,14 +147,14 @@ void __fastcall aztarac_write_word(UINT32 address, UINT16 data)
 	}
 }
 
-void __fastcall aztarac_write_byte(UINT32 address, UINT8 data)
+static void __fastcall aztarac_write_byte(UINT32 address, UINT8 data)
 {
 	if (address == 0x027009) {
 		sync_cpu();
 		*soundlatch = data;
 		sound_status ^= 0x21;
 
-		if (sound_status & 0x20) ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
+		if (sound_status & 0x20) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 
 		return;
 	}
@@ -170,7 +165,7 @@ void __fastcall aztarac_write_byte(UINT32 address, UINT8 data)
 	}
 }
 
-UINT16 __fastcall aztarac_read_word(UINT32 address)
+static UINT16 __fastcall aztarac_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -185,7 +180,7 @@ UINT16 __fastcall aztarac_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall aztarac_read_byte(UINT32 address)
+static UINT8 __fastcall aztarac_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -209,7 +204,7 @@ UINT8 __fastcall aztarac_read_byte(UINT32 address)
 	return 0;
 }
 
-void __fastcall aztarac_sound_write(UINT16 address, UINT8 data)
+static void __fastcall aztarac_sound_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -230,7 +225,7 @@ void __fastcall aztarac_sound_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 __fastcall aztarac_sound_read(UINT16 address)
+static UINT8 __fastcall aztarac_sound_read(UINT16 address)
 {
 	switch (address)
 	{
@@ -289,15 +284,6 @@ static INT32 DrvDoReset(INT32 reset_ram)
 	return 0;
 }
 
-static void sound_init() // Changed refresh rate causes crashes
-{
-	for (INT32 i = 0; i < 12; i++) {
-		pFMBuffer[i] = (INT16*)BurnMalloc(nBurnSoundLen * sizeof(INT16));
-	}
-
-	sound_initialized = 1;
-}
-
 static INT32 MemIndex()
 {
 	UINT8 *Next; Next = AllMem;
@@ -313,7 +299,7 @@ static INT32 MemIndex()
 	DrvZ80RAM		= Next; Next += 0x000800;
 	DrvVecRAM		= Next; Next += 0x003000;
 
-	soundlatch		= Next; Next += 0x000001;	
+	soundlatch		= Next; Next += 0x000004; // 1
 
 	RamEnd			= Next;
 
@@ -380,10 +366,10 @@ static INT32 DrvInit()
 	SekInit(0, 0x68000);
 	SekOpen(0);
 	SekSetIrqCallback(aztarac_irq_callback);
-	SekMapMemory(Drv68KROM,		0x000000, 0x00bfff, SM_ROM);
-	SekMapMemory(DrvNVRAM,		0x022000, 0x0223ff, SM_ROM);
-	SekMapMemory(DrvVecRAM,		0xff8000, 0xffafff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0xffe000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x00bfff, MAP_ROM);
+	SekMapMemory(DrvNVRAM,		0x022000, 0x0223ff, MAP_ROM);
+	SekMapMemory(DrvVecRAM,		0xff8000, 0xffafff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0xffe000, 0xffffff, MAP_RAM);
 	SekSetWriteWordHandler(0,	aztarac_write_word);
 	SekSetWriteByteHandler(0,	aztarac_write_byte);
 	SekSetReadWordHandler(0,	aztarac_read_word);
@@ -392,19 +378,16 @@ static INT32 DrvInit()
 
 	ZetInit(0);
 	ZetOpen(0);
-	ZetMapArea(0x0000, 0x1fff, 0, DrvZ80ROM);
-	ZetMapArea(0x0000, 0x1fff, 2, DrvZ80ROM);
-	ZetMapArea(0x8000, 0x87ff, 0, DrvZ80RAM);
-	ZetMapArea(0x8000, 0x87ff, 1, DrvZ80RAM);
-	ZetMapArea(0x8000, 0x87ff, 2, DrvZ80RAM);
+	ZetMapMemory(DrvZ80ROM,		0x0000, 0x1fff, MAP_ROM);
+	ZetMapMemory(DrvZ80RAM,		0x8000, 0x87ff, MAP_RAM);
 	ZetSetWriteHandler(aztarac_sound_write);
 	ZetSetReadHandler(aztarac_sound_read);
 	ZetClose();
 
-	AY8910Init(0, 2000000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(1, 2000000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(2, 2000000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(3, 2000000, nBurnSoundRate, NULL, NULL, NULL, NULL);
+	AY8910Init(0, 2000000, 0);
+	AY8910Init(1, 2000000, 1);
+	AY8910Init(2, 2000000, 1);
+	AY8910Init(3, 2000000, 1);
 	AY8910SetAllRoutes(0, 0.15, BURN_SND_ROUTE_BOTH);
 	AY8910SetAllRoutes(1, 0.15, BURN_SND_ROUTE_BOTH);
 	AY8910SetAllRoutes(2, 0.15, BURN_SND_ROUTE_BOTH);
@@ -439,9 +422,6 @@ static INT32 DrvExit()
 	BurnFree (AllMem);
 
 	sound_initialized = 0;
-	for (INT32 i = 0; i < 12; i++) {
-		BurnFree (pFMBuffer[i]);
-	}
 
 	return 0;
 }
@@ -460,12 +440,6 @@ static INT32 DrvDraw()
 
 static INT32 DrvFrame()
 {
-	if (sound_initialized == 0) {
-		if (pBurnSoundOut) {
-			sound_init();
-		}
-	}
-
 	if (DrvReset) {
 		DrvDoReset(1);
 	}
@@ -509,14 +483,14 @@ static INT32 DrvFrame()
 	for (INT32 i = 0; i < nInterleave; i++, sound_irq_timer++)
 	{
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
-		if (i == (nInterleave - 1)) SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 
 		//nCyclesDone[1] += ZetRun((SekTotalCycles() / 4) - ZetTotalCycles());
 		sync_cpu();
 
 		if ((sound_irq_timer % 40) == 39) {	// every 20000 cycles, 50000 / frame
 			sound_status ^= 0x10;
-			if (sound_status & 0x10) ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
+			if (sound_status & 0x10) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		}
 	}
 
@@ -524,7 +498,7 @@ static INT32 DrvFrame()
 	ZetClose();
 
 	if (pBurnSoundOut) {
-		AY8910Render(&pFMBuffer[0], pBurnSoundOut, nBurnSoundLen, 0);
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	if (pBurnDraw) {
@@ -604,21 +578,26 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // Aztarac
 
 static struct BurnRomInfo aztaracRomDesc[] = {
-	{ "l8_6.bin",	0x1000, 0x25f8da18, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "n8_0.bin",	0x1000, 0x04e20626, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "l7_7.bin",	0x1000, 0x230e244c, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "n7_1.bin",	0x1000, 0x37b12697, 1 | BRF_PRG | BRF_ESS }, //  3
-	{ "l6_8.bin",	0x1000, 0x1293fb9d, 1 | BRF_PRG | BRF_ESS }, //  4
-	{ "n6_2.bin",	0x1000, 0x712c206a, 1 | BRF_PRG | BRF_ESS }, //  5
-	{ "l5_9.bin",	0x1000, 0x743a6501, 1 | BRF_PRG | BRF_ESS }, //  6
-	{ "n5_3.bin",	0x1000, 0xa65cbf99, 1 | BRF_PRG | BRF_ESS }, //  7
-	{ "l4_a.bin",	0x1000, 0x9cf1b0a1, 1 | BRF_PRG | BRF_ESS }, //  8
-	{ "n4_4.bin",	0x1000, 0x5f0080d5, 1 | BRF_PRG | BRF_ESS }, //  9
-	{ "l3_b.bin",	0x1000, 0x8cc7f7fa, 1 | BRF_PRG | BRF_ESS }, // 10
-	{ "n3_5.bin",	0x1000, 0x40452376, 1 | BRF_PRG | BRF_ESS }, // 11
+	{ "6.l8",	0x1000, 0x25f8da18, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "0.n8",	0x1000, 0x04e20626, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "7.l7",	0x1000, 0x230e244c, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "1.n7",	0x1000, 0x37b12697, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "8.l6",	0x1000, 0x1293fb9d, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "2.n6",	0x1000, 0x712c206a, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "9.l5",	0x1000, 0x743a6501, 1 | BRF_PRG | BRF_ESS }, //  6
+	{ "3.n5",	0x1000, 0xa65cbf99, 1 | BRF_PRG | BRF_ESS }, //  7
+	{ "a.l4",	0x1000, 0x9cf1b0a1, 1 | BRF_PRG | BRF_ESS }, //  8
+	{ "4.n4",	0x1000, 0x5f0080d5, 1 | BRF_PRG | BRF_ESS }, //  9
+	{ "b.l3",	0x1000, 0x8cc7f7fa, 1 | BRF_PRG | BRF_ESS }, // 10
+	{ "5.n3",	0x1000, 0x40452376, 1 | BRF_PRG | BRF_ESS }, // 11
 
-	{ "j4_c.bin",	0x1000, 0xe897dfcd, 2 | BRF_PRG | BRF_ESS }, // 12 Z80 Code
-	{ "j3_d.bin",	0x1000, 0x4016de77, 2 | BRF_PRG | BRF_ESS }, // 13
+	{ "c.j4",	0x1000, 0xe897dfcd, 2 | BRF_PRG | BRF_ESS }, // 12 Z80 Code
+	{ "d.j3",	0x1000, 0x4016de77, 2 | BRF_PRG | BRF_ESS }, // 13
+	
+	/* not hooked up */
+	{ "l5.l5",	0x00020, 0x317fb438, 0 | BRF_OPT },			 // 14 Proms
+	{ "k8.k8",	0x01000, 0x596ad8d9, 0 | BRF_OPT },			 // 15
+	{ "k9.k9",	0x01000, 0xb8544823, 0 | BRF_OPT },			 // 16
 };
 
 STD_ROM_PICK(aztarac)
@@ -628,8 +607,8 @@ struct BurnDriver BurnDrvAztarac = {
 	"aztarac", NULL, NULL, NULL, "1983",
 	"Aztarac\0", "Vector graphics", "Centuri", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_MISC, 0,
-	NULL, aztaracRomInfo, aztaracRomName, NULL, NULL, AztaracInputInfo, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_SHOOT, 0,
+	NULL, aztaracRomInfo, aztaracRomName, NULL, NULL, NULL, NULL, AztaracInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x40 * 256,
 	1024, 768, 4, 3
 };

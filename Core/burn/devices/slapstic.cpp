@@ -789,6 +789,10 @@ static struct slapstic_data slapstic;
 
 void SlapsticReset(void)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_SlapsticInitted) bprintf(PRINT_ERROR, _T("SlapsticReset called without init\n"));
+#endif
+
 	/* reset the chip */
 	state = DISABLED;
 
@@ -799,6 +803,8 @@ void SlapsticReset(void)
 
 void SlapsticInit(INT32 chip)
 {
+	DebugDev_SlapsticInitted = 1;
+	
 	/* only a small number of chips are known to exist */
 	if (chip < 101 || chip > 118)
 		return;
@@ -817,6 +823,14 @@ void SlapsticInit(INT32 chip)
 	access_68k = (nSekCount != -1); // Ok?
 }
 
+void SlapsticExit()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugDev_SlapsticInitted) bprintf(PRINT_ERROR, _T("SlapsticExit called without init\n"));
+#endif
+
+	DebugDev_SlapsticInitted = 0;
+}
 
 /*************************************
  *
@@ -826,6 +840,10 @@ void SlapsticInit(INT32 chip)
 
 INT32 SlapsticBank(void)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_SlapsticInitted) bprintf(PRINT_ERROR, _T("SlapsticBank called without init\n"));
+#endif
+
 	return current_bank;
 }
 
@@ -848,12 +866,12 @@ static INT32 alt2_kludge(UINT32 /*offset*/)
 	{
 		static const SekRegister SekRegs1[8] = { SEK_REG_A0, SEK_REG_A1, SEK_REG_A2, SEK_REG_A3, SEK_REG_A4, SEK_REG_A5, SEK_REG_A6, SEK_REG_A7 };
 
-		/* first verify that the prefetched PC matches the first alternate */
-		if (MATCHES_MASK_VALUE(SekGetPC(-1) >> 1, slapstic.alt1))
+		UINT32 pc = SekDbgGetRegister(SEK_REG_PPC);
+	/* first verify that the prefetched PC matches the first alternate */
+		if (MATCHES_MASK_VALUE((INT32)((pc+2) >> 1), slapstic.alt1))
 		{
 			/* now look for a move.w (An),(An) or cmpm.w (An)+,(An)+ */
-			UINT16 opcode = SekFetchWord((SekGetPC(-1) - 4) & 0xffffff); // IQ_132 check this!
-		//	UINT16 opcode = space->direct().read_decrypted_word(cpu_get_previouspc(&space->device()) & 0xffffff);
+			UINT16 opcode = SekReadWord(pc);
 			if ((opcode & 0xf1f8) == 0x3090 || (opcode & 0xf1f8) == 0xb148)
 			{
 				/* fetch the value of the register for the second operand, and see */
@@ -886,6 +904,10 @@ static INT32 alt2_kludge(UINT32 /*offset*/)
 
 INT32 SlapsticTweak(INT32 offset)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_SlapsticInitted) bprintf(PRINT_ERROR, _T("SlapsticTweak called without init\n"));
+#endif
+
 	/* reset is universal */
 	if (offset == 0x0000)
 	{
@@ -1099,6 +1121,10 @@ INT32 SlapsticTweak(INT32 offset)
 
 void SlapsticScan(INT32 nAction)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_SlapsticInitted) bprintf(PRINT_ERROR, _T("SlapsticScan called without init\n"));
+#endif
+
 	if (nAction & ACB_NVRAM) {
 		SCAN_VAR(state);
 		SCAN_VAR(current_bank);

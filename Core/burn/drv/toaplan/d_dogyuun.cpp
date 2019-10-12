@@ -1,3 +1,6 @@
+// FB Alpha Battle Dogyuun driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 #include "nec_intf.h"
 // Dogyuun
@@ -100,13 +103,13 @@ static struct BurnDIPInfo dogyuunDIPList[] = {
 	{0x15,	0xFF, 0xFF,	0x00, NULL},
 	
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Coin/Free play"},
 	{0x14,	0x01, 0x01,	0x00, "Coin play"},
 	{0x14,	0x01, 0x01,	0x01, "Free play"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Screen Type"},
 	{0x14,	0x01, 0x02,	0x00, "Normal screen"},
 	{0x14,	0x01, 0x02,	0x02, "Invert screen"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -169,9 +172,9 @@ static struct BurnDIPInfo dogyuunDIPList[] = {
 	{0x15,	0x01, 0x30,	0x01, "5"},
 	{0x15,	0x01, 0x30,	0x02, "2"},
 	{0x15,	0x01, 0x30,	0x03, "1"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Cheating"},
     {0x15,	0x01, 0x40,	0x00, "Normal game"},
-    {0x15,	0x01, 0x40,	0x40, "Debug mode"},
+    {0x15,	0x01, 0x40,	0x40, "No-death & stop mode"},
 	{0,		0xFE, 0,	2,	  "Continue play"},
     {0x15,	0x01, 0x80,	0x00, "On"},
 	{0x15,	0x01, 0x80,	0x80, "Off"},
@@ -292,8 +295,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 		VezScan(nAction);
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 	}
@@ -473,7 +476,7 @@ void __fastcall dogyuun_v25_write(UINT32 address, UINT8 data)
 		return;
 
 		case 0x00004:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -483,10 +486,10 @@ UINT8 __fastcall dogyuun_v25_read(UINT32 address)
 	switch (address)
 	{
 		case 0x00001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x00004:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -503,7 +506,7 @@ UINT8 __fastcall dogyuun_v25_read_port(UINT32 port)
 			return DrvInput[3]^0xff;
 
 		case V25_PORT_P1:
-			return DrvInput[5]^0xff;
+			return (DrvInput[5] << 4)^0xff;
 	}
 
 	return 0;
@@ -523,6 +526,8 @@ static INT32 DrvDoReset()
 	MSM6295Reset(0);
 
 	v25_reset = 1;
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -575,9 +580,9 @@ static INT32 DrvInit()
 	{
 		SekInit(0, 0x68000);									// Allocate 68000
 		SekOpen(0);
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,		0x100000, 0x103FFF, SM_RAM);
-		SekMapMemory(RamPal,		0x400000, 0x400FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x100000, 0x103FFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x400000, 0x400FFF, MAP_RAM);	// Palette RAM
 		SekSetReadWordHandler(0, dogyuunReadWord);
 		SekSetReadByteHandler(0, dogyuunReadByte);
 		SekSetWriteWordHandler(0, dogyuunWriteWord);
@@ -716,7 +721,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			bVBlank = true;
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -765,8 +770,8 @@ struct BurnDriver BurnDrvDogyuun = {
 	"dogyuun", NULL, NULL, NULL, "1992",
 	"Dogyuun\0", NULL, "Toaplan", "Dual Toaplan GP9001 based",
 	L"Dogyuun\0Dogyuun \u30C9\u30AD\u30E5\u30FC\u30F3\uFF01\uFF01\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
-	NULL, dogyuunRomInfo, dogyuunRomName, NULL, NULL, dogyuunInputInfo, dogyuunDIPInfo,
+	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
+	NULL, dogyuunRomInfo, dogyuunRomName, NULL, NULL, NULL, NULL, dogyuunInputInfo, dogyuunDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
@@ -775,8 +780,8 @@ struct BurnDriver BurnDrvDogyuunk = {
 	"dogyuuna", "dogyuun", NULL, NULL, "1992",
 	"Dogyuun (Licensed to Unite Trading For Korea)\0", NULL, "Toaplan", "Dual Toaplan GP9001 based",
 	L"Dogyuun (Licensed to Unite Trading For Korea)\0Dogyuun \u30C9\u30AD\u30E5\u30FC\u30F3\uFF01\uFF01\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
-	NULL, dogyuunkRomInfo, dogyuunkRomName, NULL, NULL, dogyuunInputInfo, dogyuunkDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
+	NULL, dogyuunkRomInfo, dogyuunkRomName, NULL, NULL, NULL, NULL, dogyuunInputInfo, dogyuunkDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
@@ -785,8 +790,8 @@ struct BurnDriver BurnDrvDogyuunt = {
 	"dogyuunt", "dogyuun", NULL, NULL, "1992",
 	"Dogyuun (test location version)\0", NULL, "Toaplan", "Dual Toaplan GP9001 based",
 	L"Dogyuun (test location version)\0Dogyuun \u30C9\u30AD\u30E5\u30FC\u30F3\uFF01\uFF01\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
-	NULL, dogyuuntRomInfo, dogyuuntRomName, NULL, NULL, dogyuunInputInfo, dogyuuntDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_VERSHOOT, 0,
+	NULL, dogyuuntRomInfo, dogyuuntRomName, NULL, NULL, NULL, NULL, dogyuunInputInfo, dogyuuntDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };

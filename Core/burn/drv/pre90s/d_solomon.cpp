@@ -1,10 +1,9 @@
+// FB Alpha Solomon's Key driver module
+// Based on MAME driver by Mirko Buffoni
+
 #include "tiles_generic.h"
 #include "z80_intf.h"
-
-#include "driver.h"
-extern "C" {
- #include "ay8910.h"
-}
+#include "ay8910.h"
 
 static UINT8 SolomonInputPort0[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 static UINT8 SolomonInputPort1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -34,16 +33,8 @@ static UINT8 *SolomonSprites      = NULL;
 static UINT8 *SolomonTempRom      = NULL;
 
 static INT32 SolomonIrqFire = 0;
-
 static INT32 SolomonFlipScreen = 0;
-
 static INT32 SolomonSoundLatch = 0;
-static INT16* pFMBuffer;
-static INT16* pAY8910Buffer[9];
-
-
-static INT32 nCyclesDone[2], nCyclesTotal[2];
-static INT32 nCyclesSegment;
 
 static struct BurnInputInfo SolomonInputList[] =
 {
@@ -205,7 +196,7 @@ static struct BurnRomInfo SolomonjRomDesc[] = {
 STD_ROM_PICK(Solomonj)
 STD_ROM_FN(Solomonj)
 
-INT32 SolomonDoReset()
+static INT32 SolomonDoReset()
 {
 	SolomonIrqFire = 0;
 	SolomonFlipScreen = 0;
@@ -221,10 +212,12 @@ INT32 SolomonDoReset()
 		AY8910Reset(i);
 	}
 
+	HiscoreReset();
+
 	return 0;
 }
 
-UINT8 __fastcall SolomonRead1(UINT16 a)
+static UINT8 __fastcall SolomonRead1(UINT16 a)
 {
 	switch (a) {
 		case 0xe600: {
@@ -251,7 +244,7 @@ UINT8 __fastcall SolomonRead1(UINT16 a)
 	return 0;
 }
 
-void __fastcall SolomonWrite1(UINT16 a, UINT8 d)
+static void __fastcall SolomonWrite1(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xe600: {
@@ -276,7 +269,7 @@ void __fastcall SolomonWrite1(UINT16 a, UINT8 d)
 	}
 }
 
-UINT8 __fastcall SolomonRead2(UINT16 a)
+static UINT8 __fastcall SolomonRead2(UINT16 a)
 {
 	switch (a) {
 		case 0x8000: {
@@ -287,7 +280,7 @@ UINT8 __fastcall SolomonRead2(UINT16 a)
 	return 0;
 }
 
-void __fastcall SolomonPortWrite2(UINT16 a, UINT8 d)
+static void __fastcall SolomonPortWrite2(UINT16 a, UINT8 d)
 {
 	a &= 0xff;
 
@@ -347,7 +340,7 @@ static INT32 SolomonMemIndex()
 	SolomonBgTiles         = Next; Next += 2048 * 8 * 8;
 	SolomonFgTiles         = Next; Next += 2048 * 8 * 8;
 	SolomonSprites         = Next; Next += 2048 * 8 * 8;
-	pFMBuffer              = (INT16*)Next; Next += nBurnSoundLen * 9 * sizeof(INT16);
+
 	SolomonPalette         = (UINT32*)Next; Next += 0x00200 * sizeof(UINT32);
 
 	MemEnd                 = Next;
@@ -355,15 +348,15 @@ static INT32 SolomonMemIndex()
 	return 0;
 }
 
-static INT32 TilePlaneOffsets[4]   = { 0, 1, 2, 3 };
-static INT32 TileXOffsets[8]       = { 0, 4, 8, 12, 16, 20, 24, 28 };
-static INT32 TileYOffsets[8]       = { 0, 32, 64, 96, 128, 160, 192, 224 };
-static INT32 SpritePlaneOffsets[4] = { 0, 131072, 262144, 393216 };
-static INT32 SpriteXOffsets[16]    = { 0, 1, 2, 3, 4, 5, 6, 7, 64, 65, 66, 67, 68, 69, 70, 71 };
-static INT32 SpriteYOffsets[16]    = { 0, 8, 16, 24, 32, 40, 48, 56, 128, 136, 144, 152, 160, 168, 176, 184 };
-
-INT32 SolomonInit()
+static INT32 SolomonInit()
 {
+    INT32 TilePlaneOffsets[4]   = { 0, 1, 2, 3 };
+    INT32 TileXOffsets[8]       = { 0, 4, 8, 12, 16, 20, 24, 28 };
+    INT32 TileYOffsets[8]       = { 0, 32, 64, 96, 128, 160, 192, 224 };
+    INT32 SpritePlaneOffsets[4] = { 0, 131072, 262144, 393216 };
+    INT32 SpriteXOffsets[16]    = { 0, 1, 2, 3, 4, 5, 6, 7, 64, 65, 66, 67, 68, 69, 70, 71 };
+    INT32 SpriteYOffsets[16]    = { 0, 8, 16, 24, 32, 40, 48, 56, 128, 136, 144, 152, 160, 168, 176, 184 };
+
 	INT32 nRet = 0, nLen;
 
 	// Allocate and Blank all required memory
@@ -406,7 +399,6 @@ INT32 SolomonInit()
 	nRet = BurnLoadRom(SolomonTempRom + 0x4000,  9, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(SolomonTempRom + 0x8000, 10, 1); if (nRet != 0) return 1;
 	nRet = BurnLoadRom(SolomonTempRom + 0xc000, 11, 1); if (nRet != 0) return 1;
-//	SolomonDecodeSprites(SolomonSprites, 2048, 0x0000, 0x4000, 0x8000, 0xc000);
 	GfxDecode(512, 4, 16, 16, SpritePlaneOffsets, SpriteXOffsets, SpriteYOffsets, 0x100, SolomonTempRom, SolomonSprites);
 
 	// Setup the Z80 emulation
@@ -414,62 +406,34 @@ INT32 SolomonInit()
 	ZetOpen(0);
 	ZetSetReadHandler(SolomonRead1);
 	ZetSetWriteHandler(SolomonWrite1);
-	ZetMapArea(0x0000, 0xbfff, 0, SolomonZ80Rom1         );
-	ZetMapArea(0x0000, 0xbfff, 2, SolomonZ80Rom1         );
-	ZetMapArea(0xc000, 0xcfff, 0, SolomonZ80Ram1         );
-	ZetMapArea(0xc000, 0xcfff, 1, SolomonZ80Ram1         );
-	ZetMapArea(0xc000, 0xcfff, 2, SolomonZ80Ram1         );
-	ZetMapArea(0xd000, 0xd3ff, 0, SolomonColourRam       );
-	ZetMapArea(0xd000, 0xd3ff, 1, SolomonColourRam       );
-	ZetMapArea(0xd000, 0xd3ff, 2, SolomonColourRam       );
-	ZetMapArea(0xd400, 0xd7ff, 0, SolomonVideoRam        );
-	ZetMapArea(0xd400, 0xd7ff, 1, SolomonVideoRam        );
-	ZetMapArea(0xd400, 0xd7ff, 2, SolomonVideoRam        );
-	ZetMapArea(0xd800, 0xdbff, 0, SolomonBgColourRam     );
-	ZetMapArea(0xd800, 0xdbff, 1, SolomonBgColourRam     );
-	ZetMapArea(0xd800, 0xdbff, 2, SolomonBgColourRam     );
-	ZetMapArea(0xdc00, 0xdfff, 0, SolomonBgVideoRam      );
-	ZetMapArea(0xdc00, 0xdfff, 1, SolomonBgVideoRam      );
-	ZetMapArea(0xdc00, 0xdfff, 2, SolomonBgVideoRam      );
-	ZetMapArea(0xe000, 0xe07f, 0, SolomonSpriteRam       );
-	ZetMapArea(0xe000, 0xe07f, 1, SolomonSpriteRam       );
-	ZetMapArea(0xe000, 0xe07f, 2, SolomonSpriteRam       );
-	ZetMapArea(0xe400, 0xe5ff, 0, SolomonPaletteRam      );
-	ZetMapArea(0xe400, 0xe5ff, 1, SolomonPaletteRam      );
-	ZetMapArea(0xe400, 0xe5ff, 2, SolomonPaletteRam      );
-	ZetMapArea(0xf000, 0xffff, 0, SolomonZ80Rom1 + 0xf000);
-	ZetMapArea(0xf000, 0xffff, 2, SolomonZ80Rom1 + 0xf000);
+	ZetMapMemory(SolomonZ80Rom1,     0x0000, 0xbfff, MAP_ROM);
+	ZetMapMemory(SolomonZ80Ram1,     0xc000, 0xcfff, MAP_RAM);
+	ZetMapMemory(SolomonColourRam,   0xd000, 0xd3ff, MAP_RAM);
+	ZetMapMemory(SolomonVideoRam,    0xd400, 0xd7ff, MAP_RAM);
+	ZetMapMemory(SolomonBgColourRam, 0xd800, 0xdbff, MAP_RAM);
+	ZetMapMemory(SolomonBgVideoRam,  0xdc00, 0xdfff, MAP_RAM);
+	ZetMapMemory(SolomonSpriteRam,   0xe000, 0xe07f, MAP_RAM);
+	ZetMapMemory(SolomonPaletteRam,  0xe400, 0xe5ff, MAP_RAM);
+	ZetMapMemory(SolomonZ80Rom1 + 0xf000, 0xf000, 0xffff, MAP_ROM);
 	ZetClose();
 
 	ZetInit(1);
 	ZetOpen(1);
 	ZetSetReadHandler(SolomonRead2);
 	ZetSetOutHandler(SolomonPortWrite2);
-	ZetMapArea(0x0000, 0x3fff, 0, SolomonZ80Rom2         );
-	ZetMapArea(0x0000, 0x3fff, 2, SolomonZ80Rom2         );
-	ZetMapArea(0x4000, 0x47ff, 0, SolomonZ80Ram2         );
-	ZetMapArea(0x4000, 0x47ff, 1, SolomonZ80Ram2         );
-	ZetMapArea(0x4000, 0x47ff, 2, SolomonZ80Ram2         );
+	ZetMapMemory(SolomonZ80Rom2, 0x0000, 0x3fff, MAP_ROM);
+	ZetMapMemory(SolomonZ80Ram2, 0x4000, 0x47ff, MAP_RAM);
 	ZetClose();
 
 	BurnFree(SolomonTempRom);
 
-	pAY8910Buffer[0] = pFMBuffer + nBurnSoundLen * 0;
-	pAY8910Buffer[1] = pFMBuffer + nBurnSoundLen * 1;
-	pAY8910Buffer[2] = pFMBuffer + nBurnSoundLen * 2;
-	pAY8910Buffer[3] = pFMBuffer + nBurnSoundLen * 3;
-	pAY8910Buffer[4] = pFMBuffer + nBurnSoundLen * 4;
-	pAY8910Buffer[5] = pFMBuffer + nBurnSoundLen * 5;
-	pAY8910Buffer[6] = pFMBuffer + nBurnSoundLen * 6;
-	pAY8910Buffer[7] = pFMBuffer + nBurnSoundLen * 7;
-	pAY8910Buffer[8] = pFMBuffer + nBurnSoundLen * 8;
-
-	AY8910Init(0, 1500000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(1, 1500000, nBurnSoundRate, NULL, NULL, NULL, NULL);
-	AY8910Init(2, 1500000, nBurnSoundRate, NULL, NULL, NULL, NULL);
+	AY8910Init(0, 1500000, 0);
+	AY8910Init(1, 1500000, 1);
+	AY8910Init(2, 1500000, 1);
 	AY8910SetAllRoutes(0, 0.12, BURN_SND_ROUTE_BOTH);
 	AY8910SetAllRoutes(1, 0.12, BURN_SND_ROUTE_BOTH);
 	AY8910SetAllRoutes(2, 0.12, BURN_SND_ROUTE_BOTH);
+	AY8910SetBuffered(ZetTotalCycles, 3072000);
 
 	GenericTilesInit();
 
@@ -479,7 +443,7 @@ INT32 SolomonInit()
 	return 0;
 }
 
-INT32 SolomonExit()
+static INT32 SolomonExit()
 {
 	ZetExit();
 
@@ -494,7 +458,7 @@ INT32 SolomonExit()
 	return 0;
 }
 
-void SolomonRenderBgLayer()
+static void SolomonRenderBgLayer()
 {
 	for (INT32 Offs = 0; Offs < 0x400; Offs++) {
 		INT32 sx, sy, Attr, Code, Colour, FlipX, FlipY;
@@ -550,7 +514,7 @@ void SolomonRenderBgLayer()
 	}
 }
 
-void SolomonRenderFgLayer()
+static void SolomonRenderFgLayer()
 {
 	for (INT32 Offs = 0x400 - 1; Offs >= 0; Offs--) {
 		INT32 sx, sy, Code, Colour;
@@ -585,7 +549,7 @@ void SolomonRenderFgLayer()
 	}
 }
 
-void SolomonRenderSpriteLayer()
+static void SolomonRenderSpriteLayer()
 {
 	for (INT32 Offs = 0x80 - 4; Offs >= 0; Offs -= 4) {
 		INT32 sx, sy, Attr, Code, Colour, FlipX, FlipY;
@@ -654,7 +618,7 @@ inline static UINT32 CalcCol(UINT16 nColour)
 	return BurnHighCol(r, g, b, 0);
 }
 
-INT32 SolomonCalcPalette()
+static INT32 SolomonCalcPalette()
 {
 	for (INT32 i = 0; i < 0x200; i++) {
 		SolomonPalette[i / 2] = CalcCol(SolomonPaletteRam[i & ~1] | (SolomonPaletteRam[i | 1] << 8));
@@ -663,7 +627,7 @@ INT32 SolomonCalcPalette()
 	return 0;
 }
 
-void SolomonDraw()
+static INT32 SolomonDraw()
 {
 	BurnTransferClear();
 	SolomonCalcPalette();
@@ -671,59 +635,36 @@ void SolomonDraw()
 	SolomonRenderFgLayer();
 	SolomonRenderSpriteLayer();
 	BurnTransferCopy(SolomonPalette);
+
+	return 0;
 }
 
-INT32 SolomonFrame()
+static INT32 SolomonFrame()
 {
-	INT32 nInterleave = 2;
-	INT32 nSoundBufferPos = 0;
-
 	if (SolomonReset) SolomonDoReset();
 
 	SolomonMakeInputs();
 
-	nCyclesTotal[0] = 4000000 / 60;
-	nCyclesTotal[1] = 3072000 / 60;
-	nCyclesDone[0] = nCyclesDone[1] = 0;
+	INT32 nInterleave = 8;
+	INT32 nCyclesTotal[2] = { 4000000 / 60, 3072000 / 60 };
+	INT32 nCyclesDone[2] = { 0, 0 };
+
+	ZetNewFrame();
 
 	for (INT32 i = 0; i < nInterleave; i++) {
-		INT32 nCurrentCPU, nNext;
-
-		// Run Z80 #1
-		nCurrentCPU = 0;
-		ZetOpen(nCurrentCPU);
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		nCyclesDone[nCurrentCPU] += ZetRun(nCyclesSegment);
-		if (i == 1) if(SolomonIrqFire) ZetNmi();
+		ZetOpen(0);
+		CPU_RUN(0, Zet);
+		if (i == nInterleave-1 && SolomonIrqFire) ZetNmi();
 		ZetClose();
 
-		// Run Z80 #2
-		nCurrentCPU = 1;
-		ZetOpen(nCurrentCPU);
-		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		nCyclesSegment = ZetRun(nCyclesSegment);
-		nCyclesDone[nCurrentCPU] += nCyclesSegment;
-		ZetRaiseIrq(0);
+		ZetOpen(1);
+		CPU_RUN(1, Zet);
+		if ((i%4) == 3) ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD); // 2x/frame
 		ZetClose();
-
-		// Render Sound Segment
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-			nSoundBufferPos += nSegmentLength;
-		}
 	}
 
-	// Make sure the buffer is entirely filled.
 	if (pBurnSoundOut) {
-		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-		if (nSegmentLength) {
-			AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-		}
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	if (pBurnDraw) SolomonDraw();
@@ -731,7 +672,7 @@ INT32 SolomonFrame()
 	return 0;
 }
 
-static INT32 SolomonScan(INT32 nAction,INT32 *pnMin)
+static INT32 SolomonScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -765,9 +706,9 @@ struct BurnDriver BurnDrvSolomon = {
 	"solomon", NULL, NULL, NULL, "1986",
 	"Solomon's Key (US)\0", NULL, "Tecmo", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, SolomonRomInfo, SolomonRomName, NULL, NULL, SolomonInputInfo, SolomonDIPInfo,
-	SolomonInit, SolomonExit, SolomonFrame, NULL, SolomonScan,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, SolomonRomInfo, SolomonRomName, NULL, NULL, NULL, NULL, SolomonInputInfo, SolomonDIPInfo,
+	SolomonInit, SolomonExit, SolomonFrame, SolomonDraw, SolomonScan,
 	NULL, 0x200, 256, 224, 4, 3
 };
 
@@ -775,8 +716,8 @@ struct BurnDriver BurnDrvSolomonj = {
 	"solomonj", "solomon", NULL, NULL, "1986",
 	"Solomon's Key (Japan)\0", NULL, "Tecmo", "Miscellaneous",
 	L"Solomon's Key (Japan)\0Solomon's Key \u30BD\u30ED\u30E2\u30F3\u306E\u9375\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
-	NULL, SolomonjRomInfo, SolomonjRomName, NULL, NULL, SolomonInputInfo, SolomonDIPInfo,
-	SolomonInit, SolomonExit, SolomonFrame, NULL, SolomonScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PUZZLE, 0,
+	NULL, SolomonjRomInfo, SolomonjRomName, NULL, NULL, NULL, NULL, SolomonInputInfo, SolomonDIPInfo,
+	SolomonInit, SolomonExit, SolomonFrame, SolomonDraw, SolomonScan,
 	NULL, 0x200, 256, 224, 4, 3
 };

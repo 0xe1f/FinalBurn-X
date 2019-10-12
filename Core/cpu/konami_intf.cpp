@@ -1,39 +1,70 @@
 #include "burnint.h"
 #include "konami_intf.h"
 
-#define MEMORY_SPACE	0x10000
-#define KONAMI_PAGE_SIZE	0x100
-#define KONAMI_PAGE_MASK	0xff
-#define KONAMI_PAGE_SHIFT	8
-#define KONAMI_PAGE_COUNT	MEMORY_SPACE / KONAMI_PAGE_SIZE
+#define MAX_CPU		1
 
-#define KONAMI_READ		0
-#define KONAMI_WRITE		1
-#define KONAMI_FETCH		2
+#define MEMORY_SPACE	0x10000
+#define PAGE_SIZE	0x100
+#define PAGE_MASK	0xff
+#define PAGE_SHIFT	8
+#define PAGE_COUNT	MEMORY_SPACE / PAGE_SIZE
+
+#define READ		0
+#define WRITE		1
+#define FETCH		2
 
 INT32 nKonamiCpuCount = 0;
 static INT32 nKonamiCpuActive = -1;
 
-static UINT8 *mem[3][KONAMI_PAGE_COUNT];
+static UINT8 *mem[3][PAGE_COUNT];
 
-static UINT8 (*konamiRead)(UINT16 address);
-static void (*konamiWrite)(UINT16 address, UINT8 data);
+static UINT8 (*pkonamiRead)(UINT16 address);
+static void (*pkonamiWrite)(UINT16 address, UINT8 data);
+
 static INT32 (*irqcallback)(INT32);
+
+void konami_set_irq_line(INT32 irqline, INT32 state);
+void konami_init(INT32 (*irqcallback)(INT32));
+void konami_set_irq_hold(INT32 irq);
+
+static void core_set_irq(INT32 /*cpu*/, INT32 line, INT32 state)
+{
+	konamiSetIrqLine(line, state);
+}
+
+cpu_core_config konamiCPUConfig =
+{
+	"konami",
+	konamiOpen,
+	konamiClose,
+	konami_cheat_read,
+	konami_write_rom,
+	konamiGetActive,
+	konamiTotalCycles,
+	konamiNewFrame,
+	konamiIdle,
+	core_set_irq,
+	konamiRun,
+	konamiRunEnd,
+	konamiReset,
+	0x10000,
+	0
+};
 
 void konamiMapMemory(UINT8 *src, UINT16 start, UINT16 finish, INT32 type)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiMapMemory called without init\n"));
 #endif
 
-	UINT16 len = (finish-start) >> KONAMI_PAGE_SHIFT;
+	UINT16 len = (finish-start) >> PAGE_SHIFT;
 
 	for (UINT16 i = 0; i < len+1; i++)
 	{
-		UINT32 offset = i + (start >> KONAMI_PAGE_SHIFT);
-		if (type & (1 <<  KONAMI_READ)) mem[ KONAMI_READ][offset] = src + (i << KONAMI_PAGE_SHIFT);
-		if (type & (1 << KONAMI_WRITE)) mem[KONAMI_WRITE][offset] = src + (i << KONAMI_PAGE_SHIFT);
-		if (type & (1 << KONAMI_FETCH)) mem[KONAMI_FETCH][offset] = src + (i << KONAMI_PAGE_SHIFT);
+		UINT32 offset = i + (start >> PAGE_SHIFT);
+		if (type & (1 <<  READ)) mem[ READ][offset] = src + (i << PAGE_SHIFT);
+		if (type & (1 << WRITE)) mem[WRITE][offset] = src + (i << PAGE_SHIFT);
+		if (type & (1 << FETCH)) mem[FETCH][offset] = src + (i << PAGE_SHIFT);
 	}
 }
 
@@ -44,7 +75,7 @@ INT32 konamiDummyIrqCallback(INT32)
 
 void konamiSetIrqCallbackHandler(INT32 (*callback)(INT32))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiSetIrqCallbackHandler called without init\n"));
 #endif
 
@@ -53,83 +84,83 @@ void konamiSetIrqCallbackHandler(INT32 (*callback)(INT32))
 
 void konamiSetWriteHandler(void (*write)(UINT16, UINT8))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiSetWriteHandler called without init\n"));
 #endif
 
-	konamiWrite = write;
+	pkonamiWrite = write;
 }
 
 void konamiSetReadHandler(UINT8 (*read)(UINT16))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiSetReadHandler called without init\n"));
 #endif
 
-	konamiRead = read;
+	pkonamiRead = read;
 }
 
 void konami_write_rom(UINT32 address, UINT8 data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konami_write_rom called without init\n"));
 #endif
 
 	address &= 0xffff;
 
-	if (mem[KONAMI_READ][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		mem[KONAMI_READ][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK] = data;
+	if (mem[READ][address >> PAGE_SHIFT] != NULL) {
+		mem[READ][address >> PAGE_SHIFT][address & PAGE_MASK] = data;
 	}
 
-	if (mem[KONAMI_FETCH][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		mem[KONAMI_FETCH][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK] = data;
+	if (mem[FETCH][address >> PAGE_SHIFT] != NULL) {
+		mem[FETCH][address >> PAGE_SHIFT][address & PAGE_MASK] = data;
 	}
 
-	if (mem[KONAMI_WRITE][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		mem[KONAMI_WRITE][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK] = data;
+	if (mem[WRITE][address >> PAGE_SHIFT] != NULL) {
+		mem[WRITE][address >> PAGE_SHIFT][address & PAGE_MASK] = data;
 	}
 
-	if (konamiWrite != NULL) {
-		konamiWrite(address, data);
+	if (pkonamiWrite != NULL) {
+		pkonamiWrite(address, data);
 	}
 }
 
-void konami_write(UINT16 address, UINT8 data)
+void konamiWrite(UINT16 address, UINT8 data)
 {
-	if (mem[KONAMI_WRITE][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		mem[KONAMI_WRITE][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK] = data;
+	if (mem[WRITE][address >> PAGE_SHIFT] != NULL) {
+		mem[WRITE][address >> PAGE_SHIFT][address & PAGE_MASK] = data;
 		return;
 	}
 
-	if (konamiWrite != NULL) {
-		konamiWrite(address, data);
+	if (pkonamiWrite != NULL) {
+		pkonamiWrite(address, data);
 		return;
 	}
 
 	return;
 }
 
-UINT8 konami_read(UINT16 address)
+UINT8 konamiRead(UINT16 address)
 {
-	if (mem[ KONAMI_READ][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		return mem[ KONAMI_READ][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK];
+	if (mem[ READ][address >> PAGE_SHIFT] != NULL) {
+		return mem[ READ][address >> PAGE_SHIFT][address & PAGE_MASK];
 	}
 
-	if (konamiRead != NULL) {
-		return konamiRead(address);
+	if (pkonamiRead != NULL) {
+		return pkonamiRead(address);
 	}
 
 	return 0;
 }
 
-UINT8 konami_fetch(UINT16 address)
+UINT8 konamiFetch(UINT16 address)
 {
-	if (mem[KONAMI_FETCH][address >> KONAMI_PAGE_SHIFT] != NULL) {
-		return mem[KONAMI_FETCH][address >> KONAMI_PAGE_SHIFT][address & KONAMI_PAGE_MASK];
+	if (mem[FETCH][address >> PAGE_SHIFT] != NULL) {
+		return mem[FETCH][address >> PAGE_SHIFT][address & PAGE_MASK];
 	}
 
-	if (konamiRead != NULL) {
-		return konamiRead(address);
+	if (pkonamiRead != NULL) {
+		return pkonamiRead(address);
 	}
 
 	return 0;
@@ -137,78 +168,68 @@ UINT8 konami_fetch(UINT16 address)
 
 void konamiSetIrqLine(INT32 line, INT32 state)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiSetIrqLine called without init\n"));
 #endif
 
-	if (state == KONAMI_HOLD_LINE) {
-		konami_set_irq_line(line, KONAMI_HOLD_LINE);
+	if (state == CPU_IRQSTATUS_HOLD) {
+		konami_set_irq_line(line, CPU_IRQSTATUS_ACK);
+		konami_set_irq_hold(line);
+	} else
+	if (state == CPU_IRQSTATUS_AUTO) {
+		konami_set_irq_line(line, CPU_IRQSTATUS_ACK);
 		konamiRun(0);
-		konami_set_irq_line(line, KONAMI_CLEAR_LINE);
-		konamiRun(0);
+		konami_set_irq_line(line, CPU_IRQSTATUS_NONE);
 	} else {
 		konami_set_irq_line(line, state);
 	}
 }
 
-void konamiRunEnd()
+UINT8 konami_cheat_read(UINT32 a)
 {
-	// nothing atm
+	return konamiRead(a);
 }
 
-static UINT8 konami_cheat_read(UINT32 a)
-{
-	return konami_read(a);
-}
-
-static cpu_core_config konamiCheatCpuConfig =
-{
-	konamiOpen,
-	konamiClose,
-	konami_cheat_read,
-	konami_write_rom,
-	konamiGetActive,
-	konamiTotalCycles,
-	konamiNewFrame,
-	konamiRun,
-	konamiRunEnd,
-	konamiReset,
-	1<<16,
-	0
-};
-
-void konamiInit(INT32 /*num*/) // only 1 cpu (No examples exist of multi-cpu konami games)
+#if defined FBNEO_DEBUG
+void konamiInit(INT32 nCpu) // only 1 cpu (No examples exist of multi-cpu konami games)
+#else
+void konamiInit(INT32 /*nCpu*/) // only 1 cpu (No examples exist of multi-cpu konami games)
+#endif
 {
 	DebugCPU_KonamiInitted = 1;
+
+#if defined FBNEO_DEBUG
+	if (nCpu >= MAX_CPU) bprintf(PRINT_ERROR, _T("konamiInit nCpu is more than MAX_CPU (%d), MAX IS %d\n"), nCpu, MAX_CPU);
+#endif
 
 	nKonamiCpuCount = 1;
 	konami_init(konamiDummyIrqCallback);
 
 	for (INT32 i = 0; i < 3; i++) {
-		for (INT32 j = 0; j < (MEMORY_SPACE / KONAMI_PAGE_SIZE); j++) {
+		for (INT32 j = 0; j < (MEMORY_SPACE / PAGE_SIZE); j++) {
 			mem[i][j] = NULL;
 		}
 	}
 
-	CpuCheatRegister(0, &konamiCheatCpuConfig);
+	CpuCheatRegister(0, &konamiCPUConfig);
 }
 
 void konamiExit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiExit called without init\n"));
 #endif
 
 	nKonamiCpuCount = 0;
-	konamiWrite = NULL;
-	konamiRead = NULL;
+	pkonamiWrite = NULL;
+	pkonamiRead = NULL;
 	
 	DebugCPU_KonamiInitted = 0;
 }
 
 void konamiOpen(INT32 num)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiOpen called without init\n"));
 #endif
 
@@ -217,7 +238,7 @@ void konamiOpen(INT32 num)
 
 void konamiClose()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiClose called without init\n"));
 #endif
 
@@ -226,7 +247,7 @@ void konamiClose()
 
 INT32 konamiGetActive()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiGetActive called without init\n"));
 #endif
 

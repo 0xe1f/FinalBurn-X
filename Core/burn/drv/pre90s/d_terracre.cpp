@@ -1,3 +1,6 @@
+// FB Alpha Terra Cresta driver module
+// Based on MAME driver by Carlos A. Lozano
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
@@ -512,6 +515,41 @@ static struct BurnRomInfo AmazonRomDesc[] = {
 STD_ROM_PICK(Amazon)
 STD_ROM_FN(Amazon)
 
+static struct BurnRomInfo AmazontRomDesc[] = {
+	/* Found a on Tecfri TC-1A and TC-2A boardset */
+	{ "5.4d",          0x08000, 0xae39432f, BRF_ESS | BRF_PRG },	//  0	68000 Program Code
+	{ "7.4b",          0x08000, 0xa74cdcea, BRF_ESS | BRF_PRG },	//  1
+	{ "4.6d",          0x08000, 0x0c6b0772, BRF_ESS | BRF_PRG },	//  2
+	{ "6.6b",          0x08000, 0xedbaad3f, BRF_ESS | BRF_PRG },	//  3
+	
+	{ "1.15b",         0x04000, 0x55a8b5e7, BRF_ESS | BRF_PRG },	//  4	Z80 Program Code
+	{ "2.17b",         0x04000, 0x427a7cca, BRF_ESS | BRF_PRG },	//  5
+	{ "3.18b",         0x04000, 0xb8cceaf7, BRF_ESS | BRF_PRG },	//  6
+	
+	{ "8.16g",         0x02000, 0x0cec8644, BRF_GRA },				//  7	Chars
+	
+	{ "13.15f",        0x08000, 0x415ff4d9, BRF_GRA },				//  8	Tiles
+	{ "14.17f",        0x08000, 0x492b5c48, BRF_GRA },				//  9
+	{ "15.18f",        0x08000, 0xb1ac0b9d, BRF_GRA },				// 10
+	
+	{ "4.6e",          0x04000, 0xf77ced7a, BRF_GRA },				// 11	Sprites
+	{ "5.7e",          0x04000, 0x16ef1465, BRF_GRA },				// 12
+	{ "6.6g",          0x04000, 0x936ec941, BRF_GRA },				// 13
+	{ "7.7g",          0x04000, 0x66dd718e, BRF_GRA },				// 14
+	
+	{ "clr.10f",       0x00100, 0x6440b341, BRF_GRA },				// 15	PROMs
+	{ "clr.11f",       0x00100, 0x271e947f, BRF_GRA },				// 16
+	{ "clr.12f",       0x00100, 0x7d38621b, BRF_GRA },				// 17
+	{ "2g",            0x00100, 0x44ca16b9, BRF_GRA },				// 18
+	
+	{ "4e",            0x00100, 0x035f2c7b, BRF_GRA },				// 19	Sprite Palette Bank
+	
+	{ "16.18g",        0x02000, 0x1d8d592b, BRF_OPT },				// 20	Unknown
+};
+
+STD_ROM_PICK(Amazont)
+STD_ROM_FN(Amazont)
+
 static struct BurnRomInfo AmatelasRomDesc[] = {
 	{ "a11.4d",        0x08000, 0x3d226d0b, BRF_ESS | BRF_PRG },	//  0	68000 Program Code
 	{ "a9.4b",         0x08000, 0xe2a0d21d, BRF_ESS | BRF_PRG },	//  1
@@ -702,7 +740,9 @@ static INT32 DrvDoReset()
 	DrvSoundLatch = 0;
 	AmazonProtCmd = 0;
 	memset(AmazonProtReg, 0, 6);
-	
+
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -757,7 +797,7 @@ void __fastcall Terracre68KWriteWord(UINT32 a, UINT16 d)
 {
 	switch (a) {
 		case 0x026000: {
-			DrvFlipScreen = d;
+			DrvFlipScreen = d & 0x04;
 			return;
 		}
 		
@@ -818,7 +858,7 @@ void __fastcall Amazon68KWriteByte(UINT32 a, UINT8 d)
 {
 	switch (a) {
 		case 0x070001: {
-			if (AmazonProtCmd >= 32 && AmazonProtCmd <= 0x37) {
+			if (AmazonProtCmd >= 0x32 && AmazonProtCmd <= 0x37) {
 				AmazonProtReg[AmazonProtCmd - 0x32] = d;
 			}
 			return;
@@ -878,7 +918,7 @@ void __fastcall Amazon68KWriteWord(UINT32 a, UINT16 d)
 {
 	switch (a) {
 		case 0x046000: {
-			DrvFlipScreen = d;
+			DrvFlipScreen = d & 0x04;
 			return;
 		}
 		
@@ -998,16 +1038,6 @@ void __fastcall TerracreYM2203Z80PortWrite(UINT16 a, UINT8 d)
 	}
 }
 
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-inline static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000;
-}
-
 static INT32 TerracreSyncDAC()
 {
 	return (INT32)(float)(nBurnSoundLen * (ZetTotalCycles() / (4000000.0000 / (nBurnFPS / 100.0000))));
@@ -1039,11 +1069,11 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KRom           , 0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(DrvSpriteRam        , 0x020000, 0x021fff, SM_RAM);
-	SekMapMemory(DrvBgVideoRam       , 0x022000, 0x022fff, SM_RAM);
-//	SekMapMemory(Drv68KRam           , 0x023000, 0x023fff, SM_RAM);
-	SekMapMemory(DrvFgVideoRam       , 0x028000, 0x0287ff, SM_RAM);
+	SekMapMemory(Drv68KRom           , 0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(DrvSpriteRam        , 0x020000, 0x021fff, MAP_RAM);
+	SekMapMemory(DrvBgVideoRam       , 0x022000, 0x022fff, MAP_RAM);
+//	SekMapMemory(Drv68KRam           , 0x023000, 0x023fff, MAP_RAM);
+	SekMapMemory(DrvFgVideoRam       , 0x028000, 0x0287ff, MAP_RAM);
 	SekSetReadWordHandler(0, Terracre68KReadWord);
 	SekSetWriteWordHandler(0, Terracre68KWriteWord);
 	SekSetReadByteHandler(0, Terracre68KReadByte);
@@ -1066,22 +1096,22 @@ static INT32 DrvInit()
 	ZetClose();
 	
 	if (DrvUseYM2203) {
-		BurnYM2203Init(1, 4000000, NULL, DrvSynchroniseStream, DrvGetTime, 0);
+		BurnYM2203Init(1, 4000000, NULL, 0);
 		BurnTimerAttachZet(4000000);
 		BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
 		BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.20, BURN_SND_ROUTE_BOTH);
 		BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_2, 0.20, BURN_SND_ROUTE_BOTH);
 		BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_3, 0.20, BURN_SND_ROUTE_BOTH);
 	} else {
-		BurnYM3526Init(4000000, NULL, &DrvSynchroniseStream, 0);
-		BurnTimerAttachZetYM3526(4000000);
+		BurnYM3526Init(4000000, NULL, 0);
+		BurnTimerAttachYM3526(&ZetConfig, 4000000);
 		BurnYM3526SetRoute(BURN_SND_YM3526_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 	}
 	
 	DACInit(0, 0, 1, TerracreSyncDAC);
 	DACInit(1, 0, 1, TerracreSyncDAC);
-	DACSetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
-	DACSetRoute(1, 0.50, BURN_SND_ROUTE_BOTH);
+	DACSetRoute(0, 0.40, BURN_SND_ROUTE_BOTH);
+	DACSetRoute(1, 0.40, BURN_SND_ROUTE_BOTH);
 	
 	GenericTilesInit();
 	
@@ -1107,10 +1137,10 @@ static INT32 DrvAmazonInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KRom           , 0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(DrvSpriteRam        , 0x040000, 0x040fff, SM_RAM);
-	SekMapMemory(DrvBgVideoRam       , 0x042000, 0x042fff, SM_RAM);
-	SekMapMemory(DrvFgVideoRam       , 0x050000, 0x050fff, SM_RAM);
+	SekMapMemory(Drv68KRom           , 0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(DrvSpriteRam        , 0x040000, 0x040fff, MAP_RAM);
+	SekMapMemory(DrvBgVideoRam       , 0x042000, 0x042fff, MAP_RAM);
+	SekMapMemory(DrvFgVideoRam       , 0x050000, 0x050fff, MAP_RAM);
 	SekSetReadWordHandler(0, Amazon68KReadWord);
 	SekSetWriteWordHandler(0, Amazon68KWriteWord);
 	SekSetReadByteHandler(0, Amazon68KReadByte);
@@ -1128,8 +1158,8 @@ static INT32 DrvAmazonInit()
 	ZetMapArea(0xc000, 0xcfff, 2, DrvZ80Ram);
 	ZetClose();
 	
-	BurnYM3526Init(4000000, NULL, &DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3526(4000000);
+	BurnYM3526Init(4000000, NULL, 0);
+	BurnTimerAttachYM3526(&ZetConfig, 4000000);
 	BurnYM3526SetRoute(BURN_SND_YM3526_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 	
 	DACInit(0, 0, 1, TerracreSyncDAC);
@@ -1693,7 +1723,7 @@ static void DrawSprites()
 	}
 }
 
-static void DrvDraw()
+static INT32 DrvDraw()
 {
 	BurnTransferClear();
 	if (DrvRecalcPal) DrvCalcPalette();
@@ -1701,23 +1731,19 @@ static void DrvDraw()
 	if (nSpriteEnable & 0x01) DrawSprites();
 	if (nBurnLayer & 0x02) DrvRenderFgLayer();
 	BurnTransferCopy(DrvPalette);
+
+	return 0;
 }
 
 static INT32 DrvFrame()
 {
 	INT32 nCyclesTotal[2] = { 8000000 / 60, 4000000 / 60 };
 	INT32 nCyclesDone[2] = { 0, 0 };
-	
-	INT32 nInterleave = 100;
+	INT32 nInterleave = 17*8; // 136
 	
 	if (DrvReset) DrvDoReset();
 
 	DrvMakeInputs();
-	
-	INT32 Z80IRQSlice[9];
-	for (INT32 i = 0; i < 9; i++) {
-		Z80IRQSlice[i] = (INT32)((double)((nInterleave * (i + 1)) / 10));
-	}
 	
 	SekNewFrame();
 	ZetNewFrame();
@@ -1730,25 +1756,20 @@ static INT32 DrvFrame()
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
 		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 		SekClose();
 		
 		nCurrentCPU = 1;
 		ZetOpen(0);
 		if (DrvUseYM2203) {
-#if 0
-			// The sound cpu fails to read the latches if we run this here
-			BurnTimerUpdate(i * (nCyclesTotal[nCurrentCPU] / nInterleave));
-#endif
+			BurnTimerUpdate((i + 1) * (nCyclesTotal[nCurrentCPU] / nInterleave));
 		} else {
-			BurnTimerUpdateYM3526(i * (nCyclesTotal[nCurrentCPU] / nInterleave));
+			BurnTimerUpdateYM3526((i + 1) * (nCyclesTotal[nCurrentCPU] / nInterleave));
 		}
-		for (INT32 j = 0; j < 9; j++) {
-			if (i == Z80IRQSlice[j]) {
-				ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
-				nCyclesDone[1] += ZetRun(4000);
-				ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
-			}
+		{ // 136 times per frame.
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
+			nCyclesDone[1] += ZetRun(100);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 		}
 		ZetClose();
 	}
@@ -1822,9 +1843,9 @@ struct BurnDriver BurnDrvTerracre = {
 	"terracre", NULL, NULL, NULL, "1985",
 	"Terra Cresta (YM3526 set 1)\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, DrvRomInfo, DrvRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	TerracreInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, DrvRomInfo, DrvRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	TerracreInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1832,9 +1853,9 @@ struct BurnDriver BurnDrvTerracreo = {
 	"terracreo", "terracre", NULL, NULL, "1985",
 	"Terra Cresta (YM3526 set 2)\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, DrvoRomInfo, DrvoRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	TerracreoInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, DrvoRomInfo, DrvoRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	TerracreoInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1842,9 +1863,9 @@ struct BurnDriver BurnDrvTerracrea = {
 	"terracrea", "terracre", NULL, NULL, "1985",
 	"Terra Cresta (YM3526 set 3)\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, DrvaRomInfo, DrvaRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	TerracreoInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, DrvaRomInfo, DrvaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	TerracreoInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1852,9 +1873,9 @@ struct BurnDriver BurnDrvTerracren = {
 	"terracren", "terracre", NULL, NULL, "1985",
 	"Terra Cresta (YM2203)\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, DrvnRomInfo, DrvnRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
-	TerracrenInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, DrvnRomInfo, DrvnRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	TerracrenInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1862,9 +1883,19 @@ struct BurnDriver BurnDrvAmazon = {
 	"amazon", NULL, NULL, NULL, "1986",
 	"Soldier Girl Amazon\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, AmazonRomInfo, AmazonRomName, NULL, NULL, AmazonInputInfo, AmazonDIPInfo,
-	AmazonInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_RUNGUN, 0,
+	NULL, AmazonRomInfo, AmazonRomName, NULL, NULL, NULL, NULL, AmazonInputInfo, AmazonDIPInfo,
+	AmazonInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
+};
+
+struct BurnDriver BurnDrvAmazont = {
+	"amazont", "amazon", NULL, NULL, "1986",
+	"Soldier Girl Amazon (Tecfri license)\0", NULL, "Nichibutsu (Tecfri license)", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_RUNGUN, 0,
+	NULL, AmazontRomInfo, AmazontRomName, NULL, NULL, NULL, NULL, AmazonInputInfo, AmazonDIPInfo,
+	AmazonInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1872,9 +1903,9 @@ struct BurnDriver BurnDrvAmatelas = {
 	"amatelas", "amazon", NULL, NULL, "1986",
 	"Sei Senshi Amatelass\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, AmatelasRomInfo, AmatelasRomName, NULL, NULL, AmazonInputInfo, AmazonDIPInfo,
-	AmatelasInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_RUNGUN, 0,
+	NULL, AmatelasRomInfo, AmatelasRomName, NULL, NULL, NULL, NULL, AmazonInputInfo, AmazonDIPInfo,
+	AmatelasInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1882,9 +1913,9 @@ struct BurnDriver BurnDrvHorekid = {
 	"horekid", NULL, NULL, NULL, "1987",
 	"Kid no Hore Hore Daisakusen\0", NULL, "Nichibutsu", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, HorekidRomInfo, HorekidRomName, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
-	HorekidInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, HorekidRomInfo, HorekidRomName, NULL, NULL, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
+	HorekidInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1892,9 +1923,9 @@ struct BurnDriver BurnDrvHorekidb = {
 	"horekidb", "horekid", NULL, NULL, "1987",
 	"Kid no Hore Hore Daisakusen (bootleg)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_BOOTLEG, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, HorekidbRomInfo, HorekidbRomName, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
-	HorekidInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, HorekidbRomInfo, HorekidbRomName, NULL, NULL, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
+	HorekidInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };
 
@@ -1902,8 +1933,8 @@ struct BurnDriver BurnDrvBoobhack = {
 	"boobhack", "horekid", NULL, NULL, "1987",
 	"Booby Kids (Italian manufactured graphic hack / bootleg of Kid no Hore Hore Daisakusen (bootleg))\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_BOOTLEG, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, BoobhackRomInfo, BoobhackRomName, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
-	HorekidInit, DrvExit, DrvFrame, NULL, DrvScan,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, BoobhackRomInfo, BoobhackRomName, NULL, NULL, NULL, NULL, HorekidInputInfo, HorekidDIPInfo,
+	HorekidInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalcPal, 0x1110, 224, 256, 3, 4
 };

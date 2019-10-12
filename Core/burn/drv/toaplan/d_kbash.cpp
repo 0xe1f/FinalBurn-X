@@ -1,3 +1,6 @@
+// FB Alpha Knuckle Bash driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 #include "nec_intf.h"
 // Knuckle Bash
@@ -13,20 +16,36 @@ static bool bVBlank;
 
 // Rom information
 static struct BurnRomInfo drvRomDesc[] = {
-	{ "tp023_01.bin", 0x080000, 0x2965F81D, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "tp023_01.bin", 0x080000, 0x2965f81d, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 
-	{ "tp023_3.bin",  0x200000, 0x32AD508B, BRF_GRA },			 //  1 GP9001 Tile data
-	{ "tp023_5.bin",  0x200000, 0xB84C90EB, BRF_GRA },			 //  2
-	{ "tp023_4.bin",  0x200000, 0xE493C077, BRF_GRA },			 //  3
-	{ "tp023_6.bin",  0x200000, 0x9084B50A, BRF_GRA },			 //  4
+	{ "tp023_3.bin",  0x200000, 0x32ad508b, BRF_GRA },			 //  1 GP9001 Tile data
+	{ "tp023_5.bin",  0x200000, 0xb84c90eb, BRF_GRA },			 //  2
+	{ "tp023_4.bin",  0x200000, 0xe493c077, BRF_GRA },			 //  3
+	{ "tp023_6.bin",  0x200000, 0x9084b50a, BRF_GRA },			 //  4
 
-	{ "tp023_02.bin", 0x008000, 0x4CD882A1, BRF_ESS | BRF_PRG }, //  5 Sound CPU
-	{ "tp023_7.bin",  0x040000, 0x3732318F, BRF_SND },			 //  6 ADPCM data
+	{ "tp023_02.bin", 0x008000, 0x4cd882a1, BRF_ESS | BRF_PRG }, //  5 Sound CPU
+	{ "tp023_7.bin",  0x040000, 0x3732318f, BRF_SND },			 //  6 ADPCM data
 };
 
 
 STD_ROM_PICK(drv)
 STD_ROM_FN(drv)
+
+static struct BurnRomInfo drvkRomDesc[] = {
+	{ "tp023_01.u52", 0x080000, 0x099aefbc, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+
+	{ "tp023_3.bin",  0x200000, 0x32ad508b, BRF_GRA },			 //  1 GP9001 Tile data
+	{ "tp023_5.bin",  0x200000, 0xb84c90eb, BRF_GRA },			 //  2
+	{ "tp023_4.bin",  0x200000, 0xe493c077, BRF_GRA },			 //  3
+	{ "tp023_6.bin",  0x200000, 0x9084b50a, BRF_GRA },			 //  4
+
+	{ "tp023_02.bin", 0x008000, 0x4cd882a1, BRF_ESS | BRF_PRG }, //  5 Sound CPU
+	{ "tp023_7.bin",  0x040000, 0x3732318f, BRF_SND },			 //  6 ADPCM data
+};
+
+
+STD_ROM_PICK(drvk)
+STD_ROM_FN(drvk)
 
 static struct BurnInputInfo kbashInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvButton + 3,	"p1 coin"},
@@ -64,16 +83,16 @@ static struct BurnDIPInfo kbashDIPList[] = {
 	// Defaults
 	{0x14,	0xFF, 0xFF,	0x00, NULL},
 	{0x15,	0xFF, 0xFF,	0x00, NULL},
-	{0x16,	0xFF, 0x0F,	0x00, NULL},
+	{0x16,	0xFF, 0xFF,	0x00, NULL},
 
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
-	{0x14,	0x01, 0x01,	0x00, "Discount off"},
-	{0x14,	0x01, 0x01,	0x01, "Continue discount"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Continue Price"},
+	{0x14,	0x01, 0x01,	0x00, "Normal"},
+	{0x14,	0x01, 0x01,	0x01, "Discount"},
+	{0,		0xFE, 0,	2,	  "Screen Type"},
 	{0x14,	0x01, 0x02,	0x00, "Normal screen"},
 	{0x14,	0x01, 0x02,	0x02, "Invert screen"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -101,39 +120,101 @@ static struct BurnDIPInfo kbashDIPList[] = {
 	{0x15,	0x01, 0x0C,	0x04, "100000 only"},
 	{0x15,	0x01, 0x0C,	0x08, "200000 only"},
 	{0x15,	0x01, 0x0C,	0x0C, "No extend"},
-	{0,		0xFE, 0,	4,	  "Hero counts"},
+	{0,		0xFE, 0,	4,	  "Lives"},
+	{0x15,	0x01, 0x30,	0x30, "1"},
 	{0x15,	0x01, 0x30,	0x00, "2"},
-	{0x15,	0x01, 0x30,	0x01, "5"},
-	{0x15,	0x01, 0x30,	0x02, "4"},
-	{0x15,	0x01, 0x30,	0x03, "2"},
-	{0,		0xFE, 0,	2,	  NULL},
-    {0x15,	0x01, 0x40,	0x00, "Normal game"},
-    {0x15,	0x01, 0x40,	0x40, "no-death, stop mode"},
-	{0,		0xFE, 0,	2,	  "Continue play"},
-    {0x15,	0x01, 0x80,	0x00, "On"},
-	{0x15,	0x01, 0x80,	0x80, "Off"},
+	{0x15,	0x01, 0x30,	0x20, "3"},
+	{0x15,	0x01, 0x30,	0x10, "4"},
+	{0,		0xFE, 0,	2,	  "Invulnerability (Cheat)"},
+    {0x15,	0x01, 0x40,	0x00, "Off"},
+    {0x15,	0x01, 0x40,	0x40, "On"},
+	{0,		0xFE, 0,	2,	  "Allow Continue"},
+    {0x15,	0x01, 0x80,	0x00, "Yes"},
+	{0x15,	0x01, 0x80,	0x80, "No"},
 
 	// DIP 3
-	{0,		0xFE, 0,	7,	  "For"},
-	{0x16,	0x01, 0x0F,	0x00, "Japan"},
-	{0x16,	0x01, 0x0F,	0x01, "USA"},
-	{0x16,	0x01, 0x0F,	0x02, "Europe"},
-	{0x16,	0x01, 0x0F,	0x03, "Korea"},
-	{0x16,	0x01, 0x0F,	0x04, "Hong Kong"},
-	{0x16,	0x01, 0x0F,	0x05, "Taiwan"},
-	{0x16,	0x01, 0x0F,	0x06, "Asia"},
-	{0x16,	0x01, 0x0F,	0x07, "U.S.A."},
-	{0x16,	0x01, 0x0F,	0x08, "Japan"},
-	{0x16,	0x01, 0x0F,	0x09, "U.S.A."},
-	{0x16,	0x01, 0x0F,	0x0A, "Europe"},
-	{0x16,	0x01, 0x0F,	0x0B, "Korea"},
-	{0x16,	0x01, 0x0F,	0x0C, "Hong Kong"},
-	{0x16,	0x01, 0x0F,	0x0D, "Taiwan"},
-	{0x16,	0x01, 0x0F,	0x0E, "Asia"},
-	{0x16,	0x01, 0x0F,	0x0F, ""},
+	{0,		0xFE, 0,	7,	  "Region"},
+	{0x16,	0x01, 0xF0,	0x00, "Japan"},
+	{0x16,	0x01, 0xF0,	0x10, "USA, Europe (Atari Games)"},
+	{0x16,	0x01, 0xF0,	0x20, "Europe, USA (Atari Games)"},
+	{0x16,	0x01, 0xF0,	0x30, "Korea"},
+	{0x16,	0x01, 0xF0,	0x40, "Hong Kong"},
+	{0x16,	0x01, 0xF0,	0x50, "Taiwan"},
+	{0x16,	0x01, 0xF0,	0x60, "Southeast Asia"},
+	{0x16,	0x01, 0xF0,	0x90, "USA"},
+	{0x16,	0x01, 0xF0,	0xA0, "Europe"},
 };
 
 STDDIPINFO(kbash)
+
+static struct BurnDIPInfo kbashkDIPList[] = {
+	// Defaults
+	{0x14,	0xFF, 0xFF,	0x00, NULL},
+	{0x15,	0xFF, 0xFF,	0x00, NULL},
+	{0x16,	0xFF, 0xFF,	0x00, NULL},
+
+	// DIP 1
+	{0,		0xFE, 0,	2,	  "Continue Price"},
+	{0x14,	0x01, 0x01,	0x00, "Normal"},
+	{0x14,	0x01, 0x01,	0x01, "Discount"},
+	{0,		0xFE, 0,	2,	  "Screen Type"},
+	{0x14,	0x01, 0x02,	0x00, "Normal screen"},
+	{0x14,	0x01, 0x02,	0x02, "Invert screen"},
+	{0,		0xFE, 0,	2,	  "Service"},
+	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
+	{0x14,	0x01, 0x04,	0x04, "Test mode"},
+	{0,		0xFE, 0,	2,	  "Advertise sound"},
+	{0x14,	0x01, 0x08,	0x00, "On"},
+	{0x14,	0x01, 0x08,	0x08, "Off"},
+	{0,		0xFE, 0,	4,	  "Coin A"},
+	{0x14,	0x01, 0x30,	0x00, "1 coin 1 play"},
+	{0x14,	0x01, 0x30,	0x10, "1 coin 2 plays"},
+	{0x14,	0x01, 0x30,	0x20, "2 coins 1 play"},
+	{0x14,	0x01, 0x30,	0x30, "2 coins 3 plays"},
+	{0,		0xFE, 0,	4,	  "Coin B"},
+	{0x14,	0x01, 0xC0,	0x00, "1 coin 1 play"},
+	{0x14,	0x01, 0xC0,	0x40, "1 coin 2 plays"},
+	{0x14,	0x01, 0xC0,	0x80, "2 coins 1 play"},
+	{0x14,	0x01, 0xC0,	0xC0, "2 coins 3 plays"},
+
+	// DIP 2
+	{0,		0xFE, 0,	4,	  "Game difficulty"},
+	{0x15,	0x01, 0x03,	0x00, "B"},
+	{0x15,	0x01, 0x03,	0x01, "A"},
+	{0x15,	0x01, 0x03,	0x02, "C"},
+	{0x15,	0x01, 0x03,	0x03, "D"},
+	{0,		0xFE, 0,	4,	  "Extend"},
+	{0x15,	0x01, 0x0C,	0x00, "100000, 400000"},
+	{0x15,	0x01, 0x0C,	0x04, "100000 only"},
+	{0x15,	0x01, 0x0C,	0x08, "200000 only"},
+	{0x15,	0x01, 0x0C,	0x0C, "No extend"},
+	{0,		0xFE, 0,	4,	  "Lives"},
+	{0x15,	0x01, 0x30,	0x30, "1"},
+	{0x15,	0x01, 0x30,	0x00, "2"},
+	{0x15,	0x01, 0x30,	0x20, "3"},
+	{0x15,	0x01, 0x30,	0x10, "4"},
+	{0,		0xFE, 0,	2,	  "Invulnerability (Cheat)"},
+    {0x15,	0x01, 0x40,	0x00, "Off"},
+    {0x15,	0x01, 0x40,	0x40, "On"},
+	{0,		0xFE, 0,	2,	  "Allow Continue"},
+    {0x15,	0x01, 0x80,	0x00, "Yes"},
+	{0x15,	0x01, 0x80,	0x80, "No"},
+
+	// DIP 3
+	{0,		0xFE, 0,	7,	  "Region"},
+	{0x16,	0x01, 0xF0,	0x00, "Japan (Taito license)"},
+	{0x16,	0x01, 0xF0,	0x30, "Korea"},
+	{0x16,	0x01, 0xF0,	0x40, "Hong Kong"},
+	{0x16,	0x01, 0xF0,	0x50, "Taiwan"},
+	{0x16,	0x01, 0xF0,	0x60, "Southeast Asia"},
+	{0x16,	0x01, 0xF0,	0x80, "Japan"},
+	{0x16,	0x01, 0xF0,	0xb0, "Korea"},
+	{0x16,	0x01, 0xF0,	0xc0, "Hong Kong"},
+	{0x16,	0x01, 0xF0,	0xd0, "Taiwan"},
+	{0x16,	0x01, 0xF0,	0xe0, "Southeast Asia"},
+};
+
+STDDIPINFO(kbashk)
 
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
@@ -182,8 +263,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 		VezScan(nAction);
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 	}
@@ -326,7 +407,7 @@ void __fastcall kbash_v25_write(UINT32 address, UINT8 data)
 		return;
 
 		case 0x04002:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -336,10 +417,10 @@ UINT8 __fastcall kbash_v25_read(UINT32 address)
 	switch (address)
 	{
 		case 0x04001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x04002:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -425,9 +506,9 @@ static INT32 DrvInit()
 	{
 		SekInit(0, 0x68000);									// Allocate 68000
 		SekOpen(0);
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,		0x100000, 0x103FFF, SM_RAM);
-		SekMapMemory(RamPal,		0x400000, 0x400FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x100000, 0x103FFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x400000, 0x400FFF, MAP_RAM);	// Palette RAM
 		SekSetReadWordHandler(0, kbashReadWord);
 		SekSetReadByteHandler(0, kbashReadByte);
 		SekSetWriteWordHandler(0, kbashWriteWord);
@@ -570,7 +651,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			// Trigger VBlank interrupt
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -612,11 +693,20 @@ static INT32 DrvFrame()
 
 struct BurnDriver BurnDrvKBash = {
 	"kbash", NULL, NULL, NULL, "1993",
-	"Knuckle Bash\0", NULL, "Toaplan", "Toaplan GP9001 based",
+	"Knuckle Bash\0", NULL, "Toaplan / Atari", "Toaplan GP9001 based",
 	L"Knuckle Bash\0Knuckle Bash \u30CA\u30C3\u30AF\u30EB\u30D0\u30C3\u30B7\u30E5\0", NULL, NULL, NULL,
-	1, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_SCRFIGHT, 0,
-	NULL, drvRomInfo, drvRomName, NULL, NULL, kbashInputInfo,kbashDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_SCRFIGHT, 0,
+	NULL, drvRomInfo, drvRomName, NULL, NULL, NULL, NULL, kbashInputInfo,kbashDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };
 
+struct BurnDriver BurnDrvKBashk = {
+	"kbashk", "kbash", NULL, NULL, "1993",
+	"Knuckle Bash (Korean PCB)\0", NULL, "Toaplan / Taito", "Toaplan GP9001 based",
+	L"Knuckle Bash\0Knuckle Bash \u30CA\u30C3\u30AF\u30EB\u30D0\u30C3\u30B7\u30E5 (Korean PCB)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_SCRFIGHT, 0,
+	NULL, drvkRomInfo, drvkRomName, NULL, NULL, NULL, NULL, kbashInputInfo,kbashkDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
+	320, 240, 4, 3
+};

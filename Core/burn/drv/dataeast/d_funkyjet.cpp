@@ -7,6 +7,7 @@
 #include "deco16ic.h"
 #include "msm6295.h"
 #include "burn_ym2151.h"
+#include "deco146.h"
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -22,7 +23,6 @@ static UINT8 *Drv68KRAM;
 static UINT8 *DrvHucRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvSprRAM;
-static UINT8 *DrvPrtRAM;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
@@ -225,11 +225,11 @@ static struct BurnDIPInfo SotsugyoDIPList[]=
 	{0x14, 0x01, 0xe0, 0xc0, "1 Coin  5 Credits"	},
 	{0x14, 0x01, 0xe0, 0x40, "1 Coin  6 Credits"	},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"		},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x15, 0x01, 0x02, 0x02, "Off"			},
 	{0x15, 0x01, 0x02, 0x00, "On"			},
 
-	{0   , 0xfe, 0   ,    2, "Lives"		},
+	{0   , 0xfe, 0   ,    4, "Lives"		},
 	{0x15, 0x01, 0x0c, 0x04, "1"			},
 	{0x15, 0x01, 0x0c, 0x08, "2"			},
 	{0x15, 0x01, 0x0c, 0x0c, "3"			},
@@ -241,7 +241,7 @@ static struct BurnDIPInfo SotsugyoDIPList[]=
 	{0x15, 0x01, 0x30, 0x10, "Hard"			},
 	{0x15, 0x01, 0x30, 0x00, "Hardest"		},
 
-	{0   , 0xfe, 0   ,    4, "Free Play"		},
+	{0   , 0xfe, 0   ,    2, "Free Play"		},
 	{0x15, 0x01, 0x40, 0x40, "Off"			},
 	{0x15, 0x01, 0x40, 0x00, "On"			},
 
@@ -252,56 +252,61 @@ static struct BurnDIPInfo SotsugyoDIPList[]=
 
 STDDIPINFO(Sotsugyo)
 
-void __fastcall funkyjet_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall funkyjet_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x300000, data)
 
-	switch (address)
-	{
-		case 0x18010a:
-			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
-		break;
-	}
-
-	if ((address & 0xfff800) == 0x180000) {
-		*((UINT16*)(DrvPrtRAM + (address & 0x7fe))) = BURN_ENDIAN_SWAP_INT16(data);
+	if ((address & 0xffc000) == 0x180000) {
+		deco146_104_prot_ww(0, address, data);
 		return;
 	}
 }
 
-void __fastcall funkyjet_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall funkyjet_main_write_byte(UINT32 address, UINT8 data)
 {
-	switch (address)
-	{
-		case 0x18010b:
-			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
-		break;
-	}
-
-	if ((address & 0xfff800) == 0x180000) {
-		DrvPrtRAM[(address & 0x7ff)^1] = data;
+	if ((address & 0xffc000) == 0x180000) {
+		deco146_104_prot_wb(0, address, data);
 		return;
 	}
 }
 
-UINT16 __fastcall funkyjet_main_read_word(UINT32 address)
+static UINT16 __fastcall funkyjet_main_read_word(UINT32 address)
 {
-	if ((address & 0xfff800) == 0x180000) {
-		return deco16_146_funkyjet_prot_r(address);
+	if ((address & 0xffc000) == 0x180000) {
+		return deco146_104_prot_rw(0, address);
 	}
 
 	return 0;
 }
 
-UINT8 __fastcall funkyjet_main_read_byte(UINT32 address)
+static UINT8 __fastcall funkyjet_main_read_byte(UINT32 address)
 {
-	if ((address & 0xfff800) == 0x180000) {
-		return deco16_146_funkyjet_prot_r(address) >> ((~address & 1) << 3);
+	if ((address & 0xffc000) == 0x180000) {
+		return deco146_104_prot_rb(0, address);
 	}
 
 	return 0;
+}
+
+static UINT16 inputs_read()
+{
+	return DrvInputs[0];
+}
+
+static UINT16 system_read()
+{
+	return (DrvInputs[1] & 7) | deco16_vblank;
+}
+
+static UINT16 dips_read()
+{
+	return DrvInputs[2];
+}
+
+static void soundlatch_write(UINT16 data)
+{
+	deco16_soundlatch = data & 0xff;
+	h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 }
 
 static INT32 DrvDoReset()
@@ -340,8 +345,6 @@ static INT32 MemIndex()
 	Drv68KRAM	= Next; Next += 0x004000;
 	DrvHucRAM	= Next; Next += 0x002000;
 	DrvSprRAM	= Next; Next += 0x000800;
-	deco16_prot_ram	= (UINT16*)Next;
-	DrvPrtRAM	= Next; Next += 0x000800;
 	DrvPalRAM	= Next; Next += 0x000800;
 
 	flipscreen	= Next; Next += 0x000001;
@@ -392,19 +395,26 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(DrvPalRAM,			0x120000, 0x1207ff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x140000, 0x143fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x160000, 0x1607ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(DrvPalRAM,			0x120000, 0x1207ff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x140000, 0x143fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x160000, 0x1607ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x320000, 0x321fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x322000, 0x323fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x340000, 0x340bff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x342000, 0x342bff, MAP_RAM);
 	SekSetWriteWordHandler(0,		funkyjet_main_write_word);
 	SekSetWriteByteHandler(0,		funkyjet_main_write_byte);
 	SekSetReadWordHandler(0,		funkyjet_main_read_word);
 	SekSetReadByteHandler(0,		funkyjet_main_read_byte);
 	SekClose();
+
+	deco_146_init();
+	deco_146_104_set_port_a_cb(inputs_read); // inputs
+	deco_146_104_set_port_b_cb(system_read); // system
+	deco_146_104_set_port_c_cb(dips_read); // dips
+	deco_146_104_set_soundlatch_cb(soundlatch_write);
+	deco_146_104_set_interface_scramble_interleave();
 
 	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 0, NULL, 0.45, 1000000, 0.50, 0, 0);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 0.45, BURN_SND_ROUTE_LEFT);
@@ -550,7 +560,6 @@ static INT32 DrvFrame()
 	}
 
 	{
-		deco16_prot_inputs = DrvInputs;
 		memset (DrvInputs, 0xff, 2 * sizeof(UINT16)); 
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
@@ -559,7 +568,7 @@ static INT32 DrvFrame()
 		DrvInputs[2] = (DrvDips[1] << 8) | (DrvDips[0] << 0);
 	}
 
-	INT32 nInterleave = 256;
+	INT32 nInterleave = 232;
 	INT32 nSoundBufferPos = 0;
 	INT32 nCyclesTotal[2] = { 14000000 / 58, 8055000 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
@@ -576,7 +585,7 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
 		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
 
-		if (i == 248) deco16_vblank = 0x08;
+		if (i == 206) deco16_vblank = 0x08;
 		
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
@@ -586,7 +595,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 	
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -635,18 +644,18 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 }
 
 
-// Funky Jet (World)
+// Funky Jet (World, rev 1)
 
 static struct BurnRomInfo funkyjetRomDesc[] = {
-	{ "jk00.12f",		0x40000, 0x712089c1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "jk01.13f",		0x40000, 0xbe3920d7, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "jk00-1.12f",		0x40000, 0xce61579d, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "jk01-1.13f",		0x40000, 0x274d04be, 1 | BRF_PRG | BRF_ESS }, //  1
 
 	{ "jk02.16f",		0x10000, 0x748c0bd8, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
 
-	{ "mat02",		0x80000, 0xe4b94c7e, 3 | BRF_GRA },           //  3 Characters & Background Tiles
+	{ "mat02",			0x80000, 0xe4b94c7e, 3 | BRF_GRA },           //  3 Characters & Background Tiles
 
-	{ "mat01",		0x80000, 0x24093a8d, 4 | BRF_GRA },           //  4 Sprites
-	{ "mat00",		0x80000, 0xfbda0228, 4 | BRF_GRA },           //  5
+	{ "mat01",			0x80000, 0x24093a8d, 4 | BRF_GRA },           //  4 Sprites
+	{ "mat00",			0x80000, 0xfbda0228, 4 | BRF_GRA },           //  5
 
 	{ "jk03.15h",		0x20000, 0x69a0eaf7, 5 | BRF_SND },           //  6 OKI M6295 Samples
 };
@@ -656,29 +665,59 @@ STD_ROM_FN(funkyjet)
 
 struct BurnDriver BurnDrvFunkyjet = {
 	"funkyjet", NULL, NULL, NULL, "1992",
-	"Funky Jet (World)\0", NULL, "[Data East] (Mitchell license)", "DECO IC16",
+	"Funky Jet (World, rev 1)\0", NULL, "[Data East] (Mitchell license)", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, funkyjetRomInfo, funkyjetRomName, NULL, NULL, FunkyjetInputInfo, FunkyjetDIPInfo,
+	NULL, funkyjetRomInfo, funkyjetRomName, NULL, NULL, NULL, NULL, FunkyjetInputInfo, FunkyjetDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
 
 
-// Funky Jet (Japan)
+// Funky Jet (World)
+
+static struct BurnRomInfo funkyjetaRomDesc[] = {
+	{ "jk00.12f",		0x40000, 0x712089c1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "jk01.13f",		0x40000, 0xbe3920d7, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "jk02.16f",		0x10000, 0x748c0bd8, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
+
+	{ "mat02",			0x80000, 0xe4b94c7e, 3 | BRF_GRA },           //  3 Characters & Background Tiles
+
+	{ "mat01",			0x80000, 0x24093a8d, 4 | BRF_GRA },           //  4 Sprites
+	{ "mat00",			0x80000, 0xfbda0228, 4 | BRF_GRA },           //  5
+
+	{ "jk03.15h",		0x20000, 0x69a0eaf7, 5 | BRF_SND },           //  6 OKI M6295 Samples
+};
+
+STD_ROM_PICK(funkyjeta)
+STD_ROM_FN(funkyjeta)
+
+struct BurnDriver BurnDrvFunkyjeta = {
+	"funkyjeta", "funkyjet", NULL, NULL, "1992",
+	"Funky Jet (World)\0", NULL, "[Data East] (Mitchell license)", "DECO IC16",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
+	NULL, funkyjetaRomInfo, funkyjetaRomName, NULL, NULL, NULL, NULL, FunkyjetInputInfo, FunkyjetDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	320, 240, 4, 3
+};
+
+
+// Funky Jet (Japan, rev 2)
 
 static struct BurnRomInfo funkyjetjRomDesc[] = {
 	{ "jh00-2.11f",		0x40000, 0x5b98b700, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
 	{ "jh01-2.13f",		0x40000, 0x21280220, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "jk02.16f",		0x10000, 0x748c0bd8, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
+	{ "jh02.16f",		0x10000, 0x748c0bd8, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
 
-	{ "mat02",		0x80000, 0xe4b94c7e, 3 | BRF_GRA },           //  3 Characters & Background Tiles
+	{ "mat02",			0x80000, 0xe4b94c7e, 3 | BRF_GRA },           //  3 Characters & Background Tiles
 
-	{ "mat01",		0x80000, 0x24093a8d, 4 | BRF_GRA },           //  4 Sprites
-	{ "mat00",		0x80000, 0xfbda0228, 4 | BRF_GRA },           //  5
+	{ "mat01",			0x80000, 0x24093a8d, 4 | BRF_GRA },           //  4 Sprites
+	{ "mat00",			0x80000, 0xfbda0228, 4 | BRF_GRA },           //  5
 
-	{ "jk03.15h",		0x20000, 0x69a0eaf7, 5 | BRF_SND },           //  6 OKI M6295 Samples
+	{ "jh03.15h",		0x20000, 0x69a0eaf7, 5 | BRF_SND },           //  6 OKI M6295 Samples
 };
 
 STD_ROM_PICK(funkyjetj)
@@ -686,10 +725,10 @@ STD_ROM_FN(funkyjetj)
 
 struct BurnDriver BurnDrvFunkyjetj = {
 	"funkyjetj", "funkyjet", NULL, NULL, "1992",
-	"Funky Jet (Japan)\0", NULL, "Data East Corporation", "DECO IC16",
+	"Funky Jet (Japan, rev 2)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, funkyjetjRomInfo, funkyjetjRomName, NULL, NULL, FunkyjetInputInfo, FunkyjetjDIPInfo,
+	NULL, funkyjetjRomInfo, funkyjetjRomName, NULL, NULL, NULL, NULL, FunkyjetInputInfo, FunkyjetjDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
@@ -698,15 +737,15 @@ struct BurnDriver BurnDrvFunkyjetj = {
 // Sotsugyo Shousho
 
 static struct BurnRomInfo sotsugyoRomDesc[] = {
-	{ "03.12f",		0x40000, 0xd175dfd1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "04.13f",		0x40000, 0x2072477c, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "03.12f",			0x40000, 0xd175dfd1, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "04.13f",			0x40000, 0x2072477c, 1 | BRF_PRG | BRF_ESS }, //  1
 
 	{ "sb020.16f",		0x10000, 0xbaf5ec93, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
 
-	{ "02.2f",		0x80000, 0x337b1451, 3 | BRF_GRA },           //  3 Characters & Background Tiles
+	{ "02.2f",			0x80000, 0x337b1451, 3 | BRF_GRA },           //  3 Characters & Background Tiles
 
-	{ "01.4a",		0x80000, 0xfa10dd54, 4 | BRF_GRA },           //  4 Sprites
-	{ "00.2a",		0x80000, 0xd35a14ef, 4 | BRF_GRA },           //  5
+	{ "01.4a",			0x80000, 0xfa10dd54, 4 | BRF_GRA },           //  4 Sprites
+	{ "00.2a",			0x80000, 0xd35a14ef, 4 | BRF_GRA },           //  5
 
 	{ "sb030.15h",		0x20000, 0x1ea43f48, 5 | BRF_SND },           //  6 OKI M6295 Samples
 };
@@ -719,7 +758,7 @@ struct BurnDriver BurnDrvSotsugyo = {
 	"Sotsugyo Shousho\0", NULL, "Mitchell (Atlus license)", "DECO IC16",
 	L"\u5352\u696D\u8A3C\u66F8\0Sotsugyo Shousho\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_MINIGAMES, 0,
-	NULL, sotsugyoRomInfo, sotsugyoRomName, NULL, NULL, FunkyjetInputInfo, SotsugyoDIPInfo,
+	NULL, sotsugyoRomInfo, sotsugyoRomName, NULL, NULL, NULL, NULL, FunkyjetInputInfo, SotsugyoDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };

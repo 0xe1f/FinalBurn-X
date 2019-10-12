@@ -23,8 +23,7 @@ static UINT8 *DrvKonRAM;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvZ80RAM;
 
-static UINT32  *Palette;
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8  DrvRecalc;
 
 static INT32 readzoomroms;
@@ -160,8 +159,7 @@ void rollerg_main_write(UINT16 address, UINT8 data)
 
 		case 0x0040:
 			ZetSetVector(0xff);
-		//	ZetRaiseIrq(0);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;
 	}
 
@@ -240,7 +238,7 @@ void __fastcall rollerg_sound_write(UINT16 address, UINT8 data)
 	{
 		case 0xc000:
 		case 0xc001:
-			BurnYM3812Write(address & 1, data);
+			BurnYM3812Write(0, address & 1, data);
 		return;
 
 		case 0xfc00:
@@ -261,12 +259,12 @@ UINT8 __fastcall rollerg_sound_read(UINT16 address)
 	{
 		case 0xc000:
 		case 0xc001:
-			return BurnYM3812Read(address & 1);
+			return BurnYM3812Read(0, address & 1);
 	}
 
 	if (address >= 0xa000 && address <= 0xa02f) {
 		// not sure...
-		if ((address & 0x3e) == 0x00) ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+		if ((address & 0x3e) == 0x00) ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 
 		return K053260Read(0, address & 0x3f);
 	}
@@ -280,12 +278,12 @@ static void rollerg_set_lines(INT32 lines)
 
 	INT32 offs = 0x10000 + ((lines & 0x07) * 0x4000);
 
-	konamiMapMemory(DrvKonROM + offs, 0x4000, 0x7fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + offs, 0x4000, 0x7fff, MAP_ROM); 
 }
 
 static void K053245Callback(INT32 *, INT32 *color, INT32 *priority)
 {
-	*priority = *color & 0x10;
+	*priority = (*color & 0x10) ? 0 : 0x02;
 	*color = 16 + (*color & 0x0f);
 }
 
@@ -339,7 +337,6 @@ static INT32 MemIndex()
 
 	DrvSndROM		= Next; Next += 0x080000;
 
-	Palette			= (UINT32*)Next; Next += 0x400 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x400 * sizeof(UINT32);
 
 	AllRam			= Next;
@@ -359,6 +356,8 @@ static INT32 MemIndex()
 
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -372,25 +371,23 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  1, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x100000,  3, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  2, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  3, 4, 2)) return 1;
 
 		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  4, 1)) return 1;
 		if (BurnLoadRom(DrvGfxROM1 + 0x040000,  5, 1)) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000,  6, 1)) return 1;
 
-		konami_rom_deinterleave_2(DrvGfxROM0, 0x200000);
-
 		K053245GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x200000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvPalRAM,	    0x1800, 0x1fff, KON_RAM);
-	konamiMapMemory(DrvKonRAM,          0x2000, 0x3aff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x4000, 0x4000, 0x7fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x8000, 0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvPalRAM,	    0x1800, 0x1fff, MAP_RAM);
+	konamiMapMemory(DrvKonRAM,          0x2000, 0x3aff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x4000, 0x4000, 0x7fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x8000, 0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(rollerg_main_write);
 	konamiSetReadHandler(rollerg_main_read);
 	konamiSetlinesCallback(rollerg_set_lines);
@@ -407,20 +404,18 @@ static INT32 DrvInit()
 	ZetSetReadHandler(rollerg_sound_read);
 	ZetClose();
 
-	K053245Init(0, DrvGfxROM0, 0x1fffff, K053245Callback);
-	K053245SetSpriteOffset(0, -112, 17);
+	K053245Init(0, DrvGfxROM0, DrvGfxROMExp0, 0x1fffff, K053245Callback);
+	K053245SetSpriteOffset(0, -112, 16);
 
-	K051316Init(0, DrvGfxROM1, DrvGfxROMExp1, 0x7ffff, K051316Callback, 4, 0);
+	K051316Init(0, DrvGfxROM1, DrvGfxROMExp1, 0x07ffff, K051316Callback, 4, 0);
 	K051316SetOffset(0, -90, -15);
 
-	BurnYM3812Init(3579545, NULL, DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(3579545);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, NULL, DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 3579545);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	K053260Init(0, 3579545, DrvSndROM, 0x80000);
 	K053260PCMSetAllRoutes(0, 0.70, BURN_SND_ROUTE_BOTH);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -444,41 +439,16 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void DrvRecalcPal()
-{
-	UINT8 r,g,b;
-	UINT16 *p = (UINT16*)DrvPalRAM;
-	for (INT32 i = 0; i < 0x800 / 2; i++) {
-		UINT16 d = BURN_ENDIAN_SWAP_INT16((p[i] << 8) | (p[i] >> 8));
-
-		b = (d >> 10) & 0x1f;
-		g = (d >>  5) & 0x1f;
-		r = (d >>  0) & 0x1f;
-
-		r = (r << 3) | (r >> 2);
-		g = (g << 3) | (g >> 2);
-		b = (b << 3) | (b >> 2);
-
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
-		Palette[i] = (r << 16) | (g << 8) | b;
-	}
-}
-
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		DrvRecalcPal();
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x800);
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x100;
-	}
+	KonamiClearBitmaps(DrvPalette[0x100]);
 
-	K053245SpritesRender(0, DrvGfxROMExp0, 0x00);
 	K051316_zoom_draw(0, 1);
-	K053245SpritesRender(0, DrvGfxROMExp0, 0x10);
+	K053245SpritesRender(0);
 
-	KonamiBlendCopy(Palette, DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -525,7 +495,7 @@ static INT32 DrvFrame()
 		BurnTimerUpdateYM3812(i * (nCyclesTotal[1] / nInterleave));
 	}
 
-	konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 	
 	BurnTimerEndFrameYM3812(nCyclesTotal[1]);
 
@@ -560,11 +530,11 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
 		BurnYM3812Scan(nAction, pnMin);
-		K053260Scan(nAction);
+		K053260Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 
@@ -605,7 +575,7 @@ struct BurnDriver BurnDrvRollerg = {
 	"Rollergames (US)\0", NULL, "Konami", "GX999",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
-	NULL, rollergRomInfo, rollergRomName, NULL, NULL, RollergInputInfo, RollergDIPInfo,
+	NULL, rollergRomInfo, rollergRomName, NULL, NULL, NULL, NULL, RollergInputInfo, RollergDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };
@@ -635,7 +605,7 @@ struct BurnDriver BurnDrvRollergj = {
 	"Rollergames (Japan)\0", NULL, "Konami", "GX999",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
-	NULL, rollergjRomInfo, rollergjRomName, NULL, NULL, RollergInputInfo, RollergDIPInfo,
+	NULL, rollergjRomInfo, rollergjRomName, NULL, NULL, NULL, NULL, RollergInputInfo, RollergDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	288, 224, 4, 3
 };

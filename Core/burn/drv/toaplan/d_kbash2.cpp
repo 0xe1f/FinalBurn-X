@@ -1,3 +1,6 @@
+// FB Alpha Knuckle Bash 2 driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 // Knuckle Bash 2
 
@@ -141,7 +144,7 @@ STDDIPINFO(Kbash2)
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
 static UINT8 *Rom01;
-static UINT8 *Ram01, *RamPal;
+static UINT8 *Ram01, *RamPal, *RamSnd;
 static UINT8 *RomSnd;
 
 static INT32 nColCount = 0x0800;
@@ -158,6 +161,7 @@ static INT32 MemIndex()
 	RamStart	= Next;
 	Ram01		= Next; Next += 0x004000;		// CPU #0 work RAM
 	RamPal		= Next; Next += 0x001000;		// palette
+	RamSnd		= Next; Next += 0x000100;		// sound work-ram
 	GP9001RAM[0]= Next; Next += 0x004000;
 	GP9001Reg[0]= (UINT16*)Next; Next += 0x0100 * sizeof(UINT16);
 	RamEnd		= Next;
@@ -165,6 +169,15 @@ static INT32 MemIndex()
 	MemEnd		= Next;
 
 	return 0;
+}
+
+static void oki_set_bank(INT32 bank)
+{
+	bank &= 1;
+	if (nPreviousOkiBank != bank) {
+		nPreviousOkiBank = bank;
+		memcpy (RomSnd + 0x000000, RomSnd + 0x40000 + (bank * 0x40000), 0x40000);
+	}
 }
 
 // Scan ram
@@ -177,15 +190,14 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	}
 	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
 		memset(&ba, 0, sizeof(ba));
-    		ba.Data		= RamStart;
+		ba.Data		= RamStart;
 		ba.nLen		= RamEnd-RamStart;
 		ba.szName	= "All Ram";
 		BurnAcb(&ba);
 
 		SekScan(nAction);				// scan 68000 states
 
-		MSM6295Scan(0, nAction);
-		MSM6295Scan(1, nAction);
+		MSM6295Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 
@@ -193,7 +205,9 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	}
 
 	if (nAction & ACB_WRITE) {
-		memcpy (RomSnd, RomSnd + 0x40000 + (nPreviousOkiBank * 0x40000), 0x40000);
+		INT32 nBank = nPreviousOkiBank;
+		nPreviousOkiBank = -1;
+		oki_set_bank(nBank);
 	}
 
 	return 0;
@@ -213,16 +227,7 @@ static INT32 LoadRoms()
 	return 0;
 }
 
-static void oki_set_bank(INT32 bank)
-{
-	bank &= 1;
-	if (nPreviousOkiBank != bank) {
-		nPreviousOkiBank = bank;
-		memcpy (RomSnd + 0x000000, RomSnd + 0x40000 + (bank * 0x40000), 0x40000);
-	}
-}
-
-UINT8 __fastcall kbash2ReadByte(UINT32 sekAddress)
+static UINT8 __fastcall kbash2ReadByte(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 
@@ -241,10 +246,10 @@ UINT8 __fastcall kbash2ReadByte(UINT32 sekAddress)
 			return DrvInput[2];
 
 		case 0x200021:
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 
 		case 0x200025:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0x20002D:
 			return ToaScanlineRegister();
@@ -259,7 +264,7 @@ UINT8 __fastcall kbash2ReadByte(UINT32 sekAddress)
 	return 0;
 }
 
-UINT16 __fastcall kbash2ReadWord(UINT32 sekAddress)
+static UINT16 __fastcall kbash2ReadWord(UINT32 sekAddress)
 {
 	switch (sekAddress) {
 
@@ -278,10 +283,10 @@ UINT16 __fastcall kbash2ReadWord(UINT32 sekAddress)
 			return DrvInput[2];
 
 		case 0x200020:
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 
 		case 0x200024:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0x20002c:
 			return ToaScanlineRegister();
@@ -301,15 +306,15 @@ UINT16 __fastcall kbash2ReadWord(UINT32 sekAddress)
 	return 0;
 }
 
-void __fastcall kbash2WriteByte(UINT32 sekAddress, UINT8 byteValue)
+static void __fastcall kbash2WriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x200021:
-			MSM6295Command(1, byteValue);
+			MSM6295Write(1, byteValue);
 		return;
 
 		case 0x200025:
-			MSM6295Command(0, byteValue);
+			MSM6295Write(0, byteValue);
 		return;
 
 		case 0x200029:
@@ -321,7 +326,7 @@ void __fastcall kbash2WriteByte(UINT32 sekAddress, UINT8 byteValue)
 	}
 }
 
-void __fastcall kbash2WriteWord(UINT32 sekAddress, UINT16 wordValue)
+static void __fastcall kbash2WriteWord(UINT32 sekAddress, UINT16 wordValue)
 {
 	switch (sekAddress) {
 		case 0x300000:								// Set GP9001 VRAM address-pointer
@@ -354,11 +359,10 @@ static INT32 DrvDoReset()
 	SekReset();
 	SekClose();
 
-	MSM6295Reset(0);
-	MSM6295Reset(1);
+	MSM6295Reset();
 
-	nPreviousOkiBank = 0;
-	memcpy (RomSnd, RomSnd + 0x40000, 0x40000);//?
+	nPreviousOkiBank = -1;
+	oki_set_bank(0);
 
 	return 0;
 }
@@ -391,9 +395,10 @@ static INT32 DrvInit()
 	{
 		SekInit(0, 0x68000);								// Allocate 68000
 		SekOpen(0);
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);
-		SekMapMemory(Ram01,		0x100000, 0x103FFF, SM_RAM);
-		SekMapMemory(RamPal,		0x400000, 0x400FFF, SM_RAM);
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);
+		SekMapMemory(Ram01,		0x100000, 0x103FFF, MAP_RAM);
+		SekMapMemory(RamSnd,	0x104000, 0x1040FF, MAP_RAM);
+		SekMapMemory(RamPal,		0x400000, 0x400FFF, MAP_RAM);
 		SekSetReadWordHandler(0, 	kbash2ReadWord);
 		SekSetReadByteHandler(0, 	kbash2ReadByte);
 		SekSetWriteWordHandler(0, 	kbash2WriteWord);
@@ -432,8 +437,7 @@ static INT32 DrvExit()
 	ToaExitGP9001();
 	SekExit();				// Deallocate 68000s
 	
-	MSM6295Exit(0);
-	MSM6295Exit(1);
+	MSM6295Exit();
 
 	BurnFree(Mem);
 
@@ -512,7 +516,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			// Trigger VBlank interrupt
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -526,8 +530,7 @@ static INT32 DrvFrame()
 
 	if (pBurnSoundOut) {
 		memset (pBurnSoundOut, 0, nBurnSoundLen * 2 * sizeof(INT16));
-		MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);
-		MSM6295Render(1, pBurnSoundOut, nBurnSoundLen);
+		MSM6295Render(pBurnSoundOut, nBurnSoundLen);
 	}
 	
 	SekClose();
@@ -542,9 +545,9 @@ static INT32 DrvFrame()
 struct BurnDriver BurnDrvKbash2 = {
 	"kbash2", NULL, NULL, NULL, "1999",
 	"Knuckle Bash 2 (bootleg)\0", NULL, "bootleg", "Toaplan GP9001 based",
-	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_TOAPLAN_68K_ONLY, GBF_SCRFIGHT, 0,
-	NULL, kbash2RomInfo, kbash2RomName, NULL, NULL, Kbash2InputInfo, Kbash2DIPInfo,
+	L"Knuckle Bash 2\0Knuckle Bash \u30CA\u30C3\u30AF\u30EB\u30D0\u30C3\u30B7\u30E5 \uFF12 (bootleg)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_BOOTLEG, 2, HARDWARE_TOAPLAN_68K_ONLY, GBF_SCRFIGHT, 0,
+	NULL, kbash2RomInfo, kbash2RomName, NULL, NULL, NULL, NULL, Kbash2InputInfo, Kbash2DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };

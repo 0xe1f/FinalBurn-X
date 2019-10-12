@@ -7,6 +7,7 @@
 static UINT8 DrvJoy1[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static UINT8 DrvJoy2[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static UINT16 DrvInput[2] = {0x0000, 0x0000};
+static UINT8 DrvDips[1];
 
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
@@ -15,7 +16,6 @@ static UINT8 *Ram01;
 static UINT8 *DefaultEEPROM = NULL;
 
 static UINT8 DrvReset = 0;
-static UINT8 bDrawScreen;
 static bool bVBlank;
 
 static INT8 nVideoIRQ;
@@ -28,6 +28,7 @@ static INT32 nCurrentCPU;
 static INT32 nCyclesDone[2];
 static INT32 nCyclesTotal[2];
 static INT32 nCyclesSegment;
+static INT32 nCyclesExtra;
 
 static struct BurnInputInfo espradeInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 8,	"p1 coin"},
@@ -55,14 +56,27 @@ static struct BurnInputInfo espradeInputList[] = {
 	{"Reset",		BIT_DIGITAL,	&DrvReset,		"reset"},
 	{"Diagnostics",	BIT_DIGITAL,	DrvJoy1 + 9,	"diag"},
 	{"Service",		BIT_DIGITAL,	DrvJoy2 + 9,	"service"},
+	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"},
 };
 
 STDINPUTINFO(esprade)
 
+static struct BurnDIPInfo espradeDIPList[]=
+{
+	{0x15, 0xff, 0xff, 0x08, NULL			},
+
+	{0   , 0xfe, 0   ,    2, "Virtual Mixer (ymz280b)"},
+	{0x15, 0x01, 0x08, 0x08, "On"			},
+	{0x15, 0x01, 0x08, 0x00, "Off"			},
+};
+
+STDDIPINFO(esprade)
+
+
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall espradeReadByte(UINT32 sekAddress)
@@ -185,7 +199,6 @@ void __fastcall espradeWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			nCaveYOffset = wordValue;
 			return;
 		case 0x800008:
-			CaveSpriteBuffer();
 			nCaveSpriteBank = wordValue;
 			return;
 
@@ -254,6 +267,7 @@ static void TriggerSoundIRQ(INT32 nStatus)
 static INT32 DrvExit()
 {
 	YMZ280BExit();
+	bESPRaDeMixerKludge = false;
 
 	EEPROMExit();
 
@@ -276,13 +290,16 @@ static INT32 DrvDoReset()
 
 	EEPROMReset();
 
-	nVideoIRQ = 1;
+	YMZ280BReset();
+
+    nVideoIRQ = 1;
 	nSoundIRQ = 1;
 	nUnknownIRQ = 1;
 
 	nIRQPending = 0;
+	nCyclesExtra = 0;
 
-	YMZ280BReset();
+	HiscoreReset();
 
 	return 0;
 }
@@ -292,24 +309,15 @@ static INT32 DrvDraw()
 	CavePalUpdate8Bit(0, 128);				// Update the palette
 	CaveClearScreen(CavePalette[0x0000]);
 
-	if (bDrawScreen) {
-//		CaveGetBitmap();
+    CaveTileRender(1);					// Render tiles
 
-		CaveTileRender(1);					// Render tiles
-	}
-
-	return 0;
-}
-
-inline static INT32 CheckSleep(INT32)
-{
 	return 0;
 }
 
 static INT32 DrvFrame()
 {
 	INT32 nCyclesVBlank;
-	INT32 nInterleave = 8;
+	INT32 nInterleave = 32;
 
 	if (DrvReset) {														// Reset machine
 		DrvDoReset();
@@ -325,6 +333,8 @@ static INT32 DrvFrame()
 	CaveClearOpposites(&DrvInput[0]);
 	CaveClearOpposites(&DrvInput[1]);
 
+	bESPRaDeMixerKludge = (DrvDips[0] == 8);
+
 	SekNewFrame();
 
 	nCyclesTotal[0] = (INT32)((INT64)16000000 * nBurnCPUSpeedAdjust / (0x0100 * CAVE_REFRESHRATE));
@@ -333,69 +343,49 @@ static INT32 DrvFrame()
 	nCyclesVBlank = nCyclesTotal[0] - (INT32)((nCyclesTotal[0] * CAVE_VBLANK_LINES) / 271.5);
 	bVBlank = false;
 
-	INT32 nSoundBufferPos = 0;
-
 	SekOpen(0);
 
 	for (INT32 i = 1; i <= nInterleave; i++) {
 		INT32 nNext;
-
-		// Render sound segment
-		if ((i & 1) == 0) {
-			if (pBurnSoundOut) {
-				INT32 nSegmentEnd = nBurnSoundLen * i / nInterleave;
-				INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-				YMZ280BRender(pSoundBuf, nSegmentEnd - nSoundBufferPos);
-				nSoundBufferPos = nSegmentEnd;
-			}
-		}
 
 		// Run 68000
     	nCurrentCPU = 0;
 		nNext = i * nCyclesTotal[nCurrentCPU] / nInterleave;
 
 		// See if we need to trigger the VBlank interrupt
-		if (!bVBlank && nNext > nCyclesVBlank) {
+		if (!bVBlank && nNext >= nCyclesVBlank) {
 			if (nCyclesDone[nCurrentCPU] < nCyclesVBlank) {
 				nCyclesSegment = nCyclesVBlank - nCyclesDone[nCurrentCPU];
-				if (!CheckSleep(nCurrentCPU)) {							// See if this CPU is busywaiting
-					nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-				} else {
-					nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-				}
-			}
-
-			if (pBurnDraw != NULL) {
-				DrvDraw();												// Draw screen if needed
+                nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
 			}
 
 			bVBlank = true;
 			nVideoIRQ = 0;
 			UpdateIRQStatus();
+
+			CaveSpriteBuffer();
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		if (!CheckSleep(nCurrentCPU)) {									// See if this CPU is busywaiting
-			nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		} else {
-			nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-		}
+        nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment - nCyclesExtra);
+        nCyclesExtra = 0;
 
 		nCurrentCPU = -1;
 	}
 
+    // Make sure the buffer is entirely filled.
 	{
-		// Make sure the buffer is entirely filled.
 		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			if (nSegmentLength) {
-				YMZ280BRender(pSoundBuf, nSegmentLength);
-			}
+			YMZ280BRender(pBurnSoundOut, nBurnSoundLen);
 		}
 	}
 
+	nCyclesExtra = SekTotalCycles() - nCyclesTotal[0];
 	SekClose();
+
+    if (pBurnDraw != NULL) {
+        DrvDraw();												// Draw screen if needed
+    }
 
 	return 0;
 }
@@ -475,7 +465,7 @@ static INT32 LoadRoms()
 
 	// Load YMZ280B data
 	BurnLoadRom(YMZ280BROM, 11, 1);
-	
+
 	BurnLoadRom(DefaultEEPROM, 12, 1);
 
 	return 0;
@@ -502,7 +492,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -510,8 +500,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(bVBlank);
 
 		CaveScanGraphics();
-
-		SCAN_VAR(DrvInput);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -550,15 +538,15 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,					0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],		0x500000, 0x507FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[1],		0x600000, 0x607FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2],		0x700000, 0x707FFF, SM_RAM);
+		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,					0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],		0x500000, 0x507FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[1],		0x600000, 0x607FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2],		0x700000, 0x707FFF, MAP_RAM);
 
-		SekMapMemory(CavePalSrc,			0xC00000, 0xC0FFFF, SM_ROM);	// Palette RAM (write goes through handler)
-		SekMapHandler(1,					0xC00000, 0xC0FFFF, SM_WRITE);	//
+		SekMapMemory(CavePalSrc,			0xC00000, 0xC0FFFF, MAP_ROM);	// Palette RAM (write goes through handler)
+		SekMapHandler(1,					0xC00000, 0xC0FFFF, MAP_WRITE);	//
 
 		SekSetReadWordHandler(0, espradeReadWord);
 		SekSetReadByteHandler(0, espradeReadByte);
@@ -578,11 +566,10 @@ static INT32 DrvInit()
 	CaveTileInitLayer(1, 0x800000, 8, 0x4000);
 	CaveTileInitLayer(2, 0x400000, 8, 0x4000);
 
-	YMZ280BInit(16934400, &TriggerSoundIRQ);
+	bESPRaDeMixerKludge = true;
+	YMZ280BInit(16934400, &TriggerSoundIRQ, 0x400000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
-
-	bDrawScreen = true;
 
 	DrvDoReset(); // Reset machine
 
@@ -666,8 +653,8 @@ struct BurnDriver BurnDrvEsprade = {
 	"esprade", NULL, NULL, NULL, "1998",
 	"ESP Ra.De. - A.D.2018 Tokyo (International, ver. 98/04/22)\0", NULL, "Atlus / Cave", "Cave",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, espradeRomInfo, espradeRomName, NULL, NULL, espradeInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
+	NULL, espradeRomInfo, espradeRomName, NULL, NULL, NULL, NULL, espradeInputInfo, espradeDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
@@ -676,8 +663,8 @@ struct BurnDriver BurnDrvEspradej = {
 	"espradej", "esprade", NULL, NULL, "1998",
 	"ESP Ra.De. (Japan, ver. 98/04/21)\0", NULL, "Atlus / Cave", "Cave",
 	L"ESP Ra.De. \u30A8\u30B9\u30D7\u30EC\u30A4\u30C9 (Japan, ver. 98/04/21)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, espradejRomInfo, espradejRomName, NULL, NULL, espradeInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
+	NULL, espradejRomInfo, espradejRomName, NULL, NULL, NULL, NULL, espradeInputInfo, espradeDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
@@ -686,8 +673,8 @@ struct BurnDriver BurnDrvEspradejo = {
 	"espradejo", "esprade", NULL, NULL, "1998",
 	"ESP Ra.De. (Japan, ver. 98/04/14)\0", NULL, "Atlus / Cave", "Cave",
 	L"ESP Ra.De. \u30A8\u30B9\u30D7\u30EC\u30A4\u30C9 (Japan, ver. 98/04/14)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, espradejoRomInfo, espradejoRomName, NULL, NULL, espradeInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
+	NULL, espradejoRomInfo, espradejoRomName, NULL, NULL, NULL, NULL, espradeInputInfo, espradeDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };

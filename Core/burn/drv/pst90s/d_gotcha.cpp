@@ -201,7 +201,7 @@ void __fastcall gotcha_sound_write(UINT16 address, UINT8 data)
 
 		case 0xc002:
 		case 0xc003:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -211,7 +211,7 @@ UINT8 __fastcall gotcha_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0xc001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0xc006:
 			return *soundlatch;
@@ -314,9 +314,9 @@ static INT32 DrvGfxDecode()
 void DrvYM2151IrqHandler(INT32 Irq)
 {
 	if (Irq) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xff, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
 }
 
@@ -357,12 +357,12 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x120000, 0x12ffff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x140000, 0x1407ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x160000, 0x1607ff, SM_RAM);
-	SekMapMemory(DrvFgRAM,		0x320000, 0x320fff, SM_RAM);
-	SekMapMemory(DrvBgRAM,		0x322000, 0x322fff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x120000, 0x12ffff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x140000, 0x1407ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x160000, 0x1607ff, MAP_RAM);
+	SekMapMemory(DrvFgRAM,		0x320000, 0x320fff, MAP_RAM);
+	SekMapMemory(DrvBgRAM,		0x322000, 0x322fff, MAP_RAM);
 	SekSetWriteWordHandler(0,	gotcha_write_word);
 	SekSetWriteByteHandler(0,	gotcha_write_byte);
 	SekSetReadWordHandler(0,	gotcha_read_word);
@@ -546,7 +546,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		nSegment = nBurnSoundLen - nSoundBufferPos;
@@ -586,8 +586,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
 
 		set_okibank(*DrvSndBank);
 	}
@@ -625,7 +625,7 @@ struct BurnDriver BurnDrvGotcha = {
 	"Got-cha Mini Game Festival\0", NULL, "Dongsung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 3, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, gotchaRomInfo, gotchaRomName, NULL, NULL, GotchaInputInfo, GotchaDIPInfo,
+	NULL, gotchaRomInfo, gotchaRomName, NULL, NULL, NULL, NULL, GotchaInputInfo, GotchaDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	320, 240, 4, 3
 };
@@ -660,7 +660,7 @@ struct BurnDriver BurnDrvPpchamp = {
 	"Pasha Pasha Champ Mini Game Festival\0", NULL, "Dongsung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 3, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, ppchampRomInfo, ppchampRomName, NULL, NULL, GotchaInputInfo, GotchaDIPInfo,
+	NULL, ppchampRomInfo, ppchampRomName, NULL, NULL, NULL, NULL, GotchaInputInfo, GotchaDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	320, 240, 4, 3
 };

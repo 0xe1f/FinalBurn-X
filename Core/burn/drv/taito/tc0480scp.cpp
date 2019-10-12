@@ -1,4 +1,5 @@
 // TC0480SCP
+// Based on MAME sources by Nicola Salmoria
 
 #include "tiles_generic.h"
 #include "taito_ic.h"
@@ -19,7 +20,7 @@ static INT32 TC0480SCPTextYOffset;
 static UINT16 *pTC0480SCPTempDraw = NULL;
 static INT32 TC0480SCPColBase;
 static INT32 TC0480SCPDblWidth;
-
+static UINT8 *TC0480SCPPriMap = NULL;
 static INT32 TC0480SCPYVisOffset;
 
 static const UINT16 TC0480SCPBgPriLookup[8] =
@@ -373,31 +374,54 @@ void TC0480SCPCtrlWordWrite(INT32 Offset, UINT16 Data)
 	}
 }
 
-static inline void DrawScanLine(INT32 y, const UINT16 *src, INT32 Transparent, INT32 /*Pri*/)
+static inline void DrawScanLine(INT32 y, const UINT16 *src, INT32 Transparent, INT32 Prio)
 {
-	UINT16* pPixel;
-	INT32 Length;
-	
-	pPixel = pTransDraw + (y * nScreenWidth);
-	
-	Length = nScreenWidth;
-	
-	if (Transparent) {
-		while (Length--) {
-			UINT16 sPixel = *src++;
-			if (sPixel < 0x7fff) {
-				*pPixel = sPixel;
+	INT32 minx = 0, maxx = nScreenWidth, miny = 0, maxy = nScreenHeight; 
+	GenericTilesGetClip(&minx, &maxx, &miny, &maxy);
+
+	if (y < miny || y >= maxy) return;
+
+	UINT16 *pPixel = pTransDraw + (y * nScreenWidth) + minx;
+	INT32 Length = maxx - minx;
+
+	src += minx;
+
+	if (TC0480SCPPriMap) {
+		UINT8 *pPrio = TC0480SCPPriMap + (y * nScreenWidth) + minx;
+		if (Transparent) {
+			while (Length--) {
+				UINT16 sPixel = *src++;
+				if (sPixel < 0x7fff) {
+					*pPixel = sPixel;
+					*pPrio = Prio;
+				}
+				pPixel++;
+				pPrio++;
 			}
-			pPixel++;
+		} else {
+			while (Length--) {
+				*pPixel++ = *src++;
+				*pPrio++ = Prio;
+			}
 		}
-	} else {
-		while (Length--) {
-			*pPixel++ = *src++;
+	} else { // no-priority buffer version
+		if (Transparent) {
+			while (Length--) {
+				UINT16 sPixel = *src++;
+				if (sPixel < 0x7fff) {
+					*pPixel = sPixel;
+				}
+				pPixel++;
+			}
+		} else {
+			while (Length--) {
+				*pPixel++ = *src++;
+			}
 		}
 	}
 }
 
-static void TC0480SCPRenderLayer01(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
+static void TC0480SCPRenderLayer01(INT32 Layer, INT32 Opaque, UINT8 *pSrc, UINT32 Prio)
 {
 	INT32 mx, my, Attr, Code, Colour, x, y, sx, TileIndex = 0, Offset, Flip, xFlip, yFlip, xZoom, yZoom, i, yIndex, ySrcIndex, RowIndex, xIndex, xStep, Columns, WidthMask;
 	
@@ -523,9 +547,9 @@ static void TC0480SCPRenderLayer01(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
 		}
 
 		if (Opaque) {
-			DrawScanLine(y, ScanLine, 0, 0);
+			DrawScanLine(y, ScanLine, 0, Prio);
 		} else {
-			DrawScanLine(y, ScanLine, 1, 0);
+			DrawScanLine(y, ScanLine, 1, Prio);
 		}
 		
 		yIndex += yZoom;
@@ -533,7 +557,7 @@ static void TC0480SCPRenderLayer01(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
 	} while (y < nScreenHeight);
 }
 
-static void TC0480SCPRenderLayer23(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
+static void TC0480SCPRenderLayer23(INT32 Layer, INT32 Opaque, UINT8 *pSrc, INT32 Prio)
 {
 	INT32 mx, my, Attr, Code, Colour, x, y, sx, TileIndex = 0, Offset, Flip, xFlip, yFlip, xZoom, yZoom, i, yIndex, ySrcIndex, RowIndex, RowZoom, xIndex, xStep, Columns, WidthMask;
 	
@@ -681,9 +705,9 @@ static void TC0480SCPRenderLayer23(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
 		}
 
 		if (Opaque) {
-			DrawScanLine(y, ScanLine, 0, 0);
+			DrawScanLine(y, ScanLine, 0, Prio);
 		} else {
-			DrawScanLine(y, ScanLine, 1, 0);
+			DrawScanLine(y, ScanLine, 1, Prio);
 		}
 
 		yIndex += yZoom;
@@ -695,22 +719,47 @@ void TC0480SCPTilemapRender(INT32 Layer, INT32 Opaque, UINT8 *pSrc)
 {
 	switch (Layer) {
 		case 0: {
-			TC0480SCPRenderLayer01(0, Opaque, pSrc);
+			TC0480SCPRenderLayer01(0, Opaque, pSrc, 0);
 			break;
 		}
 		
 		case 1: {
-			TC0480SCPRenderLayer01(1, Opaque, pSrc);
+			TC0480SCPRenderLayer01(1, Opaque, pSrc, 0);
 			break;
 		}
 		
 		case 2: {
-			TC0480SCPRenderLayer23(2, Opaque, pSrc);
+			TC0480SCPRenderLayer23(2, Opaque, pSrc, 0);
 			break;
 		}
 		
 		case 3: {
-			TC0480SCPRenderLayer23(3, Opaque, pSrc);
+			TC0480SCPRenderLayer23(3, Opaque, pSrc, 0);
+			break;
+		}
+	}
+}
+
+void TC0480SCPTilemapRenderPrio(INT32 Layer, INT32 Opaque, INT32 Prio, UINT8 *pSrc)
+{
+	switch (Layer) {
+		case 0: {
+			TC0480SCPRenderLayer01(0, Opaque, pSrc, Prio);
+			break;
+		}
+		
+		case 1: {
+			TC0480SCPRenderLayer01(1, Opaque, pSrc, Prio);
+			break;
+		}
+		
+		case 2: {
+			TC0480SCPRenderLayer23(2, Opaque, pSrc, Prio);
+			break;
+		}
+		
+		case 3: {
+			TC0480SCPRenderLayer23(3, Opaque, pSrc, Prio);
 			break;
 		}
 	}
@@ -786,7 +835,7 @@ void TC0480SCPRenderCharLayer()
 void TC0480SCPReset()
 {
 	memset(TC0480SCPChars, 0, 256 * 8 * 8);
-	memset(TC0480SCPCtrl, 0, 0x18);
+	memset(TC0480SCPCtrl, 0, sizeof(TC0480SCPCtrl));
 	BgScrollX[0] = BgScrollX[1] = BgScrollX[2] = BgScrollX[3] = 0;
 	BgScrollY[0] = BgScrollY[1] = BgScrollY[2] = BgScrollY[3] = 0;
 	CharScrollX = 0;
@@ -795,9 +844,14 @@ void TC0480SCPReset()
 	TC0480SCPDblWidth = 0;
 }
 
+void TC0480SCPSetPriMap(UINT8 *PriMap)
+{
+	TC0480SCPPriMap = PriMap;
+}
+
 INT32 TC0480SCPGetBgPriority()
 {
-	return TC0480SCPBgPriLookup[(TC0480SCPPriReg &0x1c) >> 2];
+	return TC0480SCPBgPriLookup[(TC0480SCPPriReg & 0x1c) >> 2];
 }
 
 void TC0480SCPInit(INT32 nNumTiles, INT32 Pixels, INT32 xOffset, INT32 yOffset, INT32 xTextOffset, INT32 yTextOffset, INT32 VisYOffset)
@@ -834,7 +888,7 @@ void TC0480SCPExit()
 	BurnFree(TC0480SCPChars);
 	BurnFree(pTC0480SCPTempDraw);
 	
-	memset(TC0480SCPCtrl, 0, 0x18);
+	memset(TC0480SCPCtrl, 0, sizeof(TC0480SCPCtrl));
 	BgScrollX[0] = BgScrollX[1] = BgScrollX[2] = BgScrollX[3] = 0;
 	BgScrollY[0] = BgScrollY[1] = BgScrollY[2] = BgScrollY[3] = 0;
 	CharScrollX = 0;
@@ -849,6 +903,8 @@ void TC0480SCPExit()
 	TC0480SCPTextYOffset = 0;
 	TC0480SCPColBase = 0;
 	TC0480SCPYVisOffset = 0;
+
+	TC0480SCPPriMap = NULL;
 }
 
 void TC0480SCPScan(INT32 nAction)

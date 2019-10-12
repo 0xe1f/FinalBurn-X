@@ -1,4 +1,5 @@
 // Psikyo MC68EC020 based hardware
+// Based by MAME driver by Luca Elia,Olivier Galibert,Paul Priest
 #include "psikyo.h"
 #include "burn_ym2610.h"
 #include "burn_ymf278b.h"
@@ -342,6 +343,90 @@ static struct BurnDIPInfo btlkroadDIPList[] = {
 	{0x1C,	0x00, 0x40, 0x00, NULL},
 };
 
+static struct BurnDIPInfo btlkroadkDIPList[] = {
+	// Defaults
+	{0x1B,	0xFF, 0xFF,	0x00, NULL},
+	{0x1C,	0xFF, 0xFF,	0x02, NULL},
+	{0x1D,	0xFF, 0xFF,	0x03, NULL},
+	{0x1E,	0xFF, 0xFF,	0x00, NULL},
+
+	// DIP 1
+	{0,		0xFE, 0,	2,	  "Coin slot"},
+	{0x1B,	0x82, 0x01,	0x00, "Same"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x01,	0x01, "Individual"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0,		0xFE, 0,	9,	  "Coin 1"},
+	{0x1B,	0x01, 0x0E,	0x00, "1 coin = 1 credit"},
+	{0x1B,	0x01, 0x0E,	0x02, "2 coins = 1 credit"},
+	{0x1B,	0x01, 0x0E,	0x04, "3 coins = 1 credit"},
+	{0x1B,	0x01, 0x0E,	0x08, "1 coin = 2 credits"},
+	{0x1B,	0x01, 0x0E,	0x06, "1 coin = 3 credits"},
+	{0x1B,	0x01, 0x0E,	0x0A, "1 coin = 4 credits"},
+	{0x1B,	0x01, 0x0E,	0x0C, "1 coin = 5 credits"},
+	{0x1B,	0x82, 0x0E,	0x0E, "1 coin = 6 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x01, 0xFF,	0xFF, "Free play"},
+	{0,		0xFE, 0,	9,	  "Coin 2"},
+	{0x1B,	0x82, 0x70,	0x00, "1 coin = 1 credit"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x10, "2 coins = 1 credit"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x20, "3 coins = 1 credit"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x40, "1 coin = 2 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x30, "1 coin = 3 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x50, "1 coin = 4 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x60, "1 coin = 5 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x70,	0x70, "1 coin = 6 credits"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0xFF,	0xFF, "Free play"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0,		0xFE, 0,	2,	  "Continue coin"},
+	{0x1B,	0x82, 0x80,	0x00, "Normal mode"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	{0x1B,	0x82, 0x80,	0x80, "Continue mode"},
+	{0x1B,	0x00, 0xFF, 0xFF, NULL},
+	// DIP 2
+	{0,		0xFE, 0,	2,	  NULL},
+	{0x1C,	0x01, 0x01,	0x00, "Normal screen"},
+	{0x1C,	0x01, 0x01,	0x01, "Invert screen"},
+	{0,		0xFE, 0,	2,	  "Demo sounds"},
+	{0x1C,	0x01, 0x02,	0x00, "Disabled"},
+	{0x1C,	0x01, 0x02,	0x02, "Enabled"},
+	{0,		0xFE, 0,	4,	  "Difficulty"},
+	{0x1C,	0x01, 0x0C,	0x00, "Normal"},
+	{0x1C,	0x01, 0x0C,	0x04, "Easy"},
+	{0x1C,	0x01, 0x0C,	0x08, "Hard"},
+	{0x1C,	0x01, 0x0C,	0x0C, "Hardest"},
+	{0,		0xFE, 0,	2,	  "Enable debug dip"},
+	{0x1C,	0x01, 0x40,	0x00, "Off"},
+	{0x1C,	0x01, 0x40,	0x40, "On"},
+	{0,		0xFE, 0,	2,	  "Test mode"},
+	{0x1C,	0x01, 0x80,	0x00, "Off"},
+	{0x1C,	0x01, 0x80,	0x80, "On"},
+
+	// Region
+	{0,		0xFE, 0,	6,	  "Region"},
+	{0x1D,	0x01, 0xFF,	0x00, "Japan"},
+	{0x1D,	0x01, 0xFF,	0x01, "USA / Canada (Jaleco license)"},
+	{0x1D,	0x01, 0xFF,	0x03, "Korea"},
+	{0x1D,	0x01, 0xFF,	0x05, "Hong Kong"},
+	{0x1D,	0x01, 0xFF,	0x09, "Taiwan"},
+	{0x1D,	0x01, 0xFF,	0x0F, "World"},
+
+	// Debug Dip
+	{0,		0xFE, 0,	2,	  "Debug test menu"},
+	{0x1E,	0x82, 0x80,	0x00, "Off"},
+	{0x1C,	0x00, 0x40, 0x00, NULL},
+	{0x1E,	0x82, 0x80,	0x80, "On"},
+	{0x1C,	0x00, 0x40, 0x00, NULL},
+};
+
 static struct BurnDIPInfo s1945DIPList[] = {
 	// Defaults
 	{0x15,	0xFF, 0xFF,	0x00, NULL},
@@ -470,19 +555,6 @@ static struct BurnDIPInfo NoRegionDIPList[] = {
 	{0x17,	0xFF, 0xFF,	0x00, NULL},
 };
 
-static struct BurnDIPInfo samuraiaRegionDIPList[] = {
-	// Defaults
-	{0x17,	0xFF, 0xFF,	0x00, NULL},
-
-	// Region
-	{0,		0xFE, 0,	5,	  "Region"},
-	{0x17,	0x01, 0xFF,	0x00, "World"},
-	{0x17,	0x01, 0xFF,	0x10, "USA / Canada"},
-	{0x17,	0x01, 0xFF,	0x20, "Korea"},
-	{0x17,	0x01, 0xFF,	0x40, "Hong Kong"},
-	{0x17,	0x01, 0xFF,	0x80, "Taiwan"},
-};
-
 static struct BurnDIPInfo gunbirdRegionDIPList[] = {
 	// Defaults
 	{0x17,	0xFF, 0xFF,	0x00, NULL},
@@ -504,6 +576,19 @@ static struct BurnDIPInfo s1945aRegionDIPList[] = {
 	{0,		0xFE, 0,	2,	  "Region"},
 	{0x17,	0x01, 0xFF,	0x00, "Japan"},
 	{0x17,	0x01, 0xFF,	0x01, "World"},
+};
+
+static struct BurnDIPInfo samuraiaRegionDIPList[] = {
+	// Defaults
+	{0x17,	0xFF, 0xFF,	0x00, NULL},
+
+	// Region
+	{0,		0xFE, 0,	5,	  "Region"},
+	{0x17,	0x01, 0xFF,	0x00, "World"},
+	{0x17,	0x01, 0xFF,	0x10, "USA / Canada"},
+	{0x17,	0x01, 0xFF,	0x20, "Korea"},
+	{0x17,	0x01, 0xFF,	0x40, "Hong Kong"},
+	{0x17,	0x01, 0xFF,	0x80, "Taiwan"},
 };
 
 static struct BurnDIPInfo tengaiRegionDIPList[] = {
@@ -529,10 +614,8 @@ static struct BurnDIPInfo tengaijRegionDIPList[] = {
 	{0x17,	0x01, 0xFF,	0x0F, "World"},
 };
 
-STDDIPINFOEXT(samuraia, samuraia, samuraiaRegion)
-STDDIPINFOEXT(sngkace, samuraia, NoRegion)
-
 STDDIPINFO(btlkroad)
+STDDIPINFO(btlkroadk)
 
 STDDIPINFOEXT(gunbirdWorld, gunbird, gunbirdRegion)
 STDDIPINFOEXT(gunbird, gunbird, NoRegion)
@@ -540,6 +623,9 @@ STDDIPINFOEXT(gunbird, gunbird, NoRegion)
 STDDIPINFOEXT(s1945World, s1945, gunbirdRegion)
 STDDIPINFOEXT(s1945, s1945, NoRegion)
 STDDIPINFOEXT(s1945a, s1945, s1945aRegion)
+
+STDDIPINFOEXT(samuraia, samuraia, samuraiaRegion)
+STDDIPINFOEXT(sngkace, samuraia, NoRegion)
 
 //STDDIPINFO(tengai)
 STDDIPINFOEXT(tengai, tengai, tengaiRegion)
@@ -599,20 +685,10 @@ static void PsikyoFMIRQHandler(INT32, INT32 nStatus)
 //	bprintf(PRINT_NORMAL, _T("  - IRQ -> %i.\n"), nStatus);
 
 	if (nStatus) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xFF, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
-}
-
-static INT32 PsikyoSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double PsikyoGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
 }
 
 // ----------------------------------------------------------------------------
@@ -880,7 +956,7 @@ UINT16 __fastcall gunbirdReadWord(UINT32 sekAddress)
 		case 0xC00000:							// Joysticks
 			return ~DrvInput[0];
 		case 0xC00002: {						// Inputs / Sound CPU status
-			bprintf(PRINT_NORMAL, _T("  - Sound reply read.\n"));
+//			bprintf(PRINT_NORMAL, _T("  - Sound reply read.\n"));
 			PsikyoSynchroniseZ80(0);
 			if (!nSoundlatchAck) {
 				return ~DrvInput[1];
@@ -1048,10 +1124,10 @@ UINT16 tengaiMCURead(UINT32 offset)
 		case 0: {
 			UINT16 res;
 			if (s1945_mcu_control & 16) {
-				res = s1945_mcu_latching & 4 ? 0xff00 : s1945_mcu_latch1 << 8;
+				res = (s1945_mcu_latching & 4) ? 0xff00 : s1945_mcu_latch1 << 8;
 				s1945_mcu_latching |= 4;
 			} else {
-				res = s1945_mcu_latching & 1 ? 0xff00 : s1945_mcu_latch2 << 8;
+				res = (s1945_mcu_latching & 1) ? 0xff00 : s1945_mcu_latch2 << 8;
 				s1945_mcu_latching |= 1;
 			}
 			res |= s1945_mcu_bctrl & 0x00f0;
@@ -1265,6 +1341,8 @@ static INT32 DrvDoReset()
 
 	nCyclesDone[0] = nCyclesDone[1] = 0;
 
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -1296,7 +1374,12 @@ static INT32 gunbirdkCheckSleep(INT32)
 	return 0;
 }
 
-static INT32 s1945jnCheckSleep(INT32)
+static INT32 s1945nCheckSleep(INT32)
+{
+	return 0;
+}
+
+static INT32 s1945njCheckSleep(INT32)
 {
 	return 0;
 }
@@ -1374,7 +1457,7 @@ static INT32 DrvFrame()
 			}
 			PsikyoSpriteBuffer();
 
-			SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 			bVBlank = 0x00;
 		}
 
@@ -1627,7 +1710,7 @@ static INT32 DrvInit()
 
 	BurnSetRefreshRate(15625.0 / 263.5);
 
-	if (!strcmp(BurnDrvGetTextA(DRV_NAME), "samuraia") || !strcmp(BurnDrvGetTextA(DRV_NAME), "sngkace")) {
+	if (!strcmp(BurnDrvGetTextA(DRV_NAME), "samuraia") || !strcmp(BurnDrvGetTextA(DRV_NAME), "sngkace") || !strcmp(BurnDrvGetTextA(DRV_NAME), "sngkacea")) {
 		PsikyoHardwareVersion = PSIKYO_HW_SAMURAIA;
 
 		CheckSleep = samuraiaCheckSleep;
@@ -1640,7 +1723,7 @@ static INT32 DrvInit()
 
 		bPsikyoClearBackground = false;
 	}
-	if (!strcmp(BurnDrvGetTextA(DRV_NAME), "gunbird") || !strcmp(BurnDrvGetTextA(DRV_NAME), "gunbirdj") || !strcmp(BurnDrvGetTextA(DRV_NAME), "gunbirdk") || !strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroad") || !strcmp(BurnDrvGetTextA(DRV_NAME), "s1945jn")) {
+	if (!strcmp(BurnDrvGetTextA(DRV_NAME), "gunbird") || !strcmp(BurnDrvGetTextA(DRV_NAME), "gunbirdj") || !strcmp(BurnDrvGetTextA(DRV_NAME), "gunbirdk") || !strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroad") || !strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroadk") || !strcmp(BurnDrvGetTextA(DRV_NAME), "s1945n") || !strcmp(BurnDrvGetTextA(DRV_NAME), "s1945nj")) {
 		PsikyoHardwareVersion = PSIKYO_HW_GUNBIRD;
 
 		CheckSleep = psikyoCheckSleep;
@@ -1654,12 +1737,15 @@ static INT32 DrvInit()
 		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "gunbirdk")) {
 			CheckSleep = gunbirdkCheckSleep;
 		}
-		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "s1945jn")) {
-			CheckSleep = s1945jnCheckSleep;
+		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "s1945n")) {
+			CheckSleep = s1945nCheckSleep;
+		}
+		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "s1945nj")) {
+			CheckSleep = s1945njCheckSleep;
 		}
 
 		PsikyoTileROMSize = 0x0400000;
-		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroad")) {
+		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroad") || !strcmp(BurnDrvGetTextA(DRV_NAME), "btlkroadk")) {
 			PsikyoSpriteROMSize = 0x0C00000;
 		} else {
 			PsikyoSpriteROMSize = 0x1000000;
@@ -1668,7 +1754,7 @@ static INT32 DrvInit()
 		PsikyoSampleROM01Size = 0x080000;
 		PsikyoSampleROM02Size = 0x100000;
 
-		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "s1945jn")) {
+		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "s1945n") ||  !strcmp(BurnDrvGetTextA(DRV_NAME), "s1945nj")) {
 			bPsikyoClearBackground = false;
 		} else {
 			bPsikyoClearBackground = true;
@@ -1751,15 +1837,15 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Psikyo68KROM,			0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(PsikyoSpriteRAM,		0x400000, 0x401FFF, SM_RAM);
-		SekMapMemory(PsikyoTileRAM[0],		0x800000, 0x801FFF, SM_RAM);
-		SekMapMemory(PsikyoTileRAM[1],		0x802000, 0x803FFF, SM_RAM);
-		SekMapMemory(PsikyoTileRAM[2],		0x804000, 0x807FFF, SM_RAM);
-		SekMapMemory(Psikyo68KRAM,			0xFE0000, 0xFFFFFF, SM_RAM);
+		SekMapMemory(Psikyo68KROM,			0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(PsikyoSpriteRAM,		0x400000, 0x401FFF, MAP_RAM);
+		SekMapMemory(PsikyoTileRAM[0],		0x800000, 0x801FFF, MAP_RAM);
+		SekMapMemory(PsikyoTileRAM[1],		0x802000, 0x803FFF, MAP_RAM);
+		SekMapMemory(PsikyoTileRAM[2],		0x804000, 0x807FFF, MAP_RAM);
+		SekMapMemory(Psikyo68KRAM,			0xFE0000, 0xFFFFFF, MAP_RAM);
 
-		SekMapMemory(PsikyoPalSrc,			0x600000, 0x601FFF, SM_ROM);	// Palette RAM (write goes through handler)
-		SekMapHandler(1,					0x600000, 0x601FFF, SM_WRITE);	//
+		SekMapMemory(PsikyoPalSrc,			0x600000, 0x601FFF, MAP_ROM);	// Palette RAM (write goes through handler)
+		SekMapHandler(1,					0x600000, 0x601FFF, MAP_WRITE);	//
 
 		switch (PsikyoHardwareVersion) {
 			case PSIKYO_HW_SAMURAIA: {
@@ -1853,7 +1939,7 @@ static INT32 DrvInit()
 	switch (PsikyoHardwareVersion) {
 		case PSIKYO_HW_SAMURAIA:
 		case PSIKYO_HW_GUNBIRD: {
-			BurnYM2610Init(8000000, PsikyoSampleROM02, &PsikyoSampleROM02Size, PsikyoSampleROM01, &PsikyoSampleROM01Size, &PsikyoFMIRQHandler, PsikyoSynchroniseStream, PsikyoGetTime, 0);
+			BurnYM2610Init(8000000, PsikyoSampleROM02, &PsikyoSampleROM02Size, PsikyoSampleROM01, &PsikyoSampleROM01Size, &PsikyoFMIRQHandler, 0);
 			BurnTimerAttachZet(4000000);
 			BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 			BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
@@ -1862,9 +1948,9 @@ static INT32 DrvInit()
 		}
 		case PSIKYO_HW_S1945:
 		case PSIKYO_HW_TENGAI: {
-			BurnYMF278BInit(0, PsikyoSampleROM02, &PsikyoFMIRQHandler, PsikyoSynchroniseStream);
-			BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
-			BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
+			BurnYMF278BInit(0, PsikyoSampleROM02, PsikyoSampleROM02Size, &PsikyoFMIRQHandler);
+			BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_1, 2.80, BURN_SND_ROUTE_LEFT);
+			BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_2, 2.80, BURN_SND_ROUTE_RIGHT);
 			BurnTimerAttachZet(4000000);
 			break;
 		}
@@ -1960,13 +2046,26 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SCAN_VAR(bVBlank);
 
-		BurnYM2610Scan(nAction, pnMin);
+		switch (PsikyoHardwareVersion) {
+			case PSIKYO_HW_SAMURAIA:
+				case PSIKYO_HW_GUNBIRD: {
+					BurnYM2610Scan(nAction, pnMin);
+					break;
+				}
+				case PSIKYO_HW_S1945:
+				case PSIKYO_HW_TENGAI: {
+					BurnYMF278BScan(nAction, pnMin);
+					break;
+				}
+		}
 
 		SCAN_VAR(nSoundlatch); SCAN_VAR(nSoundlatchAck);
 
 		SCAN_VAR(nPsikyoZ80Bank);
 
-		TengaiMCUScan(nAction, pnMin);
+		if (PsikyoHardwareVersion == PSIKYO_HW_TENGAI || PsikyoHardwareVersion == PSIKYO_HW_S1945) {
+			TengaiMCUScan(nAction, pnMin);
+		}
 
 		if (nAction & ACB_WRITE) {
 			int nBank = nPsikyoZ80Bank;
@@ -2002,59 +2101,89 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // Samurai Aces / Sengoku Ace
 
 static struct BurnRomInfo samuraiaRomDesc[] = {
-	{ "4-u127.bin",   0x040000, 0x8C9911CA, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "5-u126.bin",   0x040000, 0xD20C3EF0, BRF_ESS | BRF_PRG }, //  1
+	{ "4-u127.bin",   0x040000, 0x8c9911ca, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "5-u126.bin",   0x040000, 0xd20c3ef0, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x00A546CB, BRF_GRA },			 //  2 Sprite data
+	{ "u14.bin",      0x200000, 0x00a546cb, BRF_GRA },			 //  2 Sprite data
 
-	{ "u11.bin",      0x040000, 0x11A04D91, BRF_GRA },			 //  3 Sprite LUT
+	{ "u11.bin",      0x040000, 0x11a04d91, BRF_GRA },			 //  3 Sprite LUT
 
-	{ "u34.bin",      0x100000, 0xE6A75BD8, BRF_GRA },			 //  4 Tile data
-	{ "u35.bin",      0x100000, 0xC4CA0164, BRF_GRA },			 //  5
+	{ "u34.bin",      0x100000, 0xe6a75bd8, BRF_GRA },			 //  4 Tile data
+	{ "u35.bin",      0x100000, 0xc4ca0164, BRF_GRA },			 //  5
 
-	{ "3-u58.bin",    0x020000, 0x310F5C76, BRF_ESS | BRF_PRG }, //  6 CPU #1 code
+	{ "3-u58.bin",    0x020000, 0x310f5c76, BRF_ESS | BRF_PRG }, //  6 CPU #1 code
 
-	{ "u68.bin",      0x100000, 0x9A7F6C34, BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
+	{ "u68.bin",      0x100000, 0x9a7f6c34, BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
 };
 
 STD_ROM_PICK(samuraia)
 STD_ROM_FN(samuraia)
 
 static struct BurnRomInfo sngkaceRomDesc[] = {
-	{ "1-u127.bin",   0x040000, 0x6C45B2F8, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2-u126.bin",   0x040000, 0x845A6760, BRF_ESS | BRF_PRG }, //  1
+	{ "1-u127.bin",   0x040000, 0x6c45b2f8, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2-u126.bin",   0x040000, 0x845a6760, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x00A546CB, BRF_GRA },			 //  2 Sprite data
+	{ "u14.bin",      0x200000, 0x00a546cb, BRF_GRA },			 //  2 Sprite data
 
-	{ "u11.bin",      0x040000, 0x11A04D91, BRF_GRA },			 //  3 Sprite LUT
+	{ "u11.bin",      0x040000, 0x11a04d91, BRF_GRA },			 //  3 Sprite LUT
 
-	{ "u34.bin",      0x100000, 0xE6A75BD8, BRF_GRA },			 //  4 Tile data
-	{ "u35.bin",      0x100000, 0xC4CA0164, BRF_GRA },			 //  5
+	{ "u34.bin",      0x100000, 0xe6a75bd8, BRF_GRA },			 //  4 Tile data
+	{ "u35.bin",      0x100000, 0xc4ca0164, BRF_GRA },			 //  5
 
-	{ "3-u58.bin",    0x020000, 0x310F5C76, BRF_ESS | BRF_PRG }, //  6 CPU #1 code
+	{ "3-u58.bin",    0x020000, 0x310f5c76, BRF_ESS | BRF_PRG }, //  6 CPU #1 code
 
-	{ "u68.bin",      0x100000, 0x9A7F6C34, BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
+	{ "u68.bin",      0x100000, 0x9a7f6c34, BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
 };
 
 STD_ROM_PICK(sngkace)
 STD_ROM_FN(sngkace)
 
+static struct BurnRomInfo sngkaceaRomDesc[] = {
+	// the roms have a very visible "." symbol after the number, it might indicate a newer revision.
+	{ "1.-u127.bin",  0x040000, 0x3a43708d, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2.-u126.bin",  0x040000, 0x7aa50c46, BRF_ESS | BRF_PRG }, //  1
+
+	{ "u14.bin",      0x200000, 0x00a546cb, BRF_GRA },			 //  2 Sprite data
+
+	{ "u11.bin",      0x040000, 0x11a04d91, BRF_GRA },			 //  3 Sprite LUT
+
+	{ "u34.bin",      0x100000, 0xe6a75bd8, BRF_GRA },			 //  4 Tile data
+	{ "u35.bin",      0x100000, 0xc4ca0164, BRF_GRA },			 //  5
+
+	{ "3-u58.bin",    0x020000, 0x310f5c76, BRF_ESS | BRF_PRG }, //  6 CPU #1 code
+
+	{ "u68.bin",      0x100000, 0x9a7f6c34, BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
+};
+
+STD_ROM_PICK(sngkacea)
+STD_ROM_FN(sngkacea)
+
 struct BurnDriver BurnDrvSamuraiA = {
 	"samuraia", NULL, NULL, NULL, "1993",
 	"Samurai Aces (World)\0", NULL, "Psikyo / Banpresto", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, samuraiaRomInfo, samuraiaRomName, NULL, NULL, gunbirdInputInfo, samuraiaDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, samuraiaRomInfo, samuraiaRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, samuraiaDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvSngkAce = {
 	"sngkace", "samuraia", NULL, NULL, "1993",
-	"Sengoku Ace (Japan)\0", NULL, "Psikyo / Banpresto", "Psikyo 68EC020",
-	L"\u6226\u56FD\u30A8\u30FC\u30B9 (Japan)\0Sengoku Ace\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, sngkaceRomInfo, sngkaceRomName, NULL, NULL, gunbirdInputInfo, sngkaceDIPInfo,
+	"Sengoku Ace (Japan, set 1)\0", NULL, "Psikyo / Banpresto", "Psikyo 68EC020",
+	L"\u6226\u56FD\u30A8\u30FC\u30B9 (Japan, set 1)\0Sengoku Ace\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, sngkaceRomInfo, sngkaceRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, sngkaceDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
+	224, 320, 3, 4
+};
+
+struct BurnDriver BurnDrvSngkAcea = {
+	"sngkacea", "samuraia", NULL, NULL, "1993",
+	"Sengoku Ace (Japan, set 2)\0", NULL, "Psikyo / Banpresto", "Psikyo 68EC020",
+	L"\u6226\u56FD\u30A8\u30FC\u30B9 (Japan, set 2)\0Sengoku Ace\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, sngkaceaRomInfo, sngkaceaRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, sngkaceDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2062,22 +2191,22 @@ struct BurnDriver BurnDrvSngkAce = {
 // Gunbird
 
 static struct BurnRomInfo gunbirdRomDesc[] = {
-	{ "4.u46",        0x040000, 0xB78EC99D, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "5.u39",        0x040000, 0x925F095D, BRF_ESS | BRF_PRG }, //  1
+	{ "4.u46",        0x040000, 0xb78ec99d, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "5.u39",        0x040000, 0x925f095d, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x7D7E8A00, BRF_GRA },			 //  2 Sprite data
-	{ "u24.bin",      0x200000, 0x5E3FFC9D, BRF_GRA },			 //  3
-	{ "u15.bin",      0x200000, 0xA827BFB5, BRF_GRA },			 //  4
-	{ "u25.bin",      0x100000, 0xEF652E0C, BRF_GRA },			 //  5
+	{ "u14.bin",      0x200000, 0x7d7e8a00, BRF_GRA },			 //  2 Sprite data
+	{ "u24.bin",      0x200000, 0x5e3ffc9d, BRF_GRA },			 //  3
+	{ "u15.bin",      0x200000, 0xa827bfb5, BRF_GRA },			 //  4
+	{ "u25.bin",      0x100000, 0xef652e0c, BRF_GRA },			 //  5
 
-	{ "u3.bin",       0x040000, 0x0905AEB2, BRF_GRA },			 //  6 Sprite LUT
+	{ "u3.bin",       0x040000, 0x0905aeb2, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u33.bin",      0x200000, 0x54494E6B, BRF_GRA },			 //  7 Tile data
+	{ "u33.bin",      0x200000, 0x54494e6b, BRF_GRA },			 //  7 Tile data
 
-	{ "3.u71",        0x020000, 0x2168E4BA, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3.u71",        0x020000, 0x2168e4ba, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u64.bin",      0x080000, 0xE187ED4F, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-	{ "u56.bin",      0x100000, 0x9E07104D, BRF_SND },			 // 10 YM2610 ADPCM data
+	{ "u64.bin",      0x080000, 0xe187ed4f, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0x9e07104d, BRF_SND },			 // 10 YM2610 ADPCM data
 	
 	{ "3020.u19",     0x000001, 0x00000000, BRF_OPT | BRF_NODUMP },// 11
 	{ "3021.u69",     0x000001, 0x00000000, BRF_OPT | BRF_NODUMP },// 12
@@ -2087,44 +2216,44 @@ STD_ROM_PICK(gunbird)
 STD_ROM_FN(gunbird)
 
 static struct BurnRomInfo gunbirdjRomDesc[] = {
-	{ "1.u46",        0x040000, 0x474ABD69, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2.u39",        0x040000, 0x3E3E661F, BRF_ESS | BRF_PRG }, //  1
+	{ "1.u46",        0x040000, 0x474abd69, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2.u39",        0x040000, 0x3e3e661f, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x7D7E8A00, BRF_GRA },			 //  2 Sprite data
-	{ "u24.bin",      0x200000, 0x5E3FFC9D, BRF_GRA },			 //  3
-	{ "u15.bin",      0x200000, 0xA827BFB5, BRF_GRA },			 //  4
-	{ "u25.bin",      0x100000, 0xEF652E0C, BRF_GRA },			 //  5
+	{ "u14.bin",      0x200000, 0x7d7e8a00, BRF_GRA },			 //  2 Sprite data
+	{ "u24.bin",      0x200000, 0x5e3ffc9d, BRF_GRA },			 //  3
+	{ "u15.bin",      0x200000, 0xa827bfb5, BRF_GRA },			 //  4
+	{ "u25.bin",      0x100000, 0xef652e0c, BRF_GRA },			 //  5
 
-	{ "u3.bin",       0x040000, 0x0905AEB2, BRF_GRA },			 //  6 Sprite LUT
+	{ "u3.bin",       0x040000, 0x0905aeb2, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u33.bin",      0x200000, 0x54494E6B, BRF_GRA },			 //  7 Tile data
+	{ "u33.bin",      0x200000, 0x54494e6b, BRF_GRA },			 //  7 Tile data
 
-	{ "3.u71",        0x020000, 0x2168E4BA, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3.u71",        0x020000, 0x2168e4ba, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u64.bin",      0x080000, 0xE187ED4F, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-	{ "u56.bin",      0x100000, 0x9E07104D, BRF_SND },			 // 10 YM2610 ADPCM data
+	{ "u64.bin",      0x080000, 0xe187ed4f, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0x9e07104d, BRF_SND },			 // 10 YM2610 ADPCM data
 };
 
 STD_ROM_PICK(gunbirdj)
 STD_ROM_FN(gunbirdj)
 
 static struct BurnRomInfo gunbirdkRomDesc[] = {
-	{ "1k.u46",       0x080000, 0x745CEE52, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2k.u39",       0x080000, 0x669632FB, BRF_ESS | BRF_PRG }, //  1
+	{ "1k.u46",       0x080000, 0x745cee52, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2k.u39",       0x080000, 0x669632fb, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x7D7E8A00, BRF_GRA },			 //  2 Sprite data
-	{ "u24.bin",      0x200000, 0x5E3FFC9D, BRF_GRA },			 //  3
-	{ "u15.bin",      0x200000, 0xA827BFB5, BRF_GRA },			 //  4
-	{ "u25.bin",      0x100000, 0xEF652E0C, BRF_GRA },			 //  5
+	{ "u14.bin",      0x200000, 0x7d7e8a00, BRF_GRA },			 //  2 Sprite data
+	{ "u24.bin",      0x200000, 0x5e3ffc9d, BRF_GRA },			 //  3
+	{ "u15.bin",      0x200000, 0xa827bfb5, BRF_GRA },			 //  4
+	{ "u25.bin",      0x100000, 0xef652e0c, BRF_GRA },			 //  5
 
-	{ "u3.bin",       0x040000, 0x0905AEB2, BRF_GRA },			 //  6 Sprite LUT
+	{ "u3.bin",       0x040000, 0x0905aeb2, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u33.bin",      0x200000, 0x54494E6B, BRF_GRA },			 //  7 Tile data
+	{ "u33.bin",      0x200000, 0x54494e6b, BRF_GRA },			 //  7 Tile data
 
 	{ "k3.u71",       0x020000, 0x11994055, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u64.bin",      0x080000, 0xE187ED4F, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-	{ "u56.bin",      0x100000, 0x9E07104D, BRF_SND },			 // 10 YM2610 ADPCM data
+	{ "u64.bin",      0x080000, 0xe187ed4f, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0x9e07104d, BRF_SND },			 // 10 YM2610 ADPCM data
 };
 
 STD_ROM_PICK(gunbirdk)
@@ -2134,8 +2263,8 @@ struct BurnDriver BurnDrvGunbird = {
 	"gunbird", NULL, NULL, NULL, "1994",
 	"Gunbird (World)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, gunbirdRomInfo, gunbirdRomName, NULL, NULL, gunbirdInputInfo, gunbirdWorldDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbirdRomInfo, gunbirdRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, gunbirdWorldDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2144,8 +2273,8 @@ struct BurnDriver BurnDrvGunbirdj = {
 	"gunbirdj", "gunbird", NULL, NULL, "1994",
 	"Gunbird (Japan)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	L"Gunbird (Japan)\0\u30AC\u30F3\u30D0\u30FC\u30C9\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, gunbirdjRomInfo, gunbirdjRomName, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbirdjRomInfo, gunbirdjRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2154,8 +2283,8 @@ struct BurnDriver BurnDrvGunbirdk = {
 	"gunbirdk", "gunbird", NULL, NULL, "1994",
 	"Gunbird (Korea)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, gunbirdkRomInfo, gunbirdkRomName, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbirdkRomInfo, gunbirdkRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2166,22 +2295,22 @@ static struct BurnRomInfo btlkroadRomDesc[] = {
 	{ "4-u46.bin",    0x040000, 0x8a7a28b4, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "5-u39.bin",    0x040000, 0x933561fa, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u14.bin",      0x200000, 0x282D89C3, BRF_GRA },			 //  2 Sprite data
-	{ "u24.bin",      0x200000, 0xBBE9D3D1, BRF_GRA },			 //  3
-	{ "u15.bin",      0x200000, 0xD4D1B07C, BRF_GRA },			 //  4
-	{ "",                    0,          0, 0 }, //  5
+	{ "u14.bin",      0x200000, 0x282d89c3, BRF_GRA },			 //  2 Sprite data
+	{ "u24.bin",      0x200000, 0xbbe9d3d1, BRF_GRA },			 //  3
+	{ "u15.bin",      0x200000, 0xd4d1b07c, BRF_GRA },			 //  4
+	{ "",                    0,          0, 0 }, 				 //  5
 
-	{ "u3.bin",       0x040000, 0x30D541ED, BRF_GRA },			 //  6 Sprite LUT
+	{ "u3.bin",       0x040000, 0x30d541ed, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u33.bin",      0x200000, 0x4C8577F1, BRF_GRA },			 //  7 Tile data
+	{ "u33.bin",      0x200000, 0x4c8577f1, BRF_GRA },			 //  7 Tile data
 
-	{ "3-u71.bin",    0x020000, 0x22411FAB, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3-u71.bin",    0x020000, 0x22411fab, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u64.bin",      0x080000, 0x0F33049F, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-	{ "u56.bin",      0x100000, 0x51D73682, BRF_SND },			 // 10 YM2610 ADPCM data
+	{ "u64.bin",      0x080000, 0x0f33049f, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0x51d73682, BRF_SND },			 // 10 YM2610 ADPCM data
 	
-	{ "tibpal16l8.u69", 260, 0x00000000, BRF_NODUMP },	// NO DUMP
-	{ "tibpal16l8.u19", 260, 0x00000000, BRF_NODUMP },	// NO DUMP
+	{ "tibpal16l8.u69",    260, 0x00000000, BRF_NODUMP },		 // NO DUMP
+	{ "tibpal16l8.u19",    260, 0x00000000, BRF_NODUMP },		 // NO DUMP
 };
 
 STD_ROM_PICK(btlkroad)
@@ -2191,42 +2320,114 @@ struct BurnDriver BurnDrvBtlKRoad = {
 	"btlkroad", NULL, NULL, NULL, "1994",
 	"Battle K-Road\0", NULL, "Psikyo", "Psikyo 68EC020",
 	L"Battle K-Road\0Battle K-Road \u30D0\u30C8\u30EB\u30AF\u30ED\u30FC\u30C9\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VSFIGHT, 0,
-	NULL, btlkroadRomInfo, btlkroadRomName, NULL, NULL, btlkroadInputInfo, btlkroadDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VSFIGHT, 0,
+	NULL, btlkroadRomInfo, btlkroadRomName, NULL, NULL, NULL, NULL, btlkroadInputInfo, btlkroadDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	320, 224, 4, 3
 };
 
-// Strikers 1945 (gunbird hardware)
+// Battle K-Road (Korea)
+// f205v id 1266
 
-static struct BurnRomInfo s1945jnRomDesc[] = {
-	{ "1-u46.bin",    0x080000, 0x45FA8086, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2-u39.bin",    0x080000, 0x0152AB8C, BRF_ESS | BRF_PRG }, //  1
+static struct BurnRomInfo btlkroadkRomDesc[] = {
+	{ "4,dot.u46",   0x040000, 0xe724d429, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "5,dot.u39",   0x040000, 0xc0d65765, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0x28A27FEE, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0xCA152A32, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xC5d60EA9, BRF_GRA },			 //  4
-	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
+	{ "u14.bin",     0x200000, 0x282d89c3, BRF_GRA },		    //  2 Sprite data
+	{ "u24.bin",     0x200000, 0xbbe9d3d1, BRF_GRA },		    //  3
+	{ "u15.bin",     0x200000, 0xd4d1b07c, BRF_GRA },	        //  4
+	{ "",                   0,          0, 0 }, 			    //  5
 
-	{ "u1.bin",       0x040000, 0xDEE22654, BRF_GRA },			 //  6 Sprite LUT
+	{ "u3.bin",      0x040000, 0x30d541ed, BRF_GRA },		    //  6 Sprite LUT
 
-	{ "u34.bin",      0x200000, 0xAAF83E23, BRF_GRA },			 //  7 Tile data
+	{ "u33.bin",     0x200000, 0x4c8577f1, BRF_GRA },		    //  7 Tile data
 
-	{ "3-u71.bin",    0x020000, 0xE3E366BD, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3,k.u71",     0x020000, 0xe0f0c597, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u64.bin",      0x080000, 0xA44A4A9b, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-	{ "u56.bin",      0x100000, 0xFE1312C2, BRF_SND },			 // 10 YM2610 ADPCM data
+	{ "u64.bin",     0x080000, 0x0f33049f, BRF_SND },		    //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",     0x100000, 0x51d73682, BRF_SND },		    // 10 YM2610 ADPCM data
+	
+	{ "tibpal16l8.u69",    	260, 0x00000000, BRF_NODUMP },		// NO DUMP
+	{ "tibpal16l8.u19",    	260, 0x00000000, BRF_NODUMP },		// NO DUMP
 };
 
-STD_ROM_PICK(s1945jn)
-STD_ROM_FN(s1945jn)
+STD_ROM_PICK(btlkroadk)
+STD_ROM_FN(btlkroadk)
 
-struct BurnDriver BurnDrvS1945jn = {
-	"s1945jn", "s1945", NULL, NULL, "1995",
+struct BurnDriver BurnDrvBtlKRoadk = {
+	"btlkroadk", "btlkroad", NULL, NULL, "1994",
+	"Battle K-Road (Korea)\0", NULL, "Psikyo", "Psikyo 68EC020",
+	L"Battle K-Road\0Battle K-Road \u30D0\u30C8\u30EB\u30AF\u30ED\u30FC\u30C9 (Korea)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VSFIGHT, 0,
+	NULL, btlkroadkRomInfo, btlkroadkRomName, NULL, NULL, NULL, NULL, btlkroadInputInfo, btlkroadkDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
+	320, 224, 4, 3
+};
+
+// Strikers 1945 (World, unprotected)
+
+static struct BurnRomInfo s1945nRomDesc[] = {
+	{ "4.u46",    	  0x040000, 0x28fb8181, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "5.u39",    	  0x040000, 0x8ca05f94, BRF_ESS | BRF_PRG }, //  1
+
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
+	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
+
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
+
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
+
+	{ "3-u71.bin",    0x020000, 0xe3e366bd, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+
+	{ "u64.bin",      0x080000, 0xa44a4a9b, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0xfe1312c2, BRF_SND },			 // 10 YM2610 ADPCM data
+};
+
+STD_ROM_PICK(s1945n)
+STD_ROM_FN(s1945n)
+
+struct BurnDriver BurnDrvS1945n = {
+	"s1945n", "s1945", NULL, NULL, "1995",
+	"Strikers 1945 (World, unprotected)\0", NULL, "Psikyo", "Psikyo 68EC020",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945nRomInfo, s1945nRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
+	224, 320, 3, 4
+};
+
+// Strikers 1945 (Japan, unprotected)
+
+static struct BurnRomInfo s1945njRomDesc[] = {
+	{ "1-u46.bin",    0x040000, 0x95028132, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2-u39.bin",    0x040000, 0x3df79a16, BRF_ESS | BRF_PRG }, //  1
+
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
+	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
+
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
+
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
+
+	{ "3-u71.bin",    0x020000, 0xe3e366bd, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+
+	{ "u64.bin",      0x080000, 0xa44a4a9b, BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
+	{ "u56.bin",      0x100000, 0xfe1312c2, BRF_SND },			 // 10 YM2610 ADPCM data
+};
+
+STD_ROM_PICK(s1945nj)
+STD_ROM_FN(s1945nj)
+
+struct BurnDriver BurnDrvS1945nj = {
+	"s1945nj", "s1945", NULL, NULL, "1995",
 	"Strikers 1945 (Japan, unprotected)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, s1945jnRomInfo, s1945jnRomName, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945njRomInfo, s1945njRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2234,46 +2435,46 @@ struct BurnDriver BurnDrvS1945jn = {
 // Strikers 1945
 
 static struct BurnRomInfo s1945RomDesc[] = {
-	{ "2s.u40",       0x040000, 0x9B10062A, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "3s.u41",       0x040000, 0xF87E871A, BRF_ESS | BRF_PRG }, //  1
+	{ "2s.u40",       0x040000, 0x9b10062a, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "3s.u41",       0x040000, 0xf87e871a, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0x28A27FEE, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0xCA152A32, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xC5d60EA9, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
 	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
 
-	{ "u1.bin",       0x040000, 0xDEE22654, BRF_GRA },			 //  6 Sprite LUT
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u34.bin",      0x200000, 0xAAF83E23, BRF_GRA },			 //  7 Tile data
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
 
-	{ "3-u63.bin",    0x020000, 0x42D40AE1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3-u63.bin",    0x020000, 0x42d40ae1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA839CF47, BRF_SND },			 //  9 PCM data
+	{ "u61.bin",      0x200000, 0xa839cf47, BRF_SND },			 //  9 PCM data
 	
-	{ "4-u59.bin",      256, 0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",         256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(s1945)
 STD_ROM_FN(s1945)
 
 static struct BurnRomInfo s1945jRomDesc[] = {
-	{ "1-u40.bin",    0x040000, 0xC00EB012, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2-u41.bin",    0x040000, 0x3F5A134B, BRF_ESS | BRF_PRG }, //  1
+	{ "1-u40.bin",    0x040000, 0xc00eb012, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "2-u41.bin",    0x040000, 0x3f5a134b, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0x28A27FEE, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0xCA152A32, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xC5d60EA9, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
 	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
 
-	{ "u1.bin",       0x040000, 0xDEE22654, BRF_GRA },			 //  6 Sprite LUT
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u34.bin",      0x200000, 0xAAF83E23, BRF_GRA },			 //  7 Tile data
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
 
-	{ "3-u63.bin",    0x020000, 0x42D40AE1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3-u63.bin",    0x020000, 0x42d40ae1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA839CF47, BRF_SND },			 //  9 PCM data
+	{ "u61.bin",      0x200000, 0xa839cf47, BRF_SND },			 //  9 PCM data
 	
-	{ "4-u59.bin",      256, 0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",         256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(s1945j)
@@ -2283,20 +2484,20 @@ static struct BurnRomInfo s1945kRomDesc[] = {
 	{ "10.u40",       0x040000, 0x5a32af36, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "9.u41",        0x040000, 0x29cc6d7d, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0x28A27FEE, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0xCA152A32, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xC5d60EA9, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
 	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
 
-	{ "u1.bin",       0x040000, 0xDEE22654, BRF_GRA },			 //  6 Sprite LUT
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u34.bin",      0x200000, 0xAAF83E23, BRF_GRA },			 //  7 Tile data
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
 
-	{ "3-u63.bin",    0x020000, 0x42D40AE1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3-u63.bin",    0x020000, 0x42d40ae1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA839CF47, BRF_SND },			 //  9 PCM data
+	{ "u61.bin",      0x200000, 0xa839cf47, BRF_SND },			 //  9 PCM data
 	
-	{ "4-u59.bin",      256, 0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",         256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(s1945k)
@@ -2306,20 +2507,20 @@ static struct BurnRomInfo s1945aRomDesc[] = {
 	{ "4-u40.bin",    0x040000, 0x29ffc217, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "5-u41.bin",    0x040000, 0xc3d3fb64, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0x28A27FEE, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0xCA152A32, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xC5d60EA9, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0x28a27fee, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0xca152a32, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xc5d60ea9, BRF_GRA },			 //  4
 	{ "u23.bin",      0x200000, 0x48710332, BRF_GRA },			 //  5
 
-	{ "u1.bin",       0x040000, 0xDEE22654, BRF_GRA },			 //  6 Sprite LUT
+	{ "u1.bin",       0x040000, 0xdee22654, BRF_GRA },			 //  6 Sprite LUT
 
-	{ "u34.bin",      0x200000, 0xAAF83E23, BRF_GRA },			 //  7 Tile data
+	{ "u34.bin",      0x200000, 0xaaf83e23, BRF_GRA },			 //  7 Tile data
 
-	{ "3-u63.bin",    0x020000, 0x42D40AE1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
+	{ "3-u63.bin",    0x020000, 0x42d40ae1, BRF_ESS | BRF_PRG }, //  8 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA839CF47, BRF_SND },			 //  9 PCM data
+	{ "u61.bin",      0x200000, 0xa839cf47, BRF_SND },			 //  9 PCM data
 	
-	{ "4-u59.bin",      256, 0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",         256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(s1945a)
@@ -2327,10 +2528,10 @@ STD_ROM_FN(s1945a)
 
 struct BurnDriver BurnDrvS1945 = {
 	"s1945", NULL, NULL, NULL, "1995",
-	"Strikers 1945\0", NULL, "Psikyo", "Psikyo 68EC020",
+	"Strikers 1945 (World)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, s1945RomInfo, s1945RomName, NULL, NULL, gunbirdInputInfo, s1945WorldDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945RomInfo, s1945RomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945WorldDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2339,8 +2540,8 @@ struct BurnDriver BurnDrvS1945j = {
 	"s1945j", "s1945", NULL, NULL, "1995",
 	"Strikers 1945 (Japan)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, s1945jRomInfo, s1945jRomName, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945jRomInfo, s1945jRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2349,18 +2550,18 @@ struct BurnDriver BurnDrvS1945k = {
 	"s1945k", "s1945", NULL, NULL, "1995",
 	"Strikers 1945 (Korea)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, s1945kRomInfo, s1945kRomName, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945kRomInfo, s1945kRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvS1945a = {
 	"s1945a", "s1945", NULL, NULL, "1995",
-	"Strikers 1945 (Alt)\0", NULL, "Psikyo", "Psikyo 68EC020",
+	"Strikers 1945 (Japan / World)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, s1945aRomInfo, s1945aRomName, NULL, NULL, gunbirdInputInfo, s1945aDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, s1945aRomInfo, s1945aRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, s1945aDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	224, 320, 3, 4
 };
@@ -2371,20 +2572,20 @@ static struct BurnRomInfo tengaiRomDesc[] = {
 	{ "5-u40.bin",    0x080000, 0x90088195, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
 	{ "4-u41.bin",    0x080000, 0x0d53196c, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0xED42EF73, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0x8D21CAEE, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xEFE34EED, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0xed42ef73, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0x8d21caee, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xefe34eed, BRF_GRA },			 //  4
 
-	{ "u1.bin",       0x040000, 0x681D7D55, BRF_GRA },			 //  5 Sprite LUT
+	{ "u1.bin",       0x040000, 0x681d7d55, BRF_GRA },			 //  5 Sprite LUT
 
-	{ "u34.bin",      0x400000, 0x2A2E2EEB, BRF_GRA },			 //  6 Tile data
+	{ "u34.bin",      0x400000, 0x2a2e2eeb, BRF_GRA },			 //  6 Tile data
 
-	{ "1-u63.bin",    0x020000, 0x2025E387, BRF_ESS | BRF_PRG }, //  7 CPU #1 code
+	{ "1-u63.bin",    0x020000, 0x2025e387, BRF_ESS | BRF_PRG }, //  7 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA63633C5, BRF_SND },			 //  8 PCM data
-	{ "u62.bin",      0x200000, 0x3AD0C357, BRF_SND },			 //   9
+	{ "u61.bin",      0x200000, 0xa63633c5, BRF_SND },			 //  8 PCM data
+	{ "u62.bin",      0x200000, 0x3ad0c357, BRF_SND },			 //   9
 	
-	{ "4-u59.bin",    256,      0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",         256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(tengai)
@@ -2394,30 +2595,30 @@ struct BurnDriver BurnDrvTengai = {
 	"tengai", NULL, NULL, NULL, "1996",
 	"Tengai (world)\0", NULL, "Psikyo", "Psikyo 68EC020",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
-	NULL, tengaiRomInfo, tengaiRomName, NULL, NULL, gunbirdInputInfo, tengaiDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
+	NULL, tengaiRomInfo, tengaiRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, tengaiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	320, 224, 4, 3
 };
 
 static struct BurnRomInfo tengaijRomDesc[] = {
-	{ "2-u40.bin",    0x080000, 0xAB6FE58A, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "3-u41.bin",    0x080000, 0x02E42E39, BRF_ESS | BRF_PRG }, //  1
+	{ "2-u40.bin",    0x080000, 0xab6fe58a, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "3-u41.bin",    0x080000, 0x02e42e39, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u20.bin",      0x200000, 0xED42EF73, BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0x8D21CAEE, BRF_GRA },			 //  3
-	{ "u21.bin",      0x200000, 0xEFE34EED, BRF_GRA },			 //  4
+	{ "u20.bin",      0x200000, 0xed42ef73, BRF_GRA },			 //  2 Sprite data
+	{ "u22.bin",      0x200000, 0x8d21caee, BRF_GRA },			 //  3
+	{ "u21.bin",      0x200000, 0xefe34eed, BRF_GRA },			 //  4
 
-	{ "u1.bin",       0x040000, 0x681D7D55, BRF_GRA },			 //  5 Sprite LUT
+	{ "u1.bin",       0x040000, 0x681d7d55, BRF_GRA },			 //  5 Sprite LUT
 
-	{ "u34.bin",      0x400000, 0x2A2E2EEB, BRF_GRA },			 //  6 Tile data
+	{ "u34.bin",      0x400000, 0x2a2e2eeb, BRF_GRA },			 //  6 Tile data
 
-	{ "1-u63.bin",    0x020000, 0x2025E387, BRF_ESS | BRF_PRG }, //  7 CPU #1 code
+	{ "1-u63.bin",    0x020000, 0x2025e387, BRF_ESS | BRF_PRG }, //  7 CPU #1 code
 
-	{ "u61.bin",      0x200000, 0xA63633C5, BRF_SND },			 //  8 PCM data
-	{ "u62.bin",      0x200000, 0x3AD0C357, BRF_SND },			 //   9
+	{ "u61.bin",      0x200000, 0xa63633c5, BRF_SND },			 //  8 PCM data
+	{ "u62.bin",      0x200000, 0x3ad0c357, BRF_SND },			 //   9
 	
-	{ "4-u59.bin",    256,      0x00000000, BRF_NODUMP },
+	{ "4-u59.bin",    	   256, 0x00000000, BRF_NODUMP },
 };
 
 STD_ROM_PICK(tengaij)
@@ -2425,10 +2626,10 @@ STD_ROM_FN(tengaij)
 
 struct BurnDriver BurnDrvTengaij = {
 	"tengaij", "tengai", NULL, NULL, "1996",
-	"Tengai\0Sengoku Blade - sengoku ace episode II\0", NULL, "Psikyo", "Psikyo 68EC020",
-	L"Tengai\0\u6226\u56FD\u30D6\u30EC\u30FC\u30C9 - sengoku ace episode II\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
-	NULL, tengaijRomInfo, tengaijRomName, NULL, NULL, gunbirdInputInfo, tengaijDIPInfo,
+	"Tengai\0Sengoku Blade - sengoku Ace episode II\0", NULL, "Psikyo", "Psikyo 68EC020",
+	L"Tengai\0\u6226\u56FD\u30D6\u30EC\u30FC\u30C9 - sengoku Ace episode II\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
+	NULL, tengaijRomInfo, tengaijRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, tengaijDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	320, 224, 4, 3
 };

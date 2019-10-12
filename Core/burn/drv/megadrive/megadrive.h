@@ -2,6 +2,7 @@
 #define SEGA_MD_ROM_LOAD16_WORD_SWAP								0x20
 #define SEGA_MD_ROM_LOAD16_BYTE										0x30
 #define SEGA_MD_ROM_LOAD16_WORD_SWAP_CONTINUE_040000_100000			0x40
+#define SEGA_MD_ROM_LOAD_NORMAL_CONTINUE_020000_080000				0x50
 #define SEGA_MD_ROM_OFFS_000000										0x01
 #define SEGA_MD_ROM_OFFS_000001										0x02
 #define SEGA_MD_ROM_OFFS_020000										0x03
@@ -19,10 +20,18 @@ extern UINT8 MegadriveJoy1[12];
 extern UINT8 MegadriveJoy2[12];
 extern UINT8 MegadriveJoy3[12];
 extern UINT8 MegadriveJoy4[12];
+extern UINT8 MegadriveJoy5[12];
 extern UINT8 MegadriveDIP[2];
-extern UINT16 *MegadriveCurPal;
+extern INT32 psolarmode;
 
 INT32 MegadriveInit();
 INT32 MegadriveExit();
 INT32 MegadriveFrame();
 INT32 MegadriveScan(INT32 nAction, INT32 *pnMin);
+INT32 MegadriveDraw();
+
+// pier solar
+void md_eeprom_stm95_reset();
+void md_eeprom_stm95_init(UINT8 *rom);
+void md_eeprom_stm95_scan(INT32 nAction);
+UINT16 md_psolar_rw(UINT32 offset);

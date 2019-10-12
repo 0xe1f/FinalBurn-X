@@ -1,5 +1,5 @@
 // FB Alpha Asuka & Asuka driver module
-// Based on MAME driver by David Graves, Brian Troha, and 
+// Based on MAME driver by David Graves and Brian Troha
 
 #include "tiles_generic.h"
 #include "m68000_intf.h"
@@ -9,91 +9,93 @@
 #include "msm5205.h"
 #include "taito_ic.h"
 #include "taito.h"
+#include "upd7810_intf.h"
 
 static UINT8 TaitoInputConfig;
 static INT32 AsukaADPCMPos;
 static INT32 AsukaADPCMData;
+static INT32 coin_inserted_counter[2];
 
 static struct BurnInputInfo CadashInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	TC0220IOCInputPort2 + 0,	"p1 coin"	},
+	{"P1 Coin",			BIT_DIGITAL,	TC0220IOCInputPort2 + 0,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	TC0220IOCInputPort2 + 3,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	TC0220IOCInputPort0 + 7,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	TC0220IOCInputPort0 + 6,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	TC0220IOCInputPort0 + 5,	"p1 left"	},
+	{"P1 Up",			BIT_DIGITAL,	TC0220IOCInputPort0 + 7,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	TC0220IOCInputPort0 + 6,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	TC0220IOCInputPort0 + 5,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	TC0220IOCInputPort0 + 4,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	TC0220IOCInputPort0 + 3,	"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	TC0220IOCInputPort0 + 2,	"p1 fire 2"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	TC0220IOCInputPort2 + 1,	"p2 coin"	},
+	{"P2 Coin",			BIT_DIGITAL,	TC0220IOCInputPort2 + 1,	"p2 coin"	},
 	{"P2 Start",		BIT_DIGITAL,	TC0220IOCInputPort2 + 2,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	TC0220IOCInputPort1 + 7,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	TC0220IOCInputPort1 + 6,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	TC0220IOCInputPort1 + 5,	"p2 left"	},
+	{"P2 Up",			BIT_DIGITAL,	TC0220IOCInputPort1 + 7,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	TC0220IOCInputPort1 + 6,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	TC0220IOCInputPort1 + 5,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	TC0220IOCInputPort1 + 4,	"p2 right"	},
 	{"P2 Button 1",		BIT_DIGITAL,	TC0220IOCInputPort1 + 3,	"p2 fire 1"	},
 	{"P2 Button 2",		BIT_DIGITAL,	TC0220IOCInputPort1 + 2,	"p2 fire 2"	},
 
-	{"Reset",		BIT_DIGITAL,	&TaitoReset,			"reset"		},
-	{"Service",		BIT_DIGITAL,	TC0220IOCInputPort2 + 4,	"service"	},
-	{"Tilt",		BIT_DIGITAL,	TC0220IOCInputPort2 + 5,	"tilt"		},
-	{"Dip A",		BIT_DIPSWITCH,	TC0220IOCDip + 0,		"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	TC0220IOCDip + 1,		"dip"		},
+	{"Reset",			BIT_DIGITAL,	&TaitoReset,				"reset"		},
+	{"Service",			BIT_DIGITAL,	TC0220IOCInputPort2 + 4,	"service"	},
+	{"Tilt",			BIT_DIGITAL,	TC0220IOCInputPort2 + 5,	"tilt"		},
+	{"Dip A",			BIT_DIPSWITCH,	TC0220IOCDip + 0,			"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	TC0220IOCDip + 1,			"dip"		},
 };
 
 STDINPUTINFO(Cadash)
 
 static struct BurnInputInfo AsukaInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	TC0220IOCInputPort2 + 2,	"p1 coin"	},
+	{"P1 Coin",			BIT_DIGITAL,	TC0220IOCInputPort2 + 2,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	TC0220IOCInputPort2 + 6,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	TC0220IOCInputPort0 + 0,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	TC0220IOCInputPort0 + 1,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	TC0220IOCInputPort0 + 2,	"p1 left"	},
+	{"P1 Up",			BIT_DIGITAL,	TC0220IOCInputPort0 + 0,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	TC0220IOCInputPort0 + 1,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	TC0220IOCInputPort0 + 2,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	TC0220IOCInputPort0 + 3,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	TC0220IOCInputPort0 + 4,	"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	TC0220IOCInputPort0 + 5,	"p1 fire 2"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	TC0220IOCInputPort2 + 3,	"p2 coin"	},
+	{"P2 Coin",			BIT_DIGITAL,	TC0220IOCInputPort2 + 3,	"p2 coin"	},
 	{"P2 Start",		BIT_DIGITAL,	TC0220IOCInputPort2 + 7,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	TC0220IOCInputPort1 + 0,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	TC0220IOCInputPort1 + 1,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	TC0220IOCInputPort1 + 2,	"p2 left"	},
+	{"P2 Up",			BIT_DIGITAL,	TC0220IOCInputPort1 + 0,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	TC0220IOCInputPort1 + 1,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	TC0220IOCInputPort1 + 2,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	TC0220IOCInputPort1 + 3,	"p2 right"	},
 	{"P2 Button 1",		BIT_DIGITAL,	TC0220IOCInputPort1 + 4,	"p2 fire 1"	},
 	{"P2 Button 2",		BIT_DIGITAL,	TC0220IOCInputPort1 + 5,	"p2 fire 2"	},
 
-	{"Reset",		BIT_DIGITAL,	&TaitoReset,			"reset"},
-	{"Service",		BIT_DIGITAL,	TC0220IOCInputPort2 + 1,	"service"	},
-	{"Tilt",		BIT_DIGITAL,	TC0220IOCInputPort2 + 0,	"tilt"		},
-	{"Dip A",		BIT_DIPSWITCH,	TC0220IOCDip + 0,		"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	TC0220IOCDip + 1,		"dip"		},
+	{"Reset",			BIT_DIGITAL,	&TaitoReset,				"reset"		},
+	{"Service",			BIT_DIGITAL,	TC0220IOCInputPort2 + 1,	"service"	},
+	{"Tilt",			BIT_DIGITAL,	TC0220IOCInputPort2 + 0,	"tilt"		},
+	{"Dip A",			BIT_DIPSWITCH,	TC0220IOCDip + 0,			"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	TC0220IOCDip + 1,			"dip"		},
 };
 
 STDINPUTINFO(Asuka)
 
 static struct BurnInputInfo BonzeadvInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	TaitoInputPort1 + 0,		"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	TaitoInputPort0 + 6,		"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	TaitoInputPort2 + 2,		"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	TaitoInputPort2 + 3,		"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	TaitoInputPort2 + 4,		"p1 left"	},
-	{"P1 Right",		BIT_DIGITAL,	TaitoInputPort2 + 5,		"p1 right"	},
-	{"P1 Button 1",		BIT_DIGITAL,	TaitoInputPort2 + 6,		"p1 fire 1"	},
-	{"P1 Button 2",		BIT_DIGITAL,	TaitoInputPort2 + 7,		"p1 fire 2"	},
+	{"P1 Coin",			BIT_DIGITAL,	TaitoInputPort1 + 0,	"p1 coin"	},
+	{"P1 Start",		BIT_DIGITAL,	TaitoInputPort0 + 6,	"p1 start"	},
+	{"P1 Up",			BIT_DIGITAL,	TaitoInputPort2 + 2,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	TaitoInputPort2 + 3,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	TaitoInputPort2 + 4,	"p1 left"	},
+	{"P1 Right",		BIT_DIGITAL,	TaitoInputPort2 + 5,	"p1 right"	},
+	{"P1 Button 1",		BIT_DIGITAL,	TaitoInputPort2 + 6,	"p1 fire 1"	},
+	{"P1 Button 2",		BIT_DIGITAL,	TaitoInputPort2 + 7,	"p1 fire 2"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	TaitoInputPort1 + 1,		"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	TaitoInputPort0 + 5,		"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	TaitoInputPort3 + 1,		"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	TaitoInputPort3 + 2,		"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	TaitoInputPort3 + 3,		"p2 left"	},
-	{"P2 Right",		BIT_DIGITAL,	TaitoInputPort3 + 4,		"p2 right"	},
-	{"P2 Button 1",		BIT_DIGITAL,	TaitoInputPort3 + 5,		"p2 fire 1"	},
-	{"P2 Button 2",		BIT_DIGITAL,	TaitoInputPort3 + 6,		"p2 fire 2"	},
+	{"P2 Coin",			BIT_DIGITAL,	TaitoInputPort1 + 1,	"p2 coin"	},
+	{"P2 Start",		BIT_DIGITAL,	TaitoInputPort0 + 5,	"p2 start"	},
+	{"P2 Up",			BIT_DIGITAL,	TaitoInputPort3 + 1,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	TaitoInputPort3 + 2,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	TaitoInputPort3 + 7,	"p2 left"	},
+	{"P2 Right",		BIT_DIGITAL,	TaitoInputPort3 + 4,	"p2 right"	},
+	{"P2 Button 1",		BIT_DIGITAL,	TaitoInputPort3 + 5,	"p2 fire 1"	},
+	{"P2 Button 2",		BIT_DIGITAL,	TaitoInputPort3 + 6,	"p2 fire 2"	},
 
-	{"Reset",		BIT_DIGITAL,	&TaitoReset,			"reset"		},
-	{"Service",		BIT_DIGITAL,	TaitoInputPort0 + 7,		"service"	},
-	{"Tilt",		BIT_DIGITAL,	TaitoInputPort2 + 0,		"tilt"		},
-	{"Dip A",		BIT_DIPSWITCH,	TaitoDip + 0,			"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	TaitoDip + 1,			"dip"		},
+	{"Reset",			BIT_DIGITAL,	&TaitoReset,			"reset"		},
+	{"Service",			BIT_DIGITAL,	TaitoInputPort0 + 7,	"service"	},
+	{"Tilt",			BIT_DIGITAL,	TaitoInputPort2 + 0,	"tilt"		},
+	{"Dip A",			BIT_DIPSWITCH,	TaitoDip + 0,			"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	TaitoDip + 1,			"dip"		},
 };
 
 STDINPUTINFO(Bonzeadv)
@@ -139,7 +141,7 @@ static struct BurnDIPInfo CadashDIPList[]=
 	{0x14, 0x01, 0x0c, 0x0c, "7:00"			},
 	{0x14, 0x01, 0x0c, 0x08, "8:00"			},
 
-	{0   , 0xfe, 0   ,    4, "Add Time"		},
+	{0   , 0xfe, 0   ,    4, "Add Time (after round clear)"		},
 	{0x14, 0x01, 0x30, 0x00, "Default - 2:00"	},
 	{0x14, 0x01, 0x30, 0x10, "Default - 1:00"	},
 	{0x14, 0x01, 0x30, 0x30, "Default"		},
@@ -194,7 +196,7 @@ static struct BurnDIPInfo CadashjDIPList[]=
 	{0x14, 0x01, 0x0c, 0x0c, "7:00"			},
 	{0x14, 0x01, 0x0c, 0x08, "8:00"			},
 
-	{0   , 0xfe, 0   ,    4, "Add Time"		},
+	{0   , 0xfe, 0   ,    4, "Add Time (after round clear)"		},
 	{0x14, 0x01, 0x30, 0x00, "Default - 2:00"	},
 	{0x14, 0x01, 0x30, 0x10, "Default - 1:00"	},
 	{0x14, 0x01, 0x30, 0x30, "Default"		},
@@ -249,7 +251,7 @@ static struct BurnDIPInfo CadashuDIPList[]=
 	{0x14, 0x01, 0x0c, 0x0c, "7:00"			},
 	{0x14, 0x01, 0x0c, 0x08, "8:00"			},
 
-	{0   , 0xfe, 0   ,    4, "Add Time (after clear)"},
+	{0   , 0xfe, 0   ,    4, "Add Time (after round clear)"},
 	{0x14, 0x01, 0x30, 0x00, "Default - 2:00"	},
 	{0x14, 0x01, 0x30, 0x10, "Default - 1:00"	},
 	{0x14, 0x01, 0x30, 0x30, "Default"		},
@@ -516,7 +518,7 @@ static struct BurnDIPInfo EarthjkrDIPList[]=
 
 	{0   , 0xfe, 0   ,    2, "Copyright"		},
 	{0x14, 0x01, 0x40, 0x40, "Visco"		},
-	{0x14, 0x01, 0x40, 0x00, "Visco (Romstar)"	},
+	{0x14, 0x01, 0x40, 0x00, "Visco (distributed by Romstar)"	},
 };
 
 STDDIPINFO(Earthjkr)
@@ -524,7 +526,7 @@ STDDIPINFO(Earthjkr)
 static struct BurnDIPInfo BonzeadvDIPList[]=
 {
 	{0x13, 0xff, 0xff, 0xfe, NULL			},
-	{0x14, 0xff, 0xff, 0xbc, NULL			},
+	{0x14, 0xff, 0xff, 0xbf, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Cabinet"		},
 	{0x13, 0x01, 0x01, 0x00, "Upright"		},
@@ -553,6 +555,12 @@ static struct BurnDIPInfo BonzeadvDIPList[]=
 	{0x13, 0x01, 0xc0, 0x80, "1 Coin  3 Credits"	},
 	{0x13, 0x01, 0xc0, 0x40, "1 Coin  4 Credits"	},
 	{0x13, 0x01, 0xc0, 0x00, "1 Coin  6 Credits"	},
+
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
+	{0x14, 0x01, 0x03, 0x02, "Easy"			},
+	{0x14, 0x01, 0x03, 0x03, "Medium"		},
+	{0x14, 0x01, 0x03, 0x01, "Hard"			},
+	{0x14, 0x01, 0x03, 0x00, "Hardest"		},
 
 	{0   , 0xfe, 0   ,    4, "Bonus Life"		},
 	{0x14, 0x01, 0x0c, 0x08, "40k 100k"		},
@@ -627,13 +635,13 @@ STDDIPINFO(Jigkmgri)
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void __fastcall cadash_write_byte(UINT32 a, UINT8 d)
+static void __fastcall cadash_write_byte(UINT32 a, UINT8 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x900000)
 	TC0100SCN0ByteWrite_Map(0xc00000, 0xc0ffff)
 }
 
-void __fastcall cadash_write_word(UINT32 a, UINT16 d)
+static void __fastcall cadash_write_word(UINT32 a, UINT16 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x900000)
 	TC0100SCN0WordWrite_Map(0xc00000, 0xc0ffff)
@@ -664,14 +672,14 @@ void __fastcall cadash_write_word(UINT32 a, UINT16 d)
 	}
 }
 
-UINT8 __fastcall cadash_read_byte(UINT32 a)
+static UINT8 __fastcall cadash_read_byte(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x900000)
 
 	return 0;
 }
 
-UINT16 __fastcall cadash_read_word(UINT32 a)
+static UINT16 __fastcall cadash_read_word(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x900000)
 	if ((a & 0xffffff0) == 0xc20000) return TC0100SCNCtrl[0][(a & 0x0f)/2];
@@ -690,7 +698,7 @@ UINT16 __fastcall cadash_read_word(UINT32 a)
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void __fastcall asuka_write_byte(UINT32 a, UINT8 d)
+static void __fastcall asuka_write_byte(UINT32 a, UINT8 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x400000)
 	TC0100SCN0ByteWrite_Map(0xc00000, 0xc0ffff)
@@ -714,7 +722,7 @@ void __fastcall asuka_write_byte(UINT32 a, UINT8 d)
 	}
 }
 
-void __fastcall asuka_write_word(UINT32 a, UINT16 d)
+static void __fastcall asuka_write_word(UINT32 a, UINT16 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x400000)
 	TC0100SCN0WordWrite_Map(0xc00000, 0xc0ffff)
@@ -744,7 +752,7 @@ void __fastcall asuka_write_word(UINT32 a, UINT16 d)
 	}
 }
 
-UINT8 __fastcall asuka_read_byte(UINT32 a)
+static UINT8 __fastcall asuka_read_byte(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x400000)
 
@@ -758,7 +766,7 @@ UINT8 __fastcall asuka_read_byte(UINT32 a)
 	return 0;
 }
 
-UINT16 __fastcall asuka_read_word(UINT32 a)
+static UINT16 __fastcall asuka_read_word(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x400000)
 	if ((a & 0xffffff0) == 0xc20000) return TC0100SCNCtrl[0][(a & 0x0f)/2];
@@ -780,7 +788,7 @@ UINT16 __fastcall asuka_read_word(UINT32 a)
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void __fastcall eto_write_byte(UINT32 a, UINT8 d)
+static void __fastcall eto_write_byte(UINT32 a, UINT8 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x300000)
 	TC0220IOCHalfWordWrite_Map(0x400000)
@@ -805,7 +813,7 @@ void __fastcall eto_write_byte(UINT32 a, UINT8 d)
 	}
 }
 
-void __fastcall eto_write_word(UINT32 a, UINT16 d)
+static void __fastcall eto_write_word(UINT32 a, UINT16 d)
 {
 	TC0220IOCHalfWordWrite_Map(0x300000)
 	TC0220IOCHalfWordWrite_Map(0x400000)
@@ -843,7 +851,7 @@ void __fastcall eto_write_word(UINT32 a, UINT16 d)
 	}
 }
 
-UINT8 __fastcall eto_read_byte(UINT32 a)
+static UINT8 __fastcall eto_read_byte(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x300000)
 	TC0220IOCHalfWordRead_Map(0x400000)
@@ -858,7 +866,7 @@ UINT8 __fastcall eto_read_byte(UINT32 a)
 	return 0;
 }
 
-UINT16 __fastcall eto_read_word(UINT32 a)
+static UINT16 __fastcall eto_read_word(UINT32 a)
 {
 	TC0220IOCHalfWordRead_Map(0x300000)
 	TC0220IOCHalfWordRead_Map(0x400000)
@@ -878,8 +886,10 @@ UINT16 __fastcall eto_read_word(UINT32 a)
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void __fastcall bonze_write_byte(UINT32 a, UINT8 d)
+static void __fastcall bonze_write_byte(UINT32 a, UINT8 d)
 {
+	CCHIP_WRITE(0x800000)
+
 	TC0100SCN0ByteWrite_Map(0xc00000, 0xc0ffff)
 	
 	switch (a)
@@ -897,23 +907,13 @@ void __fastcall bonze_write_byte(UINT32 a, UINT8 d)
 			TC0140SYTCommWrite(d);
 			ZetOpen(0);
 		return;
-
-		case 0x800803: // CChip Ctrl
-		return;
-
-		case 0x800c01:
-			BonzeWriteCChipBank(d);
-		return;
-	}
-
-	if ((a & 0xffff800) == 0x800000) {
-		BonzeWriteCChipRam(a, d);
-		return;
 	}
 }
 
-void __fastcall bonze_write_word(UINT32 a, UINT16 d)
+static void __fastcall bonze_write_word(UINT32 a, UINT16 d)
 {
+	CCHIP_WRITE(0x800000)
+
 	TC0100SCN0WordWrite_Map(0xc00000, 0xc0ffff)
 	TC0100SCN0CtrlWordWrite_Map(0xc20000)
 
@@ -933,26 +933,29 @@ void __fastcall bonze_write_word(UINT32 a, UINT16 d)
 	if ((a & 0xffffc00) == 0xc10000) return; // nop
 }
 
-UINT8 __fastcall bonze_read_byte(UINT32 a)
+static UINT8 __fastcall bonze_read_byte(UINT32 a)
 {
+	CCHIP_READ(0x800000)
+
 	switch (a)
 	{
 		case 0x3e0003:
 			return TC0140SYTCommRead();
 
-		case 0x800803:
-			return 1; // CChip Status
-	}
+		case 0x390001:
+			return TaitoDip[0];
 
-	if ((a & 0xfffff800) == 0x800000) {
-		return BonzeReadCChipRam(a);
+		case 0x3b0001:
+			return TaitoDip[1];
 	}
 
 	return 0;
 }
 
-UINT16 __fastcall bonze_read_word(UINT32 a)
+static UINT16 __fastcall bonze_read_word(UINT32 a)
 {
+	CCHIP_READ(0x800000)
+
 	if ((a & 0xffffff0) == 0xc20000) return TC0100SCNCtrl[0][(a & 0x0f)/2];
 
 	switch (a)
@@ -970,16 +973,12 @@ UINT16 __fastcall bonze_read_word(UINT32 a)
 			return 0; // nop
 	}
 
-	if ((a & 0xfffff800) == 0x800000) {
-		return BonzeReadCChipRam(a);
-	}
-
 	return 0;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void __fastcall cadash_sound_write(UINT16 a, UINT8 d)
+static void __fastcall cadash_sound_write(UINT16 a, UINT8 d)
 {
 	switch (a)
 	{
@@ -1019,13 +1018,13 @@ void __fastcall cadash_sound_write(UINT16 a, UINT8 d)
 	}
 }
 
-UINT8 __fastcall cadash_sound_read(UINT16 a)
+static UINT8 __fastcall cadash_sound_read(UINT16 a)
 {
 	switch (a)
 	{
 		case 0x9000:
 		case 0x9001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0xa001:
 			return TC0140SYTSlaveCommRead();
@@ -1038,13 +1037,14 @@ UINT8 __fastcall cadash_sound_read(UINT16 a)
 
 static void DrvSoundBankSwitch(UINT32, UINT32 bank)
 {
+	if (ZetGetActive() == -1) return; // prevent crash from TaitoDoReset
 	TaitoZ80Bank = bank & 0x03;
 
 	ZetMapArea(0x4000, 0x7fff, 0, TaitoZ80Rom1 + TaitoZ80Bank * 0x4000);
 	ZetMapArea(0x4000, 0x7fff, 2, TaitoZ80Rom1 + TaitoZ80Bank * 0x4000);
 }
 
-void __fastcall bonze_sound_write(UINT16 a, UINT8 d)
+static void __fastcall bonze_sound_write(UINT16 a, UINT8 d)
 {
 	switch (a)
 	{
@@ -1069,7 +1069,7 @@ void __fastcall bonze_sound_write(UINT16 a, UINT8 d)
 	}
 }
 
-UINT8 __fastcall bonze_sound_read(UINT16 a)
+static UINT8 __fastcall bonze_sound_read(UINT16 a)
 {
 	switch (a)
 	{
@@ -1103,30 +1103,17 @@ static void DrvMakeInputs()
 
 static void CadashYM2151IRQHandler(INT32 Irq)
 {
-	if (Irq) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
+	ZetSetIRQLine(0, (Irq) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
+static INT32 DrvSynchroniseStream(INT32 nSoundRate) // msm5205
 {
 	return (INT64)(double)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
 }
 
 static void AsukaMSM5205Vck()
@@ -1145,33 +1132,16 @@ static INT32 DrvDoReset()
 {
 	memset (TaitoRamStart, 0, TaitoRamEnd - TaitoRamStart);
 
-#if 0
-	// This resets the YM2151 which calls DrvSoundBankSwitch via the port callback
 	TaitoDoReset();
-#else
-	SekOpen(0);
-	SekReset();
-	SekClose();
-	
-	ZetOpen(0);
-	ZetReset();
-	ZetClose();
-	
-	if (TaitoNumYM2610) BurnYM2610Reset();
-	if (TaitoNumMSM5205) MSM5205Reset();
-	ZetOpen(0);
-	if (TaitoNumYM2151) BurnYM2151Reset();
-	ZetClose();	
-#endif
 
 	ZetOpen(0);
 	DrvSoundBankSwitch(0, 1);
 	ZetClose();
 
-	BonzeCChipReset();
-
 	AsukaADPCMPos = 0;
 	AsukaADPCMData = -1;
+
+	memset (coin_inserted_counter, 0, sizeof(coin_inserted_counter));
 
 	return 0;
 }
@@ -1183,7 +1153,10 @@ static INT32 MemIndex()
 	Taito68KRom1		= Next; Next += 0x100000;
 	TaitoZ80Rom1		= Next; Next += 0x010000;
 
-	TaitoChars		= Next; Next += TaitoCharRomSize * 2;
+	cchip_rom           = Next; Next += TaitoCCHIPBIOSSize;
+	cchip_eeprom        = Next; Next += TaitoCCHIPEEPROMSize;
+
+	TaitoChars		    = Next; Next += TaitoCharRomSize * 2;
 	TaitoSpritesA		= Next; Next += TaitoSpriteARomSize * 2;
 
 	TaitoMSM5205Rom		= Next; Next += TaitoMSM5205RomSize;
@@ -1214,11 +1187,11 @@ static void Cadash68KSetup()
 {
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Taito68KRam1,		0x100000, 0x107fff, SM_RAM);
-	SekMapMemory(Taito68KRam2,		0x800000, 0x800fff, SM_RAM); // Network RAM
-	SekMapMemory(PC090OJRam,		0xb00000, 0xb03fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, SM_READ);
+	SekMapMemory(Taito68KRom1,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1,		0x100000, 0x107fff, MAP_RAM);
+	SekMapMemory(Taito68KRam2,		0x800000, 0x800fff, MAP_RAM); // Network RAM
+	SekMapMemory(PC090OJRam,		0xb00000, 0xb03fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, MAP_READ);
 	SekSetWriteByteHandler(0,		cadash_write_byte);
 	SekSetWriteWordHandler(0,		cadash_write_word);
 	SekSetReadByteHandler(0,		cadash_read_byte);
@@ -1230,12 +1203,12 @@ static void Eto68KSetup()
 {
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, SM_ROM);
-	SekMapMemory(Taito68KRam1,		0x200000, 0x203fff, SM_RAM);
-	SekMapMemory(PC090OJRam,		0xc00000, 0xc03fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0] + 0x4000,	0xc04000, 0xc0ffff, SM_READ); // mirror
-	SekMapMemory(TC0100SCNRam[0],		0xd00000, 0xd0ffff, SM_READ);
+	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1,		0x200000, 0x203fff, MAP_RAM);
+	SekMapMemory(PC090OJRam,		0xc00000, 0xc03fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0] + 0x4000,	0xc04000, 0xc0ffff, MAP_READ); // mirror
+	SekMapMemory(TC0100SCNRam[0],		0xd00000, 0xd0ffff, MAP_READ);
 	SekSetWriteByteHandler(0,		eto_write_byte);
 	SekSetWriteWordHandler(0,		eto_write_word);
 	SekSetReadByteHandler(0,		eto_read_byte);
@@ -1247,11 +1220,11 @@ static void Asuka68KSetup()
 {
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, SM_ROM);
-	SekMapMemory(Taito68KRam1,		0x100000, 0x103fff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, SM_READ);
-	SekMapMemory(PC090OJRam,		0xd00000, 0xd03fff, SM_RAM);
+	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1,		0x100000, 0x103fff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, MAP_READ);
+	SekMapMemory(PC090OJRam,		0xd00000, 0xd03fff, MAP_RAM);
 	SekSetWriteByteHandler(0,		asuka_write_byte);
 	SekSetWriteWordHandler(0,		asuka_write_word);
 	SekSetReadByteHandler(0,		asuka_read_byte);
@@ -1263,16 +1236,18 @@ static void Bonze68KSetup()
 {
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, SM_ROM);
-	SekMapMemory(Taito68KRam1,		0x10c000, 0x10ffff, SM_RAM);
-	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, SM_READ);
-	SekMapMemory(PC090OJRam,		0xd00000, 0xd03fff, SM_RAM);
+	SekMapMemory(Taito68KRom1,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Taito68KRom1 + 0x40000,	0x080000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Taito68KRam1,		0x10c000, 0x10ffff, MAP_RAM);
+	SekMapMemory(TC0100SCNRam[0],		0xc00000, 0xc0ffff, MAP_READ);
+	SekMapMemory(PC090OJRam,		0xd00000, 0xd03fff, MAP_RAM);
 	SekSetWriteByteHandler(0,		bonze_write_byte);
 	SekSetWriteWordHandler(0,		bonze_write_word);
 	SekSetReadByteHandler(0,		bonze_read_byte);
 	SekSetReadWordHandler(0,		bonze_read_word);
 	SekClose();
+
+	cchip_init();
 }
 
 static void CadashZ80Setup()
@@ -1333,7 +1308,7 @@ static void AsukaSoundSetup()
 static void BonzeSoundSetup()
 {
 	INT32 DrvSndROMLen = 0x80000;
-	BurnYM2610Init(8000000, TaitoYM2610ARom, &DrvSndROMLen, TaitoYM2610ARom, &DrvSndROMLen, &DrvFMIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2610Init(8000000, TaitoYM2610ARom, &DrvSndROMLen, TaitoYM2610ARom, &DrvSndROMLen, &DrvFMIRQHandler, 0);
 	BurnTimerAttachZet(4000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_BOTH);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_BOTH);
@@ -1371,7 +1346,7 @@ static INT32 CommonInit(void (*Cpu68KSetup)(), void (*CpuZ80Setup)(), void (*Sou
 	TC0110PCRInit(1, 0x1000);
 	TC0220IOCInit();
 	TaitoMakeInputsFunction = DrvMakeInputs;
-	TC0140SYTInit();
+	TC0140SYTInit(0);
 
 	Cpu68KSetup();
 	CpuZ80Setup();
@@ -1445,9 +1420,9 @@ static INT32 CadashFrame()
 		}
 	}
 
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 	SekRun(500);
-	SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -1506,7 +1481,7 @@ static INT32 EtoFrame() // Using for asuka too, but needs msm5205
 		}
 	}
 
-	SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -1537,6 +1512,7 @@ static INT32 BonzeFrame()
 
 	{
 		memset (TaitoInput, 0xff, 4);
+		TaitoInput[0] = 0x80 + 0x20 + 0x40;
 		TaitoInput[1] = 0;
 
 		for (INT32 i = 0; i < 8; i++) {
@@ -1545,18 +1521,45 @@ static INT32 BonzeFrame()
 			TaitoInput[2] ^= (TaitoInputPort2[i] & 1) << i;
 			TaitoInput[3] ^= (TaitoInputPort3[i] & 1) << i;
 		}
+
+		// coin pulser
+		for (INT32 i = 0; i < 2; i++) {
+			if (TaitoInput[1] & (1 << i)) {
+				coin_inserted_counter[i]++;
+				if (coin_inserted_counter[i] >= 2) TaitoInput[1] &= ~(1 << i);
+			} else {
+				coin_inserted_counter[i] = 0;
+			}
+		}
+
+		cchip_loadports(TaitoInput[0], TaitoInput[1], TaitoInput[2], TaitoInput[3]);
 	}
 
 	SekNewFrame();
 	ZetNewFrame();
-	
+	upd7810NewFrame();
+
 	SekOpen(0);
 	ZetOpen(0);
 
-	SekRun(8000000 / 60);
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+	INT32 nInterleave = 256;
+	INT32 nCyclesTotal[3] = { 8000000 / 60, 4000000 / 60, 12000000 / 60 };
+	INT32 nCyclesDone[3] = { 0, 0, 0 };
 
-	BurnTimerEndFrame(4000000 / 60);
+	for (INT32 i = 0; i < nInterleave; i++)
+	{
+		nCyclesDone[0] += SekRun(((nCyclesTotal[0] * (i + 1)) / nInterleave) - nCyclesDone[0]);
+		if (i == 248) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+
+		BurnTimerUpdate((nCyclesTotal[1] * (i + 1)) / nInterleave);
+
+		if (cchip_active) {
+			nCyclesDone[2] += cchip_run(((nCyclesTotal[2] * (i + 1)) / nInterleave) - nCyclesDone[2]);
+			if (i == 248) cchip_interrupt();
+		}
+	}
+
+	BurnTimerEndFrame(nCyclesTotal[1]);
 
 	if (pBurnSoundOut) {
 		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
@@ -1564,11 +1567,11 @@ static INT32 BonzeFrame()
 
 	ZetClose();
 	SekClose();
-	
+
 	if (pBurnDraw) {
 		DrvDraw();
 	}
-	
+
 	return 0;
 }
 
@@ -1580,7 +1583,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029707;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = TaitoRamStart;
@@ -1592,14 +1595,15 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ZetScan(nAction);
 
 		TaitoICScan(nAction);
-		BonzeCChipScan(nAction);
 
-		if (TaitoNumYM2151) BurnYM2151Scan(nAction);
+		ZetOpen(0); // ZetOpen() here because it uses ZetMapArea() in the PortHandler of the YM
+		if (TaitoNumYM2151) BurnYM2151Scan(nAction, pnMin);
 		if (TaitoNumYM2610) BurnYM2610Scan(nAction, pnMin);
 		if (TaitoNumMSM5205) MSM5205Scan(nAction, pnMin);
 
 		SCAN_VAR(TaitoZ80Bank);
-	}
+		ZetClose();
+        }
 
 	if (nAction & ACB_WRITE) {
 		ZetOpen(0);
@@ -1610,27 +1614,52 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	return 0;
 }
 
+// Taito C-Chip BIOS
+
+static struct BurnRomInfo emptyRomDesc[] = {
+	{ "",                    0,          0, 0 },
+};
+
+static struct BurnRomInfo cchipRomDesc[] = {
+#if !defined ROM_VERIFY
+	{ "cchip_upd78c11.bin",		0x01000, 0x43021521, BRF_BIOS | TAITO_CCHIP_BIOS},
+#endif
+};
+
+STD_ROM_PICK(cchip)
+STD_ROM_FN(cchip)
+
+struct BurnDriver BurnDrvCCHIP = {
+	"cchip", NULL, NULL, NULL, "1989",
+	"C-Chip Internal ROM\0", "Internal ROM only", "Taito Corporation Japan", "C-Chip Internal ROM",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_BOARDROM, 0, HARDWARE_TAITO_MISC, GBF_BIOS, 0,
+	NULL, cchipRomInfo, cchipRomName, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL, NULL, NULL, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
 
 // Cadash (World)
 
 static struct BurnRomInfo cadashRomDesc[] = {
-	{ "c21-14",			0x20000, 0x5daf13fb, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-16",			0x20000, 0xcbaa2e75, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-13",			0x20000, 0x6b9e0ee9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-17",			0x20000, 0xbf9a578a, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_14.ic11",		0x20000, 0x5daf13fb, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_16.ic15",		0x20000, 0xcbaa2e75, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_13.ic10",		0x20000, 0x6b9e0ee9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_17.ic14",		0x20000, 0xbf9a578a, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
 
-	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },						//  8 plds
-	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },						//  9
-	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },						// 10
-	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },						// 11
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadash)
@@ -1646,27 +1675,32 @@ struct BurnDriver BurnDrvCadash = {
 	"Cadash (World)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashRomInfo, cadashRomName, NULL, NULL, CadashInputInfo, CadashDIPInfo,
+	NULL, cadashRomInfo, cadashRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
 
 
-// Cadash (Japan)
+// Cadash (Japan, version 2)
 
 static struct BurnRomInfo cadashjRomDesc[] = {
-	{ "c21-04.11",			0x20000, 0xcc22ebe5, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-06.15",			0x20000, 0x26e03304, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-03.10",			0x20000, 0xc54888ed, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-05.14",			0x20000, 0x834018d2, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_04-2.ic11",		0x20000, 0x7a9c1828, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_06-2.ic15",		0x20000, 0xc9d6440a, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_03-2.ic10",		0x20000, 0x30afc320, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_05-2.ic14",		0x20000, 0x2bc93209, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadashj)
@@ -1674,30 +1708,107 @@ STD_ROM_FN(cadashj)
 
 struct BurnDriver BurnDrvCadashj = {
 	"cadashj", "cadash", NULL, NULL, "1989",
-	"Cadash (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
+	"Cadash (Japan, version 2)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashjRomInfo, cadashjRomName, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	NULL, cadashjRomInfo, cadashjRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
 
 
-// Cadash (US)
+// Cadash (Japan, version 1)
+
+static struct BurnRomInfo cadashj1RomDesc[] = {
+	{ "c21_04-1.ic11",		0x20000, 0xcc22ebe5, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_06-1.ic15",		0x20000, 0x26e03304, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_03-1.ic10",		0x20000, 0xc54888ed, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_05-1.ic14",		0x20000, 0x834018d2, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
+};
+
+STD_ROM_PICK(cadashj1)
+STD_ROM_FN(cadashj1)
+
+struct BurnDriver BurnDrvCadashj1 = {
+	"cadashj1", "cadash", NULL, NULL, "1989",
+	"Cadash (Japan, version 1)\0", NULL, "Taito Corporation", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashj1RomInfo, cadashj1RomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
+
+// Cadash (Japan, oldest version)
+
+static struct BurnRomInfo cadashjoRomDesc[] = {
+	{ "c21_04.ic11",		0x20000, 0xbe7d3f12, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_06.ic15",		0x20000, 0x1db3fe02, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_03.ic10",		0x20000, 0x7e31c5a3, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_05.ic14",		0x20000, 0xa4f4901d, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
+};
+
+STD_ROM_PICK(cadashjo)
+STD_ROM_FN(cadashjo)
+
+struct BurnDriver BurnDrvCadashjo = {
+	"cadashjo", "cadash", NULL, NULL, "1989",
+	"Cadash (Japan, oldest version)\0", NULL, "Taito Corporation", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashjoRomInfo, cadashjoRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
+
+// Cadash (US, version 2)
 
 static struct BurnRomInfo cadashuRomDesc[] = {
-	{ "c21-14-2.11",		0x20000, 0xf823d418, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-16-2.15",		0x20000, 0x90165577, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-13-2.10",		0x20000, 0x92dcc3ae, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-15-2.14",		0x20000, 0xf915d26a, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_14-2.ic11",		0x20000, 0xf823d418, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_16-2.ic15",		0x20000, 0x90165577, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_13-2.ic10",		0x20000, 0x92dcc3ae, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_15-2.ic14",		0x20000, 0xf915d26a, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadashu)
@@ -1705,10 +1816,10 @@ STD_ROM_FN(cadashu)
 
 struct BurnDriver BurnDrvCadashu = {
 	"cadashu", "cadash", NULL, NULL, "1989",
-	"Cadash (US)\0", NULL, "Taito America Corporation", "Taito Misc",
+	"Cadash (US, version 2)\0", NULL, "Taito America Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashuRomInfo, cadashuRomName, NULL, NULL, CadashInputInfo, CadashuDIPInfo,
+	NULL, cadashuRomInfo, cadashuRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashuDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
@@ -1717,18 +1828,23 @@ struct BurnDriver BurnDrvCadashu = {
 // Cadash (Italy)
 
 static struct BurnRomInfo cadashiRomDesc[] = {
-	{ "c21-14it",			0x20000, 0xd1d9e613, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-16it",			0x20000, 0x142256ef, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-13it",			0x20000, 0xc9cf6e30, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-17it",			0x20000, 0x641fc9dd, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_27-1.ic11",		0x20000, 0xd1d9e613, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_29-1.ic15",		0x20000, 0x142256ef, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_26-1.ic10",		0x20000, 0xc9cf6e30, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_28-1.ic14",		0x20000, 0x641fc9dd, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadashi)
@@ -1739,7 +1855,7 @@ struct BurnDriver BurnDrvCadashi = {
 	"Cadash (Italy)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashiRomInfo, cadashiRomName, NULL, NULL, CadashInputInfo, CadashDIPInfo,
+	NULL, cadashiRomInfo, cadashiRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
@@ -1748,18 +1864,23 @@ struct BurnDriver BurnDrvCadashi = {
 // Cadash (France)
 
 static struct BurnRomInfo cadashfRomDesc[] = {
-	{ "c21-19",			0x20000, 0x4d70543b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-21",			0x20000, 0x0e5b9950, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-18",			0x20000, 0x8a19e59b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-20",			0x20000, 0xb96acfd9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_19.ic11",		0x20000, 0x4d70543b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_21.ic15",		0x20000, 0x0e5b9950, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_18.ic10",		0x20000, 0x8a19e59b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_20.ic14",		0x20000, 0xb96acfd9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadashf)
@@ -1770,27 +1891,32 @@ struct BurnDriver BurnDrvCadashf = {
 	"Cadash (France)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashfRomInfo, cadashfRomName, NULL, NULL, CadashInputInfo, CadashDIPInfo,
+	NULL, cadashfRomInfo, cadashfRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
 
 
-// Cadash (Germany)
+// Cadash (Germany, version 1)
 
 static struct BurnRomInfo cadashgRomDesc[] = {
-	{ "c21-23-1.12",		0x20000, 0x30ddbabe, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "c21-25-1.16",		0x20000, 0x24e10611, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "c21-22-1.11",		0x20000, 0xdaf58b2d, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
-	{ "c21-24-1.15",		0x20000, 0x2359b93e, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "c21_23-1.ic11",		0x20000, 0x30ddbabe, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_25-1.ic15",		0x20000, 0x24e10611, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_22-1.ic10",		0x20000, 0xdaf58b2d, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_24-1.ic14",		0x20000, 0x2359b93e, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
 
-	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  4 Z80 Code
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
 
-	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },				//  5 Characters
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
 
-	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },			//  6 Sprites
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
-	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },				//  7 Z180 Code?
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
 };
 
 STD_ROM_PICK(cadashg)
@@ -1798,10 +1924,83 @@ STD_ROM_FN(cadashg)
 
 struct BurnDriver BurnDrvCadashg = {
 	"cadashg", "cadash", NULL, NULL, "1989",
-	"Cadash (Germany)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	"Cadash (Germany, version 1)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, cadashgRomInfo, cadashgRomName, NULL, NULL, CadashInputInfo, CadashDIPInfo,
+	NULL, cadashgRomInfo, cadashgRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
+
+// Cadash (World, prototype)
+
+static struct BurnRomInfo cadashpRomDesc[] = {
+	{ "euro main h.ic11",		0x20000, 0x9dae00ca, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "euro main l.ic15",		0x20000, 0xba66b6a5, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "euro data h.bin",		0x20000, 0xbcce9d44, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "euro data l.bin",		0x20000, 0x21f5b591, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",				0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02.9",				0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01.1",				0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "com.ic57",				0x08000, 0xbae1a92f, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },										//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },										//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },										// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },										// 11
+};
+
+STD_ROM_PICK(cadashp)
+STD_ROM_FN(cadashp)
+
+struct BurnDriver BurnDrvCadashp = {
+	"cadashp", "cadash", NULL, NULL, "1989",
+	"Cadash (World, prototype)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashpRomInfo, cadashpRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
+
+// Cadash (Spain, version 1)
+// no labels on the program ROMs
+
+static struct BurnRomInfo cadashsRomDesc[] = {
+	{ "ic11",				0x20000, 0x6c11743e, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "ic15",				0x20000, 0x73224356, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "ic10",				0x20000, 0x57d659d9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "ic14",				0x20000, 0x53c1b195, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",			0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02.9",			0x80000, 0x205883b9, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01.1",			0x80000, 0x1ff6f39c, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "c21-07.57",			0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+	
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },									//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },									//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },									// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },									// 11
+};
+
+STD_ROM_PICK(cadashs)
+STD_ROM_FN(cadashs)
+
+struct BurnDriver BurnDrvCadashs = {
+	"cadashs", "cadash", NULL, NULL, "1989",
+	"Cadash (Spain, version 1)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashsRomInfo, cadashsRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashDIPInfo,
 	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
@@ -1810,15 +2009,15 @@ struct BurnDriver BurnDrvCadashg = {
 // Kokontouzai Eto Monogatari (Japan)
 
 static struct BurnRomInfo etoRomDesc[] = {
-	{ "eto-1.23",			0x20000, 0x44286597, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "eto-0.8",			0x20000, 0x57b79370, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "eto-2.30",			0x80000, 0x12f46fb5, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+	{ "eto-1.ic23",			0x20000, 0x44286597, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "eto-0.ic8",			0x20000, 0x57b79370, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "eto-2.ic30",			0x80000, 0x12f46fb5, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
 
-	{ "eto-5.27",			0x10000, 0xb3689da0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+	{ "eto-5.ic27",			0x10000, 0xb3689da0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
 
-	{ "eto-4.3",			0x80000, 0xa8768939, BRF_GRA | TAITO_CHARS },				//  4 Characters
+	{ "eto-4.ic3",			0x80000, 0xa8768939, BRF_GRA | TAITO_CHARS },				//  4 Characters
 
-	{ "eto-3.6",			0x80000, 0xdd247397, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "eto-3.ic6",			0x80000, 0xdd247397, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
 };
 
 STD_ROM_PICK(eto)
@@ -1840,7 +2039,7 @@ struct BurnDriver BurnDrvEto = {
 	"Kokontouzai Eto Monogatari (Japan)\0", NULL, "Visco", "Taito Misc",
 	L"\u53E4\u4ECA\u6771\u897F\u5E72\u652F\u7269\u8A9E\0Kokontouzai Eto Monogatari (Japan)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_PUZZLE, 0,
-	NULL, etoRomInfo, etoRomName, NULL, NULL, AsukaInputInfo, EtoDIPInfo,
+	NULL, etoRomInfo, etoRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, EtoDIPInfo,
 	EtoInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 240, 4, 3
 };
@@ -1849,19 +2048,22 @@ struct BurnDriver BurnDrvEto = {
 // Asuka & Asuka (World)
 
 static struct BurnRomInfo asukaRomDesc[] = {
-	{ "b68-13.bin",			0x20000, 0x855efb3e, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "b68-12.bin",			0x20000, 0x271eeee9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "b68-03.bin",			0x80000, 0xd3a59b10, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+	{ "b68-13.ic23",		0x20000, 0x855efb3e, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "b68-12.ic8",			0x20000, 0x271eeee9, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "b68-03.ic30",		0x80000, 0xd3a59b10, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
 
-	{ "b68-11.bin",			0x10000, 0xc378b508, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+	{ "b68-11.ic27",		0x10000, 0xc378b508, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
 
-	{ "b68-01.bin",			0x80000, 0x89f32c94, BRF_GRA | TAITO_CHARS },				//  4 Characters
+	{ "b68-01.ic3",			0x80000, 0x89f32c94, BRF_GRA | TAITO_CHARS },				//  4 Characters
 
-	{ "b68-02.bin",			0x80000, 0xf5018cd3, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
-	{ "b68-07.bin",			0x10000, 0xc113acc8, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
-	{ "b68-06.bin",			0x10000, 0xf517e64d, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	{ "b68-02.ic6",			0x80000, 0xf5018cd3, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "b68-07.ic5",			0x10000, 0xc113acc8, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
+	{ "b68-06.ic4",			0x10000, 0xf517e64d, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
 
-	{ "b68-10.bin",			0x10000, 0x387aaf40, BRF_SND | TAITO_MSM5205 },				//  8 MSM5205 Samples
+	{ "b68-10.ic24",		0x10000, 0x387aaf40, BRF_SND | TAITO_MSM5205 },				//  8 MSM5205 Samples
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  8 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },						//  9
 };
 
 STD_ROM_PICK(asuka)
@@ -1885,7 +2087,7 @@ struct BurnDriver BurnDrvAsuka = {
 	"Asuka & Asuka (World)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
-	NULL, asukaRomInfo, asukaRomName, NULL, NULL, AsukaInputInfo, AsukaDIPInfo,
+	NULL, asukaRomInfo, asukaRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, AsukaDIPInfo,
 	AsukaInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	240, 320, 3, 4
 };
@@ -1894,19 +2096,22 @@ struct BurnDriver BurnDrvAsuka = {
 // Asuka & Asuka (Japan)
 
 static struct BurnRomInfo asukajRomDesc[] = {
-	{ "b68-09.bin",			0x20000, 0x1eaa1bbb, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "b68-08.bin",			0x20000, 0x8cc96e60, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "b68-03.bin",			0x80000, 0xd3a59b10, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+	{ "b68-09.ic23",		0x20000, 0x1eaa1bbb, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "b68-08.ic8",			0x20000, 0x8cc96e60, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "b68-03.ic30",		0x80000, 0xd3a59b10, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
 
-	{ "b68-11.bin",			0x10000, 0xc378b508, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+	{ "b68-11.ic27",		0x10000, 0xc378b508, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
 
-	{ "b68-01.bin",			0x80000, 0x89f32c94, BRF_GRA | TAITO_CHARS },				//  4 Characters
+	{ "b68-01.ic3",			0x80000, 0x89f32c94, BRF_GRA | TAITO_CHARS },				//  4 Characters
 
-	{ "b68-02.bin",			0x80000, 0xf5018cd3, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
-	{ "b68-07.bin",			0x10000, 0xc113acc8, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
-	{ "b68-06.bin",			0x10000, 0xf517e64d, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	{ "b68-02.ic6",			0x80000, 0xf5018cd3, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "b68-07.ic5",			0x10000, 0xc113acc8, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
+	{ "b68-06.ic4",			0x10000, 0xf517e64d, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
 
-	{ "b68-10.bin",			0x10000, 0x387aaf40, BRF_SND | TAITO_MSM5205 },				//  8 MSM5205 Samples
+	{ "b68-10.ic24",		0x10000, 0x387aaf40, BRF_SND | TAITO_MSM5205 },				//  8 MSM5205 Samples
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  8 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },	
 };
 
 STD_ROM_PICK(asukaj)
@@ -1917,7 +2122,7 @@ struct BurnDriver BurnDrvAsukaj = {
 	"Asuka & Asuka (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
-	NULL, asukajRomInfo, asukajRomName, NULL, NULL, AsukaInputInfo, AsukaDIPInfo,
+	NULL, asukajRomInfo, asukajRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, AsukaDIPInfo,
 	AsukaInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	240, 320, 3, 4
 };
@@ -1949,7 +2154,7 @@ struct BurnDriver BurnDrvMofflott = {
 	"Maze of Flott (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_MAZE, 0,
-	NULL, mofflottRomInfo, mofflottRomName, NULL, NULL, AsukaInputInfo, MofflottDIPInfo,
+	NULL, mofflottRomInfo, mofflottRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, MofflottDIPInfo,
 	AsukaInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	240, 320, 3, 4
 };
@@ -1958,15 +2163,18 @@ struct BurnDriver BurnDrvMofflott = {
 // Galmedes (Japan)
 
 static struct BurnRomInfo galmedesRomDesc[] = {
-	{ "gm-prg1.bin",		0x20000, 0x32a70753, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "gm-prg0.bin",		0x20000, 0xfae546a4, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "gm-30.rom",			0x80000, 0x4da2a407, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+	{ "gm-prg1.ic23",		0x20000, 0x32a70753, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "gm-prg0.ic8",		0x20000, 0xfae546a4, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "gm-30.ic30",			0x80000, 0x4da2a407, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
 
-	{ "gm-snd.bin",			0x10000, 0xd6f56c21, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+	{ "gm-snd.ic27",		0x10000, 0xd6f56c21, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
 
-	{ "gm-scn.bin",			0x80000, 0x3bab0581, BRF_GRA | TAITO_CHARS },				//  4 Characters
+	{ "gm-scn.ic3",			0x80000, 0x3bab0581, BRF_GRA | TAITO_CHARS },				//  4 Characters
 
-	{ "gm-obj.bin",			0x80000, 0x7a4a1315, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "gm-obj.ic6",			0x80000, 0x7a4a1315, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  6 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },						//  7
 };
 
 STD_ROM_PICK(galmedes)
@@ -1988,37 +2196,128 @@ struct BurnDriver BurnDrvGalmedes = {
 	"Galmedes (Japan)\0", NULL, "Visco", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
-	NULL, galmedesRomInfo, galmedesRomName, NULL, NULL, AsukaInputInfo, GalmedesDIPInfo,
+	NULL, galmedesRomInfo, galmedesRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, GalmedesDIPInfo,
 	GalmedesInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	240, 320, 3, 4
 };
 
 
-// U.N. Defense Force: Earth Joker
+// U.N. Defense Force: Earth Joker (US / Japan, set 1)
 
 static struct BurnRomInfo earthjkrRomDesc[] = {
-	{ "ej_3b.rom",			0x20000, 0xbdd86fc2, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
-	{ "ej_3a.rom",			0x20000, 0x9c8050c6, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
-	{ "ej_30e.rom",			0x80000, 0x49d1f77f, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+	{ "ej_3b.ic23",			0x20000, 0xbdd86fc2, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "ej_3a.ic8",			0x20000, 0x9c8050c6, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "ej_30e.ic30",		0x80000, 0x49d1f77f, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
 
-	{ "ej_2.rom",			0x10000, 0x42ba2566, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+	{ "ej_2.ic27",			0x10000, 0x42ba2566, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
 
-	{ "ej_chr.rom",			0x80000, 0xac675297, BRF_GRA | TAITO_CHARS },				//  4 Characters
+	{ "ej_chr-0.ic3",		0x80000, 0xac675297, BRF_GRA | TAITO_CHARS },				//  4 Characters
 
-	{ "ej_obj.rom",			0x80000, 0x5f21ac47, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
-	{ "ej_1.rom",			0x10000, 0xcb4891db, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
-	{ "ej_0.rom",			0x10000, 0xb612086f, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	{ "ej_obj-0.ic6",		0x80000, 0x5f21ac47, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "ej_1.ic5",			0x10000, 0xcb4891db, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
+	{ "ej_0.ic4",			0x10000, 0xb612086f, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  8 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },						//  9
 };
 
 STD_ROM_PICK(earthjkr)
 STD_ROM_FN(earthjkr)
 
+static INT32 EarthjkrInit()
+{
+	INT32 nRet = CommonInit(Asuka68KSetup, CadashZ80Setup, CadashSoundSetup, 0);
+
+	if (nRet == 0) {
+		BurnByteswap(Taito68KRom1 + 0x40000, 0x80000);
+
+		{ // remove when earthjkr redumped
+			// bitrot patch from Haze, fixes scrolling in middle-part of last level
+			UINT16 *rom = (UINT16*)Taito68KRom1;
+			rom[0x7aaa/2] = BURN_ENDIAN_SWAP_INT16(0x317c);
+		}
+	}
+
+	return nRet;
+}
+
 struct BurnDriver BurnDrvEarthjkr = {
 	"earthjkr", NULL, NULL, NULL, "1993",
-	"U.N. Defense Force: Earth Joker\0", NULL, "Visco", "Taito Misc",
+	"U.N. Defense Force: Earth Joker (US / Japan, set 1)\0", NULL, "Visco", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
-	NULL, earthjkrRomInfo, earthjkrRomName, NULL, NULL, AsukaInputInfo, EarthjkrDIPInfo,
+	NULL, earthjkrRomInfo, earthjkrRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, EarthjkrDIPInfo,
+	EarthjkrInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	240, 320, 3, 4
+};
+
+
+// U.N. Defense Force: Earth Joker (US / Japan, set 2)
+
+static struct BurnRomInfo earthjkraRomDesc[] = {
+	{ "ejok_ic23",			0x20000, 0xcbd29731, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "ejok_ic8",			0x20000, 0xcfd4953c, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "ejok_ic30",		    0x80000, 0x49d1f77f, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+
+	{ "ejok_ic28",			0x10000, 0x42ba2566, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+
+	{ "ej_chr-0.ic3",		0x80000, 0xac675297, BRF_GRA | TAITO_CHARS },				//  4 Characters
+
+	{ "ej_obj-0.ic6",		0x80000, 0x5f21ac47, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "ejok_ic5",			0x10000, 0xcb4891db, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
+	{ "ejok_ic4",			0x10000, 0xb612086f, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  8 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },						//  9
+};
+
+STD_ROM_PICK(earthjkra)
+STD_ROM_FN(earthjkra)
+
+struct BurnDriver BurnDrvEarthjkra = {
+	"earthjkra", "earthjkr", NULL, NULL, "1993",
+	"U.N. Defense Force: Earth Joker (US / Japan, set 2)\0", NULL, "Visco", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
+	NULL, earthjkraRomInfo, earthjkraRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, EarthjkrDIPInfo,
+	EarthjkrInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	240, 320, 3, 4
+};
+
+
+// Known to exist (not dumped) a Japanese version with ROMs 3 & 4 also stamped "A" same as above or different version??
+// Also known to exist (not dumped) a US version of Earth Joker, title screen shows "DISTRIBUTED BY ROMSTAR, INC."  ROMs were numbered
+// from 0 through 4 and the fix ROM at IC30 is labeled 1 even though IC5 is also labled as 1 similar to the below set:
+// (ROMSTAR license is set by a dipswitch, is set mentioned above really undumped?)
+
+// U.N. Defense Force: Earth Joker (Japan, prototype?)
+
+static struct BurnRomInfo earthjkrpRomDesc[] = {
+	{ "4.ic8",				0x20000, 0xe9b1ef0c, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "3.ic23",				0x20000, 0x26c33225, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "5.ic30",				0x80000, 0xbf760b2d, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  2
+
+	{ "2.ic27",				0x10000, 0x42ba2566, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  3 Z80 Code
+
+	{ "ej_chr-0.ic3",		0x80000, 0xac675297, BRF_GRA | TAITO_CHARS },				//  4 Characters
+
+	{ "ej_obj-0.ic6",		0x80000, 0x5f21ac47, BRF_GRA | TAITO_SPRITESA },			//  5 Sprites
+	{ "1.ic5",				0x10000, 0xcb4891db, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  6
+	{ "0.ic4",				0x10000, 0xb612086f, BRF_GRA | TAITO_SPRITESA_BYTESWAP },		//  7
+	
+	{ "b68-04.ic32",		0x00144, 0x9be618d1, BRF_OPT },						//  8 plds
+	{ "b68-05.ic43",		0x00104, 0xd6524ccc, BRF_OPT },						//  9
+};
+
+STD_ROM_PICK(earthjkrp)
+STD_ROM_FN(earthjkrp)
+
+struct BurnDriver BurnDrvEarthjkrp = {
+	"earthjkrp", "earthjkr", NULL, NULL, "1993",
+	"U.N. Defense Force: Earth Joker (Japan, prototype?)\0", NULL, "Visco", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
+	NULL, earthjkrpRomInfo, earthjkrpRomName, NULL, NULL, NULL, NULL, AsukaInputInfo, EarthjkrDIPInfo,
 	GalmedesInit, TaitoExit, EtoFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	240, 320, 3, 4
 };
@@ -2040,9 +2339,11 @@ static struct BurnRomInfo bonzeadvRomDesc[] = {
 	{ "b41-02.7",			0x80000, 0x29f205d9, BRF_GRA | TAITO_SPRITESA },			//  7 Sprites
 
 	{ "b41-04.48",			0x80000, 0xc668638f, BRF_SND | TAITO_YM2610A },				//  8 YM2610 Samples
+	
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
 };
 
-STD_ROM_PICK(bonzeadv)
+STDROMPICKEXT(bonzeadv, bonzeadv, cchip)
 STD_ROM_FN(bonzeadv)
 
 static INT32 BonzeInit()
@@ -2051,11 +2352,11 @@ static INT32 BonzeInit()
 }
 
 struct BurnDriver BurnDrvBonzeadv = {
-	"bonzeadv", NULL, NULL, NULL, "1988",
+	"bonzeadv", NULL, "cchip", NULL, "1988",
 	"Bonze Adventure (World, Newer)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, bonzeadvRomInfo, bonzeadvRomName, NULL, NULL, BonzeadvInputInfo, BonzeadvDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, bonzeadvRomInfo, bonzeadvRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, BonzeadvDIPInfo,
 	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 224, 4, 3
 };
@@ -2077,17 +2378,19 @@ static struct BurnRomInfo bonzeadvoRomDesc[] = {
 	{ "b41-02.7",			0x80000, 0x29f205d9, BRF_GRA | TAITO_SPRITESA },			//  7 Sprites
 
 	{ "b41-04.48",			0x80000, 0xc668638f, BRF_SND | TAITO_YM2610A },				//  8 YM2610 Samples
+	
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
 };
 
-STD_ROM_PICK(bonzeadvo)
+STDROMPICKEXT(bonzeadvo, bonzeadvo, cchip)
 STD_ROM_FN(bonzeadvo)
 
 struct BurnDriver BurnDrvBonzeadvo = {
-	"bonzeadvo", "bonzeadv", NULL, NULL, "1988",
+	"bonzeadvo", "bonzeadv", "cchip", NULL, "1988",
 	"Bonze Adventure (World, Older)\0", NULL, "Taito Corporation Japan", "Taito Misc",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, bonzeadvoRomInfo, bonzeadvoRomName, NULL, NULL, BonzeadvInputInfo, BonzeadvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, bonzeadvoRomInfo, bonzeadvoRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, BonzeadvDIPInfo,
 	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 224, 4, 3
 };
@@ -2109,21 +2412,69 @@ static struct BurnRomInfo bonzeadvuRomDesc[] = {
 	{ "b41-02.7",			0x80000, 0x29f205d9, BRF_GRA | TAITO_SPRITESA },			//  7 Sprites
 
 	{ "b41-04.48",			0x80000, 0xc668638f, BRF_SND | TAITO_YM2610A },				//  8 YM2610 Samples
+	
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
 };
 
-STD_ROM_PICK(bonzeadvu)
+STDROMPICKEXT(bonzeadvu, bonzeadvu, cchip)
 STD_ROM_FN(bonzeadvu)
 
 struct BurnDriver BurnDrvBonzeadvu = {
-	"bonzeadvu", "bonzeadv", NULL, NULL, "1988",
+	"bonzeadvu", "bonzeadv", "cchip", NULL, "1988",
 	"Bonze Adventure (US)\0", NULL, "Taito America Corporation", "Taito Misc",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, bonzeadvuRomInfo, bonzeadvuRomName, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, bonzeadvuRomInfo, bonzeadvuRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
 	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 224, 4, 3
 };
-   
+
+
+// Bonze Adventure (World, prototype)
+
+static struct BurnRomInfo bonzeadvpRomDesc[] = {
+	{ "0l.ic17",			0x10000, 0x9e046e6f, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  0 68K Code
+	{ "0h.ic26",			0x10000, 0x3e2b2628, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  1
+	{ "1h.ic16",			0x10000, 0x52f31b98, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  2
+	{ "1l.ic25",			0x10000, 0xc7e79b98, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  3
+	{ "49eb.ic26",			0x20000, 0xc747650b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  4
+	{ "fd65.ic20",			0x20000, 0xc32f3bd5, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  5
+	{ "0e7e.ic28",			0x20000, 0xdc1f9fd0, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  6
+	{ "a418.ic23",			0x20000, 0x51b02be6, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP }, 	//  7
+
+	{ "b41-13.20",			0x10000, 0x9e464254, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  8 Z80 Code
+
+	{ "abbe.ic9",			0x20000, 0x50e6581c, BRF_GRA | TAITO_CHARS_BYTESWAP }, 			//  9 Characters
+	{ "0ac8.ic15",			0x20000, 0x29002fc4, BRF_GRA | TAITO_CHARS_BYTESWAP }, 			// 10
+	{ "5ebf.ic5",			0x20000, 0xdac6f11f, BRF_GRA | TAITO_CHARS_BYTESWAP }, 			// 11
+	{ "77c8.ic12",			0x20000, 0xd8aaae12, BRF_GRA | TAITO_CHARS_BYTESWAP }, 			// 12
+
+	{ "9369.ic19",			0x20000, 0xa9dd7f90, BRF_GRA | TAITO_SPRITESA_BYTESWAP },               // 13 Sprites
+	{ "e3ed.ic25",			0x20000, 0x7cc66ee2, BRF_GRA | TAITO_SPRITESA_BYTESWAP },               // 14
+	{ "03eb.ic16",			0x20000, 0x39f32715, BRF_GRA | TAITO_SPRITESA_BYTESWAP },               // 15
+	{ "b8e1.ic22",			0x20000, 0x15b836cf, BRF_GRA | TAITO_SPRITESA_BYTESWAP },               // 16
+
+	{ "6089.ic17",			0x20000, 0xb092783c, BRF_SND | TAITO_YM2610A },				// 17 YM2610 Samples
+	{ "2e1f.ic14",			0x20000, 0xdf1f87c0, BRF_SND | TAITO_YM2610A },				// 18
+	{ "f66e.ic11",			0x20000, 0xc6df1b3e, BRF_SND | TAITO_YM2610A },				// 19
+	{ "49d7.ic7",			0x20000, 0x5584c02c, BRF_SND | TAITO_YM2610A },				// 20
+	
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
+};
+
+STDROMPICKEXT(bonzeadvp, bonzeadvp, cchip)
+STD_ROM_FN(bonzeadvp)
+
+struct BurnDriver BurnDrvBonzeadvp = {
+	"bonzeadvp", "bonzeadv", "cchip", NULL, "1988",
+	"Bonze Adventure (World, prototype)\0", NULL, "Taito Corporation Japan", "Taito Misc",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_PROTOTYPE, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, bonzeadvpRomInfo, bonzeadvpRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
+	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 224, 4, 3
+};
+
 
 // Jigoku Meguri (Japan)
 
@@ -2141,17 +2492,54 @@ static struct BurnRomInfo jigkmgriRomDesc[] = {
 	{ "b41-02.7",			0x80000, 0x29f205d9, BRF_GRA | TAITO_SPRITESA },			//  7 Sprites
 
 	{ "b41-04.48",			0x80000, 0xc668638f, BRF_SND | TAITO_YM2610A },				//  8 YM2610 Samples
+	
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
 };
 
-STD_ROM_PICK(jigkmgri)
+STDROMPICKEXT(jigkmgri, jigkmgri, cchip)
 STD_ROM_FN(jigkmgri)
 
 struct BurnDriver BurnDrvJigkmgri = {
-	"jigkmgri", "bonzeadv", NULL, NULL, "1988",
+	"jigkmgri", "bonzeadv", "cchip", NULL, "1988",
 	"Jigoku Meguri (Japan)\0", NULL, "Taito Corporation", "Taito Misc",
 	L"\u5730\u7344\u3081\u3050\u308A\0Jigoku Meguri (Japan)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, jigkmgriRomInfo, jigkmgriRomName, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, jigkmgriRomInfo, jigkmgriRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
+	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 224, 4, 3
+};
+
+
+// Jigoku Meguri (Japan, hack?)
+/* Copyright year has been removed */
+
+static struct BurnRomInfo jigkmgriaRomDesc[] = {
+	{ "blank_label.ic17",			0x10000, 0x5d3a5283, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "bonzi__(ic26)__11a.ic26",	0x10000, 0xe1f2f205, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "b41__10.ic16",				0x10000, 0x4ca94d77, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "b41__12.ic25",				0x10000, 0x40d9c1fc, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+	{ "b41-01.15",					0x80000, 0x5d072fa4, BRF_PRG | BRF_ESS | TAITO_68KROM1 },		//  4
+
+	{ "b41__13.ic20",		0x10000, 0x9e464254, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },		//  5 Z80 Code
+
+	{ "b41-03.1",			0x80000, 0x736d35d0, BRF_GRA | TAITO_CHARS },				//  6 Characters
+
+	{ "b41-02.7",			0x80000, 0x29f205d9, BRF_GRA | TAITO_SPRITESA },			//  7 Sprites
+
+	{ "b41-04.48",			0x80000, 0xc668638f, BRF_SND | TAITO_YM2610A },				//  8 YM2610 Samples
+
+	{ "cchip_b41-05.43",	0x02000, 0x75c52553, BRF_ESS | BRF_PRG | TAITO_CCHIP_EEPROM },
+};
+
+STDROMPICKEXT(jigkmgria, jigkmgria, cchip)
+STD_ROM_FN(jigkmgria)
+
+struct BurnDriver BurnDrvJigkmgria = {
+	"jigkmgria", "bonzeadv", "cchip", NULL, "19??",
+	"Jigoku Meguri (Japan, hack?)\0", NULL, "Taito Corporation", "Taito Misc",
+	L"\u5730\u7344\u3081\u3050\u308A\0Jigoku Meguri (Japan, hack?)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_RUNGUN, 0,
+	NULL, jigkmgriaRomInfo, jigkmgriaRomName, NULL, NULL, NULL, NULL, BonzeadvInputInfo, JigkmgriDIPInfo,
 	BonzeInit, TaitoExit, BonzeFrame, DrvDraw, DrvScan, NULL, 0x1000,
 	320, 224, 4, 3
 };

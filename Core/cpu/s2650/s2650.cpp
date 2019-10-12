@@ -50,11 +50,15 @@ typedef struct {
     UINT8   ir;     /* instruction register */
     UINT16  ras[8]; /* 8 return address stack entries */
 	UINT8	irq_state;
+	UINT32	total_cycles;
+	INT32   end_run;
+
 }   s2650_Regs;
 
 static s2650_Regs S;
 static s2650_Regs Store[MAX_S2650];
 int nActiveS2650 = -1;
+static INT32 cycles_slice;
 
 /* condition code changes for a byte */
 static const UINT8 ccc[0x200] = {
@@ -184,7 +188,7 @@ static void s2650_set_sense(int state);
  ***************************************************************/
 S2650_INLINE UINT8 ROP(void)
 {
-	UINT8 result = s2650_fetch(S.page + S.iar);
+	UINT8 result = s2650Fetch(S.page + S.iar);
 	S.iar = (S.iar + 1) & PMSK;
 	return result;
 }
@@ -195,7 +199,7 @@ S2650_INLINE UINT8 ROP(void)
  ***************************************************************/
 S2650_INLINE UINT8 ARG(void)
 {
-	UINT8 result = s2650_fetch(S.page + S.iar);
+	UINT8 result = s2650Fetch(S.page + S.iar);
 	S.iar = (S.iar + 1) & PMSK;
 	return result;
 }
@@ -204,7 +208,7 @@ S2650_INLINE UINT8 ARG(void)
  * RDMEM
  * read memory byte from addr
  ***************************************************************/
-#define RDMEM(addr) s2650_read(addr)
+#define RDMEM(addr) s2650Read(addr)
 
 /***************************************************************
  * handy table to build PC relative offsets
@@ -521,7 +525,7 @@ static const int S2650_relative[0x100] =
  * Store source register to memory addr (CC unchanged)
  ***************************************************************/
 #define M_STR(address,source)									\
-	s2650_write(address, source)
+	s2650Write(address, source)
 
 /***************************************************************
  * M_AND
@@ -666,7 +670,7 @@ static const int S2650_relative[0x100] =
  ***************************************************************/
 #define M_SPSU()												\
 {																\
-	R0 = ((S.psu & ~PSU34) | (s2650_read_port(S2650_SENSE_PORT) & SI)); \
+	R0 = ((S.psu & ~PSU34) | (s2650ReadPort(S2650_SENSE_PORT) & SI)); \
 	SET_CC(R0); 												\
 }
 
@@ -736,7 +740,7 @@ static const int S2650_relative[0x100] =
 #define M_TPSU()												\
 {																\
 	UINT8 tpsu = ARG(); 										\
-    UINT8 rpsu = (S.psu | (s2650_read_port(S2650_SENSE_PORT) & SI)); \
+    UINT8 rpsu = (S.psu | (s2650ReadPort(S2650_SENSE_PORT) & SI)); \
 	S.psl &= ~CC;												\
 	if( (rpsu & tpsu) != tpsu )									\
 		S.psl |= 0x80;											\
@@ -803,11 +807,11 @@ static void s2650_set_context(void *src)
 	}
 }
 */
-void s2650_set_irq_line(int irqline, int state)
+void s2650SetIRQLine(int irqline, int state)
 {
-#if defined FBA_DEBUG
-	if (!DebugCPU_S2650Initted) bprintf(PRINT_ERROR, _T("s2650_set_irq_line called without init\n"));
-	if (nActiveS2650 == -1) bprintf(PRINT_ERROR, _T("s2650_set_irq_line called when no CPU open\n"));
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_S2650Initted) bprintf(PRINT_ERROR, _T("s2650SetIRQLine called without init\n"));
+	if (nActiveS2650 == -1) bprintf(PRINT_ERROR, _T("s2650SetIRQLine called when no CPU open\n"));
 #endif
 
 	if (irqline == 1)
@@ -846,17 +850,20 @@ static void s2650_set_sense(int state)
 /*
 static int s2650_get_sense(void)
 {
-    return (((S.psu & SI) ? 1 : 0) | ((s2650_read_port(S2650_SENSE_PORT) & SI) ? 1 : 0));
+    return (((S.psu & SI) ? 1 : 0) | ((s2650ReadPort(S2650_SENSE_PORT) & SI) ? 1 : 0));
 }*/
 
 int s2650Run(int cycles)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_S2650Initted) bprintf(PRINT_ERROR, _T("s2650Run called without init\n"));
 	if (nActiveS2650 == -1) bprintf(PRINT_ERROR, _T("s2650Run called when no CPU open\n"));
 #endif
 
-	s2650_ICount = cycles;
+	s2650_ICount = cycles_slice = cycles;
+
+	S.end_run = 0;
+
 	do
 	{
 		S.ppc = S.page + S.iar;
@@ -983,7 +990,7 @@ int s2650Run(int cycles)
 			case 0x32:		/* REDC,2 */
 			case 0x33:		/* REDC,3 */
 				s2650_ICount -= 6;
-				S.reg[S.r] = s2650_read_port(S2650_CTRL_PORT);
+				S.reg[S.r] = s2650ReadPort(S2650_CTRL_PORT);
 				SET_CC( S.reg[S.r] );
 				break;
 
@@ -1073,7 +1080,7 @@ int s2650Run(int cycles)
 			case 0x56:		/* REDE,2 v */
 			case 0x57:		/* REDE,3 v */
 				s2650_ICount -= 9;
-				S.reg[S.r] = s2650_read_port( ARG() );
+				S.reg[S.r] = s2650ReadPort( ARG() );
 				SET_CC(S.reg[S.r]);
 				break;
 
@@ -1132,7 +1139,7 @@ int s2650Run(int cycles)
 			case 0x72:		/* REDD,2 */
 			case 0x73:		/* REDD,3 */
 				s2650_ICount -= 6;
-				S.reg[S.r] = s2650_read_port(S2650_DATA_PORT);
+				S.reg[S.r] = s2650ReadPort(S2650_DATA_PORT);
 				SET_CC(S.reg[S.r]);
 				break;
 
@@ -1288,7 +1295,7 @@ int s2650Run(int cycles)
 			case 0xb2:		/* WRTC,2 */
 			case 0xb3:		/* WRTC,3 */
 				s2650_ICount -= 6;
-				s2650_write_port(S2650_CTRL_PORT,S.reg[S.r]);
+				s2650WritePort(S2650_CTRL_PORT,S.reg[S.r]);
 				break;
 
 			case 0xb4:		/* TPSU */
@@ -1374,7 +1381,7 @@ int s2650Run(int cycles)
 			case 0xd6:		/* WRTE,2 v */
 			case 0xd7:		/* WRTE,3 v */
 				s2650_ICount -= 9;
-				s2650_write_port( ARG(), S.reg[S.r] );
+				s2650WritePort( ARG(), S.reg[S.r] );
 				break;
 
 			case 0xd8:		/* BIRR,0 (*)a */
@@ -1432,7 +1439,7 @@ int s2650Run(int cycles)
 			case 0xf2:		/* WRTD,2 */
 			case 0xf3:		/* WRTD,3 */
 				s2650_ICount -= 6;
-				s2650_write_port(S2650_DATA_PORT, S.reg[S.r]);
+				s2650WritePort(S2650_DATA_PORT, S.reg[S.r]);
 				break;
 
 			case 0xf4:		/* TMI,0  v */
@@ -1459,14 +1466,43 @@ int s2650Run(int cycles)
 				M_BRA( --S.reg[S.r] );
 				break;
 		}
-	} while( s2650_ICount > 0 );
+	} while( s2650_ICount > 0 && !S.end_run );
 
-	return cycles - s2650_ICount;
+	INT32 ret = cycles - s2650_ICount;
+
+	S.total_cycles += ret;
+
+	cycles_slice = 0;
+	s2650_ICount = 0;
+
+	return ret;
 }
 
-int s2650Scan(int nAction,int *)
+INT32 s2650TotalCycles()
 {
-#if defined FBA_DEBUG
+	return S.total_cycles + (cycles_slice - s2650_ICount);
+}
+
+void s2650NewFrame()
+{
+	S.total_cycles = 0;
+}
+
+void s2650RunEnd()
+{
+	S.end_run = 1;
+}
+
+INT32 s2650Idle(INT32 cycles)
+{
+	S.total_cycles += cycles;
+
+	return cycles;
+}
+
+int s2650Scan(int nAction)
+{
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_S2650Initted) bprintf(PRINT_ERROR, _T("s2650Scan called without init\n"));
 	if (nActiveS2650 == -1) bprintf(PRINT_ERROR, _T("s2650Scan called when no CPU open\n"));
 #endif
@@ -1478,7 +1514,7 @@ int s2650Scan(int nAction,int *)
 
 		ba.Data	  = &Store;
 		ba.nLen	  = sizeof(S) * MAX_S2650;
-		ba.szName = "All Ram";
+		ba.szName = "s2650 CPU Regs";
 		BurnAcb(&ba);
 	}
 

@@ -5,10 +5,7 @@
 #include "m68000_intf.h"
 #include "m6809_intf.h"
 #include "burn_y8950.h"
-#include "driver.h"
-extern "C" {
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -31,8 +28,6 @@ static UINT8 *DrvSprRAM;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
-
-static INT16 *pAY8910Buffer[3];
 
 static UINT8 *soundlatch;
 static UINT8 *flipscreen;
@@ -137,7 +132,7 @@ static struct BurnDIPInfo GinganinDIPList[]=
 
 STDDIPINFO(Ginganin)
 
-void __fastcall ginganin_write_word(UINT32 address, UINT16 data)
+static void __fastcall ginganin_write_word(UINT32 address, UINT16 data)
 {
 	if (address < 0x20000) return;
 
@@ -160,12 +155,12 @@ void __fastcall ginganin_write_word(UINT32 address, UINT16 data)
 
 		case 0x06000e:
 			*soundlatch = data & 0xff;
-			M6809SetIRQLine(0x20, M6809_IRQSTATUS_AUTO); // nmi
+			M6809SetIRQLine(0x20, CPU_IRQSTATUS_AUTO); // nmi
 		return;
 	}
 }
 
-UINT16 __fastcall ginganin_read_word(UINT32 address)
+static UINT16 __fastcall ginganin_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -179,17 +174,17 @@ UINT16 __fastcall ginganin_read_word(UINT32 address)
 	return 0;
 }
 
-void __fastcall ginganin_write_byte(UINT32 /*address*/, UINT8 /*data*/)
+static void __fastcall ginganin_write_byte(UINT32 /*address*/, UINT8 /*data*/)
 {
 	return;
 }
 
-UINT8 __fastcall ginganin_read_byte(UINT32 /*address*/)
+static UINT8 __fastcall ginganin_read_byte(UINT32 /*address*/)
 {
 	return 0;
 }
 
-void ginganin_sound_write(UINT16 address, UINT8 data)
+static void ginganin_sound_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -228,7 +223,7 @@ void ginganin_sound_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 ginganin_sound_read(UINT16 address)
+static UINT8 ginganin_sound_read(UINT16 address)
 {
 	if (address == 0x1800) {
 		return *soundlatch;
@@ -252,7 +247,7 @@ static void DrvGfxDecode(UINT8 *src, INT32 len, INT32 size)
 	INT32 YOffs[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
 			  0x100, 0x120, 0x140, 0x160, 0x180, 0x1a0, 0x1c0, 0x1e0 };
 
-	UINT8 *tmp = (UINT8*)malloc(len);
+	UINT8 *tmp = (UINT8*)BurnMalloc(len);
 	if (tmp == NULL) {
 		return;
 	}
@@ -261,10 +256,7 @@ static void DrvGfxDecode(UINT8 *src, INT32 len, INT32 size)
 
 	GfxDecode((len * 2) / (size * size), 4, size, size, Planes, XOffs, YOffs, (size * size * 4), tmp, src);
 
-	if (tmp) {
-		free (tmp);
-		tmp = NULL;
-	}
+	BurnFree (tmp);
 }
 
 static INT32 DrvDoReset()
@@ -291,6 +283,8 @@ static INT32 DrvDoReset()
 	MC6840_tempo2 = 0;
 	MC6840_ctr = 0;
 
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -310,10 +304,6 @@ static INT32 MemIndex()
 	DrvSndROM		= Next; Next += 0x020000;
 
 	DrvPalette		= (UINT32*)Next; Next += 0x400 * sizeof(UINT32);
-
-	pAY8910Buffer[0]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[1]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[2]	= (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
 
 	AllRam			= Next;
 
@@ -380,31 +370,31 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM, 		0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM, 		0x020000, 0x023fff, SM_RAM);
-	SekMapMemory(DrvTxtRAM, 		0x030000, 0x0307ff, SM_RAM);
-	SekMapMemory(DrvSprRAM, 		0x040000, 0x0407ff, SM_RAM);
-	SekMapMemory(DrvPalRAM, 		0x050000, 0x0507ff, SM_RAM);
-	SekMapMemory(DrvFgRAM,  		0x068000, 0x06bfff, SM_RAM);
+	SekMapMemory(Drv68KROM, 		0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM, 		0x020000, 0x023fff, MAP_RAM);
+	SekMapMemory(DrvTxtRAM, 		0x030000, 0x0307ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM, 		0x040000, 0x0407ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM, 		0x050000, 0x0507ff, MAP_RAM);
+	SekMapMemory(DrvFgRAM,  		0x068000, 0x06bfff, MAP_RAM);
 	SekSetWriteWordHandler(0,		ginganin_write_word);
 	SekSetWriteByteHandler(0,		ginganin_write_byte);
 	SekSetReadWordHandler(0,		ginganin_read_word);
 	SekSetReadByteHandler(0,		ginganin_read_byte);
 	SekClose();
 
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809RAM,		0x0000, 0x07ff, M6809_RAM);
-	M6809MapMemory(DrvM6809ROM + 0x4000,	0x4000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvM6809RAM,		0x0000, 0x07ff, MAP_RAM);
+	M6809MapMemory(DrvM6809ROM + 0x4000,	0x4000, 0xffff, MAP_ROM);
 	M6809SetWriteHandler(ginganin_sound_write);
 	M6809SetReadHandler(ginganin_sound_read);
 	M6809Close();
 
-	AY8910Init(0, 3579545 / 2, nBurnSoundRate, NULL, NULL, NULL, NULL);
+	AY8910Init(0, 3579545 / 2, 0);
 	AY8910SetAllRoutes(0, 0.10, BURN_SND_ROUTE_BOTH);
 	
 	BurnY8950Init(1, 3579545, DrvSndROM, 0x20000, NULL, 0, NULL, &DrvSynchroniseStream, 1);
-	BurnTimerAttachM6809Y8950(1000000);
+	BurnTimerAttachY8950(&M6809Config, 1000000);
 	BurnY8950SetRoute(0, BURN_SND_Y8950_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
@@ -577,7 +567,7 @@ static void sound_interrupt()
 	if (MC6840_flag) {
 		if (MC6840_ctr > MC6840_tempo) {
 			MC6840_ctr = 0;
-			M6809SetIRQLine(0, M6809_IRQSTATUS_AUTO);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		} else {
 			MC6840_ctr++;
 		}
@@ -613,7 +603,7 @@ static INT32 DrvFrame()
 
 		nSegment = nCyclesTotal[0] / nInterleave;
 		nCyclesDone[0] += SekRun(nSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 		nSegment = nCyclesTotal[1] / nInterleave;
 		BurnTimerUpdateY8950(i * (nCyclesTotal[1] / nInterleave));
@@ -625,7 +615,7 @@ static INT32 DrvFrame()
 	BurnTimerEndFrameY8950(nCyclesTotal[1]);
 
 	if (pBurnSoundOut) {
-		AY8910Render(&pAY8910Buffer[0], pBurnSoundOut, nBurnSoundLen, 0);
+		AY8910Render(pBurnSoundOut, nBurnSoundLen);
 		
 		BurnY8950Update(pBurnSoundOut, nBurnSoundLen);
 	}
@@ -709,8 +699,8 @@ struct BurnDriver BurnDrvGinganin = {
 	"ginganin", NULL, NULL, NULL, "1987",
 	"Ginga NinkyouDen (set 1)\0", NULL, "Jaleco", "Miscellaneous",
 	L"\u9280\u6CB3\u4EFB\u4FA0\u4F1D\0Ginga NinkyouDen (set 1)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, ginganinRomInfo, ginganinRomName, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
+	NULL, ginganinRomInfo, ginganinRomName, NULL, NULL, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	256, 224, 4, 3
 };
@@ -750,8 +740,8 @@ struct BurnDriver BurnDrvGinganina = {
 	"ginganina", "ginganin", NULL, NULL, "1987",
 	"Ginga NinkyouDen (set 2)\0", NULL, "Jaleco", "Miscellaneous",
 	L"\u9280\u6CB3\u4EFB\u4FA0\u4F1D\0Ginga NinkyouDen (set 2)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, ginganinaRomInfo, ginganinaRomName, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
+	NULL, ginganinaRomInfo, ginganinaRomName, NULL, NULL, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	256, 224, 4, 3
 };

@@ -3,6 +3,7 @@
 #include "msm6295.h"
 
 // FB Alpha - "News" Driver
+// Based on MAME driver by David Haywood
 
 // Input Related Variables
 static UINT8 NewsInputPort0[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -192,7 +193,7 @@ UINT8 __fastcall NewsRead(UINT16 a)
 		}
 
 		case 0xc002: {
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		}
 	}
 
@@ -203,7 +204,7 @@ void __fastcall NewsWrite(UINT16 a, UINT8 d)
 {
 	switch (a) {
 		case 0xc002: {
-			MSM6295Command(0, d);
+			MSM6295Write(0, d);
 			return;
 		}
 
@@ -373,11 +374,13 @@ void NewsRenderFgLayer()
 	}
 }
 
-void NewsDraw()
+INT32 NewsDraw()
 {
 	NewsRenderBgLayer();
 	NewsRenderFgLayer();
 	BurnTransferCopy(NewsPalette);
+
+	return 0;
 }
 
 // Frame Function
@@ -389,7 +392,7 @@ INT32 NewsFrame()
 
 	ZetOpen(0);
 	ZetRun(8000000 / 60);
-	ZetRaiseIrq(0);
+	ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 	ZetClose();
 
 	if (pBurnDraw) NewsDraw();
@@ -424,7 +427,7 @@ static INT32 NewsScan(INT32 nAction,INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		ZetScan(nAction);			// Scan Z80
 
-		MSM6295Scan(0, nAction);	// Scan OKIM6295
+		MSM6295Scan(nAction, pnMin);	// Scan OKIM6295
 
 		// Scan critical driver variables
 		SCAN_VAR(NewsInput);
@@ -441,8 +444,8 @@ struct BurnDriver BurnDrvNews = {
 	"News (set 1)\0", NULL, "Poby / Virus", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, NewsRomInfo, NewsRomName, NULL, NULL, NewsInputInfo, NewsDIPInfo,
-	NewsInit, NewsExit, NewsFrame, NULL, NewsScan,
+	NULL, NewsRomInfo, NewsRomName, NULL, NULL, NULL, NULL, NewsInputInfo, NewsDIPInfo,
+	NewsInit, NewsExit, NewsFrame, NewsDraw, NewsScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
 
@@ -451,7 +454,7 @@ struct BurnDriver BurnDrvNewsa = {
 	"News (set 2)\0", NULL, "Poby / Jeansole", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, NewsaRomInfo, NewsaRomName, NULL, NULL, NewsInputInfo, NewsaDIPInfo,
-	NewsInit, NewsExit, NewsFrame, NULL, NewsScan,
+	NULL, NewsaRomInfo, NewsaRomName, NULL, NULL, NULL, NULL, NewsInputInfo, NewsaDIPInfo,
+	NewsInit, NewsExit, NewsFrame, NewsDraw, NewsScan,
 	NULL, 0x100, 256, 224, 4, 3
 };

@@ -154,10 +154,10 @@ static struct BurnDIPInfo SdgndmpsDIPList[]=
 
 STDDIPINFO(Sdgndmps)
 
-void __fastcall dcon_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall dcon_main_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff0) == 0x0a0000) {
-		seibu_main_word_write(address, data);
+		seibu_main_word_write(address & 0xf, data);
 		return;
 	}
 
@@ -177,10 +177,15 @@ void __fastcall dcon_main_write_word(UINT32 address, UINT16 data)
 	}
 }
 
-UINT16 __fastcall dcon_main_read_word(UINT32 address)
+static UINT16 __fastcall dcon_main_read_word(UINT32 address)
 {
 	if ((address & 0xfffff0) == 0x0a0000) {
-		return seibu_main_word_read(address);
+		if (is_sdgndmps) {
+			if ((address & 0xf) == 0xa) return 1; // fix music
+			return seibu_main_word_read(address & 0xf);
+		} else {
+			return seibu_main_word_read(address & 0xf);
+		}
 	}
 
 	switch (address)
@@ -352,14 +357,14 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x080000, 0x08bfff, SM_RAM);
-	SekMapMemory(DrvBgRAM,		0x08c000, 0x08c7ff, SM_RAM);
-	SekMapMemory(DrvFgRAM,		0x08c800, 0x08cfff, SM_RAM);
-	SekMapMemory(DrvMgRAM,		0x08d000, 0x08d7ff, SM_RAM);
-	SekMapMemory(DrvTxRAM,		0x08d800, 0x08e7ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x08e800, 0x08f7ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x08f800, 0x08ffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x080000, 0x08bfff, MAP_RAM);
+	SekMapMemory(DrvBgRAM,		0x08c000, 0x08c7ff, MAP_RAM);
+	SekMapMemory(DrvFgRAM,		0x08c800, 0x08cfff, MAP_RAM);
+	SekMapMemory(DrvMgRAM,		0x08d000, 0x08d7ff, MAP_RAM);
+	SekMapMemory(DrvTxRAM,		0x08d800, 0x08e7ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x08e800, 0x08f7ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x08f800, 0x08ffff, MAP_RAM);
 	SekSetWriteWordHandler(0,	dcon_main_write_word);
 	SekSetReadWordHandler(0,	dcon_main_read_word);
 	SekClose();
@@ -613,7 +618,7 @@ static INT32 DrvFrame()
 	}
 
 	INT32 nSegment;
-	INT32 nInterleave = 100;
+	INT32 nInterleave = 256;
 	INT32 nSoundBufferPos = 0;
 	INT32 nTotalCycles[2] = { 10000000 / 60, 3579545 / 60 };
 	INT32 nCyclesDone[2] = { 0, 0 };
@@ -627,6 +632,10 @@ static INT32 DrvFrame()
 		{
 			SekRun(nTotalCycles[0] / nInterleave);
 			ZetRun(nTotalCycles[1] / nInterleave);
+
+			if (i == 240) {
+				SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			}
 			
 			if (pBurnSoundOut) {
 				INT32 nSegmentLength = nBurnSoundLen / nInterleave;
@@ -644,13 +653,15 @@ static INT32 DrvFrame()
 
 			nCyclesDone[0] += SekRun(nSegment);
 
-			BurnTimerUpdateYM3812(i * (nTotalCycles[1] / nInterleave));
+			BurnTimerUpdateYM3812((i + 1) * (nTotalCycles[1] / nInterleave));
+
+			if (i == nInterleave-1) {
+				SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			}
 		}
 
 		BurnTimerEndFrameYM3812(nTotalCycles[1]);
 	}
-
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut && !is_sdgndmps) {
 		seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
@@ -691,7 +702,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
 
-		seibu_sound_scan(pnMin, nAction);
+		seibu_sound_scan(nAction,pnMin);
 
 		SCAN_VAR(gfx_bank);
 		SCAN_VAR(gfx_enable);
@@ -736,7 +747,7 @@ struct BurnDriver BurnDrvDcon = {
 	"D-Con\0", NULL, "Success", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, dconRomInfo, dconRomName, NULL, NULL, DconInputInfo, DconDIPInfo,
+	NULL, dconRomInfo, dconRomName, NULL, NULL, NULL, NULL, DconInputInfo, DconDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DconDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 224, 4, 3
 };
@@ -772,29 +783,12 @@ static struct BurnRomInfo sdgndmpsRomDesc[] = {
 STD_ROM_PICK(sdgndmps)
 STD_ROM_FN(sdgndmps)
 
-static INT32 SdgndmpsInit()
-{
-	INT32 nRet = DrvInit();
-
-	if (nRet == 0)
-	{
-		// Patch out protection?
-		*((UINT16 *)(Drv68KROM + 0x04de)) = 0x4245;
-		*((UINT16 *)(Drv68KROM + 0x04e0)) = 0x4e71;
-		*((UINT16 *)(Drv68KROM + 0x04e2)) = 0x4e71;
-		*((UINT16 *)(Drv68KROM + 0x1356)) = 0x4e71;
-		*((UINT16 *)(Drv68KROM + 0x1358)) = 0x4e71;
-	}
-
-	return nRet;
-}
-
 struct BurnDriver BurnDrvSdgndmps = {
 	"sdgndmps", NULL, NULL, NULL, "1991",
 	"SD Gundam Psycho Salamander no Kyoui\0", NULL, "Banpresto / Bandai", "Miscellaneous",
 	L"\u30AC\u30F3\u30C0\u30E0 \u30B5\u30A4\u30B3\u30B5\u30E9\u30DE\uF303\u30C0\u30FC\u306E\u8105\u5A01\0SD Gundam Psycho Salamander no Kyoui\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_HORSHOOT, 0,
-	NULL, sdgndmpsRomInfo, sdgndmpsRomName, NULL, NULL, DconInputInfo, SdgndmpsDIPInfo,
-	SdgndmpsInit, DrvExit, DrvFrame, SdgndmpsDraw, DrvScan, &DrvRecalc, 0x800,
+	NULL, sdgndmpsRomInfo, sdgndmpsRomName, NULL, NULL, NULL, NULL, DconInputInfo, SdgndmpsDIPInfo,
+	DrvInit, DrvExit, DrvFrame, SdgndmpsDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 224, 4, 3
 };

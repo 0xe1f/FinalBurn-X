@@ -11,14 +11,16 @@ static bool bEnableAutoIrq50, bEnableAutoIrq52;				// Trigger an interrupt every
 
 static const INT32 nFirstLine = 0x10;							// The first scanline of the display
 
-static INT32 nCpsCyclesExtra;
+INT32 nCpsCyclesExtra;
 
 INT32 CpsDrawSpritesInReverse = 0;
 
 INT32 nIrqLine50, nIrqLine52;
 
-INT32 nCpsNumScanlines = 259;
+INT32 nCpsNumScanlines = 262;
 INT32 Cps1VBlankIRQLine = 2;
+
+INT32 Cps1DrawAtVblank = 0;
 
 CpsRunInitCallback CpsRunInitCallbackFunction = NULL;
 CpsRunInitCallback CpsRunExitCallbackFunction = NULL;
@@ -203,6 +205,8 @@ INT32 CpsRunExit()
 	Cps2DisableQSnd = 0;
 	CpsBootlegEEPROM = 0;
 
+	Cps1DrawAtVblank = 0;
+
 	return 0;
 }
 
@@ -252,7 +256,7 @@ static void DoIRQ()
 		nRasterline[nInterrupt] = nIrqLine - nFirstLine;
 	}
 
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 	SekRun(nCpsCycles * 0x01 / nCpsNumScanlines);
 	if (nRasterline[nInterrupt] < 224) {
 		CopyCpsReg(nInterrupt);
@@ -315,9 +319,11 @@ INT32 Cps1Frame()
 	nDisplayEnd = (nCpsCycles * (nFirstLine + 224)) / nCpsNumScanlines;	// Account for VBlank
 
 	SekOpen(0);
-	SekIdle(nCpsCyclesExtra);
 
-	SekRun(nCpsCycles * nFirstLine / nCpsNumScanlines);					// run 68K for the first few lines
+	SekIdle(nCpsCyclesExtra);
+	nCpsCyclesExtra = 0;
+
+	SekRun((nCpsCycles * nFirstLine / nCpsNumScanlines));					// run 68K for the first few lines
 
 	CpsObjGet();											// Get objects
 
@@ -334,18 +340,18 @@ INT32 Cps1Frame()
 
 			memcpy(CpsSaveReg[0], CpsReg, 0x100);				// Registers correct now
 
-			SekSetIRQLine(Cps1VBlankIRQLine, SEK_IRQSTATUS_AUTO);				// Trigger VBlank interrupt
+			SekSetIRQLine(Cps1VBlankIRQLine, CPU_IRQSTATUS_AUTO);				// Trigger VBlank interrupt
+
+			if (Cps1DrawAtVblank && pBurnDraw) {
+				CpsDraw();										// Draw frame
+			}
 		}
 
 		SekRun(nNext - SekTotalCycles());						// run 68K
-		
-//		if (pBurnDraw) {
-//			CpsDraw();										// Draw frame
-//		}
 	}
-	
-	if (pBurnDraw) {
-		CpsDraw();										// Draw frame
+
+	if (pBurnDraw && !Cps1DrawAtVblank) {
+		CpsDraw();												// Draw frame
 	}
 
 	if (Cps1Qs == 1) {
@@ -427,6 +433,7 @@ INT32 Cps2Frame()
 	ScheduleIRQ();
 
 	SekIdle(nCpsCyclesExtra);
+	nCpsCyclesExtra = 0;
 
 	if (nIrqCycles < nCpsCycles * nFirstLine / nCpsNumScanlines) {
 		SekRun(nIrqCycles);
@@ -461,11 +468,11 @@ INT32 Cps2Frame()
 //	nCpsCyclesSegment[0] = (nCpsCycles * nVBlank) / nCpsNumScanlines;
 //	nDone += SekRun(nCpsCyclesSegment[0] - nDone);
 
-	SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);				// VBlank
+	SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);				// VBlank
 	if (pBurnDraw) {
 		CpsDraw();
 	}
-	SekRun(nCpsCycles - SekTotalCycles());	
+	SekRun(nCpsCycles - SekTotalCycles());
 
 	nCpsCyclesExtra = SekTotalCycles() - nCpsCycles;
 
@@ -475,7 +482,7 @@ INT32 Cps2Frame()
 
 //	bprintf(PRINT_NORMAL, _T("    -\n"));
 
-#if 0 && defined FBA_DEBUG
+#if 0 && defined FBNEO_DEBUG
 	if (nInterrupt) {
 		bprintf(PRINT_IMPORTANT, _T("Beam synchronized interrupt at line %2X.\r"), nRasterline[nInterrupt]);
 	} else {

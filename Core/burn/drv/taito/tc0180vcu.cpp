@@ -1,3 +1,5 @@
+// Based on MAME sources by Nicola Salmoria
+
 #include "tiles_generic.h"
 #include "taito_ic.h"
 #include "taito.h"
@@ -184,8 +186,8 @@ static void update_scroll(INT32 plane)
 
 	for (INT32 i = 0; i < number_of_blocks; i++)
 	{
-		INT32 scrollx = scrollram[plane * 0x200 + i * 2 * lines_per_block + 0];
-		INT32 scrolly = scrollram[plane * 0x200 + i * 2 * lines_per_block + 1];
+		INT32 scrollx = BURN_ENDIAN_SWAP_INT16(scrollram[plane * 0x200 + i * 2 * lines_per_block + 0]);
+		INT32 scrolly = BURN_ENDIAN_SWAP_INT16(scrollram[plane * 0x200 + i * 2 * lines_per_block + 1]);
 
 		INT32 min_y = (i + 0) * lines_per_block - 0;
 		INT32 max_y = (i + 1) * lines_per_block - 1;
@@ -242,8 +244,8 @@ void TC0180VCUDrawLayer(INT32 colorbase, INT32 ctrl_offset, INT32 transparent) /
 
 				INT32 offs = scly_off | (sclx >> 4);
 
-				INT32 attr = ram[offs + bank1];
-				INT32 code = ram[offs + bank0];
+				INT32 attr = BURN_ENDIAN_SWAP_INT16(ram[offs + bank1]);
+				INT32 code = BURN_ENDIAN_SWAP_INT16(ram[offs + bank0]);
 				INT32 color = (attr & 0x003f) + colorbase;
 				code &= tilemask[1];
 
@@ -319,8 +321,8 @@ void TC0180VCUDrawLayer(INT32 colorbase, INT32 ctrl_offset, INT32 transparent) /
 			sx -= scroll_x[(sy + TC0180VCU_y_offset) & 0xff];
 			if (sx >= 0x400-15) sx -= 0x400;
 
-			INT32 attr  = ram[offs + bank1];
-			INT32 code  = ram[offs + bank0];
+			INT32 attr  = BURN_ENDIAN_SWAP_INT16(ram[offs + bank1]);
+			INT32 code  = BURN_ENDIAN_SWAP_INT16(ram[offs + bank0]);
 	
 			INT32 color = (attr & 0x003f) + colorbase;
 			INT32 flipx = (attr & 0x0040);
@@ -418,7 +420,7 @@ void TC0180VCUDrawCharLayer(INT32 colorbase)
 		INT32 sx = (offs & 0x3f) << 3;
 		INT32 sy = (offs >> 6) << 3;
 
-		INT32 code  = ram[offs + bank0];
+		INT32 code  = BURN_ENDIAN_SWAP_INT16(ram[offs + bank0]);
 		INT32 color = (code >> 12) + colorbase;
 
 		code = (code & 0x07ff) | (TC0180VCUControl[4 + ((code & 0x800) >> 11)] << 11);
@@ -520,8 +522,11 @@ void TC0180VCUFramebufferDraw(INT32 priority, INT32 color_base)
 
 void TC0180VCUDrawSprite(UINT16 *dest)
 {
-	INT32 t_swide = nScreenWidth;  nScreenWidth  = 512; // hack to allow use of generic tile routines
-	INT32 t_shigh = nScreenHeight; nScreenHeight = 256;
+	//INT32 t_swide = nScreenWidth;  nScreenWidth = 512; // hack to allow use of generic tile routines
+	//INT32 t_shigh = nScreenHeight; nScreenHeight = 256;
+	// The above method can no longer be used, instead, use this below:  (Keep for reference!)
+
+	GenericTilesSetClipRaw(0, 512, 0, 256);
 
 	INT32 xlatch = 0;
 	INT32 ylatch = 0;
@@ -541,12 +546,12 @@ void TC0180VCUDrawSprite(UINT16 *dest)
 
 	for (INT32 offs = (0x1980 - 16) / 2; offs >=0; offs -= 8)
 	{
-		INT32 code  = ram[offs + 0] & tilemask[1];
-		INT32 color = ram[offs + 1];
-		INT32 x     = ram[offs + 2] & 0x03ff;
-		INT32 y     = ram[offs + 3] & 0x03ff;
+		INT32 code  = BURN_ENDIAN_SWAP_INT16(ram[offs + 0]) & tilemask[1];
+		INT32 color = BURN_ENDIAN_SWAP_INT16(ram[offs + 1]);
+		INT32 x     = BURN_ENDIAN_SWAP_INT16(ram[offs + 2]) & 0x03ff;
+		INT32 y     = BURN_ENDIAN_SWAP_INT16(ram[offs + 3]) & 0x03ff;
 
-		INT32 data  = ram[offs + 5];
+		INT32 data  = BURN_ENDIAN_SWAP_INT16(ram[offs + 5]);
 
 		INT32 flipx = color & 0x4000;
 		INT32 flipy = color & 0x8000;
@@ -564,14 +569,14 @@ void TC0180VCUDrawSprite(UINT16 *dest)
 				y_no   = 0;
 				xlatch = x;
 				ylatch = y;
-				data   = ram[offs + 4];
+				data   = BURN_ENDIAN_SWAP_INT16(ram[offs + 4]);
 				zoomxlatch = (data >> 8) & 0xff;
 				zoomylatch = (data >> 0) & 0xff;
 				big_sprite = 1;
 			}
 		}
 
-		data = ram[offs + 4];
+		data = BURN_ENDIAN_SWAP_INT16(ram[offs + 4]);
 		zoomx = (data >> 8) & 0xff;
 		zoomy = (data >> 0) & 0xff;
 		zx = (0x100 - zoomx) / 16;
@@ -619,8 +624,10 @@ void TC0180VCUDrawSprite(UINT16 *dest)
 		}
 	}
 
-	nScreenWidth  = t_swide;
-	nScreenHeight = t_shigh;
+	//nScreenWidth = t_swide;
+	//nScreenHeight = t_shigh;
+	// Like above, use this to revert the ClipRaw() changes, instead of setting the nScreenWidth/Height directly.
+	GenericTilesClearClipRaw();
 }
 
 void TC0180VCUBufferSprites()
@@ -647,8 +654,6 @@ void TC0180VCUScan(INT32 nAction)
 
 	if (nAction & ACB_VOLATILE)
 	{
-	bprintf (0, _T("yup\n"));
-
 		ba.Data	  = (UINT8*)TC0180VCUFramebuffer[0];
 		ba.nLen	  = 512 * 256 * sizeof(UINT16);
 		ba.szName = "Framebuffer 0";

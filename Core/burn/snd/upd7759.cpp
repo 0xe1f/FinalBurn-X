@@ -1,5 +1,6 @@
+// Based on MAME driver by Juergen Buchmueller, Mike Balfour, Howie Cohen, Olivier Galibert, Aaron Giles
+
 #include "burnint.h"
-#include "burn_sound.h"
 #include "upd7759.h"
 
 #define FRAC_BITS			20
@@ -69,7 +70,7 @@ struct upd7759_chip
 	INT32		output_dir;
 };
 
-static struct upd7759_chip *Chips[2]; // more?
+static struct upd7759_chip *Chips[2] = { NULL, NULL }; // more?
 static struct upd7759_chip *Chip = NULL;
 
 static INT32 nNumChips = 0;
@@ -315,7 +316,7 @@ static void UPD7759SlaveModeUpdate()
 
 void UPD7759Update(INT32 chip, INT16 *pSoundBuf, INT32 nLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759Update called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759Update called with invalid chip %x\n"), chip);
 #endif
@@ -345,8 +346,8 @@ void UPD7759Update(INT32 chip, INT16 *pSoundBuf, INT32 nLength)
 			nLeftSample = BURN_SND_CLIP(nLeftSample);
 			nRightSample = BURN_SND_CLIP(nRightSample);
 			
-			pSoundBuf[0] += nLeftSample;
-			pSoundBuf[1] += nRightSample;
+			pSoundBuf[0] = BURN_SND_CLIP(pSoundBuf[0] + nLeftSample);
+			pSoundBuf[1] = BURN_SND_CLIP(pSoundBuf[1] + nRightSample);
 			pSoundBuf += 2;
 			nLength--;
 
@@ -387,7 +388,7 @@ void UPD7759Update(INT32 chip, INT16 *pSoundBuf, INT32 nLength)
 
 void UPD7759Reset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759Reset called without init\n"));
 #endif
 
@@ -423,7 +424,7 @@ void UPD7759Init(INT32 chip, INT32 clock, UINT8* pSoundData)
 {
 	DebugSnd_UPD7759Initted = 1;
 	
-	Chips[chip] = (struct upd7759_chip*)malloc(sizeof(*Chip));
+	Chips[chip] = (struct upd7759_chip*)BurnMalloc(sizeof(*Chip));
 	Chip = Chips[chip];
 
 	memset(Chip, 0, sizeof(*Chip));
@@ -452,7 +453,7 @@ void UPD7759Init(INT32 chip, INT32 clock, UINT8* pSoundData)
 
 void UPD7759SetRoute(INT32 chip, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759SetRoute called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759SetRoute called with invalid chip %i\n"), chip);
 #endif
@@ -464,7 +465,7 @@ void UPD7759SetRoute(INT32 chip, double nVolume, INT32 nRouteDir)
 
 void UPD7759SetDrqCallback(INT32 chip, drqcallback Callback)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759SetDrqCallback called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759SetDrqCallback called with invalid chip %x\n"), chip);
 #endif
@@ -475,7 +476,7 @@ void UPD7759SetDrqCallback(INT32 chip, drqcallback Callback)
 
 INT32 UPD7759BusyRead(INT32 chip)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759BusyRead called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759BusyRead called with invalid chip %x\n"), chip);
 #endif
@@ -486,7 +487,7 @@ INT32 UPD7759BusyRead(INT32 chip)
 
 void UPD7759ResetWrite(INT32 chip, UINT8 Data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759ResetWrite called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759ResetWrite called with invalid chip %x\n"), chip);
 #endif
@@ -502,7 +503,7 @@ void UPD7759ResetWrite(INT32 chip, UINT8 Data)
 
 void UPD7759StartWrite(INT32 chip, UINT8 Data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759StartWrite called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759StartWrite called with invalid chip %x\n"), chip);
 #endif
@@ -520,7 +521,7 @@ void UPD7759StartWrite(INT32 chip, UINT8 Data)
 
 void UPD7759PortWrite(INT32 chip, UINT8 Data)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759PortWrite called without init\n"));
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759PortWrite called with invalid chip %x\n"), chip);
 #endif
@@ -529,50 +530,60 @@ void UPD7759PortWrite(INT32 chip, UINT8 Data)
 	Chip->fifo_in = Data;
 }
 
-INT32 UPD7759Scan(INT32 chip, INT32 nAction,INT32 *pnMin)
+void UPD7759Scan(INT32 nAction,INT32 *pnMin)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759Scan called without init\n"));
-	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("UPD7759Scan called with invalid chip %x\n"), chip);
 #endif
-
-	struct BurnArea ba;
-	char szName[16];
 	
 	if ((nAction & ACB_DRIVER_DATA) == 0) {
-		return 1;
+		return;
 	}
 	
 	if (pnMin != NULL) {
 		*pnMin = 0x029680;
 	}
-	
-	Chip = Chips[chip];
 
-	sprintf(szName, "UPD7759 %d", chip);
-	ba.Data		= &Chip;
-	ba.nLen		= sizeof(struct upd7759_chip);
-	ba.nAddress = 0;
-	ba.szName	= szName;
-	BurnAcb(&ba);
-	
-	return 0;
+	for (INT32 i = 0; i <= nNumChips; i++) // first chip 0, second chip 1...
+	{
+		Chip = Chips[i];
+
+		SCAN_VAR(Chip->pos);
+		SCAN_VAR(Chip->step);
+		SCAN_VAR(Chip->fifo_in);
+		SCAN_VAR(Chip->reset);
+		SCAN_VAR(Chip->start);
+		SCAN_VAR(Chip->drq);
+		SCAN_VAR(Chip->state);
+		SCAN_VAR(Chip->clocks_left);
+		SCAN_VAR(Chip->nibbles_left);
+		SCAN_VAR(Chip->repeat_count);
+		SCAN_VAR(Chip->post_drq_state);
+		SCAN_VAR(Chip->post_drq_clocks);
+		SCAN_VAR(Chip->req_sample);
+		SCAN_VAR(Chip->last_sample);
+		SCAN_VAR(Chip->block_header);
+		SCAN_VAR(Chip->sample_rate);
+		SCAN_VAR(Chip->first_valid_header);
+		SCAN_VAR(Chip->offset);
+		SCAN_VAR(Chip->repeat_offset);
+		SCAN_VAR(Chip->adpcm_state);
+		SCAN_VAR(Chip->adpcm_data);
+		SCAN_VAR(Chip->sample);
+		SCAN_VAR(Chip->romoffset);
+		SCAN_VAR(Chip->volume);
+		SCAN_VAR(Chip->output_dir);
+	}
 }
 
 void UPD7759Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_UPD7759Initted) bprintf(PRINT_ERROR, _T("UPD7759Exit called without init\n"));
 #endif
 
-	if (Chips[0]) {
-		free(Chips[0]);
-		Chips[0] = NULL;
-	}
-	if (Chips[1]) {
-		free(Chips[1]);
-		Chips[1] = NULL;
-	}
+	BurnFree(Chips[0]);
+	BurnFree(Chips[1]);
 	SlaveMode = 0;
 	
 	DebugSnd_UPD7759Initted = 0;

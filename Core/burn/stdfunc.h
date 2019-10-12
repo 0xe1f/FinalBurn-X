@@ -1,6 +1,3 @@
-#ifndef _FBA_STDFUNC_H
-#define _FBA_STDFUNC_H
-
 // Standard ROM/input/DIP info functions
 
 // A function to pick a rom, or return NULL if i is out of range
@@ -150,4 +147,39 @@ static INT32 Name##SampleName(char** pszName, UINT32 i, INT32 nAka)		\
 	return 0;															\
 }
 
-#endif
+// hdd support
+#define STD_HDD_PICK(Name)												\
+static struct BurnHDDInfo* Name##PickHDD(UINT32 i)						\
+{																		\
+	if (i >= sizeof(Name##HDDDesc) / sizeof(Name##HDDDesc[0])) {		\
+		return NULL;													\
+	}																	\
+	return Name##HDDDesc + i;											\
+}
+
+#define STD_HDD_FN(Name)												\
+static INT32 Name##HDDInfo(struct BurnHDDInfo* pri, UINT32 i)			\
+{																		\
+	struct BurnHDDInfo* por = Name##PickHDD(i);							\
+	if (por == NULL) {													\
+		return 1;														\
+	}																	\
+	if (pri) {															\
+		pri->nLen = por->nLen;											\
+		pri->nCrc = por->nCrc;											\
+	}																	\
+	return 0;															\
+}																		\
+																		\
+static INT32 Name##HDDName(char** pszName, UINT32 i, INT32 nAka)		\
+{											   		 					\
+	struct BurnHDDInfo *por = Name##PickHDD(i);							\
+	if (por == NULL) {													\
+		return 1;														\
+	}																	\
+	if (nAka) {															\
+		return 1;														\
+	}																	\
+	*pszName = por->szName;												\
+	return 0;															\
+}

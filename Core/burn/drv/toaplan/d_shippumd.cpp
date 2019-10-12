@@ -1,3 +1,6 @@
+// FB Alpha Shippu Mahou Daisakusen driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 // Shippu Mahou Daisakusen
 
@@ -85,13 +88,13 @@ static struct BurnDIPInfo shippumdDIPList[] = {
 	{0x15,	0xFF, 0xFF,	0x00, NULL},
 
 	// DIP 1
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Coin mode"},
 	{0x14,	0x01, 0x01,	0x00, "Coin play"},
 	{0x14,	0x01, 0x01,	0x01, "Free play"},
 	{0,		0xFE, 0,	2,	  "Screen"},
 	{0x14,	0x01, 0x02,	0x00, "Normal"},
 	{0x14,	0x01, 0x02,	0x02, "Invert"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Service"},
 	{0x14,	0x01, 0x04,	0x00, "Normal mode"},
 	{0x14,	0x01, 0x04,	0x04, "Test mode"},
 	{0,		0xFE, 0,	2,	  "Advertise sound"},
@@ -127,7 +130,7 @@ static struct BurnDIPInfo shippumdDIPList[] = {
 	{0,		0xFE, 0,	2,	  "No death & stop mode"},
     {0x15,	0x01, 0x40,	0x00, "Off"},
     {0x15,	0x01, 0x40,	0x40, "On"},
-	{0,		0xFE, 0,	2,	  NULL},
+	{0,		0xFE, 0,	2,	  "Continue mode"},
     {0x15,	0x01, 0x80,	0x00, "Continue play"},
 	{0x15,	0x01, 0x80,	0x80, "Continue impossible"},
 };
@@ -219,8 +222,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		SekScan(nAction);				// Scan 68000
 		ZetScan(nAction);				// Scan Z80
 
-		MSM6295Scan(0, nAction);
-		BurnYM2151Scan(nAction);
+		MSM6295Scan(nAction, pnMin);
+		BurnYM2151Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 
@@ -255,10 +258,10 @@ static INT32 LoadRoms()
 UINT8 __fastcall shippumdZ80Read(UINT16 nAddress)
 {
 	if (nAddress == 0xE001) {
-		return BurnYM2151ReadStatus();
+		return BurnYM2151Read();
 	}
 	if (nAddress == 0xE004) {
-		return MSM6295ReadStatus(0);
+		return MSM6295Read(0);
 	}
 	return 0;
 }
@@ -273,7 +276,7 @@ void __fastcall shippumdZ80Write(UINT16 nAddress, UINT8 nValue)
 			BurnYM2151WriteRegister(nValue);
 			break;
 		case 0xE004:
-			MSM6295Command(0, nValue);
+			MSM6295Write(0, nValue);
 			break;
 	}
 }
@@ -376,20 +379,7 @@ void __fastcall shippumdWriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x21C01D: {
-			INT32 nBankOffset;
-			if (byteValue & 0x10) {
-				nBankOffset = 0x40000;
-			} else {
-				nBankOffset = 0x00000;
-			}
-			MSM6295SampleInfo[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleData[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleInfo[0][1] = MSM6295ROM + nBankOffset + 0x0100;
-			MSM6295SampleData[0][1] = MSM6295ROM + nBankOffset + 0x10000;
-			MSM6295SampleInfo[0][2] = MSM6295ROM + nBankOffset + 0x0200;
-			MSM6295SampleData[0][2] = MSM6295ROM + nBankOffset + 0x20000;
-			MSM6295SampleInfo[0][3] = MSM6295ROM + nBankOffset + 0x0300;
-			MSM6295SampleData[0][3] = MSM6295ROM + nBankOffset + 0x30000;
+			MSM6295SetBank(0, MSM6295ROM + ((byteValue & 0x10) << 14), 0x00000, 0x3ffff);
 			break;
 		}
 
@@ -408,20 +398,7 @@ void __fastcall shippumdWriteWord(UINT32 sekAddress, UINT16 wordValue)
 	switch (sekAddress) {
 
 		case 0x21C01C: {
-			INT32 nBankOffset;
-			if (wordValue & 0x10) {
-				nBankOffset = 0x40000;
-			} else {
-				nBankOffset = 0x00000;
-			}
-			MSM6295SampleInfo[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleData[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleInfo[0][1] = MSM6295ROM + nBankOffset + 0x0100;
-			MSM6295SampleData[0][1] = MSM6295ROM + nBankOffset + 0x10000;
-			MSM6295SampleInfo[0][2] = MSM6295ROM + nBankOffset + 0x0200;
-			MSM6295SampleData[0][2] = MSM6295ROM + nBankOffset + 0x20000;
-			MSM6295SampleInfo[0][3] = MSM6295ROM + nBankOffset + 0x0300;
-			MSM6295SampleData[0][3] = MSM6295ROM + nBankOffset + 0x30000;
+			MSM6295SetBank(0, MSM6295ROM + ((wordValue & 0x10) << 14), 0x00000, 0x3ffff);
 			break;
 		}
 
@@ -465,6 +442,8 @@ static INT32 DrvDoReset()
 	MSM6295Reset(0);
 	BurnYM2151Reset();
 
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -498,13 +477,13 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,			0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,			0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(RamPal,		0x400000, 0x400FFF, SM_RAM);	// Palette RAM
-		SekMapMemory(Ram02,			0x401000, 0x4017FF, SM_RAM);	// Unused
-		SekMapMemory(ExtraTRAM,		0x500000, 0x502FFF, SM_RAM);
-		SekMapMemory(ExtraTSelect,	0x502000, 0x502FFF, SM_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
-		SekMapMemory(ExtraTScroll,	0x503000, 0x503FFF, SM_RAM);	// 0x203000 - Offset; 0x503200 - RAM
+		SekMapMemory(Rom01,		0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x400000, 0x400FFF, MAP_RAM);	// Palette RAM
+		SekMapMemory(Ram02,		0x401000, 0x4017FF, MAP_RAM);	// Unused
+		SekMapMemory(ExtraTRAM,		0x500000, 0x502FFF, MAP_RAM);
+		SekMapMemory(ExtraTSelect,	0x502000, 0x502FFF, MAP_RAM);	// 0x502000 - Scroll; 0x502200 - RAM
+		SekMapMemory(ExtraTScroll,	0x503000, 0x503FFF, MAP_RAM);	// 0x203000 - Offset; 0x503200 - RAM
 
 		SekSetReadWordHandler(0, shippumdReadWord);
 		SekSetReadByteHandler(0, shippumdReadByte);
@@ -631,7 +610,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			bVBlank = true;
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -683,10 +662,10 @@ static INT32 DrvFrame()
 
 struct BurnDriver BurnDrvShippuMD = {
 	"shippumd", "kingdmgp", NULL, NULL, "1994",
-	"Shippu Mahou Daisakusen - kingdom grandprix\0", NULL, "Raizing / 8ing", "Toaplan GP9001 based",
-	L"\u75BE\u98A8\u9B54\u6CD5\u5927\u4F5C\u6226 - kingdom grandprix (Japan)\0Shippu Mahou Daisakusen (Japan)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, shippumdRomInfo, shippumdRomName, NULL, NULL, shippumdInputInfo, shippumdDIPInfo,
+	"Shippu Mahou Daisakusen - Kingdom Grandprix\0", NULL, "Raizing / 8ing", "Toaplan GP9001 based",
+	L"\u75BE\u98A8\u9B54\u6CD5\u5927\u4F5C\u6226 (Shippu Mahou Daisakusen - Kingdom Grandprix Japan)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, FBF_MAHOU,
+	NULL, shippumdRomInfo, shippumdRomName, NULL, NULL, NULL, NULL, shippumdInputInfo, shippumdDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };
@@ -695,8 +674,8 @@ struct BurnDriver BurnDrvKingdmGP = {
 	"kingdmgp", NULL, NULL, NULL, "1994",
 	"Kingdom Grandprix (World)\0", NULL, "Raizing / 8ing", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, 0,
-	NULL, kingdmgpRomInfo, kingdmgpRomName, NULL, NULL, shippumdInputInfo, kingdmgpDIPInfo,
+	BDF_GAME_WORKING | TOA_ROTATE_GRAPHICS_CCW | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_VERSHOOT, FBF_MAHOU,
+	NULL, kingdmgpRomInfo, kingdmgpRomName, NULL, NULL, NULL, NULL, shippumdInputInfo, kingdmgpDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	240, 320, 3, 4
 };

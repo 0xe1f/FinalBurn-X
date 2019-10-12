@@ -185,7 +185,7 @@ void __fastcall zerozone_write_word(UINT32 address, UINT16 data)
 	{
 		case 0x84000:
 			soundlatch = data >> 8;
-			ZetRaiseIrq(0xff);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		return;
 
 		case 0xb4000:
@@ -202,7 +202,7 @@ void __fastcall zerozone_write_byte(UINT32 address, UINT8 data)
 	{
 		case 0x84000:
 			soundlatch = data;
-			ZetRaiseIrq(0xff);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		return;
 
 		case 0xb4001:
@@ -218,7 +218,7 @@ void __fastcall zerozone_sound_write(UINT16 address, UINT8 data)
 	switch (address)
 	{
 		case 0x9800:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -228,7 +228,7 @@ UINT8 __fastcall zerozone_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0x9800:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0xa000:
 			return soundlatch;
@@ -333,10 +333,10 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x01ffff, SM_ROM);
-	SekMapMemory(DrvPalRAM,		0x088000, 0x0881ff, SM_ROM);
-	SekMapMemory(DrvVidRAM,		0x09ce00, 0x09ffff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0x0c0000, 0x0cffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x01ffff, MAP_ROM);
+	SekMapMemory(DrvPalRAM,		0x088000, 0x0881ff, MAP_ROM);
+	SekMapMemory(DrvVidRAM,		0x09ce00, 0x09ffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0x0c0000, 0x0cffff, MAP_RAM);
 	SekSetWriteByteHandler(0,	zerozone_write_byte);
 	SekSetWriteWordHandler(0,	zerozone_write_word);
 	SekSetReadByteHandler(0,	zerozone_read_byte);
@@ -456,7 +456,7 @@ static INT32 DrvFrame()
 		MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);
 	}
 
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 	ZetClose();
 	SekClose();
@@ -488,7 +488,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 
 		SCAN_VAR(soundlatch);
 		SCAN_VAR(tilebank);
@@ -519,8 +519,8 @@ struct BurnDriver BurnDrvZerozone = {
 	"zerozone", NULL, NULL, NULL, "1993",
 	"Zero Zone\0", NULL, "Comad", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, zerozoneRomInfo, zerozoneRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, zerozoneRomInfo, zerozoneRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	368, 224, 4, 3
 };
@@ -547,8 +547,8 @@ struct BurnDriver BurnDrvLvgirl94 = {
 	"lvgirl94", NULL, NULL, NULL, "1994",
 	"Las Vegas Girl (Girl '94)\0", NULL, "Comad", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, lvgirl94RomInfo, lvgirl94RomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, lvgirl94RomInfo, lvgirl94RomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x100,
 	368, 224, 4, 3
 };

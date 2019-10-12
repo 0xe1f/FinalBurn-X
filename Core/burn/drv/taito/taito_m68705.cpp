@@ -1,3 +1,5 @@
+// Based on MAME sources copied to and from various drivers
+// who is the original author?
 
 #include "burnint.h"
 #include "taito_m68705.h"
@@ -13,6 +15,11 @@ UINT8 ddrB;
 UINT8 portC_in;
 UINT8 portC_out;
 UINT8 ddrC;
+
+UINT8 tdr_reg;
+UINT8 tcr_reg;
+
+void (*tcr_w)(UINT8 data) = NULL;
 
 UINT8 from_main;
 UINT8 from_mcu;
@@ -31,40 +38,50 @@ void m67805_mcu_write(UINT16 address, UINT8 data)
 			}
 			portA_out = data;
 		return;
-		
+
 		case 0x0001:
 			if (ptr->portB_out) {
 				ptr->portB_out(&data);
 			}
 			portB_out = data;
 		return;
-		
+
 		case 0x0002:
 			if (ptr->portC_out) {
 				ptr->portC_out(&data);
 			}
 			portC_out = data;
 		return;
-		
+
 		case 0x0004:
 			if (ptr->ddrA_out) {
 				ptr->ddrA_out(&data);
 			}
 			ddrA = data;
 		return;
-		
+
 		case 0x0005:
 			if (ptr->ddrB_out) {
 				ptr->ddrB_out(&data);
 			}
 			ddrB = data;
 		return;
-		
+
 		case 0x0006:
 			if (ptr->ddrC_out) {
 				ptr->ddrC_out(&data);
 			}
 			ddrC = data;
+		return;
+
+		case 0x0008:
+			tdr_reg = data;
+		return;
+
+		case 0x0009:
+			if (tcr_w) {
+				tcr_w(data);
+			}
 		return;
 	}
 }
@@ -78,18 +95,24 @@ UINT8 m67805_mcu_read(UINT16 address)
 				ptr->portA_in();
 			}
 			return (portA_out & ddrA) | (portA_in & ~ddrA);
-		
+
 		case 0x0001:
 			if (ptr->portB_in) {
 				ptr->portB_in();
 			}
 			return (portB_out & ddrB) | (portB_in & ~ddrB);
-		
+
 		case 0x0002:
 			if (ptr->portC_in) {
 				ptr->portC_in();
 			}
 			return (portC_out & ddrC) | (portC_in & ~ddrC);
+
+		case 0x0008:
+			return tdr_reg;
+
+		case 0x0009:
+			return tcr_reg & 0xf7;
 	}
 
 	return 0;
@@ -111,6 +134,9 @@ void m67805_taito_reset()
 	portC_out = 0;
 	ddrC = 0;
 
+	tdr_reg = 0xff;
+	tcr_reg = 0x7f;
+
 	from_main = 0;
 	from_mcu = 0;
 	mcu_sent = 0;
@@ -123,8 +149,8 @@ void m67805_taito_init(UINT8 *rom, UINT8 *ram, m68705_interface *interface)
 
 	m6805Init(1, 0x800 /*max memory range - page size is max range / 0x100*/);
 	m6805Open(0);
-	m6805MapMemory(ram, 		0x0010, 0x007f, M6805_RAM);
-	m6805MapMemory(rom + 0x80,	0x0080, 0x07ff, M6805_ROM);
+	m6805MapMemory(ram, 		0x0010, 0x007f, MAP_RAM);
+	m6805MapMemory(rom + 0x80,	0x0080, 0x07ff, MAP_ROM);
 	m6805SetWriteHandler(m67805_mcu_write);
 	m6805SetReadHandler(m67805_mcu_read);
 	m6805Close();
@@ -142,20 +168,24 @@ void m67805_taito_exit()
 	portC_out = 0;
 	ddrC = 0;
 
+	tdr_reg = 0;
+	tcr_reg = 0;
+
 	from_main = 0;
 	from_mcu = 0;
 	mcu_sent = 0;
 	main_sent = 0;
 
 	ptr = NULL;
+	tcr_w = NULL;
 
 	m6805Exit();
 }
 
 INT32 m68705_taito_scan(INT32 nAction)
 {
-	if (nAction & ACB_VOLATILE) {		
-		m6805Scan(nAction, 0);
+	if (nAction & ACB_VOLATILE) {
+		m6805Scan(nAction);
 
 		SCAN_VAR(portA_in);
 		SCAN_VAR(portB_in);
@@ -167,6 +197,9 @@ INT32 m68705_taito_scan(INT32 nAction)
 		SCAN_VAR(portB_out);
 		SCAN_VAR(portC_out);
 
+		SCAN_VAR(tdr_reg);
+		SCAN_VAR(tcr_reg);
+
 		SCAN_VAR(from_main);
 		SCAN_VAR(from_mcu);
 		SCAN_VAR(mcu_sent);
@@ -175,8 +208,6 @@ INT32 m68705_taito_scan(INT32 nAction)
 
 	return 0;
 }
-
-
 
 
 

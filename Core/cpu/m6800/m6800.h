@@ -5,7 +5,7 @@
 #define HAS_M6803		1
 #define HAS_M6808		0
 #define HAS_HD63701		1
-#define HAS_NSC8105		0
+#define HAS_NSC8105     1
 
 #ifndef _M6800_H
 #define _M6800_H
@@ -16,6 +16,9 @@
 typedef struct
 {
 //  int     subtype;        /* CPU subtype */
+	PAIR    ea;				/* effective address */
+	INT32   m6800_ICount;
+	UINT32 timer_next;
 	PAIR	ppc;			/* Previous program counter */
 	PAIR	pc; 			/* Program counter */
 	PAIR	s;				/* Stack pointer */
@@ -25,12 +28,10 @@ typedef struct
 	UINT8	wai_state;		/* WAI opcode state ,(or sleep opcode state) */
 	UINT8	nmi_state;		/* NMI line state */
 	UINT8	irq_state[2];	/* IRQ line state [IRQ1,TIN] */
+	UINT8	irq_hold[2];
 	UINT8	ic_eddge;		/* InputCapture eddge , b.0=fall,b.1=raise */
 
-//	int		(*irq_callback)(int irqline);
-	int 	extra_cycles;	/* cycles used for interrupts */
-	void	(* const * insn)(void);	/* instruction table */
-	const UINT8 *cycles;			/* clock cycle of instruction table */
+	INT32 	extra_cycles;	/* cycles used for interrupts */
 	/* internal registers */
 	UINT8	port1_ddr;
 	UINT8	port2_ddr;
@@ -47,9 +48,15 @@ typedef struct
 	PAIR	counter;		/* free running counter */
 	PAIR	output_compare;	/* output compare       */
 	UINT16	input_capture;	/* input capture        */
+	INT32   latch09;
+	INT32   segmentcycles;
 
 	PAIR	timer_over;
-}   m6800_Regs;
+
+	//int		(*irq_callback)(int irqline);
+	void	(* const * insn)(void);	/* instruction table */
+	const UINT8 *cycles;			/* clock cycle of instruction table */
+} m6800_Regs;
 
 enum {
 	M6800_PC=1, M6800_S, M6800_A, M6800_B, M6800_X, M6800_CC,
@@ -78,13 +85,20 @@ void m6800_init();
 void hd63701_init();
 void m6803_init();
 void m6801_init();
+void nsc8105_init();
+
+int m6800_get_segmentcycles();
+
 void m6800_reset(void);
+void m6800_reset_soft(void);
 int m6800_get_pc();
 void m6800_get_context(void *dst);
 void m6800_set_context(void *src);
 int m6800_execute(int cycles);
 int m6803_execute(int cycles);
 int hd63701_execute(int cycles);
+int nsc8105_execute(int cycles);
+
 void m6800_set_irq_line(int irqline, int state);
 
 void m6803_internal_registers_w(unsigned short offset, unsigned char data);
@@ -129,7 +143,7 @@ unsigned char m6803_internal_registers_r(unsigned short offset);
 #define M6802_WAI					M6800_WAI
 #define M6802_IRQ_LINE				M6800_IRQ_LINE
 
-extern void m6802_get_info(UINT32 state, cpuinfo *info);
+//extern void m6802_get_info(UINT32 state, cpuinfo *info);
 #endif
 
 /****************************************************************************
@@ -245,7 +259,7 @@ void hd63701_trap_pc(void);
 #define NSC8105_IRQ_LINE			 M6800_IRQ_LINE
 #define NSC8105_TIN_LINE			 M6800_TIN_LINE
 
-extern void nsc8105_get_info(UINT32 state, cpuinfo *info);
+//extern void nsc8105_get_info(UINT32 state, cpuinfo *info);
 #endif
 
 /****************************************************************************/

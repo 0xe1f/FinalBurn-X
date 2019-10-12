@@ -33,9 +33,17 @@ void VezSetDecode(UINT8 *decode); // set opcode decode
 INT32 VezMemCallback(INT32 nStart,INT32 nEnd,INT32 nMode);
 INT32 VezMapArea(INT32 nStart, INT32 nEnd, INT32 nMode, UINT8 *Mem);
 INT32 VezMapArea(INT32 nStart, INT32 nEnd, INT32 nMode, UINT8 *Mem1, UINT8 *Mem2);
+INT32 VezMapMemory(UINT8 *Mem, INT32 nStart, INT32 nEnd, INT32 nMode);
 
 void VezSetReadHandler(UINT8 (__fastcall*)(UINT32));
 void VezSetWriteHandler(void (__fastcall*)(UINT32, UINT8));
+
+void VezWriteByte(UINT32 a, UINT8 d);
+void VezWriteWord(UINT32 a, UINT16 d);
+void VezWriteLong(UINT32 a, UINT32 d);
+UINT8 VezReadByte(UINT32 a);
+UINT16 VezReadWord(UINT32 a);
+UINT32 VezReadLong(UINT32 a);
 
 #define V25_PORT_P0 0x10000
 #define V25_PORT_P1 0x10002
@@ -47,7 +55,7 @@ void VezSetWritePort(void (__fastcall*)(UINT32, UINT8));
 void VezSetIrqCallBack(INT32 (*cb)(INT32));
 
 void VezReset();
-INT32 VezGetPc(INT32 n);
+UINT32 VezGetPC(INT32 n);
 INT32 VezScan(INT32 nAction);
 
 INT32 VezRun(INT32 nCycles);
@@ -57,9 +65,12 @@ INT32 VezRun(INT32 nCycles);
 #define NEC_INPUT_LINE_INTP2 12
 #define NEC_INPUT_LINE_POLL  20
 
-#define VEZ_IRQSTATUS_NONE 0
-#define VEZ_IRQSTATUS_ACK  1
-#define VEZ_IRQSTATUS_AUTO 2
-
 void VezSetIRQLineAndVector(const INT32 line, const INT32 vector, const INT32 status);
 
+void VezCheatWrite(UINT32 a, UINT8 d); // cheat core
+
+extern struct cpu_core_config VezConfig;
+
+// depreciate this and use BurnTimerAttach directly!
+#define BurnTimerAttachVez(clock)	\
+	BurnTimerAttach(&VezConfig, clock)

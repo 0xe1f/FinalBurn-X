@@ -20,106 +20,6 @@ static INT32 ParentExit()
 	return 0;
 }
 
-static struct BurnRomInfo BagmanRomDesc[] = {
-	{ "e9_b05.bin",         0x01000, 0xe0156191, BRF_ESS | BRF_PRG },
-	{ "f9_b06.bin",         0x01000, 0x7b758982, BRF_ESS | BRF_PRG },
-	{ "f9_b07.bin",         0x01000, 0x302a077b, BRF_ESS | BRF_PRG },
-	{ "k9_b08.bin",         0x01000, 0xf04293cb, BRF_ESS | BRF_PRG },
-	{ "m9_b09s.bin",        0x01000, 0x68e83e4f, BRF_ESS | BRF_PRG },
-	{ "n9_b10.bin",         0x01000, 0x1d6579f7, BRF_ESS | BRF_PRG },
-	
-	{ "e1_b02.bin",         0x01000, 0x4a0a6b55, BRF_ESS | BRF_PRG },
-	{ "j1_b04.bin",         0x01000, 0xc680ef04, BRF_ESS | BRF_PRG },
-	
-	{ "c1_b01.bin",         0x01000, 0x705193b2, BRF_ESS | BRF_PRG },
-	{ "f1_b03s.bin",        0x01000, 0xdba1eda7, BRF_ESS | BRF_PRG },
-
-	{ "p3.bin",             0x00020, 0x2a855523, BRF_GRA },
-	{ "r3.bin",             0x00020, 0xae6f1019, BRF_GRA },
-	{ "r6.bin",             0x00020, 0xc58a4f6a, BRF_GRA },
-	
-	{ "r9_b11.bin",         0x01000, 0x2e0057ff, BRF_SND },
-	{ "t9_b12.bin",         0x01000, 0xb2120edd, BRF_SND },
-};
-
-STD_ROM_PICK(Bagman)
-STD_ROM_FN(Bagman)
-
-struct BurnDriver BurnDrvBagman = {
-	"bagman", NULL, NULL, NULL, "1982",
-	"Bagman\0", "Parent set for working drivers", "Valadon Automation", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_MAZE, 0,
-	NULL, BagmanRomInfo, BagmanRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 224, 256, 3, 4
-};
-
-static struct BurnRomInfo CkongRomDesc[] = {
-	{ "falcon7",            0x01000, 0x2171cac3, BRF_ESS | BRF_PRG },
-	{ "falcon8",            0x01000, 0x88b83ff7, BRF_ESS | BRF_PRG },
-	{ "falcon9",            0x01000, 0xcff2af47, BRF_ESS | BRF_PRG },
-	{ "falcon10",           0x01000, 0x6b2ecf23, BRF_ESS | BRF_PRG },
-	{ "falcon11",           0x01000, 0x327dcadf, BRF_ESS | BRF_PRG },
-	
-	{ "falcon6",            0x01000, 0xa8916dc8, BRF_GRA },
-	{ "falcon5",            0x01000, 0xcd3b5dde, BRF_GRA },
-	{ "falcon4",            0x01000, 0xb62a0367, BRF_GRA },
-	{ "falcon3",            0x01000, 0x61122c5e, BRF_GRA },
-	
-	{ "falcon2",            0x00800, 0xf67c80f1, BRF_GRA },
-	{ "falcon1",            0x00800, 0x80eb517d, BRF_GRA },
-	
-	{ "ck6v.bin",           0x00020, 0x751c3325, BRF_GRA },
-	{ "ck6u.bin",           0x00020, 0xab1940fa, BRF_GRA },
-	{ "ck6t.bin",           0x00020, 0xb4e827a5, BRF_GRA },
-	
-	{ "falcon13",           0x01000, 0x5f0bcdfb, BRF_SND },
-	{ "falcon12",           0x01000, 0x9003ffbd, BRF_SND },
-};
-
-STD_ROM_PICK(Ckong)
-STD_ROM_FN(Ckong)
-
-struct BurnDriver BurnDrvCkong = {
-	"ckong", NULL, NULL, NULL, "1981",
-	"Crazy Kong Part II (set 1)\0", "Parent set for working drivers", "Falcon", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, CkongRomInfo, CkongRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 224, 256, 3, 4
-};
-
-static struct BurnRomInfo DockmanRomDesc[] = {
-	{ "pe1.19",             0x01000, 0xeef2ec54, BRF_ESS | BRF_PRG },
-	{ "pe2.18",             0x01000, 0xbc48d16b, BRF_ESS | BRF_PRG },
-	{ "pe3.17",             0x01000, 0x1c923057, BRF_ESS | BRF_PRG },
-	{ "pe4.16",             0x01000, 0x23af1cba, BRF_ESS | BRF_PRG },
-	{ "pe5.15",             0x01000, 0x39dbe429, BRF_ESS | BRF_PRG },
-	
-	{ "pe7.22",             0x00800, 0xd2094e4a, BRF_ESS | BRF_PRG },
-	{ "pe6.23",             0x00800, 0x1cf447f4, BRF_ESS | BRF_PRG },
-
-	{ "pe8.9",              0x01000, 0x4d8c2974, BRF_GRA },
-	{ "pe9.8",              0x01000, 0x4e4ea162, BRF_GRA },
-	
-	{ "mb7051.3",           0x00020, 0x6440dc61, BRF_GRA },
-};
-
-STD_ROM_PICK(Dockman)
-STD_ROM_FN(Dockman)
-
-struct BurnDriver BurnDrvDockman = {
-	"dockman", NULL, NULL, NULL, "1982",
-	"Dock Man\0", "Parent set for working drivers", "Taito Corporation", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, DockmanRomInfo, DockmanRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 224, 256, 3, 4
-};
-
 static struct BurnRomInfo EightballactRomDesc[] = {
 	{ "8b-dk.5e",           0x01000, 0x166c1c9b, BRF_ESS | BRF_PRG },
 	{ "8b-dk.5c",           0x01000, 0x9ec87baa, BRF_ESS | BRF_PRG },
@@ -153,7 +53,7 @@ struct BurnDriver BurnDrvEightballact = {
 	"Eight Ball Action (DK conversion)\0", "Parent set for working drivers", "Seatongrove Ltd (Magic Eletronics USA licence)", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_MISC_PRE90S, GBF_SPORTSMISC, 0,
-	NULL, EightballactRomInfo, EightballactRomName, NULL, NULL, ParentInputInfo, NULL,
+	NULL, EightballactRomInfo, EightballactRomName, NULL, NULL, NULL, NULL, ParentInputInfo, NULL,
 	ParentInit, ParentExit, NULL, NULL, NULL,
 	NULL, 0, 256, 224, 4, 3
 };
@@ -187,7 +87,7 @@ struct BurnDriver BurnDrvHero = {
 	"Hero\0", "Parent set for working drivers", "Century Electronics / Seatongrove Ltd", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, HeroRomInfo, HeroRomName, NULL, NULL, ParentInputInfo, NULL,
+	NULL, HeroRomInfo, HeroRomName, NULL, NULL, NULL, NULL, ParentInputInfo, NULL,
 	ParentInit, ParentExit, NULL, NULL, NULL,
 	NULL, 0, 224, 256, 3, 4
 };
@@ -221,7 +121,7 @@ struct BurnDriver BurnDrvHunchbak = {
 	"Hunchback (set 1)\0", "Parent set for working drivers", "Century Electronics", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, HunchbakRomInfo, HunchbakRomName, NULL, NULL, ParentInputInfo, NULL,
+	NULL, HunchbakRomInfo, HunchbakRomName, NULL, NULL, NULL, NULL, ParentInputInfo, NULL,
 	ParentInit, ParentExit, NULL, NULL, NULL,
 	NULL, 0, 224, 256, 3, 4
 };
@@ -255,125 +155,7 @@ struct BurnDriver BurnDrvHuncholy = {
 	"Hunchback Olympic\0", "Parent set for working drivers", "Seatongrove Ltd", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	0, 2, HARDWARE_MISC_PRE90S, GBF_SPORTSMISC, 0,
-	NULL, HuncholyRomInfo, HuncholyRomName, NULL, NULL, ParentInputInfo, NULL,
+	NULL, HuncholyRomInfo, HuncholyRomName, NULL, NULL, NULL, NULL, ParentInputInfo, NULL,
 	ParentInit, ParentExit, NULL, NULL, NULL,
 	NULL, 0, 224, 256, 3, 4
-};
-
-static struct BurnRomInfo ManiacsqRomDesc[] = {
-	{ "d8-d15.1m",          0x20000, 0x9121d1b6, BRF_ESS | BRF_PRG },
-	{ "d0-d7.1m",           0x20000, 0xa95cfd2a, BRF_ESS | BRF_PRG },
-	
-	{ "d0-d7.4m",           0x80000, 0xd8551b2f, BRF_GRA },
-	{ "d8-d15.4m",          0x80000, 0xb269c427, BRF_GRA },
-	{ "d16-d23.1m",         0x20000, 0xaf4ea5e7, BRF_GRA },
-	{ "d24-d31.1m",         0x20000, 0x578c3588, BRF_GRA },
-};
-
-STD_ROM_PICK(Maniacsq)
-STD_ROM_FN(Maniacsq)
-
-struct BurnDriver BurnDrvManiacsq = {
-	"maniacsq", NULL, NULL, NULL, "1996",
-	"Maniac Square (unprotected)\0", "Parent set for working drivers", "Gaelco", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, ManiacsqRomInfo, ManiacsqRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 256, 224, 4, 3
-};
-
-static struct BurnRomInfo MarioRomDesc[] = {
-	{ "tma1-c-7f_f.7f",     0x02000, 0xc0c6e014, BRF_ESS | BRF_PRG },
-	{ "tma1-c-7e_f.7e",     0x02000, 0x94fb60d6, BRF_ESS | BRF_PRG },
-	{ "tma1-c-7d_f.7d",     0x02000, 0xdcceb6c1, BRF_ESS | BRF_PRG },
-	{ "tma1-c-7c_f.7c",     0x01000, 0x4a63d96b, BRF_ESS | BRF_PRG },
-	
-	{ "tma1-c-6k_e.6k",     0x01000, 0x06b9ff85, BRF_ESS | BRF_PRG },
-	
-	{ "tma1-v-3f.3f",       0x01000, 0x28b0c42c, BRF_GRA },
-	{ "tma1-v-3j.3j",       0x01000, 0x0c8cc04d, BRF_GRA },
-	
-	{ "tma1-v-7m.7m",       0x01000, 0x22b7372e, BRF_GRA },
-	{ "tma1-v-7n.7n",       0x01000, 0x4f3a1f47, BRF_GRA },
-	{ "tma1-v-7p.7p",       0x01000, 0x56be6ccd, BRF_GRA },
-	{ "tma1-v-7s.7s",       0x01000, 0x56f1d613, BRF_GRA },
-	{ "tma1-v-7t.7t",       0x01000, 0x641f0008, BRF_GRA },
-	{ "tma1-v-7u.7u",       0x01000, 0x7baf5309, BRF_GRA },
-	
-	{ "tma1-c-4p_1.4p",     0x00200, 0x8187d286, BRF_GRA },
-	{ "tma1-c-5p.5p",       0x00020, 0x58d86098, BRF_GRA },
-};
-
-STD_ROM_PICK(Mario)
-STD_ROM_FN(Mario)
-
-struct BurnDriver BurnDrvMario = {
-	"mario", NULL, NULL, NULL, "1983",
-	"Mario Bros. (US, Revision F)\0", "Parent set for working drivers", "Nintendo of America", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, MarioRomInfo, MarioRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 224, 256, 3, 4
-};
-
-static struct BurnRomInfo PhoenixRomDesc[] = {
-	{ "ic45",               0x00800, 0x9f68086b, BRF_ESS | BRF_PRG },
-	{ "ic46",               0x00800, 0x273a4a82, BRF_ESS | BRF_PRG },
-	{ "ic47",               0x00800, 0x3d4284b9, BRF_ESS | BRF_PRG },
-	{ "ic48",               0x00800, 0xcb5d9915, BRF_ESS | BRF_PRG },
-	{ "h5-ic49.5a",         0x00800, 0xa105e4e7, BRF_ESS | BRF_PRG },
-	{ "h6-ic50.6a",         0x00800, 0xac5e9ec1, BRF_ESS | BRF_PRG },
-	{ "h7-ic51.7a",         0x00800, 0x2eab35b4, BRF_ESS | BRF_PRG },
-	{ "h8-ic52.8a",         0x00800, 0xaff8e9c5, BRF_ESS | BRF_PRG },
-	
-	{ "ic23.3d",            0x00800, 0x3c7e623f, BRF_GRA },
-	{ "ic24.4d",            0x00800, 0x59916d3b, BRF_GRA },
-	{ "b1-ic39.3b",         0x00800, 0x53413e8f, BRF_GRA },
-	{ "b2-ic40.4b",         0x00800, 0x0be2ba91, BRF_GRA },
-	
-	{ "mmi6301.ic40",       0x00100, 0x79350b25, BRF_GRA },
-	{ "mmi6301.ic41",       0x00100, 0xe176b768, BRF_GRA },
-};
-
-STD_ROM_PICK(Phoenix)
-STD_ROM_FN(Phoenix)
-
-struct BurnDriver BurnDrvPhoenix = {
-	"phoenix", NULL, NULL, NULL, "1980",
-	"Phoenix (Amstar)\0", "Parent set for working drivers", "Amstar", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
-	NULL, PhoenixRomInfo, PhoenixRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 208, 256, 3, 4
-};
-
-static struct BurnRomInfo ThepitRomDesc[] = {
-	{ "pit1.bin",           0x01000, 0x71affecc, BRF_ESS | BRF_PRG },
-	{ "pit2.bin",           0x01000, 0x894063cd, BRF_ESS | BRF_PRG },
-	{ "pit3.bin",           0x01000, 0x1b488543, BRF_ESS | BRF_PRG },
-	{ "pit4.bin",           0x01000, 0xe941e848, BRF_ESS | BRF_PRG },
-	{ "pit5.bin",           0x01000, 0xe0643c95, BRF_ESS | BRF_PRG },
-	
-	{ "pit6.bin",           0x00800, 0x1b79dfb6, BRF_ESS | BRF_PRG },
-
-	{ "pit8.bin",           0x00800, 0x69502afc, BRF_GRA },
-	{ "pit7.bin",           0x00800, 0xd901b353, BRF_GRA },
-	
-	{ "82s123.ic4",         0x00020, 0xa758b567, BRF_GRA },
-};
-
-STD_ROM_PICK(Thepit)
-STD_ROM_FN(Thepit)
-
-struct BurnDriver BurnDrvThepit = {
-	"thepit", NULL, NULL, NULL, "1992",
-	"The Pit\0", "Parent set for working drivers", "Taito", "Miscellaneous",
-	NULL, NULL, NULL, NULL,
-	0, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, ThepitRomInfo, ThepitRomName, NULL, NULL, ParentInputInfo, NULL,
-	ParentInit, ParentExit, NULL, NULL, NULL,
-	NULL, 0, 256, 224, 4, 3
 };

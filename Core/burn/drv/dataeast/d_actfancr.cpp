@@ -7,6 +7,7 @@
 #include "burn_ym2203.h"
 #include "burn_ym3812.h"
 #include "msm6295.h"
+#include "decobac06.h"
 
 static UINT8 *AllMem		= NULL;
 static UINT8 *AllRam		= NULL;
@@ -119,7 +120,7 @@ static struct BurnDIPInfo ActfancrDIPList[]=
 	{0x12, 0x01, 0x0c, 0x0c, "1 Coin  1 Credits"	},
 	{0x12, 0x01, 0x0c, 0x08, "1 Coin  2 Credits"	},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"		},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x12, 0x01, 0x20, 0x00, "Off"			},
 	{0x12, 0x01, 0x20, 0x20, "On"			},
 
@@ -133,7 +134,7 @@ static struct BurnDIPInfo ActfancrDIPList[]=
 	{0x12, 0x01, 0x80, 0x80, "Cocktail"		},
 #endif
 
-	{0   , 0xfe, 0   ,    2, "Lives"		},
+	{0   , 0xfe, 0   ,    4, "Lives"		},
 	{0x13, 0x01, 0x03, 0x03, "3"			},
 	{0x13, 0x01, 0x03, 0x02, "4"			},
 	{0x13, 0x01, 0x03, 0x01, "5"			},
@@ -145,7 +146,7 @@ static struct BurnDIPInfo ActfancrDIPList[]=
 	{0x13, 0x01, 0x0c, 0x08, "Hard"			},
 	{0x13, 0x01, 0x0c, 0x00, "Hardest"		},
 
-	{0   , 0xfe, 0   ,    4, "Bonus Life"		},
+	{0   , 0xfe, 0   ,    2, "Bonus Life"		},
 	{0x13, 0x01, 0x20, 0x20, "800000"		},
 	{0x13, 0x01, 0x20, 0x00, "None"			},
 };
@@ -169,7 +170,7 @@ static struct BurnDIPInfo TriothepDIPList[]=
 	{0x14, 0x01, 0x0c, 0x0c, "1 Coin  1 Credits"	},
 	{0x14, 0x01, 0x0c, 0x08, "1 Coin  2 Credits"	},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"		},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x14, 0x01, 0x20, 0x00, "Off"			},
 	{0x14, 0x01, 0x20, 0x20, "On"			},
 
@@ -208,16 +209,17 @@ static inline void palette_update(INT32 offset)
 
 	INT32 p = (DrvPalRAM[offset+0] << 0) | (DrvPalRAM[offset+1] << 8);
 
-	INT32 r = ((p >> 0) & 0x0f) << 4 | r;
-	INT32 g = ((p >> 4) & 0x0f) << 4 | g;
-	INT32 b = ((p >> 8) & 0x0f) << 4 | b;
+	INT32 r = (p >> 0) & 0x0f;
+	INT32 g = (p >> 4) & 0x0f;
+	INT32 b = (p >> 8) & 0x0f;
 
-	DrvPalette[offset/2] = BurnHighCol(r, g, b, 0);
+	DrvPalette[offset/2] = BurnHighCol((r << 4) | r, (g << 4) | g, (b << 4) | b, 0);
 }
 
-void actfan_main_write(UINT32 address, UINT8 data)
+static void actfan_main_write(UINT32 address, UINT8 data)
 {
 	if ((address & 0xffffe0) == 0x060000) {
+		
 		DrvPfCtrl[0][address & 0x1f] = data;
 		return;
 	}
@@ -241,7 +243,7 @@ void actfan_main_write(UINT32 address, UINT8 data)
 
 		case 0x150000:
 			*soundlatch = data;
-			M6502SetIRQLine(M6502_INPUT_LINE_NMI, M6502_IRQSTATUS_AUTO);
+			M6502SetIRQLine(M6502_INPUT_LINE_NMI, CPU_IRQSTATUS_AUTO);
 		return;
 
 		case 0x160000:
@@ -249,7 +251,7 @@ void actfan_main_write(UINT32 address, UINT8 data)
 	}
 }
 
-UINT8 actfan_main_read(UINT32 address)
+static UINT8 actfan_main_read(UINT32 address)
 {
 	switch (address)
 	{
@@ -269,7 +271,7 @@ UINT8 actfan_main_read(UINT32 address)
 	return 0;
 }
 
-void triothep_main_write(UINT32 address, UINT8 data)
+static void triothep_main_write(UINT32 address, UINT8 data)
 {
 	if ((address & 0xffffe0) == 0x060000) {
 		DrvPfCtrl[0][address & 0x1f] = data;
@@ -291,7 +293,7 @@ void triothep_main_write(UINT32 address, UINT8 data)
 	{
 		case 0x100000:
 			*soundlatch = data;
-			M6502SetIRQLine(M6502_INPUT_LINE_NMI, M6502_IRQSTATUS_AUTO);
+			M6502SetIRQLine(M6502_INPUT_LINE_NMI, CPU_IRQSTATUS_AUTO);
 		return;
 
 		case 0x110000:
@@ -318,7 +320,7 @@ void triothep_main_write(UINT32 address, UINT8 data)
 	}
 }
 
-UINT8 triothep_main_read(UINT32 address)
+static UINT8 triothep_main_read(UINT32 address)
 {
 	switch (address)
 	{
@@ -355,11 +357,11 @@ static void Dec0_sound_write(UINT16 address, UINT8 data)
 
 		case 0x1000:
 		case 0x1001:
-			BurnYM3812Write(address & 1, data);
+			BurnYM3812Write(0, address & 1, data);
 		return;
 
 		case 0x3800:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -369,38 +371,23 @@ static UINT8 Dec0_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0x3000:
-			M6502SetIRQLine(M6502_INPUT_LINE_NMI, M6502_IRQSTATUS_NONE);
+			M6502SetIRQLine(M6502_INPUT_LINE_NMI, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 
 		case 0x3800:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
 }
 
-inline static INT32 Dec0YM2203SynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)h6280TotalCycles() * nSoundRate / 7159066;
-}
-
-inline static double Dec0YM2203GetTime()
-{
-	return (double)h6280TotalCycles() / 7159066.0;
-}
-
 static void Dec0YM3812IRQHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		M6502SetIRQLine(M6502_IRQ_LINE, M6502_IRQSTATUS_ACK);
+		M6502SetIRQLine(M6502_IRQ_LINE, CPU_IRQSTATUS_ACK);
 	} else {
-		M6502SetIRQLine(M6502_IRQ_LINE, M6502_IRQSTATUS_NONE);
+		M6502SetIRQLine(M6502_IRQ_LINE, CPU_IRQSTATUS_NONE);
 	}
-}
-
-static INT32 Dec0YM3812SynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)M6502TotalCycles() * nSoundRate / 1500000;
 }
 
 static INT32 DrvDoReset()
@@ -432,7 +419,7 @@ static INT32 MemIndex()
 	Drv6502ROM	= Next; Next += 0x010000;
 
 	DrvGfxROM0	= Next; Next += 0x040000;
-	DrvGfxROM1	= Next; Next += 0x0c0000;
+	DrvGfxROM1	= Next; Next += 0x100000;
 	DrvGfxROM2	= Next; Next += 0x080000;
 
 	MSM6295ROM	= Next; Next += 0x040000;
@@ -476,7 +463,7 @@ static INT32 DrvGfxDecode()
 	INT32 XOffs[16] = { STEP8(16*8, 1), STEP8(0, 1) };
 	INT32 YOffs[16] = { STEP16(0, 8) };
 
-	UINT8 *tmp = (UINT8*)malloc(0x60000);
+	UINT8 *tmp = (UINT8*)BurnMalloc(0x60000);
 	if (tmp == NULL) {
 		return 1;
 	}
@@ -493,7 +480,7 @@ static INT32 DrvGfxDecode()
 
 	GfxDecode(0x0800, 4, 16, 16, Plane2, XOffs + 0, YOffs, 0x100, tmp, DrvGfxROM2);
 
-	free (tmp);
+	BurnFree (tmp);
 
 	return 0;
 }
@@ -502,22 +489,22 @@ static void Dec0SoundInit()
 {
 	M6502Init(0, TYPE_M6502);
 	M6502Open(0);
-	M6502MapMemory(Drv6502RAM,		0x0000, 0x07ff, M6502_RAM);
-	M6502MapMemory(Drv6502ROM + 0x4000,	0x4000, 0xffff, M6502_ROM);
+	M6502MapMemory(Drv6502RAM,		0x0000, 0x07ff, MAP_RAM);
+	M6502MapMemory(Drv6502ROM + 0x4000,	0x4000, 0xffff, MAP_ROM);
 	M6502SetWriteHandler(Dec0_sound_write);
 	M6502SetReadHandler(Dec0_sound_read);
 	M6502Close();
 	
-	BurnYM2203Init(1, 1500000, NULL, Dec0YM2203SynchroniseStream, Dec0YM2203GetTime, 0);
+	BurnYM2203Init(1, 1500000, NULL, 0);
 	BurnTimerAttachH6280(7159066);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.50, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.90, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_2, 0.90, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_3, 0.90, BURN_SND_ROUTE_BOTH);
 
-	BurnYM3812Init(3000000, &Dec0YM3812IRQHandler, &Dec0YM3812SynchroniseStream, 1);
-	BurnTimerAttachM6502YM3812(1500000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 0.90, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3000000, &Dec0YM3812IRQHandler, 1);
+	BurnTimerAttachYM3812(&M6502Config, 1500000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 0.90, BURN_SND_ROUTE_BOTH);
 
 	MSM6295Init(0, 1024188 / 132, 1);
 	MSM6295SetRoute(0, 0.85, BURN_SND_ROUTE_BOTH);
@@ -528,7 +515,7 @@ static INT32 ActfanInit()
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
-	if ((AllMem = (UINT8 *)malloc(nLen)) == NULL) return 1;
+	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(AllMem, 0, nLen);
 	MemIndex();
 
@@ -563,12 +550,12 @@ static INT32 ActfanInit()
 
 	h6280Init(0);
 	h6280Open(0);
-	h6280MapMemory(Drv6280ROM,		0x000000, 0x03ffff, H6280_ROM);
-	h6280MapMemory(DrvPf1RAM,		0x062000, 0x063fff, H6280_RAM);
-	h6280MapMemory(DrvPf2RAM,		0x072000, 0x073fff, H6280_RAM);
-	h6280MapMemory(DrvSprRAM,		0x100000, 0x1007ff, H6280_RAM);
-	h6280MapMemory(DrvPalRAM,		0x120000, 0x1205ff, H6280_ROM);
-	h6280MapMemory(Drv6280RAM,		0x1f0000, 0x1f3fff, H6280_RAM);
+	h6280MapMemory(Drv6280ROM,		0x000000, 0x03ffff, MAP_ROM);
+	h6280MapMemory(DrvPf1RAM,		0x062000, 0x063fff, MAP_RAM);
+	h6280MapMemory(DrvPf2RAM,		0x072000, 0x073fff, MAP_RAM);
+	h6280MapMemory(DrvSprRAM,		0x100000, 0x1007ff, MAP_RAM);
+	h6280MapMemory(DrvPalRAM,		0x120000, 0x1205ff, MAP_ROM);
+	h6280MapMemory(Drv6280RAM,		0x1f0000, 0x1f3fff, MAP_RAM);
 	h6280SetWriteHandler(actfan_main_write);
 	h6280SetReadHandler(actfan_main_read);
 	h6280Close();
@@ -592,7 +579,7 @@ static INT32 TriothepInit()
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
-	if ((AllMem = (UINT8 *)malloc(nLen)) == NULL) return 1;
+	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
 	memset(AllMem, 0, nLen);
 	MemIndex();
 
@@ -627,14 +614,14 @@ static INT32 TriothepInit()
 
 	h6280Init(0);
 	h6280Open(0);
-	h6280MapMemory(Drv6280ROM,		0x000000, 0x03ffff, H6280_ROM);
-	h6280MapMemory(DrvPf2RAM,		0x044000, 0x045fff, H6280_RAM);
-	h6280MapMemory(DrvPf2Scr,		0x046000, 0x0467ff, H6280_RAM);
-	h6280MapMemory(DrvPf1RAM,		0x064000, 0x0647ff, H6280_RAM);
-	h6280MapMemory(DrvPf1Scr,		0x066000, 0x0667ff, H6280_RAM);
-	h6280MapMemory(DrvSprRAM,		0x120000, 0x1207ff, H6280_RAM);
-	h6280MapMemory(DrvPalRAM,		0x130000, 0x1305ff, H6280_ROM);
-	h6280MapMemory(Drv6280RAM,		0x1f0000, 0x1f3fff, H6280_RAM);
+	h6280MapMemory(Drv6280ROM,		0x000000, 0x03ffff, MAP_ROM);
+	h6280MapMemory(DrvPf2RAM,		0x044000, 0x045fff, MAP_RAM);
+	h6280MapMemory(DrvPf2Scr,		0x046000, 0x0467ff, MAP_RAM);
+	h6280MapMemory(DrvPf1RAM,		0x064000, 0x0647ff, MAP_RAM);
+	h6280MapMemory(DrvPf1Scr,		0x066000, 0x0667ff, MAP_RAM);
+	h6280MapMemory(DrvSprRAM,		0x120000, 0x1207ff, MAP_RAM);
+	h6280MapMemory(DrvPalRAM,		0x130000, 0x1305ff, MAP_ROM);
+	h6280MapMemory(Drv6280RAM,		0x1f0000, 0x1f3fff, MAP_RAM);
 	h6280SetWriteHandler(triothep_main_write);
 	h6280SetReadHandler(triothep_main_read);
 	h6280Close();
@@ -664,113 +651,9 @@ static INT32 DrvExit()
 	h6280Exit();
 	M6502Exit();
 
-	free (AllMem);
-	AllMem = NULL;
+	BurnFree (AllMem);
 
 	return 0;
-}
-
-static void draw_pf1_layer()
-{
-	const INT32 config[4][4][2] = {
-		{ {  64,  16 }, {  32,  32 }, {  16,  64 }, {  32,  32 } }, // type 0
-		{ { 128,  16 }, {  64,  32 }, {  32,  64 }, {  64,  32 } }, // type 1
-		{ { 256,  16 }, { 128,  32 }, {  64,  64 }, { 128,  32 } }, // type 2
-	};
-
-	INT32 type = gfx_config[3];
-
-	INT32 wide = DrvPfCtrl[0][6] & 3;
-
-	INT32 width  = config[type][wide][0];
-	INT32 height = config[type][wide][1];
-
-	INT32 scrollx = (DrvPfCtrl[0][0x10] + (DrvPfCtrl[0][0x11] << 8)) & ((width * 16) - 1);
-	INT32 scrolly = (DrvPfCtrl[0][0x12] + (DrvPfCtrl[0][0x13] << 8)) & ((height * 16) - 1);
-
-	INT32 enable_rowscroll = DrvPfCtrl[0][0] & 0x04;
-
-	if (enable_rowscroll == 0)
-	{
-		for (INT32 offs = 0; offs < width * height; offs++)
-		{
-			INT32 sx = (offs % width);
-			INT32 sy = (offs / width) % height;
-
-			INT32 ofst = (sx & 0x0f) + (sy * 16) + ((sx & 0x1f0) << (4+wide));
-
-			sx = (sx * 16) - scrollx;
-			if (sx < -15) sx += width*16;
-	
-			sy = (sy * 16) - (scrolly + 8);
-			if (sy < -15) sy += height*16;
-	
-			if (sy >= nScreenHeight || sx >= nScreenWidth) continue;
-	
-			INT32 code  = DrvPf1RAM[ofst * 2 + 0] | (DrvPf1RAM[ofst * 2 + 1] << 8);
-
-			if (sx >= 0 && sx <= (nScreenWidth - 16) && sy >= 0 && sy <= (nScreenHeight - 16)) {
-				Render16x16Tile(pTransDraw, code & 0xfff, sx, sy, code >> 12, 4, gfx_config[2], DrvGfxROM2);
-			} else {
-				Render16x16Tile_Clip(pTransDraw, code & 0xfff, sx, sy, code >> 12, 4, gfx_config[2], DrvGfxROM2);
-			}
-		}
-	} else {
-		for (INT32 y = 0; y < nScreenHeight; y++)
-		{
-			UINT16 *dst = pTransDraw + y * nScreenWidth;
-	
-			INT32 sy = (y + scrolly + 8) & ((height * 16) - 1);
-
-			INT32 scrx = ((sy & 0x1ff) >> (DrvPfCtrl[0][0x17] & 0x0f)) + (0x400/2);
-	
-			scrx = (scrollx + (DrvPf1Scr[(scrx * 2)+0] << 0) + (DrvPf1Scr[(scrx * 2)+1] << 8)) & ((width * 16) - 1);
-
-			for (INT32 x = 0; x < nScreenWidth + 16; x+=16)
-			{
-				INT32 sx = (scrx + x) & ((width * 16) - 1);
-	
-				INT32 ofst = ((sx / 16) & 0x0f) + (sy & 0x3f0) + (((sx / 16) & 0x1f0) << (4 + wide));
-	
-				UINT16 code = DrvPf1RAM[ofst * 2 + 0] | (DrvPf1RAM[ofst * 2 + 1] << 8);
-	
-				{
-					UINT8 *gfx = DrvGfxROM2 + ((code & 0x0fff) * 0x100) + ((sy & 0x0f) * 16);
-	
-					INT32 color = ((code >> 12) * 16) + gfx_config[2];
-
-					INT32 xxx = x - (scrx & 0x0f);
-
-					if (xxx >= 0 && xxx <= (nScreenWidth - 16)) {
-						for (INT32 xx = 0; xx < 16; xx++, xxx++) {
-							dst[xxx] = gfx[xx] + color;
-						}
-					} else {
-						for (INT32 xx = 0; xx < 16; xx++, xxx++) {
-							if (xxx >= 0 && xxx < nScreenWidth) {
-								dst[xxx] = gfx[xx] + color;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-static void draw_pf2_layer()
-{
-	for (INT32 offs = 32; offs < 32 * 31; offs++)
-	{
-		INT32 sx = (offs & 0x1f) << 3;
-		INT32 sy = (offs >> 5) << 3;
-
-		INT32 code = DrvPf2RAM[offs * 2 + 0] | (DrvPf2RAM[offs * 2 + 1] << 8);
-
-		if (code == 0) continue; // skip transparent tile
-
-		Render8x8Tile_Mask(pTransDraw, code & 0xfff, sx, sy - 8, code >> 12, 4, 0, 0, DrvGfxROM0);
-	}
 }
 
 static void draw_sprites()
@@ -860,13 +743,35 @@ static INT32 DrvDraw()
 		DrvRecalc = 0;
 	}
 
+	UINT16 control[2][2][4];
+	UINT16 *pf_control0 = (UINT16*)DrvPfCtrl[0];
+	UINT16 *pf_control1 = (UINT16*)DrvPfCtrl[1];
+
+	control[0][0][0] = pf_control0[0];
+	control[0][0][2] = pf_control0[2];
+	control[0][0][3] = pf_control0[3];
+	control[0][1][0] = pf_control0[8];
+	control[0][1][1] = pf_control0[9];
+	control[1][0][0] = pf_control1[0];
+	control[1][0][2] = pf_control1[2];
+	control[1][0][3] = pf_control1[3];
+	control[1][1][0] = pf_control1[8];
+	control[1][1][1] = pf_control1[9];
+
+	bac06_depth = 4;
+	bac06_yadjust = 8;
+
 	if ((nBurnLayer & 1) == 0) {
 		BurnTransferClear();
 	} else {
-		draw_pf1_layer();
+		bac06_draw_layer(DrvPf1RAM, control[0], DrvPf1Scr, NULL, DrvGfxROM2, gfx_config[2], 0x7ff, DrvGfxROM2, gfx_config[2], 0x7ff, 2, 1);
 	}
+
 	if (nBurnLayer & 2) draw_sprites();
-	if (nBurnLayer & 4) draw_pf2_layer();
+
+	if (nBurnLayer & 4) {
+		bac06_draw_layer(DrvPf2RAM, control[1], NULL,      NULL, DrvGfxROM0, gfx_config[0], 0xfff, DrvGfxROM0, gfx_config[0], 0xfff, 0, 0);
+	}
 
 	BurnTransferCopy(DrvPalette);
 
@@ -911,7 +816,7 @@ static INT32 DrvFrame()
 		if (i == 1) vblank = 0;
 		if (i == 30) {
 			vblank = 0x80;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_AUTO);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		}
 
 		BurnTimerUpdateYM3812(i * (nCyclesTotal[1] / nInterleave)); // m6502
@@ -953,12 +858,12 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_DRIVER_DATA) {
-		h6280CpuScan(nAction);
+		h6280Scan(nAction);
 		M6502Scan(nAction);
 
 		BurnYM2203Scan(nAction, pnMin);
 		BurnYM3812Scan(nAction, pnMin);
-		MSM6295Scan(0, nAction);	
+		MSM6295Scan(nAction, pnMin);
 
 		SCAN_VAR(control_select);
 	}
@@ -967,12 +872,12 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 }
 
 
-// Act-Fancer Cybernetick Hyper Weapon (World revision 2)
+// Act-Fancer Cybernetick Hyper Weapon (World revision 3)
 
 static struct BurnRomInfo actfancrRomDesc[] = {
-	{ "fe08-2.bin",	0x10000, 0x0d36fbfa, 1 | BRF_PRG | BRF_ESS }, //  0 h6280 Code
-	{ "fe09-2.bin",	0x10000, 0x27ce2bb1, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "10",		0x10000, 0xcabad137, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fe08-3.bin", 0x10000, 0x35f1999d, 1 | BRF_PRG | BRF_ESS }, //  0 h6280 Code
+	{ "fe09-3.bin",	0x10000, 0xd21416ca, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fe10-3.bin",	0x10000, 0x85535fcc, 1 | BRF_PRG | BRF_ESS }, //  2
 
 	{ "17-1",	0x08000, 0x289ad106, 2 | BRF_PRG | BRF_ESS }, //  3 m6502 Code
 
@@ -1001,10 +906,10 @@ STD_ROM_FN(actfancr)
 
 struct BurnDriver BurnDrvActfancr = {
 	"actfancr", NULL, NULL, NULL, "1989",
-	"Act-Fancer Cybernetick Hyper Weapon (World revision 2)\0", NULL, "Data East Corporation", "Miscellaneous",
+	"Act-Fancer Cybernetick Hyper Weapon (World revision 3)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, actfancrRomInfo, actfancrRomName, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
+	NULL, actfancrRomInfo, actfancrRomName, NULL, NULL, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
 	ActfanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	256, 240, 4, 3
 };
@@ -1047,7 +952,50 @@ struct BurnDriver BurnDrvActfancr1 = {
 	"Act-Fancer Cybernetick Hyper Weapon (World revision 1)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, actfancr1RomInfo, actfancr1RomName, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
+	NULL, actfancr1RomInfo, actfancr1RomName, NULL, NULL, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
+	ActfanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
+	256, 240, 4, 3
+};
+
+
+// Act-Fancer Cybernetick Hyper Weapon (World revision 2)
+
+static struct BurnRomInfo actfancr2RomDesc[] = {
+	{ "fe08-2.bin",	0x10000, 0x0d36fbfa, 1 | BRF_PRG | BRF_ESS }, //  0 h6280 Code
+	{ "fe09-2.bin",	0x10000, 0x27ce2bb1, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "10",		0x10000, 0xcabad137, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "17-1",	0x08000, 0x289ad106, 2 | BRF_PRG | BRF_ESS }, //  3 m6502 Code
+
+	{ "15",		0x10000, 0xa1baf21e, 3 | BRF_GRA },           //  4 Characters
+	{ "16",		0x10000, 0x22e64730, 3 | BRF_GRA },           //  5
+
+	{ "02",		0x10000, 0xb1db0efc, 4 | BRF_GRA },           //  6 Sprites
+	{ "03",		0x08000, 0xf313e04f, 4 | BRF_GRA },           //  7
+	{ "06",		0x10000, 0x8cb6dd87, 4 | BRF_GRA },           //  8
+	{ "07",		0x08000, 0xdd345def, 4 | BRF_GRA },           //  9
+	{ "00",		0x10000, 0xd50a9550, 4 | BRF_GRA },           // 10
+	{ "01",		0x08000, 0x34935e93, 4 | BRF_GRA },           // 11
+	{ "04",		0x10000, 0xbcf41795, 4 | BRF_GRA },           // 12
+	{ "05",		0x08000, 0xd38b94aa, 4 | BRF_GRA },           // 13
+
+	{ "14",		0x10000, 0xd6457420, 5 | BRF_GRA },           // 14 Background Layer
+	{ "12",		0x10000, 0x08787b7a, 5 | BRF_GRA },           // 15
+	{ "13",		0x10000, 0xc30c37dc, 5 | BRF_GRA },           // 16
+	{ "11",		0x10000, 0x1f006d9f, 5 | BRF_GRA },           // 17
+
+	{ "18",		0x10000, 0x5c55b242, 6 | BRF_SND },           // 18 Samples
+};
+
+STD_ROM_PICK(actfancr2)
+STD_ROM_FN(actfancr2)
+
+struct BurnDriver BurnDrvActfancr2 = {
+	"actfancr2", "actfancr", NULL, NULL, "1989",
+	"Act-Fancer Cybernetick Hyper Weapon (World revision 2)\0", NULL, "Data East Corporation", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
+	NULL, actfancr2RomInfo, actfancr2RomName, NULL, NULL, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
 	ActfanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	256, 240, 4, 3
 };
@@ -1090,7 +1038,7 @@ struct BurnDriver BurnDrvActfancrj = {
 	"Act-Fancer Cybernetick Hyper Weapon (Japan revision 1)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, actfancrjRomInfo, actfancrjRomName, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
+	NULL, actfancrjRomInfo, actfancrjRomName, NULL, NULL, NULL, NULL, ActfancrInputInfo, ActfancrDIPInfo,
 	ActfanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	256, 240, 4, 3
 };
@@ -1133,7 +1081,7 @@ struct BurnDriver BurnDrvTriothep = {
 	"Trio The Punch - Never Forget Me... (World)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, triothepRomInfo, triothepRomName, NULL, NULL, TriothepInputInfo, TriothepDIPInfo,
+	NULL, triothepRomInfo, triothepRomName, NULL, NULL, NULL, NULL, TriothepInputInfo, TriothepDIPInfo,
 	TriothepInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	256, 240, 4, 3
 };
@@ -1176,7 +1124,7 @@ struct BurnDriver BurnDrvTriothepj = {
 	"Trio The Punch - Never Forget Me... (Japan)\0", NULL, "Data East Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, triothepjRomInfo, triothepjRomName, NULL, NULL, TriothepInputInfo, TriothepDIPInfo,
+	NULL, triothepjRomInfo, triothepjRomName, NULL, NULL, NULL, NULL, TriothepInputInfo, TriothepDIPInfo,
 	TriothepInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x300,
 	256, 240, 4, 3
 };

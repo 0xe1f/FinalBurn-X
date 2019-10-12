@@ -234,15 +234,6 @@ inline void WelltrisClearOpposites(UINT8* nJoystickInputs)
 	}
 }
 
-static void cpu_sync()
-{
-	UINT32 cycles = (SekTotalCycles() * 2) - (ZetTotalCycles() * 5);
-
-	if (cycles > 5) {
-		BurnTimerUpdate(cycles / 5);
-	}
-}
-
 static inline void sprite_hack(INT32 offset)
 {
 	UINT16 *ram = (UINT16*)DrvSprRAM;
@@ -298,7 +289,6 @@ void __fastcall welltris_main_write_byte(UINT32 address, UINT8 data)
 		return;
 
 		case 0xfff009:
-			cpu_sync();
 			*pending_command = 0x80;
 			*soundlatch = data;
 			ZetNmi();
@@ -349,7 +339,6 @@ UINT8 __fastcall welltris_main_read_byte(UINT32 address)
 			return ~DrvInputs[4];
 
 		case 0xfff009:
-			cpu_sync();
 			return (DrvInputs[0] & 0x7f) | *pending_command;
 
 		case 0xfff00b:
@@ -418,21 +407,7 @@ UINT8 __fastcall welltris_sound_read_port(UINT16 port)
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 DrvDoReset()
@@ -459,13 +434,13 @@ static INT32 MemIndex()
 	Drv68KROM	= Next; Next += 0x180000;
 	DrvZ80ROM	= Next; Next += 0x020000;
 
-	DrvGfxROM0	= Next; Next += 0x300000;
-	DrvGfxROM1	= Next; Next += 0x200000;
+	DrvGfxROM0	= Next; Next += 0x300000*2;
+	DrvGfxROM1	= Next; Next += 0x200000*2;
 
 	DrvSndROM0	= Next; Next += 0x080000;
 	DrvSndROM1	= Next; Next += 0x100000;
 
-	DrvPalette	= (UINT32*)Next; Next += 0x0800 * sizeof(UINT32);
+	DrvPalette	= (UINT32*)Next; Next += 0x1000 * sizeof(UINT32);
 
 	AllRam		= Next;
 
@@ -548,7 +523,7 @@ static INT32 DrvInit()
 			if (BurnLoadRom(DrvGfxROM0 + 0x100000, 12, 1)) return 1;
 		} else {
 			// welltris 4 player hack (change ori 0030 to 0000
-			*((UINT16 *)(Drv68KROM + 0xB91E)) = 0x0000;
+			//*((UINT16 *)(Drv68KROM + 0xB91E)) = 0x0000;
 		}
 
 		DrvFixSprites();
@@ -558,13 +533,13 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM + 0x000000, 0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Drv68KROM + 0x100000, 0x100000, 0x17ffff, SM_ROM);
-	SekMapMemory(DrvPxlRAM,		   0x800000, 0x81ffff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		   0xff8000, 0xffbfff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		   0xffc000, 0xffc3ff, SM_ROM);
-	SekMapMemory(DrvVidRAM,		   0xffd000, 0xffdfff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		   0xffe000, 0xffefff, SM_ROM);
+	SekMapMemory(Drv68KROM + 0x000000, 0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Drv68KROM + 0x100000, 0x100000, 0x17ffff, MAP_ROM);
+	SekMapMemory(DrvPxlRAM,		   0x800000, 0x81ffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		   0xff8000, 0xffbfff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		   0xffc000, 0xffc3ff, MAP_ROM);
+	SekMapMemory(DrvVidRAM,		   0xffd000, 0xffdfff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		   0xffe000, 0xffefff, MAP_ROM);
 	SekSetWriteByteHandler(0,	   welltris_main_write_byte);
 	SekSetWriteWordHandler(0,	   welltris_main_write_word);
 	SekSetReadByteHandler(0,	   welltris_main_read_byte);
@@ -585,7 +560,7 @@ static INT32 DrvInit()
 	INT32 DrvSndROMLen1 = 0x100000;
 	INT32 DrvSndROMLen0 = 0x080000;
 
-	BurnYM2610Init(8000000, DrvSndROM1, &DrvSndROMLen1, DrvSndROM0, &DrvSndROMLen0, &DrvFMIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2610Init(8000000, DrvSndROM1, &DrvSndROMLen1, DrvSndROM0, &DrvSndROMLen0, &DrvFMIRQHandler, 0);
 	BurnTimerAttachZet(4000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 0.75, BURN_SND_ROUTE_BOTH);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 0.75, BURN_SND_ROUTE_BOTH);
@@ -593,7 +568,7 @@ static INT32 DrvInit()
 
 	GenericTilesInit();
 
-	DrvDoReset();	
+	DrvDoReset();
 
 	return 0;
 }
@@ -743,8 +718,9 @@ static void draw_background()
 		INT32 pxl = vram[offs];
 
 		if (sy < nScreenHeight && sy >= 0) {
-			if (sx >= 0 && sx < nScreenWidth) pTransDraw[sy * nScreenWidth + sx++] = color_bank | (pxl >> 8);
-			if (sx >= 0 && sx < nScreenWidth) pTransDraw[sy * nScreenWidth + sx  ] = color_bank | (pxl & 0xff);
+			if (sx >= 0 && sx < nScreenWidth) pTransDraw[sy * nScreenWidth + sx] = color_bank | (pxl >> 8);
+			sx++;
+			if (sx >= 0 && sx < nScreenWidth) pTransDraw[sy * nScreenWidth + sx] = color_bank | (pxl & 0xff);
 		}
 	}
 }
@@ -760,9 +736,9 @@ static INT32 DrvDraw()
 
 	BurnTransferClear();
 
-	draw_background();
-	draw_foreground();
-	draw_sprites();
+	if (nBurnLayer & 1) draw_background();
+	if (nBurnLayer & 2) draw_foreground();
+	if (nBurnLayer & 4) draw_sprites();
 
 	BurnTransferCopy(DrvPalette);
 
@@ -802,11 +778,18 @@ static INT32 DrvFrame()
 //	WelltrisClearOpposites(&DrvInputs[3]);
 //	WelltrisClearOpposites(&DrvInputs[4]);
 
+	INT32 nInterleave = 256;
+
 	SekOpen(0);
 	ZetOpen(0);
 	
-	SekRun(10000000 / 60);
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	for (INT32 i = 0; i < nInterleave; i++)
+	{
+		SekRun(10000000 / 60 / nInterleave);
+		BurnTimerUpdate((4000000 / 60 * (i + 1)) / nInterleave);
+
+	}
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 	
 	BurnTimerEndFrame(4000000 / 60);
 
@@ -886,7 +869,7 @@ struct BurnDriver BurnDrvWelltris = {
 	"Welltris - Alexey Pajitnov's (World?, 2 players)\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, welltrisRomInfo, welltrisRomName, NULL, NULL, WelltrisInputInfo, WelltrisDIPInfo,
+	NULL, welltrisRomInfo, welltrisRomName, NULL, NULL, NULL, NULL, WelltrisInputInfo, WelltrisDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	352, 240, 4, 3
 };
@@ -921,7 +904,7 @@ struct BurnDriver BurnDrvWelltrisj = {
 	"Welltris - Alexey Pajitnov's (Japan, 2 players)\0", NULL, "Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, welltrisjRomInfo, welltrisjRomName, NULL, NULL, WelltrisInputInfo, WelltrisDIPInfo,
+	NULL, welltrisjRomInfo, welltrisjRomName, NULL, NULL, NULL, NULL, WelltrisInputInfo, WelltrisDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	352, 240, 4, 3
 };
@@ -958,7 +941,7 @@ struct BurnDriver BurnDrvQuiz18k = {
 	"Miyasu Nonki no Quiz 18-Kin\0", NULL, "EIM", "Miscellaneous",
 	L"\u307F\u3084\u3059\u306E\u3093\u304D\u306E \u30AF\u30A4\u30BA\uFF11\uFF18\u7981 \uFF24\uFF52\uFF0E \u30A8\u30C3\u3061\u3083\u3093\u306E\u8A3A\u5BDF\u5BA4\0Miyasu Nonki no Quiz 18-Kin\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_QUIZ, 0,
-	NULL, quiz18kRomInfo, quiz18kRomName, NULL, NULL, Quiz18kInputInfo, Quiz18kDIPInfo,
+	NULL, quiz18kRomInfo, quiz18kRomName, NULL, NULL, NULL, NULL, Quiz18kInputInfo, Quiz18kDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 224, 4, 3
 };

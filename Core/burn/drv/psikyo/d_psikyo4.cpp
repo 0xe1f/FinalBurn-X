@@ -671,9 +671,9 @@ static INT32 DrvSynchroniseStream(INT32 nSoundRate)
 static void DrvIRQCallback(INT32, INT32 nStatus)
 {
 	if (nStatus)
-		Sh2SetIRQLine(12, SH2_IRQSTATUS_AUTO);
+		Sh2SetIRQLine(12, CPU_IRQSTATUS_ACK);
 	else
-		Sh2SetIRQLine(12, SH2_IRQSTATUS_NONE);
+		Sh2SetIRQLine(12, CPU_IRQSTATUS_NONE);
 }
 
 static INT32 DrvInit(INT32 (*LoadCallback)(), INT32 gfx_len)
@@ -703,9 +703,9 @@ static INT32 DrvInit(INT32 (*LoadCallback)(), INT32 gfx_len)
 
 	Sh2Init(1);
 	Sh2Open(0);
-	Sh2MapMemory(DrvSh2ROM,			0x00000000, 0x000fffff, SH2_ROM);
-	Sh2MapMemory(DrvSh2ROM + 0x100000,	0x02000000, 0x021fffff, SH2_ROM);
-	Sh2MapMemory(DrvSh2RAM,			0x06000000, 0x060fffff, SH2_RAM);
+	Sh2MapMemory(DrvSh2ROM,			0x00000000, 0x000fffff, MAP_ROM);
+	Sh2MapMemory(DrvSh2ROM + 0x100000,	0x02000000, 0x021fffff, MAP_ROM);
+	Sh2MapMemory(DrvSh2RAM,			0x06000000, 0x060fffff, MAP_RAM);
 	Sh2SetReadByteHandler (0,		ps4_read_byte);
 	Sh2SetReadWordHandler (0,		ps4_read_word);
 	Sh2SetReadLongHandler (0,		ps4_read_long);
@@ -713,12 +713,12 @@ static INT32 DrvInit(INT32 (*LoadCallback)(), INT32 gfx_len)
 	Sh2SetWriteWordHandler(0,		ps4_write_word);
 	Sh2SetWriteLongHandler(0,		ps4_write_long);
 
-	Sh2MapHandler(1, 0x06000000 | speedhack_address, 0x0600ffff | speedhack_address, SH2_ROM);
+	Sh2MapHandler(1, 0x06000000 | speedhack_address, 0x0600ffff | speedhack_address, MAP_ROM);
 	Sh2SetReadByteHandler (1,		ps4hack_read_byte);
 	Sh2SetReadWordHandler (1,		ps4hack_read_word);
 	Sh2SetReadLongHandler (1,		ps4hack_read_long);
 
-	BurnYMF278BInit(0, DrvSndROM, &DrvIRQCallback, DrvSynchroniseStream);
+	BurnYMF278BInit(0, DrvSndROM, 0x400000, &DrvIRQCallback, DrvSynchroniseStream);
 	BurnYMF278BSetAllRoutes(1.00, BURN_SND_ROUTE_BOTH);
 	BurnTimerAttachSh2(28636350);
 
@@ -919,10 +919,11 @@ static INT32 DrvFrame()
 	}
 
 	BurnTimerEndFrame(28636350 / 60);
-	Sh2SetIRQLine(4, SH2_IRQSTATUS_AUTO);
-	Sh2Run(0);
-	Sh2SetIRQLine(4, SH2_IRQSTATUS_NONE);
-	BurnYMF278BUpdate(nBurnSoundLen);
+	Sh2SetIRQLine(4, CPU_IRQSTATUS_AUTO);
+
+	if (pBurnSoundOut) {
+		BurnYMF278BUpdate(nBurnSoundLen);
+	}
 
 	if (pBurnDraw) {
 		DrvDraw();
@@ -1018,7 +1019,7 @@ struct BurnDriver BurnDrvHotgmck = {
 	"Taisen Hot Gimmick (Japan)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
-	NULL, hotgmckRomInfo, hotgmckRomName, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	NULL, hotgmckRomInfo, hotgmckRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
 	HotgmckInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 224, 8, 3
 };
@@ -1088,7 +1089,7 @@ struct BurnDriver BurnDrvHgkairak = {
 	"Taisen Hot Gimmick Kairakuten (Japan)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
-	NULL, hgkairakRomInfo, hgkairakRomName, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	NULL, hgkairakRomInfo, hgkairakRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
 	HgkairakInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 224, 8, 3
 };
@@ -1166,7 +1167,7 @@ struct BurnDriver BurnDrvHotgmck3 = {
 	"Taisen Hot Gimmick 3 Digital Surfing (Japan)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
-	NULL, hotgmck3RomInfo, hotgmck3RomName, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	NULL, hotgmck3RomInfo, hotgmck3RomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
 	Hotgmck3Init, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 224, 8, 3
 };
@@ -1208,7 +1209,7 @@ struct BurnDriver BurnDrvHotgm4ev = {
 	"Taisen Hot Gimmick 4 Ever (Japan)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
-	NULL, hotgm4evRomInfo, hotgm4evRomName, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	NULL, hotgm4evRomInfo, hotgm4evRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
 	Hotgmck3Init, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 224, 8, 3
 };
@@ -1269,7 +1270,7 @@ struct BurnDriver BurnDrvHotgmcki = {
 	"Mahjong Hot Gimmick Integral (Japan)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
-	NULL, hotgmckiRomInfo, hotgmckiRomName, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	NULL, hotgmckiRomInfo, hotgmckiRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
 	HotgmckiInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 224, 8, 3
 };
@@ -1322,7 +1323,7 @@ struct BurnDriver BurnDrvLoderndf = {
 	"Lode Runner - The Dig Fight (ver. B)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_PLATFORM, 0,
-	NULL, loderndfRomInfo, loderndfRomName, NULL, NULL, LoderndfInputInfo, LoderndfDIPInfo,
+	NULL, loderndfRomInfo, loderndfRomName, NULL, NULL, NULL, NULL, LoderndfInputInfo, LoderndfDIPInfo,
 	LoderndfInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 240, 8, 3
 };
@@ -1359,7 +1360,7 @@ struct BurnDriver BurnDrvLoderndfa = {
 	"Lode Runner - The Dig Fight (ver. A)\0", NULL, "Psikyo", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PSIKYO, GBF_PLATFORM, 0,
-	NULL, loderndfaRomInfo, loderndfaRomName, NULL, NULL, LoderndfInputInfo, LoderndfDIPInfo,
+	NULL, loderndfaRomInfo, loderndfaRomName, NULL, NULL, NULL, NULL, LoderndfInputInfo, LoderndfDIPInfo,
 	LoderndfaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 240, 8, 3
 };
@@ -1415,7 +1416,7 @@ struct BurnDriver BurnDrvHotdebut = {
 	"Quiz de Idol! Hot Debut (Japan)\0", NULL, "Psikyo / Moss", "PS4",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PSIKYO, GBF_QUIZ, 0,
-	NULL, hotdebutRomInfo, hotdebutRomName, NULL, NULL, HotdebutInputInfo, HotdebutDIPInfo,
+	NULL, hotdebutRomInfo, hotdebutRomName, NULL, NULL, NULL, NULL, HotdebutInputInfo, HotdebutDIPInfo,
 	HotdebutInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	640, 240, 8, 3
 };

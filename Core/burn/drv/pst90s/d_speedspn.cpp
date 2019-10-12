@@ -201,11 +201,7 @@ void __fastcall speedspn_main_write_port(UINT16 port, UINT8 data)
 
 		case 0x13:
 			*soundlatch = data;
-			ZetClose();
-			ZetOpen(1);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
-			ZetClose();
-			ZetOpen(0);
+			ZetSetIRQLine(1, 0, CPU_IRQSTATUS_ACK);
 		return;
 
 		case 0x17:
@@ -244,12 +240,7 @@ static void oki_bankswitch(INT32 data)
 {
 	banks[2] = data & 3;
 
-	MSM6295ROM = DrvSndROM + (banks[2] * 0x40000);
-
-	for (INT32 nChannel = 0; nChannel < 4; nChannel++) {
-		MSM6295SampleInfo[0][nChannel] = MSM6295ROM + (nChannel << 8);
-		MSM6295SampleData[0][nChannel] = MSM6295ROM + (nChannel << 16);
-	}
+	MSM6295SetBank(0, DrvSndROM + ((data & 3) * 0x20000), 0x20000, 0x3ffff);
 }
 
 void __fastcall speedspn_sound_write(UINT16 address, UINT8 data)
@@ -261,7 +252,7 @@ void __fastcall speedspn_sound_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x9800:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -271,10 +262,10 @@ UINT8 __fastcall speedspn_sound_read(UINT16 address)
 	switch (address)
 	{
 		case 0x9800:
-			return MSM6295ReadStatus(0); 
+			return MSM6295Read(0); 
 
 		case 0xa000:
-			ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -295,7 +286,6 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
-	oki_bankswitch(1);
 	MSM6295Reset(0);
 
 	return 0;
@@ -311,7 +301,7 @@ static INT32 MemIndex()
 	DrvGfxROM0	= Next; Next += 0x100000;
 	DrvGfxROM1	= Next; Next += 0x080000;
 
-	DrvSndROM	= Next; Next += 0x100000;
+	DrvSndROM	= Next; Next += 0x080000;
 
 	DrvPalette	= (UINT32*)Next; Next += 0x400 * sizeof(UINT32);
 
@@ -380,15 +370,7 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM1 + 0x000000,  1, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 1)) return 1;
-		memcpy (DrvSndROM + 0x000000, DrvGfxROM0 + 0x000000, 0x020000);
-		memcpy (DrvSndROM + 0x040000, DrvGfxROM0 + 0x000000, 0x020000);
-		memcpy (DrvSndROM + 0x080000, DrvGfxROM0 + 0x000000, 0x020000);
-		memcpy (DrvSndROM + 0x0c0000, DrvGfxROM0 + 0x000000, 0x020000);
-		memcpy (DrvSndROM + 0x020000, DrvGfxROM0 + 0x000000, 0x020000);
-		memcpy (DrvSndROM + 0x060000, DrvGfxROM0 + 0x020000, 0x020000);
-		memcpy (DrvSndROM + 0x0a0000, DrvGfxROM0 + 0x040000, 0x020000);
-		memcpy (DrvSndROM + 0x0e0000, DrvGfxROM0 + 0x060000, 0x020000);
+		if (BurnLoadRom(DrvSndROM  + 0x000000,  2, 1)) return 1;
 
 		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
 		if (BurnLoadRom(DrvGfxROM0 + 0x020000,  4, 1)) return 1;
@@ -431,6 +413,7 @@ static INT32 DrvInit()
 	ZetClose();
 
 	MSM6295Init(0, 1122000 / 132, 0);
+	MSM6295SetBank(0, DrvSndROM, 0, 0x3ffff);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
 
 	DrvDoReset();
@@ -545,7 +528,7 @@ static INT32 DrvFrame()
 		ZetOpen(0);
 		nSegment = nCyclesTotal[0] / nInterleave;
 		nCyclesDone[0] += ZetRun(nSegment);
-		if (i == (nInterleave - 1)) ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		ZetClose();
 
 		ZetOpen(1);
@@ -583,7 +566,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		ZetScan(nAction);
 
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -593,8 +576,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ZetClose();
 
 		oki_bankswitch(banks[2]);
-
-		DrvRecalc = 1;
 	}
 
 	return 0;
@@ -626,8 +607,8 @@ struct BurnDriver BurnDrvSpeedspn = {
 	"speedspn", NULL, NULL, NULL, "1994",
 	"Speed Spin\0", NULL, "TCH", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
-	NULL, speedspnRomInfo, speedspnRomName, NULL, NULL, SpeedspnInputInfo, SpeedspnDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_POST90S, GBF_BALLPADDLE, 0,
+	NULL, speedspnRomInfo, speedspnRomName, NULL, NULL, NULL, NULL, SpeedspnInputInfo, SpeedspnDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	384, 240, 4, 3
 };

@@ -1,5 +1,7 @@
 #include "cps3.h"
 
+// CPS-3 sound emulation by Philip Bennett
+
 #define CPS3_VOICES		16
 
 #define CPS3_SND_INT_RATE		(nBurnFPS / 100)
@@ -89,6 +91,7 @@ void __fastcall cps3SndWriteWord(UINT32 addr, UINT16 data)
 void __fastcall cps3SndWriteLong(UINT32 addr, UINT32 data)
 {
 	//addr &= 0x000003ff;
+	if (addr == 0x240e0210) return; // NOP (jojoba*)
 	bprintf(PRINT_NORMAL, _T("SND Attempt to write long value %8x to location %8x\n"), data, addr);
 }
 
@@ -143,7 +146,7 @@ void cps3SndUpdate()
 		return;	
 	}
 	
-	memset(pBurnSoundOut, 0, nBurnSoundLen * 2 * sizeof(INT16));
+	BurnSoundClear();
 	INT8 * base = (INT8 *)chip->rombase;
 	cps3_voice *vptr = &chip->voice[0];
 
@@ -176,7 +179,8 @@ void cps3SndUpdate()
 					if (vptr->regs[5]) {
 						pos = loop - start;
 					} else {
-						chip->key &= ~(1 << i);
+					//	chip->key &= ~(1 << i);
+					//	don't force key off [hap 5/31/14]
 						break;
 					}
 				}
@@ -200,13 +204,11 @@ void cps3SndUpdate()
 				if ((chip->output_dir[BURN_SND_CPS3SND_ROUTE_2] & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
 					nRightSample += (INT32)(((sample * vol_r) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_2]);
 				}
-				//nLeftSample += (INT32)(((sample * vol_l) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_1]);
-				//nRightSample += (INT32)(((sample * vol_r) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_2]); 
 
-				nLeftSample = BURN_SND_CLIP(nLeftSample + buffer[1]);
+				nLeftSample = BURN_SND_CLIP(nLeftSample + buffer[1]); 
 				nRightSample = BURN_SND_CLIP(nRightSample + buffer[0]);
 				
-				buffer[0] = nRightSample; // swapped. correct??
+				buffer[0] = nRightSample;
 				buffer[1] = nLeftSample;
 
 				buffer += 2;

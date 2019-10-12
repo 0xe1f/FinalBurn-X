@@ -19,6 +19,8 @@
 	extern struct VidOut VidOutSDLFX;
 #elif defined (_XBOX)
 	extern struct VidOut VidOutD3D;
+#elif defined (BUILD_QT)
+    extern struct VidOut VidOutOGL;
 #endif
 
 static struct VidOut *pVidOut[] = {
@@ -31,10 +33,12 @@ static struct VidOut *pVidOut[] = {
 #elif defined (BUILD_COCOA)
     &VidOutCocoa
 #elif defined (BUILD_SDL)
-	&VidOutSDLFX,
 	&VidOutSDLOpenGL,
+	&VidOutSDLFX,
 #elif defined (_XBOX)
 	&VidOutD3D,
+#elif defined (BUILD_QT)
+    &VidOutOGL,
 #endif
 };
 
@@ -44,12 +48,23 @@ INT64 nVidBlitterOpt[VID_LEN] = {0, };			// Options for the blitter module (mean
 
 static InterfaceInfo VidInfo = { NULL, NULL, NULL };
 
+#if defined (BUILD_WIN32)
+#if defined BUILD_X64_EXE
+// set DDraw blitter as default for 64-bit builds (in case user doesn't have DX redistributable installed)
 UINT32 nVidSelect = 0;					// Which video output is selected
+#else
+// sec D3D7 Enhanced blitter as default
+UINT32 nVidSelect = 1;					// Which video output is selected
+#endif
+#else
+UINT32 nVidSelect = 0;					// Which video output is selected
+#endif
+
 static UINT32 nVidActive = 0;
 
 bool bVidOkay = false;
 
-INT32 nVidWidth		= 640, nVidHeight		= 480, nVidDepth = 16, nVidRefresh = 0;
+INT32 nVidWidth		= 640, nVidHeight		= 480, nVidDepth = 32, nVidRefresh = 0;
 
 INT32 nVidHorWidth	= 640, nVidHorHeight	= 480;	// Default Horizontal oritated resolution
 INT32 nVidVerWidth	= 640, nVidVerHeight	= 480;	// Default Vertical oriented resoultion
@@ -76,8 +91,9 @@ INT32 bVidArcaderesHor = 0;
 INT32 bVidArcaderesVer = 0;
 
 INT32 nVidRotationAdjust = 0;						// & 1: do not rotate the graphics for vertical games,  & 2: Reverse flipping for vertical games
-INT32 bVidForce16bit = 1;							// Emulate the game in 16-bit even when the screen is 32-bit (D3D blitter)
-INT32 bVidForceFlip = 0;							// Force flipping (DDraw blitter, hardware detection seems to fail on all? graphics hardware)
+INT32 bVidForce16bit = 0;							// Emulate the game in 16-bit even when the screen is 32-bit (D3D blitter)
+INT32 bVidForce16bitDx9Alt = 0;						// Emulate the game in 16-bit even when the screen is 32-bit (DX9 Alt blitter)
+INT32 bVidForceFlip = 1;							// Force flipping (DDraw blitter, hardware detection seems to fail on all? graphics hardware)
 INT32 nVidTransferMethod = -1;					// How to transfer the game image to video memory and/or a texture --
 												//  0 = blit from system memory / use driver/DirectX texture management
 												//  1 = copy to a video memory surface, then use bltfast()
@@ -91,6 +107,9 @@ INT32 bVidDX9Bilinear = 1;							// 1 = enable bi-linear filtering (D3D9 Alt bli
 INT32 bVidHardwareVertex = 0;			// 1 = use hardware vertex processing
 INT32 bVidMotionBlur = 0;				// 1 = motion blur
 
+wchar_t HorScreen[32] = L"";
+wchar_t VerScreen[32] = L"";
+
 #ifdef BUILD_WIN32
  HWND hVidWnd = NULL;							// Actual window used for video
 #endif
@@ -102,7 +121,8 @@ INT32 bVidMotionBlur = 0;				// 1 = motion blur
 INT32 nVidScrnWidth = 0, nVidScrnHeight = 0;		// Actual Screen dimensions (0 if in windowed mode)
 INT32 nVidScrnDepth = 0;							// Actual screen depth
 
-INT32 nVidScrnAspectX = 4, nVidScrnAspectY = 3;	// Aspect ratio of the display screen
+INT32 nVidScrnAspectX = 4, nVidScrnAspectY = 3;	        // Aspect ratio of the horizontally orientated display screen
+INT32 nVidVerScrnAspectX = 4, nVidVerScrnAspectY = 3;   // Aspect ratio of the vertically orientated display screen
 
 UINT8* pVidImage = NULL;				// Memory buffer
 INT32 nVidImageWidth = DEFAULT_IMAGE_WIDTH;		// Memory buffer size
@@ -113,9 +133,14 @@ INT32 nVidImageDepth = 0;							// Memory buffer bits per pixel
 
 UINT32 (__cdecl *VidHighCol) (INT32 r, INT32 g, INT32 b, INT32 i);
 static bool bVidRecalcPalette;
-
+												// Translation to native Bpp for games flagged with BDF_16BIT_ONLY
+static void VidDoFrameCallback();
+void (*pVidTransCallback)(void) = NULL;         // Callback for video driver, after BurnDrvFrame() / BurnDrvRedraw() (see win32/vid_d3d.cpp:vidFrame() for example)
 static UINT8* pVidTransImage = NULL;
 static UINT32* pVidTransPalette = NULL;
+static INT32 bSkipNextFrame = 0;
+
+TCHAR szPlaceHolder[MAX_PATH] = _T("");
 
 static UINT32 __cdecl HighCol15(INT32 r, INT32 g, INT32 b, INT32  /* i */)
 {
@@ -152,8 +177,24 @@ INT32 VidInit()
 
 #if defined (BUILD_WIN32) && defined (ENABLE_PREVIEW)
 	if (!bDrvOkay) {
-		//hbitmap = (HBITMAP)LoadImage(hAppInst, _T("BMP_SPLASH"), IMAGE_BITMAP, 304, 224, 0);
-		hbitmap = (HBITMAP)LoadImage(hAppInst, MAKEINTRESOURCE(BMP_SPLASH), IMAGE_BITMAP, 304, 224, 0);
+		if (_tcslen(szPlaceHolder)) {
+			LPTSTR p = _tcsrchr(szPlaceHolder, '.');
+			if (!_tcsicmp(p+1, _T("bmp"))) {
+				hbitmap = (HBITMAP)LoadImage(hAppInst, szPlaceHolder, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+			} else {
+				if (!_tcsicmp(p+1, _T("png"))) {
+					FILE *fp = _tfopen(szPlaceHolder, _T("rb"));
+					if (fp) {
+						hbitmap = PNGLoadBitmap(hScrnWnd, fp, 0, 0, 0);
+						fclose(fp);
+					}
+				}
+			}
+		} else {
+			hbitmap = (HBITMAP)LoadImage(hAppInst, MAKEINTRESOURCE(BMP_SPLASH), IMAGE_BITMAP, 304, 224, 0);
+		}
+		
+		if (!hbitmap) hbitmap = (HBITMAP)LoadImage(hAppInst, MAKEINTRESOURCE(BMP_SPLASH), IMAGE_BITMAP, 304, 224, 0);
 		
 		GetObject(hbitmap, sizeof(BITMAP), &bitmap);
 
@@ -178,6 +219,7 @@ INT32 VidInit()
 
 				pVidTransPalette = (UINT32*)malloc(32768 * sizeof(UINT32));
 				pVidTransImage = (UINT8*)malloc(nVidImageWidth * nVidImageHeight * sizeof(INT16));
+				pVidTransCallback = VidDoFrameCallback;
 
 				BurnHighCol = HighCol15;
 
@@ -192,7 +234,7 @@ INT32 VidInit()
 #if defined (BUILD_WIN32) && defined (ENABLE_PREVIEW)
 	if (bVidOkay && hbitmap) {
 		BITMAPINFO bitmapinfo;
-		UINT8* pLineBuffer = (UINT8*)malloc(bitmap.bmWidth * 4);
+		UINT8* pLineBuffer = (UINT8*)malloc((bitmap.bmWidth + 3) * 4); // add + 3 safetynet
 		HDC hDC = GetDC(hVidWnd);
 
 		if (hDC && pLineBuffer) {
@@ -275,6 +317,9 @@ INT32 VidExit()
 			free(pVidTransImage);
 			pVidTransImage = NULL;
 		}
+		if (pVidTransCallback) {
+			pVidTransCallback = NULL;
+		}
 
 		return nRet;
 	} else {
@@ -282,14 +327,39 @@ INT32 VidExit()
 	}
 }
 
+static void VidDoFrameCallback()
+{
+		UINT16* pSrc = (UINT16*)pVidTransImage;
+		UINT8* pDest = pVidImage;
+
+		switch (nVidImageBPP) {
+			case 3: {
+				for (INT32 y = 0; y < nVidImageHeight; y++, pSrc += nVidImageWidth, pDest += nVidImagePitch) {
+					for (INT32 x = 0; x < nVidImageWidth; x++) {
+						UINT32 c = pVidTransPalette[pSrc[x] & 0x7fff];
+						*(pDest + (x * 3) + 0) = c & 0xFF;
+						*(pDest + (x * 3) + 1) = (c >> 8) & 0xFF;
+						*(pDest + (x * 3) + 2) = c >> 16;
+					}
+				}
+				break;
+			}
+			case 4: {
+				for (INT32 y = 0; y < nVidImageHeight; y++, pSrc += nVidImageWidth, pDest += nVidImagePitch) {
+					for (INT32 x = 0; x < nVidImageWidth; x++) {
+						((UINT32*)pDest)[x] = pVidTransPalette[pSrc[x] & 0x7fff];
+					}
+				}
+				break;
+			}
+		}
+}
+
 static INT32 VidDoFrame(bool bRedraw)
 {
 	INT32 nRet;
 	
-	if (pVidTransImage) {
-		UINT16* pSrc = (UINT16*)pVidTransImage;
-		UINT8* pDest = pVidImage;
-
+	if (pVidTransImage && pVidTransPalette) {
 		if (bVidRecalcPalette) {
 			for (INT32 r = 0; r < 256; r += 8) {
 				for (INT32 g = 0; g < 256; g += 8) {
@@ -307,29 +377,17 @@ static INT32 VidDoFrame(bool bRedraw)
 
 		nRet = pVidOut[nVidActive]->Frame(bRedraw);
 
+		if (bSkipNextFrame) {
+			// if ReInitialise(); is called from the machine's reset function, it will crash below.  This prevents that from happening. (Megadrive)
+			bSkipNextFrame = 0;
+			return 0;
+		}
+
 		pBurnDraw = NULL;
 		nBurnPitch = 0;
 
-		switch (nVidImageBPP) {
-			case 3: {
-				for (INT32 y = 0; y < nVidImageHeight; y++, pSrc += nVidImageWidth, pDest += nVidImagePitch) {
-					for (INT32 x = 0; x < nVidImageWidth; x++) {
-						UINT32 c = pVidTransPalette[pSrc[x]];
-						*(pDest + (x * 3) + 0) = c & 0xFF;
-						*(pDest + (x * 3) + 1) = (c >> 8) & 0xFF;
-						*(pDest + (x * 3) + 2) = c >> 16;
-					}
-				}
-				break;
-			}
-			case 4: {
-				for (INT32 y = 0; y < nVidImageHeight; y++, pSrc += nVidImageWidth, pDest += nVidImagePitch) {
-					for (INT32 x = 0; x < nVidImageWidth; x++) {
-						((UINT32*)pDest)[x] = pVidTransPalette[pSrc[x]];
-					}
-				}
-				break;
-			}
+		if (!pVidTransCallback) {
+			VidDoFrameCallback();
 		}
 	} else {
 		pBurnDraw = pVidImage;
@@ -348,10 +406,10 @@ INT32 VidReInitialise()
 {
 	if (pVidTransImage) {
 		free(pVidTransImage);
-		pVidTransImage = NULL;
+		pVidTransImage = (UINT8*)malloc(nVidImageWidth * nVidImageHeight * sizeof(INT16));
 	}
-	pVidTransImage = (UINT8*)malloc(nVidImageWidth * nVidImageHeight * sizeof(INT16));
-	
+	bSkipNextFrame = 1;
+
 	return 0;
 }
 
@@ -415,7 +473,7 @@ const TCHAR* VidGetModuleName()
 #if defined (BUILD_WIN32)
 	return FBALoadStringEx(hAppInst, IDS_ERR_UNKNOWN, true);
 #else
-	return _T("There was an error with the video");
+	return "There was an error with the video";
 #endif
 }
 
@@ -436,9 +494,9 @@ InterfaceInfo* VidGetInfo()
 		GetClientScreenRect(hVidWnd, &rect);
 		if (nVidFullscreen == 0) {
 			rect.top += nMenuHeight;
-			_sntprintf(szString, MAX_PATH, _T("Running in windowed mode, $ix%i, %ibpp"), rect.right - rect.left, rect.bottom - rect.top, nVidScrnDepth);
+			_sntprintf(szString, MAX_PATH, _T("Running in windowed mode, %ix%i, %ibpp"), rect.right - rect.left, rect.bottom - rect.top, nVidScrnDepth);
 		} else {
-			_sntprintf(szString, MAX_PATH, _T("Running fullscreen, $ix$i, %ibpp"), nVidScrnWidth, nVidScrnHeight, nVidScrnDepth);
+			_sntprintf(szString, MAX_PATH, _T("Running fullscreen, %ix%i, %ibpp"), nVidScrnWidth, nVidScrnHeight, nVidScrnDepth);
 		}
 #elif defined (BUILD_SDL)
 		_sntprintf(szString, MAX_PATH, _T("Filler for fullscreen/windowed mode & image size"));

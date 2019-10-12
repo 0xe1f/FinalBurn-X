@@ -8,10 +8,7 @@
 #include "bitswap.h"
 #include "sn76496.h"
 #include "namco_snd.h"
-#include "driver.h"
-extern "C" {
 #include "ay8910.h"
-}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -28,7 +25,6 @@ static UINT8 *DrvSprRAM2;
 static UINT8 *DrvColPROM;
 static UINT8 *DrvTransTable;
 
-static INT16 *pAY8910Buffer[3];
 static UINT32 *Palette;
 static UINT8 DrvRecalc;
 
@@ -36,13 +32,14 @@ static UINT8 DrvReset;
 static UINT8 DrvJoy1[8] = {0,0,0,0,0,0,0,0};
 static UINT8 DrvJoy2[8] = {0,0,0,0,0,0,0,0};
 static UINT8 DrvInputs[2] = {0,0};
+
 static UINT8 DrvDips[4] = {0,0,0,0};
 static INT16 DrvAxis[2] = { 0, 0 };
 static INT16 nAnalogAxis[2] = {0,0};
 static UINT8 nCharAxis[2] = {0,0};
 
 enum { PACMAN=0, MSPACMAN, CANNONBP, MAKETRAX, PIRANHA, VANVAN, NMOUSE, DREMSHPR, 
-       MSCHAMP, BIGBUCKS, ROCKTRV2, ALIBABA, CRUSHS, SHOOTBUL, BIRDIY, EPOS, PENGO };
+       MSCHAMP, BIGBUCKS, ROCKTRV2, ALIBABA, CRUSHS, SHOOTBUL, BIRDIY, EPOS, PENGO, JUMPSHOT };
 
 static INT32 game_select;
 static INT32 acitya = 0;
@@ -87,13 +84,40 @@ static struct BurnInputInfo DrvInputList[] = {
 	{"Reset",		  BIT_DIGITAL,	&DrvReset,	"reset"},
 	{"Service Mode",	  BIT_DIGITAL,	DrvJoy1 + 7,	"diag"},
 
-	{"Dip Switches 1 ",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"},
+	{"Dip Switches 1",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"},
 	{"Dip Switches 2",	BIT_DIPSWITCH,	DrvDips + 0,	"dip"},
 	{"Dip Switches 3",	BIT_DIPSWITCH,	DrvDips + 1,	"dip"},
 	{"Dip Switches 4",	BIT_DIPSWITCH,	DrvDips + 3,	"dip"},
 };
 
 STDINPUTINFO(Drv)
+
+static struct BurnInputInfo AlienresInputList[] = {
+	{"Coin 1",		  BIT_DIGITAL,	DrvJoy1 + 5,	"p1 coin"	},
+	{"Coin 2",		  BIT_DIGITAL,	DrvJoy1 + 6,	"p2 coin"	},
+
+	{"P1 Up",		  BIT_DIGITAL,	DrvJoy1 + 0, 	"p1 up"		},
+	{"P1 Left",		  BIT_DIGITAL,	DrvJoy1 + 1, 	"p1 left"	},
+	{"P1 Right",	  BIT_DIGITAL,	DrvJoy1 + 2, 	"p1 right"	},
+	{"P1 Down",		  BIT_DIGITAL,	DrvJoy1 + 3, 	"p1 down"	},
+	{"P1 Fire",		  BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 1"	},
+
+	{"P2 Up",		  BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"		},
+	{"P2 Left",		  BIT_DIGITAL,	DrvJoy2 + 1,	"p2 left"	},
+	{"P2 Right",	  BIT_DIGITAL,	DrvJoy2 + 2,	"p2 right"	},
+	{"P2 Down",		  BIT_DIGITAL,	DrvJoy2 + 3,	"p2 down"	},
+	{"P2 Fire",		  BIT_DIGITAL,	DrvJoy2 + 6, 	"p2 fire 1"	},
+
+	{"Reset",		  BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Service Mode",  BIT_DIGITAL,	DrvJoy1 + 7,	"diag"		},
+
+	{"Dip Switches 1",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"	},
+	{"Dip Switches 2",	BIT_DIPSWITCH,	DrvDips + 0,	"dip"	},
+	{"Dip Switches 3",	BIT_DIPSWITCH,	DrvDips + 1,	"dip"	},
+	{"Dip Switches 4",	BIT_DIPSWITCH,	DrvDips + 3,	"dip"	},
+};
+
+STDINPUTINFO(Alienres)
 
 static struct BurnInputInfo lizwizInputList[] = {
 	{"Coin 1",		  BIT_DIGITAL,	DrvJoy1 + 5,	"p1 coin"},
@@ -117,7 +141,7 @@ static struct BurnInputInfo lizwizInputList[] = {
 	{"Service Mode",	  BIT_DIGITAL,	DrvJoy1 + 4,	"diag"},
 	{"Tilt",	 	 BIT_DIGITAL,	DrvJoy1 + 6,	"tilt"},
 
-	{"Dip Switches 1 ",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"},
+	{"Dip Switches 1",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"},
 	{"Dip Switches 2",	BIT_DIPSWITCH,	DrvDips + 0,	"dip"},
 	{"Dip Switches 3",	BIT_DIPSWITCH,	DrvDips + 1,	"dip"},
 	{"Dip Switches 4",	BIT_DIPSWITCH,	DrvDips + 3,	"dip"},
@@ -218,8 +242,8 @@ static struct BurnInputInfo theglobpInputList[] = {
 	{"P2 Left",		  BIT_DIGITAL,	DrvJoy2 + 1, "p2 left"},
 	{"P2 Right",	  	  BIT_DIGITAL,	DrvJoy2 + 2, "p2 right"},
 	{"P2 Down",		  BIT_DIGITAL,	DrvJoy2 + 3, "p2 down"},
-	{"P1 Button 1",		  BIT_DIGITAL,	DrvJoy2 + 4, "p2 fire 1"},
-	{"P1 Button 2",		  BIT_DIGITAL,	DrvJoy1 + 7, "p2 fire 2"},
+	{"P2 Button 1",		  BIT_DIGITAL,	DrvJoy2 + 4, "p2 fire 1"},
+	{"P2 Button 2",		  BIT_DIGITAL,	DrvJoy1 + 7, "p2 fire 2"},
 
 	{"Reset",		  BIT_DIGITAL,	&DrvReset,	"reset"},
 	{"Service Mode",	  BIT_DIGITAL,	DrvJoy1 + 7,	"diag"},
@@ -230,6 +254,29 @@ static struct BurnInputInfo theglobpInputList[] = {
 };
 
 STDINPUTINFO(theglobp)
+
+static struct BurnInputInfo EeekkInputList[] = {
+	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 coin"	},
+	{"P1 Start",		BIT_DIGITAL,	DrvJoy2 + 5,	"p1 start"	},
+	{"P1 Up",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 up"		},
+	{"P1 Down",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 down"	},
+	{"P1 Left",		BIT_DIGITAL,	DrvJoy1 + 1,	"p1 left"	},
+	{"P1 Right",		BIT_DIGITAL,	DrvJoy1 + 2,	"p1 right"	},
+	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 6,	"p1 fire 1"	},
+
+	{"P2 Up",		BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"		},
+	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 3,	"p2 down"	},
+	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 1,	"p2 left"	},
+	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 2,	"p2 right"	},
+	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy1 + 7,	"p2 fire 1"	},
+
+	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
+	{"Dip Switches 1",	BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip Switches 2",	BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip Switches 3",	BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
+};
+
+STDINPUTINFO(Eeekk)
 
 static struct BurnInputInfo ponpokoInputList[] = {
 	{"Coin 1",		  BIT_DIGITAL,	DrvJoy1 + 5, "p1 coin"},
@@ -644,6 +691,51 @@ static struct BurnDIPInfo DrvDIPList[]=
 };
 
 STDDIPINFO(Drv)
+
+static struct BurnDIPInfo PacmanpeDIPList[]=
+{
+	{0x0e, 0xff, 0xff, 0xc8, NULL                     },
+	{0x0f, 0xff, 0xff, 0xff, NULL                     },
+	{0x10, 0xff, 0xff, 0xff, NULL                     },
+
+	{0   , 0xfe, 0   , 4   , "Coinage"                },
+	{0x0e, 0x01, 0x03, 0x03, "2C 1C, 1C 1C"    		  },
+	{0x0e, 0x01, 0x03, 0x01, "1C 2C, 1C 3C"    		  },
+	{0x0e, 0x01, 0x03, 0x02, "1C 1C, 1C 3C"    		  },
+	{0x0e, 0x01, 0x03, 0x00, "1C 1C, 1C 2C"     	  },
+
+	{0   , 0xfe, 0   , 2   , "Lives"                  },
+	{0x0e, 0x01, 0x04, 0x00, "2"     		  },
+	{0x0e, 0x01, 0x04, 0x04, "3"    		  },
+	
+	{0   , 0xfe, 0   , 2   , "Unknown"                },
+	{0x0e, 0x01, 0x08, 0x00, "Off"     		  },
+	{0x0e, 0x01, 0x08, 0x08, "On"    		  },
+	
+	{0   , 0xfe, 0   , 4   , "Bonus Life"             },
+	{0x0e, 0x01, 0x30, 0x00, "10000"     		  },
+	{0x0e, 0x01, 0x30, 0x10, "15000"    		  },
+	{0x0e, 0x01, 0x30, 0x20, "20000"     		  },
+	{0x0e, 0x01, 0x30, 0x30, "None"     		  },
+
+	{0   , 0xfe, 0   , 2   , "Difficulty"             },
+	{0x0e, 0x01, 0x40, 0x40, "Normal"      		  },
+	{0x0e, 0x01, 0x40, 0x00, "Hard"       		  },
+
+	{0   , 0xfe, 0   , 2   , "Ghost Names"            },
+	{0x0e, 0x01, 0x80, 0x80, "Normal"     		  },
+	{0x0e, 0x01, 0x80, 0x00, "Alternate"   		  },
+
+	{0   , 0xfe, 0   , 2   , "Rack Test (Cheat)"      },
+	{0x0f, 0x01, 0x10, 0x10, "Off"     		  },
+	{0x0f, 0x01, 0x10, 0x00, "On"    		  },
+
+	{0   , 0xfe, 0   , 2   , "Cabinet"	          },
+	{0x10, 0x01, 0x80, 0x80, "Upright"     		  },
+	{0x10, 0x01, 0x80, 0x00, "Cocktail"    		  },
+};
+
+STDDIPINFO(Pacmanpe)
 
 static struct BurnDIPInfo PacumanDIPList[]=
 {
@@ -1222,10 +1314,10 @@ static struct BurnDIPInfo woodpekDIPList[]=
 	{0x11, 0x01, 0x03, 0x00, "Free Play"     	  },
 
 	{0   , 0xfe, 0   , 4   , "Lives"                  },
-	{0x11, 0x01, 0x0c, 0x00, "3"     		  },
-	{0x11, 0x01, 0x0c, 0x04, "4"    		  },
-	{0x11, 0x01, 0x0c, 0x08, "5"     		  },
-	{0x11, 0x01, 0x0c, 0x0c, "6"     		  },
+	{0x11, 0x01, 0x0c, 0x00, "1"     		  },
+	{0x11, 0x01, 0x0c, 0x04, "2"    		  },
+	{0x11, 0x01, 0x0c, 0x08, "3"     		  },
+	{0x11, 0x01, 0x0c, 0x0c, "5"     		  },
 
 	{0   , 0xfe, 0   , 4   , "Bonus Life"             },
 	{0x11, 0x01, 0x30, 0x00, "5000"     		  },
@@ -1297,7 +1389,7 @@ static struct BurnDIPInfo vanvanDIPList[]=
 	{0x0f, 0x01, 0x30, 0x10, "3"     		  },
 	{0x0f, 0x01, 0x30, 0x00, "5"     		  },
 
-	{0   , 0xfe, 0   , 2   , "Coinage"                },
+	{0   , 0xfe, 0   , 4   , "Coinage"                },
 	{0x0f, 0x01, 0xc0, 0x00, "2c_1c"      		  },
 	{0x0f, 0x01, 0xc0, 0xc0, "1C_1C"       		  },
 	{0x0f, 0x01, 0xc0, 0x80, "1c_2C"      		  },
@@ -1356,11 +1448,11 @@ static struct BurnDIPInfo jumpshotDIPList[]=
 	{0x10, 0x01, 0x03, 0x03, "3 Minutes"    	  },
 	{0x10, 0x01, 0x03, 0x01, "4 Minutes"     	  },
 
-	{0   , 0xfe, 0   , 4   , "Player Skin Tone"       },
+	{0   , 0xfe, 0   , 2   , "Player Skin Tone"       },
 	{0x10, 0x01, 0x04, 0x04, "Lighter"     		  },
 	{0x10, 0x01, 0x04, 0x00, "Darker"    		  },
 
-	{0   , 0xfe, 0   , 4   , "Player Skin Tone"       },
+	{0   , 0xfe, 0   , 2   , "Player Skin Tone"       },
 	{0x10, 0x01, 0x08, 0x08, "Lighter"     		  },
 	{0x10, 0x01, 0x08, 0x00, "Darker"    		  },
 
@@ -1386,11 +1478,11 @@ static struct BurnDIPInfo jumpshtpDIPList[]=
 	{0x10, 0x01, 0x03, 0x03, "Average"    	 	  },
 	{0x10, 0x01, 0x03, 0x01, "Above Average"     	  },
 
-	{0   , 0xfe, 0   , 4   , "Player Skin Tone"       },
+	{0   , 0xfe, 0   , 2   , "Player Skin Tone"       },
 	{0x10, 0x01, 0x04, 0x04, "Lighter"     		  },
 	{0x10, 0x01, 0x04, 0x00, "Darker"    		  },
 
-	{0   , 0xfe, 0   , 4   , "Player Skin Tone"       },
+	{0   , 0xfe, 0   , 2   , "Player Skin Tone"       },
 	{0x10, 0x01, 0x08, 0x08, "Lighter"     		  },
 	{0x10, 0x01, 0x08, 0x00, "Darker"    		  },
 
@@ -1618,6 +1710,39 @@ static struct BurnDIPInfo shootbulDIPList[]=
 
 STDDIPINFO(shootbul)
 
+static struct BurnDIPInfo EeekkDIPList[]=
+{
+	{0x0d, 0xff, 0xff, 0xff, NULL			},
+	{0x0e, 0xff, 0xff, 0xff, NULL			},
+	{0x0f, 0xff, 0xff, 0x53, NULL			},
+
+	{0   , 0xfe, 0   ,    2, "Cabinet"		},
+	{0x0e, 0x01, 0x80, 0x80, "Upright"		},
+	{0x0e, 0x01, 0x80, 0x00, "Cocktail"		},
+
+	{0   , 0xfe, 0   ,    4, "Lives"		},
+	{0x0f, 0x01, 0x03, 0x03, "3"			},
+	{0x0f, 0x01, 0x03, 0x02, "4"			},
+	{0x0f, 0x01, 0x03, 0x01, "5"			},
+	{0x0f, 0x01, 0x03, 0x00, "6"			},
+
+	{0   , 0xfe, 0   ,    8, "Difficulty"		},
+	{0x0f, 0x01, 0x1c, 0x00, "8 (Hard)"			},
+	{0x0f, 0x01, 0x1c, 0x04, "7"			},
+	{0x0f, 0x01, 0x1c, 0x08, "6"			},
+	{0x0f, 0x01, 0x1c, 0x0c, "5"			},
+	{0x0f, 0x01, 0x1c, 0x10, "4"			},
+	{0x0f, 0x01, 0x1c, 0x14, "3"			},
+	{0x0f, 0x01, 0x1c, 0x18, "2"			},
+	{0x0f, 0x01, 0x1c, 0x1c, "1 (Easy)"			},
+
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
+	{0x0f, 0x01, 0x20, 0x00, "On"			},
+	{0x0f, 0x01, 0x20, 0x20, "Off"			},
+};
+
+STDDIPINFO(Eeekk)
+
 //------------------------------------------------------------------------------------------------------
 
 static void mschamp_set_bank()
@@ -1667,9 +1792,7 @@ static UINT8 epos_hardware_decrypt_rom(UINT16 offset)
 {
 	if (offset & 0x01)
 	{
-		epos_hardware_counter = epos_hardware_counter - 1;
-		if (epos_hardware_counter < 0)
-			epos_hardware_counter = 0x0f;
+		epos_hardware_counter = (epos_hardware_counter - 1) & 0x0f;
 	}
 	else
 	{
@@ -1792,7 +1915,7 @@ void __fastcall pacman_write(UINT16 a, UINT8 d)
 		case ALIBABA:
 		{
 			if (a == 0x50c2) {
-				ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+				ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 				interrupt_mask = d;
 				return;
 			}
@@ -1836,11 +1959,9 @@ void __fastcall pacman_write(UINT16 a, UINT8 d)
 		case VANVAN:
 		{
 			if (a == 0x5001) {
-				for (INT32 i = 0; i < 0x100; i++) {
-					if (DrvColPROM[0x100 + i] == 0) {
-						Palette[i] = (d & 1) ? BurnHighCol(0xaa, 0xaa, 0xaa, 0) : 0;
-					}
-				}
+				//Palette[0] = (d & 1) ? BurnHighCol(0xaa, 0xaa, 0xaa, 0) : 0;
+				//bprintf(0, _T("vanvan bgcolor data %x.\n"), d);
+				// This isn't supposed to be here.
 				return;
 			}
 		}
@@ -1958,7 +2079,7 @@ void __fastcall pacman_out_port(UINT16 a, UINT8 d)
 	{
 		interrupt_mode = d;
 		ZetSetVector(d);
-		ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 	}
 }
 
@@ -2130,6 +2251,7 @@ static INT32 DrvDoReset(INT32 clear_ram)
 	{
 		case EPOS:
 			epos_hardware_counter = 0x0A + acitya;
+			if (strcmp(BurnDrvGetTextA(DRV_NAME), "eeekk") == 0) epos_hardware_counter = 0x09;
 			epos_hardware_set_bank(epos_hardware_counter);
 		break;
 
@@ -2142,6 +2264,10 @@ static INT32 DrvDoReset(INT32 clear_ram)
 
 	AY8910Reset(0);
 
+	NamcoSoundReset();
+
+	HiscoreReset();
+
 	mschamp_counter = 0;
 	cannonb_bit_to_read = 0;
 	alibaba_mystery = 0;
@@ -2152,7 +2278,7 @@ static INT32 DrvDoReset(INT32 clear_ram)
 	palettebank = 0;
 	spritebank = 0;	
 	charbank = 0;
-	
+
 	return 0;
 }
 
@@ -2316,10 +2442,6 @@ static INT32 MemIndex()
 	flipscreen		= Next; Next += 0x000001;
 
 	RamEnd			= Next;
-
-	pAY8910Buffer[0] = (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[1] = (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
-	pAY8910Buffer[2] = (INT16*)Next; Next += nBurnSoundLen * sizeof(INT16);
 
 	MemEnd			= Next;
 
@@ -2533,17 +2655,20 @@ static INT32 DrvInit(void (*mapCallback)(), void (*pInitCallback)(), INT32 selec
 	mapCallback();	
 	ZetClose();
 
-	AY8910Init(0, 1789750, nBurnSoundRate, NULL, NULL, NULL, NULL);
+	AY8910Init(0, 1789750, 0);
 	AY8910SetAllRoutes(0, 0.75, BURN_SND_ROUTE_BOTH);
 	if (game_select == DREMSHPR) AY8910SetAllRoutes(0, 0.50, BURN_SND_ROUTE_BOTH);
+	AY8910SetBuffered(ZetTotalCycles, 3072000);
 
 	SN76496Init(0, 1789750, 0);
 	SN76496Init(1, 1789750, 1);	
 	SN76496SetRoute(0, 0.75, BURN_SND_ROUTE_BOTH);
 	SN76496SetRoute(1, 0.75, BURN_SND_ROUTE_BOTH);
+	SN76496SetBuffered(ZetTotalCycles, 3072000);
 
-	NamcoSoundInit(18432000 / 6 / 32, 3);
-	NacmoSoundSetAllRoutes(1.00, BURN_SND_ROUTE_BOTH);
+	NamcoSoundInit(3072000 / 32, 3, 0);
+	NamcoSoundSetAllRoutes(1.00, BURN_SND_ROUTE_BOTH);
+	NamcoSoundSetBuffered(ZetTotalCycles, 3072000);
 
 	GenericTilesInit();
 
@@ -2584,6 +2709,9 @@ static void DrawBackground()
 
 		INT32 ofst;
 
+		if (game_select == VANVAN)
+			sx -= 2;
+
 		if (col & 0x20)
 			ofst = row + ((col & 0x1f) << 5);
 		else
@@ -2611,6 +2739,9 @@ static void DrawSprites()
 		INT32 sy     = DrvSprRAM2[offs];
 		INT32 flipx  = DrvSprRAM [offs] & 1;
 		INT32 flipy  = DrvSprRAM [offs] & 2;
+
+		if (game_select == VANVAN)
+			sx += 2*8;
 		
 		if (*flipscreen) {
 			sy = (240 - sy) - 8;
@@ -2645,13 +2776,14 @@ static INT32 DrvFrame()
 {
 	watchdog++;
 	if (watchdog >= 16) {
-		bprintf (0, _T("watchdog triggered\n"));
 		DrvDoReset(0);
 	}
 
 	if (DrvReset) {
 		DrvDoReset(1);
 	}
+
+	ZetNewFrame();
 
 	{
 		memset (DrvInputs, 0, 2);
@@ -2661,11 +2793,10 @@ static INT32 DrvFrame()
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
 		}
 
-		if (!acitya && game_select != SHOOTBUL) {
-			if ((DrvInputs[0] & 6) == 6) DrvInputs[0] &= ~0x06;
-			if ((DrvInputs[0] & 9) == 9) DrvInputs[0] &= ~0x09;
-			if ((DrvInputs[1] & 6) == 6) DrvInputs[1] &= ~0x06;
-			if ((DrvInputs[1] & 9) == 9) DrvInputs[1] &= ~0x09;
+		if (!acitya && game_select != SHOOTBUL && game_select != JUMPSHOT) {
+			// Convert to 4-way & clear opposites for Puckman / Pac-man
+			ProcessJoystick(&DrvInputs[0], 0, 0,3,1,2, INPUT_4WAY | INPUT_CLEAROPPOSITES);
+			ProcessJoystick(&DrvInputs[1], 1, 0,3,1,2, INPUT_4WAY | INPUT_CLEAROPPOSITES);
 		}
 
 		DrvInputs[0] ^= DrvDips[0];
@@ -2684,72 +2815,39 @@ static INT32 DrvFrame()
 	}
 
 	ZetOpen(0);
-	
-	INT32 nInterleave = nBurnSoundLen;
-	INT32 nSoundBufferPos = 0;
-	
-	INT32 nCyclesTotal = (18432000 / 6) / 60;
-	INT32 nCyclesDone = 0;
-	INT32 nCyclesSegment;
-	
+
+	INT32 nInterleave = 264;
+	INT32 nCyclesTotal[1] = { 3072000 / 60 };
+	INT32 nCyclesDone[1] = { 0 };
+
 	for (INT32 i = 0; i < nInterleave; i++) {
-		INT32 nNext;
-		
-		nNext = (i + 1) * nCyclesTotal / nInterleave;
-		nCyclesSegment = nNext - nCyclesDone;
-		nCyclesDone += ZetRun(nCyclesSegment);
-		
+		CPU_RUN(0, Zet);
+
 		if (game_select == BIGBUCKS) {
-			INT32 nInterleaveIRQFire = nBurnSoundLen / 20;
+			INT32 nInterleaveIRQFire = nInterleave / 20;
 			for (INT32 j = 0; j < 20; j++) {
-				if (i == (nInterleaveIRQFire * j) - 1) ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
+				if (i == (nInterleaveIRQFire * j) - 1) ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
 			}
 		} else {
 			if (game_select == DREMSHPR || game_select == VANVAN) {
 				if (i == (nInterleave - 1)) ZetNmi();
 			} else {
-				if (i == (nInterleave - 1) && interrupt_mask) {
+				if (i == 223 && interrupt_mask) {
 					ZetSetVector(interrupt_mode);
-					ZetSetIRQLine(0, ZET_IRQSTATUS_AUTO);
+					ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
 				}
 			}
-		}
-		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			
-			if (nSegmentLength) {
-				if (game_select == DREMSHPR || game_select == CRUSHS) {
-					AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-				} else {
-					if (game_select == VANVAN) {
-						SN76496Update(0, pSoundBuf, nSegmentLength);
-						SN76496Update(1, pSoundBuf, nSegmentLength);
-					} else {
-						NamcoSoundUpdate(pSoundBuf, nSegmentLength);
-					}
-				}
-			}
-			nSoundBufferPos += nSegmentLength;
 		}
 	}
-	
-	if (pBurnSoundOut) {
-		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 
-		if (nSegmentLength) {
-			if (game_select == DREMSHPR || game_select == CRUSHS) {
-				AY8910Render(&pAY8910Buffer[0], pSoundBuf, nSegmentLength, 0);
-			} else {
-				if (game_select == VANVAN) {
-					SN76496Update(0, pSoundBuf, nSegmentLength);
-					SN76496Update(1, pSoundBuf, nSegmentLength);
-				} else {
-					NamcoSoundUpdate(pSoundBuf, nSegmentLength);
-				}
-			}
+	if (pBurnSoundOut) {
+		if (!(game_select == DREMSHPR || game_select == CRUSHS || game_select == VANVAN)) {
+			NamcoSoundUpdate(pBurnSoundOut, nBurnSoundLen);
+		}
+		if (game_select == DREMSHPR || game_select == CRUSHS) {
+			AY8910Render(pBurnSoundOut, nBurnSoundLen);
+		} else if (game_select == VANVAN) {
+			SN76496Update(pBurnSoundOut, nBurnSoundLen);
 		}
 	}
 
@@ -2764,7 +2862,7 @@ static INT32 DrvFrame()
 
 //------------------------------------------------------------------------------------------------------
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -2772,7 +2870,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		*pnMin = 0x029693;
 	}
 
-	if (nAction & ACB_VOLATILE) {	
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 		ba.Data	  = AllRam;
 		ba.nLen	  = RamEnd - AllRam;
@@ -2802,6 +2900,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	}
 
 	if (nAction & ACB_WRITE) {
+		ZetOpen(0);
 		if (game_select == MSCHAMP) {
 			mschamp_set_bank();
 		}
@@ -2809,6 +2908,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		if (game_select == EPOS) {
 			epos_hardware_set_bank(nPacBank);
 		}
+		ZetClose();
 	}
 
 	return 0;
@@ -2854,8 +2954,8 @@ struct BurnDriver BurnDrvpuckman = {
 	"puckman", NULL, NULL, NULL, "1980",
 	"Puck Man (Japan set 1)\0", NULL, "Namco", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, puckmanRomInfo, puckmanRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, puckmanRomInfo, puckmanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -2886,8 +2986,8 @@ struct BurnDriver BurnDrvpuckmanb = {
 	"puckmanb", "puckman", NULL, NULL, "1980",
 	"Puck Man (Bootleg set 1)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, puckmanbRomInfo, puckmanbRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, puckmanbRomInfo, puckmanbRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -2918,8 +3018,8 @@ struct BurnDriver BurnDrvpuckmanf = {
 	"puckmanf", "puckman", NULL, NULL, "1980",
 	"PuckMan (speedup hack)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, puckmanfRomInfo, puckmanfRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, puckmanfRomInfo, puckmanfRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -2952,8 +3052,8 @@ struct BurnDriver BurnDrvpuckmanh = {
 	"puckmanh", "puckman", NULL, NULL, "1981",
 	"Puck Man (bootleg set 2)\0", NULL, "bootleg (Falcom?)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, puckmanhRomInfo, puckmanhRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, puckmanhRomInfo, puckmanhRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -2984,8 +3084,8 @@ struct BurnDriver BurnDrvpuckmod = {
 	"puckmod", "puckman", NULL, NULL, "1981",
 	"Puck Man (Japan set 2)\0", NULL, "Namco", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, puckmodRomInfo, puckmodRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, puckmodRomInfo, puckmodRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3014,10 +3114,125 @@ STD_ROM_FN(pacman)
 
 struct BurnDriver BurnDrvpacman = {
 	"pacman", "puckman", NULL, NULL, "1980",
-	"Pac-Man (Midway)\0", NULL, "[Namco] (Midway license)", "Pac-man",
+	"Pac-Man (Midway)\0", NULL, "Namco (Midway license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacmanRomInfo, pacmanRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanRomInfo, pacmanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Pac-Man (SegaSA / Sonic)
+
+static struct BurnRomInfo pacmansoRomDesc[] = {
+	{ "pm-1r.6e",     0x0800, 0x76dbed21, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "pm-5r.6k",     0x0800, 0x965bb9b2, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pm-2r.6f",     0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pm-6r.6m",     0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "pm-3r.6h",     0x0800, 0xa5af382c, 1 | BRF_ESS | BRF_PRG },	//  4 
+	{ "pm-7r.6n",     0x0800, 0xa948ce83, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "pm-4r.6j",     0x0800, 0xcd03135a, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "pm-8r.6p",     0x0800, 0xfb397ced, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "pm-9s.5e",     0x0800, 0x2ee076d2, 2 | BRF_GRA },			//  8 Graphics
+	{ "pm-11s.5h",    0x0800, 0x3591b89d, 2 | BRF_GRA },			//  9
+	{ "pm-10s.5f",    0x0800, 0x9e39323a, 2 | BRF_GRA },			// 10
+	{ "pm-12s.5j",    0x0800, 0x1b1d9096, 2 | BRF_GRA },			// 11
+
+	{ "pm1-1.7f",     0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
+	{ "pm1-4.4a",     0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 13
+
+	{ "pm1-3.1m",     0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 14 Sound Prom
+	{ "pm1-2.3m",     0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(pacmanso)
+STD_ROM_FN(pacmanso)
+
+struct BurnDriver BurnDrvpacmanso = {
+	"pacmanso", "puckman", NULL, NULL, "1980",
+	"Pac-Man (SegaSA / Sonic)\0", NULL, "Namco (Sonic license)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmansoRomInfo, pacmansoRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Pac-Man (bootleg, Video Game SA)
+// very similar to the pacmanso set, it has an accelerator feature
+
+static struct BurnRomInfo pacmanvgRomDesc[] = {
+	{ "pm-1r.6e",     0x0800, 0x76dbed21, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "pm-5r.6k",     0x0800, 0x965bb9b2, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pm-2r.6f",     0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pm-6r.6m",     0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "pm-3r.6h",     0x0800, 0xa5af382c, 1 | BRF_ESS | BRF_PRG },	//  4 
+	{ "pm-7r.6n",     0x0800, 0xa948ce83, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "pm-4r.6j",     0x0800, 0x7c42d9be, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "pm-8r.6p",     0x0800, 0x68a7300d, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "pm-9s.5e",     0x0800, 0x2229ab07, 2 | BRF_GRA },			//  8 Graphics
+	{ "pm-11s.5h",    0x0800, 0x3591b89d, 2 | BRF_GRA },			//  9
+	{ "pm-10s.5f",    0x0800, 0x9e39323a, 2 | BRF_GRA },			// 10
+	{ "pm-12s.5j",    0x0800, 0x1b1d9096, 2 | BRF_GRA },			// 11
+
+	{ "pm1-1.7f",     0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
+	{ "pm1-4.4a",     0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 13
+
+	{ "pm1-3.1m",     0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 14 Sound Prom
+	{ "pm1-2.3m",     0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(pacmanvg)
+STD_ROM_FN(pacmanvg)
+
+struct BurnDriver BurnDrvpacmanvg = {
+	"pacmanvg", "puckman", NULL, NULL, "1980",
+	"Pac-Man (bootleg, Video Game SA)\0", NULL, "bootleg (Video Game SA)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanvgRomInfo, pacmanvgRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Come Come (Petaco SA bootleg of Puck Man)
+
+static struct BurnRomInfo pacmanpeRomDesc[] = {
+	{ "come1.6e",     0x0800, 0x183d235a, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "come5.6k", 	  0x0800, 0x2771c530, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "come2.6f",     0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "come6.6m", 	  0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "come3.6h", 	  0x0800, 0xcc92abb1, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "come7.6n", 	  0x0800, 0x8810b38e, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "come4.6j", 	  0x0800, 0xa02ce07f, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "come8.6p", 	  0x0800, 0x34e9566d, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "come9.5e",     0x0800, 0x2229ab07, 2 | BRF_GRA },			//  8 Graphics
+	{ "come11.5h",    0x0800, 0x3591b89d, 2 | BRF_GRA },			//  9
+	{ "come10.5f",    0x0800, 0x9e39323a, 2 | BRF_GRA },			// 10
+	{ "come12.5j",    0x0800, 0x1b1d9096, 2 | BRF_GRA },			// 11
+
+	{ "pm1-1.7f",     0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
+	{ "pm1-4.4a",     0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 13
+
+	{ "pm1-3.1m",     0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 14 Sound Prom
+	{ "pm1-2.3m",     0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(pacmanpe)
+STD_ROM_FN(pacmanpe)
+
+struct BurnDriver BurnDrvpacmanpe = {
+	"pacmanpe", "puckman", NULL, NULL, "1980",
+	"Come Come (Petaco SA bootleg of Puck Man)\0", NULL, "bootleg (Petaco SA)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanpeRomInfo, pacmanpeRomName, NULL, NULL, NULL, NULL, DrvInputInfo, PacmanpeDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3046,10 +3261,42 @@ STD_ROM_FN(pacmanf)
 
 struct BurnDriver BurnDrvpacmanf = {
 	"pacmanf", "puckman", NULL, NULL, "1980",
-	"Pac-Man (Midway, with speedup hack)\0", NULL, "[Namco] (Midway license)", "Pac-man",
+	"Pac-Man (Midway, with speedup hack)\0", NULL, "Namco (Midway license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacmanfRomInfo, pacmanfRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanfRomInfo, pacmanfRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Packetman (bootleg)
+
+static struct BurnRomInfo packetmanRomDesc[] = {
+	{ "6e_4.6e",      0x1000, 0x5fe8610a, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "6f_4.6f",      0x1000, 0x61d38c6c, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "6h_4.6h",      0x1000, 0x4e7ef99f, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "6j_4b.6j",     0x1000, 0x2693f8ac, 1 | BRF_ESS | BRF_PRG },	//  3
+
+	{ "pacman.5e",    0x1000, 0x0c944964, 2 | BRF_GRA },		//  4 Graphics
+	{ "pacman.5f",    0x1000, 0x958fedf9, 2 | BRF_GRA },		//  5
+
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },		//  6 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },		//  7
+
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },		//  8 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  9 Timing Prom (not used)
+};
+
+STD_ROM_PICK(packetman)
+STD_ROM_FN(packetman)
+
+struct BurnDriver BurnDrvpacketman = {
+	"packetman", "puckman", NULL, NULL, "1980",
+	"Packetman (bootleg)\0", NULL, "bootleg", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, packetmanRomInfo, packetmanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3080,8 +3327,8 @@ struct BurnDriver BurnDrvhangly = {
 	"hangly", "puckman", NULL, NULL, "1981",
 	"Hangly-Man (set 1)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, hanglyRomInfo, hanglyRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, hanglyRomInfo, hanglyRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3114,8 +3361,8 @@ struct BurnDriver BurnDrvhangly2 = {
 	"hangly2", "puckman", NULL, NULL, "1981",
 	"Hangly-Man (set 2)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, hangly2RomInfo, hangly2RomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, hangly2RomInfo, hangly2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3125,7 +3372,7 @@ struct BurnDriver BurnDrvhangly2 = {
 
 static struct BurnRomInfo hangly3RomDesc[] = {
 	{ "hm1.6e",       0x0800, 0x9d027c4a, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "hm5.6k",	  0x0800, 0x194c7189, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "hm5.6k",	  	  0x0800, 0x194c7189, 1 | BRF_ESS | BRF_PRG },	//  1
 	{ "hangly2.6f",   0x0800, 0x5ba228bb, 1 | BRF_ESS | BRF_PRG },	//  2
 	{ "hangly2.6m",   0x0800, 0xbaf5461e, 1 | BRF_ESS | BRF_PRG },	//  3
 	{ "hm3.6h",       0x0800, 0x08419c4a, 1 | BRF_ESS | BRF_PRG },	//  4
@@ -3152,8 +3399,8 @@ struct BurnDriver BurnDrvhangly3 = {
 	"hangly3", "puckman", NULL, NULL, "1981",
 	"Hangly-Man (set 3)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, hangly3RomInfo, hangly3RomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, hangly3RomInfo, hangly3RomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3190,8 +3437,8 @@ struct BurnDriver BurnDrvpopeyeman = {
 	"popeyeman", "puckman", NULL, NULL, "1981",
 	"Popeye-Man\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HACK, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, popeyemanRomInfo, popeyemanRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HACK, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, popeyemanRomInfo, popeyemanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3228,8 +3475,8 @@ struct BurnDriver BurnDrvpacuman = {
 	"pacuman", "puckman", NULL, NULL, "1980",
 	"Pacu-Man (Spanish bootleg of Puck Man)\0", NULL, "bootleg (Recreativos Franco S.A.)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacumanRomInfo, pacumanRomName, NULL, NULL, DrvInputInfo, PacumanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacumanRomInfo, pacumanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, PacumanDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3266,8 +3513,50 @@ struct BurnDriver BurnDrvcrockman = {
 	"crockman", "puckman", NULL, NULL, "1980",
 	"Crock-Man (bootleg, Rene-Pierre)\0", NULL, "bootleg (Rene-Pierre)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crockmanRomInfo, crockmanRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crockmanRomInfo, crockmanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Crock-Man (Marti Colls bootleg of Rene Pierre Crock-Man)
+/* Bootleg from Marti Colls (Falgas) of Crock-Man.
+   It's mainly a hack to remove Rene Pierre logo, but it was on an original Marti Colls bootleg hardware */
+
+static struct BurnRomInfo crockmnfRomDesc[] = {
+	{ "crockmc_01.bin",  	0x0800, 0x2c0fa0ab, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "crockmc_05.bin",	   	0x0800, 0xafeca2f1, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "crockmc_02.bin",     0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "crockmc_06.bin",     0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "crockmc_03.bin",     0x0800, 0x9045a44c, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "crockmc_07.bin",     0x0800, 0x93f344c5, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "crockmc_04.bin",     0x0800, 0xbed4a077, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "crockmc_08.bin",     0x0800, 0x800be41e, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "crockmc_09.bin", 	0x0800, 0x581d0c11, 2 | BRF_GRA },			//  8 Graphics
+	{ "crockmc_11.bin",     0x0800, 0x3591b89d, 2 | BRF_GRA },			//  9
+	{ "crockmc_10.bin", 	0x0800, 0x9e39323a, 2 | BRF_GRA },			// 10
+	{ "crockmc_12.bin", 	0x0800, 0x1b1d9096, 2 | BRF_GRA },			// 11
+
+	/* Undumped on the Marti Colls PCB, taken from the parent set */
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 13
+
+	/* Undumped on the Marti Colls PCB, taken from the parent set */
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 14 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(crockmnf)
+STD_ROM_FN(crockmnf)
+
+struct BurnDriver BurnDrvcrockmnf = {
+	"crockmnf", "puckman", NULL, NULL, "1980",
+	"Crock-Man (Marti Colls bootleg of Rene Pierre Crock-Man)\0", NULL, "bootleg (Marti Colls)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crockmnfRomInfo, crockmnfRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3298,8 +3587,8 @@ struct BurnDriver BurnDrvpacmod = {
 	"pacmod", "puckman", NULL, NULL, "1981",
 	"Pac-Man (Midway, harder)\0", NULL, "[Namco] (Midway license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacmodRomInfo, pacmodRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmodRomInfo, pacmodRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3330,8 +3619,8 @@ struct BurnDriver BurnDrvnewpuckx = {
 	"newpuckx", "puckman", NULL, NULL, "1980",
 	"New Puck-X\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, newpuckxRomInfo, newpuckxRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, newpuckxRomInfo, newpuckxRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3368,8 +3657,8 @@ struct BurnDriver BurnDrvpacheart = {
 	"pacheart", "puckman", NULL, NULL, "1981",
 	"Pac-Man (Hearts)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacheartRomInfo, pacheartRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacheartRomInfo, pacheartRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3406,8 +3695,8 @@ struct BurnDriver BurnDrvjoyman = {
 	"joyman", "puckman", NULL, NULL, "1982",
 	"Joyman\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, joymanRomInfo, joymanRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, joymanRomInfo, joymanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3444,8 +3733,8 @@ struct BurnDriver BurnDrvbucaner = {
 	"bucaner", "puckman", NULL, NULL, "19??",
 	"Buccaneer\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, bucanerRomInfo, bucanerRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, bucanerRomInfo, bucanerRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3482,8 +3771,8 @@ struct BurnDriver BurnDrvctrpllrp = {
 	"ctrpllrp", "puckman", NULL, NULL, "1982",
 	"Caterpillar Pacman Hack\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, ctrpllrpRomInfo, ctrpllrpRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, ctrpllrpRomInfo, ctrpllrpRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3529,10 +3818,10 @@ static INT32 pacmanspInit()
 
 struct BurnDriver BurnDrvpacmansp = {
 	"pacmansp", "puckman", NULL, NULL, "198?",
-	"Puck Man (Spanish, 'Made in Greece' bootleg)\0", NULL, "hack", "Pac-man",
+	"Puck Man (Spanish, 'Made in Greece' bootleg)\0", NULL, "bootleg (Video Game SA)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacmanspRomInfo, pacmanspRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanspRomInfo, pacmanspRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	pacmanspInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3603,8 +3892,8 @@ struct BurnDriver BurnDrvpacplus = {
 	"pacplus", NULL, NULL, NULL, "1982",
 	"Pac-Man Plus\0", NULL, "[Namco] (Midway license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacplusRomInfo, pacplusRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacplusRomInfo, pacplusRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	pacplusInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3641,8 +3930,8 @@ struct BurnDriver BurnDrvnewpuc2 = {
 	"newpuc2", "puckman", NULL, NULL, "1980",
 	"Newpuc2\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, newpuc2RomInfo, newpuc2RomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, newpuc2RomInfo, newpuc2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3679,8 +3968,8 @@ struct BurnDriver BurnDrvnewpuc2b = {
 	"newpuc2b", "puckman", NULL, NULL, "1980",
 	"Newpuc2b\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, newpuc2bRomInfo, newpuc2bRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, newpuc2bRomInfo, newpuc2bRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3763,8 +4052,8 @@ struct BurnDriver BurnDrvmspacman = {
 	"mspacman", NULL, NULL, NULL, "1980",
 	"MS Pacman\0", NULL, "Namco", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmanRomInfo, mspacmanRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanRomInfo, mspacmanRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3798,8 +4087,8 @@ struct BurnDriver BurnDrvmspacmnf = {
 	"mspacmnf", "mspacman", NULL, NULL, "1980",
 	"Ms. Pac-Man (with speedup hack)\0", NULL, "Midway", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmnfRomInfo, mspacmnfRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmnfRomInfo, mspacmnfRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3833,8 +4122,8 @@ struct BurnDriver BurnDrvmspacmat = {
 	"mspacmat", "mspacman", NULL, NULL, "1980",
 	"Ms. Pac Attack\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmatRomInfo, mspacmatRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmatRomInfo, mspacmatRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3851,8 +4140,8 @@ static struct BurnRomInfo msheartbRomDesc[] = {
 	{ "u6",     	  0x1000, 0xa90e7000, 1 | BRF_ESS | BRF_PRG },	//  5
 	{ "u7",           0x1000, 0xc82cd714, 1 | BRF_ESS | BRF_PRG },	//  6
 
-	{ "5e(__msheartb)", 0x1000, 0x5431d4c4, 2 | BRF_GRA },			//  7 Graphics
-	{ "5f(__msheartb)", 0x1000, 0xceb50654, 2 | BRF_GRA },			//  8
+	{ "5e", 		  0x1000, 0x5431d4c4, 2 | BRF_GRA },			//  7 Graphics
+	{ "5f", 		  0x1000, 0xceb50654, 2 | BRF_GRA },			//  8
 
 	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			//  9 Color Prom
 	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 10 
@@ -3868,14 +4157,14 @@ struct BurnDriver BurnDrvmsheartb = {
 	"msheartb", "mspacman", NULL, NULL, "1980",
 	"Ms. Pac-Man Heart Burn\0", NULL, "hack (Two-Bit Score)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, msheartbRomInfo, msheartbRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, msheartbRomInfo, msheartbRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
 
-// MS Pacman (bootleg)
+// MS Pacman (bootleg, set 1)
 
 static struct BurnRomInfo mspacmabRomDesc[] = {
 	{ "boot1",        0x1000, 0xd16b31b7, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
@@ -3905,10 +4194,43 @@ static INT32 mspacmanbInit()
 
 struct BurnDriver BurnDrvmspacmab = {
 	"mspacmab", "mspacman", NULL, NULL, "1981",
-	"MS Pacman (bootleg)\0", NULL, "Namco", "Pac-man",
+	"MS Pacman (bootleg, set 1)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmabRomInfo, mspacmabRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmabRomInfo, mspacmabRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// MS Pacman (bootleg, set 2)
+
+static struct BurnRomInfo mspacmab2RomDesc[] = {
+	{ "2764_a.a",     		0x2000, 0x39ae7b16, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "2764_b.b",     		0x2000, 0x09d86ef8, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "2764_c.c",     		0x2000, 0x9921d46f, 1 | BRF_ESS | BRF_PRG },	//  2
+	
+	{ "2732_e.5e",    		0x1000, 0x5c281d01, 2 | BRF_GRA },				//  3 Graphics
+	{ "2732_f.5f",    		0x1000, 0x615af909, 2 | BRF_GRA },				//  4
+
+	{ "tbp18s030_p1.7f",	0x0020, 0x2fc650bd, 3 | BRF_GRA },				//  5 Color Proms
+	{ "pac.4a",    			0x0100, 0x3eb3a8e4, 3 | BRF_GRA },				//  6
+
+	{ "82s126.1m",    		0x0100, 0xa9cc86bf, 4 | BRF_SND },				//  7 Sound Prom
+	{ "63s141.3m",    		0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  8 Timing Prom (not used)
+	
+	{ "82s153.d",     		0x00eb, 0x0294d8bc, 0 | BRF_OPT },  		    //  9 plds
+};
+
+STD_ROM_PICK(mspacmab2)
+STD_ROM_FN(mspacmab2)
+
+struct BurnDriver BurnDrvmspacmab2 = {
+	"mspacmab2", "mspacman", NULL, NULL, "1981",
+	"MS Pacman (bootleg, set 2)\0", NULL, "bootleg", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmab2RomInfo, mspacmab2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -3959,9 +4281,46 @@ struct BurnDriver BurnDrvmspacmbe = {
 	"mspacmbe", "mspacman", NULL, NULL, "1981",
 	"Ms. Pac-Man (bootleg, encrypted)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmbeRomInfo, mspacmbeRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmbeRomInfo, mspacmbeRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmbeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Ms. Pac-Man (Marti Colls bootleg)
+
+static struct BurnRomInfo mspacmbmcRomDesc[] = {
+	{ "misspacmanfalgas_0.bin",	0x1000, 0xd16b31b7, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "misspacmanfalgas_1.bin", 0x1000, 0x0d32de5e, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "misspacmanfalgas_2.bin", 0x1000, 0x1821ee0b, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "misspacmanfalgas_3.bin", 0x1000, 0xe086219d, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "misspacmanfalgas_4.bin", 0x1000, 0x8c3e6de6, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "misspacmanfalgas_5.bin", 0x1000, 0x206a9623, 1 | BRF_ESS | BRF_PRG },	//  5
+
+	/* Undumped on the Marti Colls PCB, taken from the parent set */
+	{ "5e",           			0x1000, 0x5c281d01, 2 | BRF_GRA },				//  6 Graphics
+	{ "5f",           			0x1000, 0x615af909, 2 | BRF_GRA },				//  7
+
+	/* Undumped on the Marti Colls PCB, taken from the parent set */
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },						//  8 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },						//  9
+
+	/* Undumped on the Marti Colls PCB, taken from the parent set */
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },						// 10 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },				// 11 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmbmc)
+STD_ROM_FN(mspacmbmc)
+
+struct BurnDriver BurnDrvmspacmbmc = {
+	"mspacmbmc", "mspacman", NULL, NULL, "1981",
+	"Ms. Pac-Man (Marti Colls bootleg)\0", NULL, "bootleg (Marti Colls)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmbmcRomInfo, mspacmbmcRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
@@ -3994,8 +4353,8 @@ struct BurnDriver BurnDrvpacgal = {
 	"pacgal", "mspacman", NULL, NULL, "1981",
 	"Pac-Gal\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pacgalRomInfo, pacgalRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacgalRomInfo, pacgalRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4028,14 +4387,48 @@ struct BurnDriver BurnDrvmspacpls = {
 	"mspacpls", "mspacman", NULL, NULL, "1981",
 	"Ms. Pac-Man Plus\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacplsRomInfo, mspacplsRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacplsRomInfo, mspacplsRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
 
-// Ms. Pac-Man ('Made in Greece' bootleg)
+// Otto Project PZ (hack)
+
+static struct BurnRomInfo ottopzRomDesc[] = {
+	{ "ottopz.1",     0x1000, 0x35b94585, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "ottopz.2",     0x1000, 0x298dbd3d, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "ottopz.3",     0x1000, 0x6f0c25bd, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "ottopz.4",     0x1000, 0x3af7ef8c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "ottopz.5",     0x1000, 0x098c2a09, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "ottopz.6",     0x1000, 0x367e5c05, 1 | BRF_ESS | BRF_PRG },	//  5
+
+	{ "ottopz.5e",    0x1000, 0x046d76fb, 2 | BRF_GRA },			//  6 Graphics
+	{ "ottopz.5f",    0x1000, 0x402e194d, 2 | BRF_GRA },			//  7
+
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			//  8 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  9
+
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 10 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 11 Timing Prom (not used)
+};
+
+STD_ROM_PICK(ottopz)
+STD_ROM_FN(ottopz)
+
+struct BurnDriver BurnDrvottopz = {
+	"ottopz", "mspacman", NULL, NULL, "2014",
+	"Otto Project PZ (hack)\0", NULL, "Scott Lawrence", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, ottopzRomInfo, ottopzRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Ms. Pac-Man ('Made in Greece' bootleg, set 1)
 
 static struct BurnRomInfo mspacmanbgRomDesc[] = {
 	{ "9.g5",         0x8000, 0x97c64918, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
@@ -4058,11 +4451,180 @@ static INT32 mspacmanbgInit()
 }
 
 struct BurnDriver BurnDrvmspacmanbg = {
-	"mspacmanbg", "mspacman", NULL, NULL, "1981",
-	"Ms. Pac-Man ('Made in Greece' bootleg)\0", NULL, "bootleg", "Pac-man",
+	"mspacmanbg", "mspacman", NULL, NULL, "198?",
+	"Ms. Pac-Man ('Made in Greece' bootleg, set 1)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mspacmanbgRomInfo, mspacmanbgRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbgRomInfo, mspacmanbgRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Ms. Pac-Man ('Made in Greece' bootleg, set 2)
+
+static struct BurnRomInfo mspacmanbg2RomDesc[] = {
+	{ "11-prg.bin",   0x8000, 0xe11d4132, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "13-chr.bin",   0x4000, 0x8ee4a3b0, 2 | BRF_GRA },			//  1 Graphics
+
+	// not dumped for this set
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanbg2)
+STD_ROM_FN(mspacmanbg2)
+
+struct BurnDriver BurnDrvmspacmanbg2 = {
+	"mspacmanbg2", "mspacman", NULL, NULL, "198?",
+	"Ms. Pac-Man ('Made in Greece' bootleg, set 2)\0", NULL, "bootleg", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbg2RomInfo, mspacmanbg2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Miss Pukman ('Made in Greece' Datamat bootleg)
+
+static struct BurnRomInfo mspacmanbgdRomDesc[] = {
+	{ "27256.01",     0x8000, 0x5bcc195e, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "10.e5",        0x8000, 0xf2c5da43, 2 | BRF_GRA },			//  1 Graphics
+
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanbgd)
+STD_ROM_FN(mspacmanbgd)
+
+struct BurnDriver BurnDrvmspacmanbgd = {
+	"mspacmanbgd", "mspacman", NULL, NULL, "1992",
+	"Miss Pukman ('Made in Greece' Datamat bootleg)\0", NULL, "bootleg (Datamat)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbgdRomInfo, mspacmanbgdRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Come-Cocos (Ms. Pac-Man) ('Made in Greece' Triunvi bootleg)
+
+static struct BurnRomInfo mspacmanbltRomDesc[] = {
+	{ "triunvi.1.bin",     0x8000, 0xd9da2917, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "triunvi.2.bin",     0x2000, 0xe6446f49, 2 | BRF_GRA },			//  1 Graphics
+
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanblt)
+STD_ROM_FN(mspacmanblt)
+
+struct BurnDriver BurnDrvmspacmanblt = {
+	"mspacmanblt", "mspacman", NULL, NULL, "1991",
+	"Miss Pukman ('Made in Greece' Triunvi bootleg)\0", NULL, "bootleg (Triunvi)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbltRomInfo, mspacmanbltRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Come-Cocos (Ms. Pac-Man) ('Made in Greece' Tecnausa bootleg)
+
+static struct BurnRomInfo mspacmanbccRomDesc[] = {
+	{ "comecocos.bin",		0x8000, 0x220eccae, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "10.e5",        0x8000, 0xf2c5da43, 2 | BRF_GRA },			//  1 Graphics
+
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanbcc)
+STD_ROM_FN(mspacmanbcc)
+
+struct BurnDriver BurnDrvmspacmanbcc = {
+	"mspacmanbcc", "mspacman", NULL, NULL, "1981",
+	"Come-Cocos (Ms. Pac-Man) ('Made in Greece' Tecnausa bootleg)\0", NULL, "bootleg (Tecnausa)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbccRomInfo, mspacmanbccRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Come-Cocos (Ms. Pac-Man) ('Made in Greece' Herle SA bootleg)
+
+static struct BurnRomInfo mspacmanbheRomDesc[] = {
+	{ "11.g5",		  0x8000, 0xb256540f, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "13.e5",        0x4000, 0x8ee4a3b0, 2 | BRF_GRA },			//  1 Graphics
+
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanbhe)
+STD_ROM_FN(mspacmanbhe)
+
+struct BurnDriver BurnDrvmspacmanbhe = {
+	"mspacmanbhe", "mspacman", NULL, NULL, "1981",
+	"Come-Cocos (Ms. Pac-Man) ('Made in Greece' Herle SA bootleg)\0", NULL, "bootleg (Herle SA)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbheRomInfo, mspacmanbheRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Come-Cocos (Ms. Pac-Man) (Cocamatic bootleg)
+
+static struct BurnRomInfo mspacmanbcoRomDesc[] = {
+	{ "cs.11",		  0x8000, 0x1ba81f43, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+
+	{ "c13.13",       0x8000, 0xf2c5da43, 2 | BRF_GRA },			//  1 Graphics
+
+	{ "82s123.h7",    0x0020, 0x3545e7e9, 3 | BRF_GRA },			//  2 Color Proms
+	{ "82s129-3.d1",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  3
+
+	{ "82s129-1.a9",  0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  4 Sound Prom
+	{ "82s129-2.c9",  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
+};
+
+STD_ROM_PICK(mspacmanbco)
+STD_ROM_FN(mspacmanbco)
+
+struct BurnDriver BurnDrvmspacmanbco = {
+	"mspacmanbco", "mspacman", NULL, NULL, "1981",
+	"Come-Cocos (Ms. Pac-Man) (Cocomatic bootleg)\0", NULL, "bootleg (Cocomatic)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mspacmanbcoRomInfo, mspacmanbcoRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	mspacmanbgInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4105,8 +4667,8 @@ struct BurnDriver BurnDrvmschamp = {
 	"mschamp", "mspacman", NULL, NULL, "1995",
 	"Ms. Pacman Champion Edition / Zola-Puc Gal\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mschampRomInfo, mschampRomName, NULL, NULL, mschampInputInfo, mschampDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mschampRomInfo, mschampRomName, NULL, NULL, NULL, NULL, mschampInputInfo, mschampDIPInfo,
 	mschampInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4133,8 +4695,8 @@ struct BurnDriver BurnDrvmschamps = {
 	"mschamps", "mspacman", NULL, NULL, "1995",
 	"Ms. Pacman Champion Edition / Super Zola Pac Gal\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mschampsRomInfo, mschampsRomName, NULL, NULL, mschampInputInfo, mschampDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mschampsRomInfo, mschampsRomName, NULL, NULL, NULL, NULL, mschampInputInfo, mschampDIPInfo,
 	mschampInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4197,8 +4759,8 @@ struct BurnDriver BurnDrvcrush = {
 	"crush", NULL, NULL, NULL, "1981",
 	"Crush Roller (Kural Samno)\0", NULL, "Kural Samno Electric", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crushRomInfo, crushRomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION | GBF_ACTION, 0,
+	NULL, crushRomInfo, crushRomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	crushInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4229,8 +4791,8 @@ struct BurnDriver BurnDrvcrushbl = {
 	"crushbl", "crush", NULL, NULL, "1981",
 	"Crush Roller (bootleg set 1)\0", NULL, "Kural Samno Electric", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crushblRomInfo, crushblRomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crushblRomInfo, crushblRomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4263,8 +4825,8 @@ struct BurnDriver BurnDrvcrushbl2 = {
 	"crushbl2", "crush", NULL, NULL, "1981",
 	"Crush Roller (bootleg set 2)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crushbl2RomInfo, crushbl2RomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crushbl2RomInfo, crushbl2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4297,8 +4859,8 @@ struct BurnDriver BurnDrvcrushbl3 = {
 	"crushbl3", "crush", NULL, NULL, "1981",
 	"Crush Roller (bootleg set 3)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crushbl3RomInfo, crushbl3RomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crushbl3RomInfo, crushbl3RomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4335,8 +4897,8 @@ struct BurnDriver BurnDrvcrush2 = {
 	"crush2", "crush", NULL, NULL, "1981",
 	"Crush Roller (Kural Esco - bootleg?)\0", NULL, "Kural Esco Electric", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crush2RomInfo, crush2RomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crush2RomInfo, crush2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4344,7 +4906,7 @@ struct BurnDriver BurnDrvcrush2 = {
 
 // Crush Roller (Kural - bootleg?)
 
-static struct BurnRomInfo crush3RomDesc[] = {
+static struct BurnRomInfo crush4RomDesc[] = {
 	{ "unkmol.4e",    0x0800, 0x49150ddf, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
 	{ "unkmol.6e",    0x0800, 0x21f47e17, 1 | BRF_ESS | BRF_PRG },	//  1
 	{ "unkmol.4f",    0x0800, 0x9b6dd592, 1 | BRF_ESS | BRF_PRG },	//  2
@@ -4366,8 +4928,8 @@ static struct BurnRomInfo crush3RomDesc[] = {
 	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
 };
 
-STD_ROM_PICK(crush3)
-STD_ROM_FN(crush3)
+STD_ROM_PICK(crush4)
+STD_ROM_FN(crush4)
 
 static void eyes_gfx_decode(UINT8 *src)
 {
@@ -4389,25 +4951,25 @@ static void eyes_decode()
 		eyes_gfx_decode(DrvGfxROM + i);
 }
 
-static INT32 crush3Init()
+static INT32 crush4Init()
 {
 	return DrvInit(StandardMap, eyes_decode, PACMAN);
 }
 
-struct BurnDriver BurnDrvcrush3 = {
-	"crush3", "crush", NULL, NULL, "1981",
+struct BurnDriver BurnDrvcrush4 = {
+	"crush4", "crush", NULL, NULL, "1981",
 	"Crush Roller (Kural - bootleg?)\0", NULL, "Kural Electric", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crush3RomInfo, crush3RomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
-	crush3Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crush4RomInfo, crush4RomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	crush4Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
 
 // Crush Roller (Kural TWT)
 
-static struct BurnRomInfo crush4RomDesc[] = {
+static struct BurnRomInfo crush5RomDesc[] = {
 	{ "crtwt.2",     0x10000, 0xadbd21f7, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code (banked)
 
 	{ "crtwt.1",      0x4000, 0x4250a9ea, 2 | BRF_GRA },		//  1 Graphics
@@ -4419,10 +4981,10 @@ static struct BurnRomInfo crush4RomDesc[] = {
 	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  5 Timing Prom (not used)
 };
 
-STD_ROM_PICK(crush4)
-STD_ROM_FN(crush4)
+STD_ROM_PICK(crush5)
+STD_ROM_FN(crush5)
 
-static void crush4Callback()
+static void crush5Callback()
 {
 	UINT8 *tmp = (UINT8*)BurnMalloc(0x4000);
 
@@ -4439,18 +5001,18 @@ static void crush4Callback()
 	BurnFree (tmp);
 }
 
-static INT32 crush4Init()
+static INT32 crush5Init()
 {
-	return DrvInit(StandardMap, crush4Callback, PACMAN);
+	return DrvInit(StandardMap, crush5Callback, PACMAN);
 }
 
-struct BurnDriver BurnDrvcrush4 = {
-	"crush4", "crush", NULL, NULL, "1981",
+struct BurnDriver BurnDrvcrush5 = {
+	"crush5", "crush", NULL, NULL, "1981",
 	"Crush Roller (Kural TWT)\0", NULL, "Kural TWT", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crush4RomInfo, crush4RomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
-	crush4Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crush5RomInfo, crush5RomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	crush5Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
@@ -4486,8 +5048,8 @@ struct BurnDriver BurnDrvpaintrlr = {
 	"paintrlr", "crush", NULL, NULL, "1981",
 	"Paint Roller\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, paintrlrRomInfo, paintrlrRomName, NULL, NULL, DrvInputInfo, mbrushDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, paintrlrRomInfo, paintrlrRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mbrushDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4522,8 +5084,8 @@ struct BurnDriver BurnDrvcrushs = {
 	"crushs", "crush", NULL, NULL, "19??",
 	"Crush Roller (Sidam bootleg)\0", NULL, "[Kural] (Sidam bootleg)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, crushsRomInfo, crushsRomName, NULL, NULL, DrvInputInfo, crushsDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, crushsRomInfo, crushsRomName, NULL, NULL, NULL, NULL, DrvInputInfo, crushsDIPInfo,
 	crushsInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4559,8 +5121,8 @@ struct BurnDriver BurnDrvmaketrax = {
 	"maketrax", "crush", NULL, NULL, "1981",
 	"Make Trax (set 1)\0", NULL, "[Kural] (Williams license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, maketraxRomInfo, maketraxRomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, maketraxRomInfo, maketraxRomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	maketraxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4591,8 +5153,8 @@ struct BurnDriver BurnDrvmaketrxb = {
 	"maketrxb", "crush", NULL, NULL, "1981",
 	"Make Trax (set 2)\0", NULL, "[Kural] (Williams license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, maketrxbRomInfo, maketrxbRomName, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, maketrxbRomInfo, maketrxbRomName, NULL, NULL, NULL, NULL, DrvInputInfo, maketraxDIPInfo,
 	maketraxInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4637,8 +5199,8 @@ struct BurnDriver BurnDrvmbrush = {
 	"mbrush", "crush", NULL, NULL, "1981",
 	"Magic Brush\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mbrushRomInfo, mbrushRomName, NULL, NULL, DrvInputInfo, mbrushDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mbrushRomInfo, mbrushRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mbrushDIPInfo,
 	mbrushInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4701,8 +5263,8 @@ struct BurnDriver BurnDrvkorosuke = {
 	"korosuke", "crush", NULL, NULL, "1981",
 	"Korosuke Roller\0", NULL, "Kural Electric", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, korosukeRomInfo, korosukeRomName, NULL, NULL, korosukeInputInfo, korosukeDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, korosukeRomInfo, korosukeRomName, NULL, NULL, NULL, NULL, korosukeInputInfo, korosukeDIPInfo,
 	korosukeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4738,8 +5300,8 @@ struct BurnDriver BurnDrveyes = {
 	"eyes", NULL, NULL, NULL, "1982",
 	"Eyes (Digitrex Techstar)\0", NULL, "Digitrex Techstar (Rock-ola license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, eyesRomInfo, eyesRomName, NULL, NULL, eyesInputInfo, eyesDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, eyesRomInfo, eyesRomName, NULL, NULL, NULL, NULL, eyesInputInfo, eyesDIPInfo,
 	eyesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4770,8 +5332,8 @@ struct BurnDriver BurnDrveyes2 = {
 	"eyes2", "eyes", NULL, NULL, "1982",
 	"Eyes (Techstar)\0", NULL, "Techstar (Rock-ola license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, eyes2RomInfo, eyes2RomName, NULL, NULL, eyesInputInfo, eyesDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, eyes2RomInfo, eyes2RomName, NULL, NULL, NULL, NULL, eyesInputInfo, eyesDIPInfo,
 	eyesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4794,7 +5356,7 @@ static struct BurnRomInfo eyesbRomDesc[] = {
 	{ "10.bin",	  0x0800, 0xb247b82c, 2 | BRF_GRA },			// 10
 	{ "12.bin",	  0x0800, 0x99af4b30, 2 | BRF_GRA },			// 11
 
-	{ "7051.bin",	  0x0020, 0x0dad2ccb, 3 | BRF_GRA },		// 12 Color Proms
+	{ "7051.bin",	  0x0020, 0x2c3cc909, 3 | BRF_GRA },		// 12 Color Proms
 	{ "7051-3.bin",	  0x0100, 0xd8d78829, 3 | BRF_GRA },		// 13
 
 	{ "82s126.1m",	  0x0100, 0xa9cc86bf, 4 | BRF_SND },		// 14 Sound Prom
@@ -4808,8 +5370,8 @@ struct BurnDriver BurnDrveyesb = {
 	"eyesb", "eyes", NULL, NULL, "1982",
 	"Eyes (bootleg set 1)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, eyesbRomInfo, eyesbRomName, NULL, NULL, eyesInputInfo, eyesDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, eyesbRomInfo, eyesbRomName, NULL, NULL, NULL, NULL, eyesInputInfo, eyesDIPInfo,
 	eyesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4848,8 +5410,8 @@ struct BurnDriver BurnDrveyeszac = {
 	"eyeszacb", "eyes", NULL, NULL, "1982",
 	"Eyes (bootleg set 2, decrypted)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, eyeszacbRomInfo, eyeszacbRomName, NULL, NULL, eyesInputInfo, eyesDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION | GBF_ACTION, 0,
+	NULL, eyeszacbRomInfo, eyeszacbRomName, NULL, NULL, NULL, NULL, eyesInputInfo, eyesDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4880,8 +5442,8 @@ struct BurnDriver BurnDrvmrtnt = {
 	"mrtnt", NULL, NULL, NULL, "1982",
 	"Mr. TNT\0", NULL, "Telko", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, mrtntRomInfo, mrtntRomName, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, mrtntRomInfo, mrtntRomName, NULL, NULL, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
 	eyesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4918,8 +5480,8 @@ struct BurnDriver BurnDrvgorkans = {
 	"gorkans", "mrtnt", NULL, NULL, "1983",
 	"Gorkans\0", NULL, "Techstar", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, gorkansRomInfo, gorkansRomName, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, gorkansRomInfo, gorkansRomName, NULL, NULL, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4956,8 +5518,8 @@ struct BurnDriver BurnDrveggor = {
 	"eggor", NULL, NULL, NULL, "1982",
 	"Eggor\0", NULL, "Telko", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, eggorRomInfo, eggorRomName, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, eggorRomInfo, eggorRomName, NULL, NULL, NULL, NULL, eyesInputInfo, mrtntDIPInfo,
 	eyesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -4967,19 +5529,19 @@ struct BurnDriver BurnDrveggor = {
 // Piranha
 
 static struct BurnRomInfo piranhaRomDesc[] = {
-	{ "pir1.bin",     0x0800, 0x69a3e6ea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "pir5.bin",     0x0800, 0x245e753f, 1 | BRF_ESS | BRF_PRG },	//  1
-	{ "pir2.bin",     0x0800, 0x62cb6954, 1 | BRF_ESS | BRF_PRG },	//  2
-	{ "pir6.bin",     0x0800, 0xcb0700bc, 1 | BRF_ESS | BRF_PRG },	//  3
-	{ "pir3.bin",     0x0800, 0x843fbfe5, 1 | BRF_ESS | BRF_PRG },	//  4
-	{ "pir7.bin",     0x0800, 0x73084d5e, 1 | BRF_ESS | BRF_PRG },	//  5
-	{ "pir4.bin",     0x0800, 0x4cdf6704, 1 | BRF_ESS | BRF_PRG },	//  6
-	{ "pir8.bin",     0x0800, 0xb86fedb3, 1 | BRF_ESS | BRF_PRG },	//  7
+	{ "pir1.7e",      0x0800, 0x69a3e6ea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "pir5.6e",      0x0800, 0x245e753f, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pir2.7f",      0x0800, 0x62cb6954, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pir6.6f",      0x0800, 0xcb0700bc, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "pir3.7h",      0x0800, 0x843fbfe5, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "pir7.6h",      0x0800, 0x73084d5e, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "pir4.7j",      0x0800, 0x4cdf6704, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "pir8.6j",      0x0800, 0xb86fedb3, 1 | BRF_ESS | BRF_PRG },	//  7
 
-	{ "pir9.bin",     0x0800, 0x0f19eb28, 2 | BRF_GRA },			//  8 Graphics
-	{ "pir11.bin",    0x0800, 0x5f8bdabe, 2 | BRF_GRA },			//  9
-	{ "pir10.bin",    0x0800, 0xd19399fb, 2 | BRF_GRA },			// 10
-	{ "pir12.bin",    0x0800, 0xcfb4403d, 2 | BRF_GRA },			// 11
+	{ "pir9.5e",      0x0800, 0x0f19eb28, 2 | BRF_GRA },			//  8 Graphics
+	{ "pir11.5h",     0x0800, 0x5f8bdabe, 2 | BRF_GRA },			//  9
+	{ "pir10.5f",     0x0800, 0xd19399fb, 2 | BRF_GRA },			// 10
+	{ "pir12.5j",     0x0800, 0xcfb4403d, 2 | BRF_GRA },			// 11
 
 	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Prom
 	{ "piranha.4a",   0x0100, 0x08c9447b, 3 | BRF_GRA },			// 13
@@ -5000,8 +5562,8 @@ struct BurnDriver BurnDrvpiranha = {
 	"piranha", "puckman", NULL, NULL, "1981",
 	"Piranha\0", NULL, "GL (US Billiards License)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, piranhaRomInfo, piranhaRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, piranhaRomInfo, piranhaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	piranhaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5010,19 +5572,19 @@ struct BurnDriver BurnDrvpiranha = {
 // Piranha (older)
 
 static struct BurnRomInfo piranhaoRomDesc[] = {
-	{ "p1.bin",       0x0800, 0xc6ce1bfc, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "p5.bin",       0x0800, 0xa2655a33, 1 | BRF_ESS | BRF_PRG },	//  1
-	{ "pir2.bin",     0x0800, 0x62cb6954, 1 | BRF_ESS | BRF_PRG },	//  2
-	{ "pir6.bin",     0x0800, 0xcb0700bc, 1 | BRF_ESS | BRF_PRG },	//  3
-	{ "pir3.bin",     0x0800, 0x843fbfe5, 1 | BRF_ESS | BRF_PRG },	//  4
-	{ "pir7.bin",     0x0800, 0x73084d5e, 1 | BRF_ESS | BRF_PRG },	//  5
-	{ "p4.bin",       0x0800, 0x9363a4d1, 1 | BRF_ESS | BRF_PRG },	//  6
-	{ "p8.bin",       0x0800, 0x2769979c, 1 | BRF_ESS | BRF_PRG },	//  7
+	{ "p1.7e",        0x0800, 0xc6ce1bfc, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "p5.6e",        0x0800, 0xa2655a33, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pir2.7f",      0x0800, 0x62cb6954, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pir6.6f",      0x0800, 0xcb0700bc, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "pir3.7h",      0x0800, 0x843fbfe5, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "pir7.6h",      0x0800, 0x73084d5e, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "p4.7j",        0x0800, 0x9363a4d1, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "p8.6j",        0x0800, 0x2769979c, 1 | BRF_ESS | BRF_PRG },	//  7
 
-	{ "p9.bin",       0x0800, 0x94eb7563, 2 | BRF_GRA },			//  8 Graphics
-	{ "p11.bin",      0x0800, 0xa3606973, 2 | BRF_GRA },			//  9
-	{ "p10.bin",      0x0800, 0x84165a2c, 2 | BRF_GRA },			// 10
-	{ "p12.bin",      0x0800, 0x2699ba9e, 2 | BRF_GRA },			// 11
+	{ "p9.5e",        0x0800, 0x94eb7563, 2 | BRF_GRA },			//  8 Graphics
+	{ "p11.5h",       0x0800, 0xa3606973, 2 | BRF_GRA },			//  9
+	{ "p10.5f",       0x0800, 0x84165a2c, 2 | BRF_GRA },			// 10
+	{ "p12.5j",       0x0800, 0x2699ba9e, 2 | BRF_GRA },			// 11
 
 	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
 	{ "piranha.4a",   0x0100, 0x08c9447b, 3 | BRF_GRA },			// 13
@@ -5038,8 +5600,8 @@ struct BurnDriver BurnDrvpiranhao = {
 	"piranhao", "puckman", NULL, NULL, "1981",
 	"Piranha (older)\0", NULL, "GL (US Billiards License)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, piranhaoRomInfo, piranhaoRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, piranhaoRomInfo, piranhaoRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	piranhaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5072,8 +5634,128 @@ struct BurnDriver BurnDrvpiranhah = {
 	"piranhah", "puckman", NULL, NULL, "1981",
 	"Piranha (hack)\0", NULL, "hack", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, piranhahRomInfo, piranhahRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, piranhahRomInfo, piranhahRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Titan (Pac-Man hack)
+
+static struct BurnRomInfo titanpacRomDesc[] = {
+	{ "t101.7e",      0x0800, 0x5538c288, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "t105.7e",      0x0800, 0x095f5a5f, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "t102.7f",      0x0800, 0x8117a6a2, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "t106.6f",      0x0800, 0xcb0700bc, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "t103.7h",      0x0800, 0x060e514e, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "t107.6h",      0x0800, 0x9209882a, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "t104.7j",      0x0800, 0x2c8c7299, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "t108.6j",      0x0800, 0xff943d70, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "t109.5e",      0x0800, 0x412e723e, 2 | BRF_GRA },			//  8 Graphics
+	{ "t111.5h",      0x0800, 0x87d28931, 2 | BRF_GRA },			//  9
+	{ "t110.5f",      0x0800, 0x3be1601b, 2 | BRF_GRA },			// 10
+	{ "t112.5j",      0x0800, 0xf773cb8b, 2 | BRF_GRA },			// 11
+
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 12 Color Proms
+	{ "titan.4a",     0x0100, 0xb67a0c10, 3 | BRF_GRA },			// 13
+
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 14 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(titanpac)
+STD_ROM_FN(titanpac)
+
+struct BurnDriver BurnDrvtitanpac = {
+	"titanpac", "puckman", NULL, NULL, "1981",
+	"Titan (Pac-Man hack)\0", NULL, "hack", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, titanpacRomInfo, titanpacRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	piranhaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Pac Man (FAMARE S.A. bootleg of Puck Man)
+/* Bootleg from Spanish company "FAMARE S.A.". Board labeled "FAMARESA 560-002"  
+   It's mainly a hack to remove Namco logo, but it was on an original Famaresa bootleg hardware */
+
+static struct BurnRomInfo pacmanfmRomDesc[] = {
+	{ "pacfama_01.bin",  	0x0800, 0xf36e88ab, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "pacfama_05.bin",	   	0x0800, 0x618bd9b3, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pacfama_02.bin",     0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pacfama_06.bin",     0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "pacfama_03.bin",     0x0800, 0x6bf4f625, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "pacfama_07.bin",     0x0800, 0xa948ce83, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "pacfama_04.bin",     0x0800, 0xb6289b26, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "pacfama_08.bin",     0x0800, 0x17a88c13, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "pacfama_09.bin", 	0x0800, 0x7a7b48b3, 2 | BRF_GRA },				//  8 Graphics
+	{ "pacfama_11.bin",     0x0800, 0x3591b89d, 2 | BRF_GRA },				//  9
+	{ "pacfama_10.bin", 	0x0800, 0x9e39323a, 2 | BRF_GRA },				// 10
+	{ "pacfama_12.bin", 	0x0800, 0x1b1d9096, 2 | BRF_GRA },				// 11
+
+	/* Undumped on the Famaresa PCB, taken from the parent set */
+	{ "pm1-1.7f",    		0x0020, 0x2fc650bd, 3 | BRF_GRA },				// 12 Color Proms
+	{ "pm1-4.4a",    		0x0100, 0x3eb3a8e4, 3 | BRF_GRA },				// 13
+
+	/* Undumped on the Famaresa PCB, taken from the parent set */
+	{ "pm1-3.1m",    		0x0100, 0xa9cc86bf, 4 | BRF_SND },				// 14 Sound Prom
+	{ "pm1-2.3m",    		0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(pacmanfm)
+STD_ROM_FN(pacmanfm)
+
+struct BurnDriver BurnDrvpacmanfm = {
+	"pacmanfm", "puckman", NULL, NULL, "1980",
+	"Pac Man (FAMARE S.A. bootleg of Puck Man)\0", NULL, "bootleg (FAMARE S.A.)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanfmRomInfo, pacmanfmRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Pac Man (U.G. bootleg of Puck Man)
+// PCB is marked "PUK" both on component side and on solder side. 
+// Code is identical to pacmanfm, only differences are in p9bfz.5e (adds U.G.) and in mmi63s141j.3m
+
+static struct BurnRomInfo pacmanugRomDesc[] = {
+	{ "1p.6e",  		0x0800, 0xf36e88ab, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "5p.6k",	   		0x0800, 0x618bd9b3, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "2p.6f",     		0x0800, 0x7d177853, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "6p.6m",     		0x0800, 0xd3e8914c, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "3p.6h",     		0x0800, 0x6bf4f625, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "7p.6n",     		0x0800, 0xa948ce83, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "4p.6j",     		0x0800, 0xb6289b26, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "8p.6p",     		0x0800, 0x17a88c13, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "p9bfz.5e", 		0x0800, 0x7a7b48b3, 2 | BRF_GRA },				//  8 Graphics
+	{ "11p.5h",     	0x0800, 0x3591b89d, 2 | BRF_GRA },				//  9
+	{ "10p.5f", 		0x0800, 0x9e39323a, 2 | BRF_GRA },				// 10
+	{ "12p.5j", 		0x0800, 0x1b1d9096, 2 | BRF_GRA },				// 11
+
+	{ "sig82s123.7f",   0x0020, 0x2fc650bd, 3 | BRF_GRA },				// 12 Color Proms
+	{ "mmi6301-1j.4a",  0x0100, 0x3eb3a8e4, 3 | BRF_GRA },				// 13
+
+	{ "mmi6301-1j.1m",  0x0100, 0xa9cc86bf, 4 | BRF_SND },				// 14 Sound Prom
+	{ "mmi63s141j.3m",  0x0100, 0xdeadc015, 0 | BRF_SND | BRF_OPT },	// 15 Timing Prom (not used)
+};
+
+STD_ROM_PICK(pacmanug)
+STD_ROM_FN(pacmanug)
+
+struct BurnDriver BurnDrvpacmanug = {
+	"pacmanug", "puckman", NULL, NULL, "1980",
+	"Pac Man (U.G. bootleg of Puck Man)\0", NULL, "bootleg (U.G.)", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pacmanugRomInfo, pacmanugRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5110,8 +5792,8 @@ struct BurnDriver BurnDrvabscam = {
 	"abscam", "puckman", NULL, NULL, "1981",
 	"Abscam\0", NULL, "GL (US Billiards License)", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, abscamRomInfo, abscamRomName, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, abscamRomInfo, abscamRomName, NULL, NULL, NULL, NULL, DrvInputInfo, mspacmanDIPInfo,
 	piranhaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5172,7 +5854,7 @@ static void jumpshot_decode()
 
 static INT32 jumpshotInit()
 {
-	return DrvInit(StandardMap, jumpshot_decode, PACMAN);
+	return DrvInit(StandardMap, jumpshot_decode, JUMPSHOT);
 }
 
 struct BurnDriver BurnDrvjumpshot = {
@@ -5180,7 +5862,7 @@ struct BurnDriver BurnDrvjumpshot = {
 	"Jump Shot\0", NULL, "Bally Midway", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_SPORTSMISC, 0,
-	NULL, jumpshotRomInfo, jumpshotRomName, NULL, NULL, jumpshotInputInfo, jumpshotDIPInfo,
+	NULL, jumpshotRomInfo, jumpshotRomName, NULL, NULL, NULL, NULL, jumpshotInputInfo, jumpshotDIPInfo,
 	jumpshotInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5212,7 +5894,7 @@ struct BurnDriver BurnDrvjumpshotp = {
 	"Jump Shot Engineering Sample\0", NULL, "Bally Midway", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_SPORTSMISC, 0,
-	NULL, jumpshotpRomInfo, jumpshotpRomName, NULL, NULL, jumpshotInputInfo, jumpshtpDIPInfo,
+	NULL, jumpshotpRomInfo, jumpshotpRomName, NULL, NULL, NULL, NULL, jumpshotInputInfo, jumpshtpDIPInfo,
 	jumpshotInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5249,7 +5931,7 @@ struct BurnDriverD BurnDrvshootbul = {
 	"Shoot the Bull\0", "Analog inputs not hooked up", "Bally Midway", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_SPORTSMISC, 0,
-	NULL, shootbulRomInfo, shootbulRomName, NULL, NULL, shootbulInputInfo, shootbulDIPInfo,
+	NULL, shootbulRomInfo, shootbulRomName, NULL, NULL, NULL, NULL, shootbulInputInfo, shootbulDIPInfo,
 	shootbulInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5290,7 +5972,7 @@ struct BurnDriver BurnDrvcannonbp = {
 	"Cannon Ball (Pacman Hardware)\0", "wrong colors", "Novomatic", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_BREAKOUT, 0,
-	NULL, cannonbpRomInfo, cannonbpRomName, NULL, NULL, cannonbpInputInfo, cannonbpDIPInfo,
+	NULL, cannonbpRomInfo, cannonbpRomName, NULL, NULL, NULL, NULL, cannonbpInputInfo, cannonbpDIPInfo,
 	cannonbpInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5341,7 +6023,7 @@ struct BurnDriver BurnDrvwoodpeck = {
 	"Woodpecker (set 1)\0", NULL, "Amenip (Palcom Queen River)", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, woodpeckRomInfo, woodpeckRomName, NULL, NULL, woodpekInputInfo, woodpekDIPInfo,
+	NULL, woodpeckRomInfo, woodpeckRomName, NULL, NULL, NULL, NULL, woodpekInputInfo, woodpekDIPInfo,
 	woodpeckInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5374,7 +6056,7 @@ struct BurnDriver BurnDrvwoodpeka = {
 	"Woodpecker (set 2)\0", NULL, "Amenip (Palcom Queen River)", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, woodpekaRomInfo, woodpekaRomName, NULL, NULL, woodpekInputInfo, woodpekDIPInfo,
+	NULL, woodpekaRomInfo, woodpekaRomName, NULL, NULL, NULL, NULL, woodpekInputInfo, woodpekDIPInfo,
 	woodpeckInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5413,7 +6095,7 @@ struct BurnDriver BurnDrvlizwiz = {
 	"Lizard Wizard\0", NULL, "Techstar (Sunn license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_SHOOT, 0,
-	NULL, lizwizRomInfo, lizwizRomName, NULL, NULL, lizwizInputInfo, lizwizDIPInfo,
+	NULL, lizwizRomInfo, lizwizRomName, NULL, NULL, NULL, NULL, lizwizInputInfo, lizwizDIPInfo,
 	lizwizInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5479,7 +6161,43 @@ struct BurnDriver BurnDrvponpoko = {
 	"Ponpoko\0", NULL, "Sigma Enterprises Inc.", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, ponpokoRomInfo, ponpokoRomName, NULL, NULL, ponpokoInputInfo, ponpokoDIPInfo,
+	NULL, ponpokoRomInfo, ponpokoRomName, NULL, NULL, NULL, NULL, ponpokoInputInfo, ponpokoDIPInfo,
+	ponpokoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	288, 224, 4, 3
+};
+
+
+// Candory (Bootleg)
+
+static struct BurnRomInfo CandoryRomDesc[] = {
+	{ "ppokoj1.bin",    0x1000, 0xffa3c004, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "ppokoj2.bin",    0x1000, 0x4a496866, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "ppokoj3.bin",    0x1000, 0x17da6ca3, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "ppokoj4.bin",    0x1000, 0x9d39a565, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "ppoko5.bin",     0x1000, 0x54ca3d7d, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "ppoko6.bin",     0x1000, 0x3055c7e0, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "ppoko7.bin",     0x1000, 0x3cbe47ca, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "ppokoj8.bin",    0x1000, 0x04b63fc6, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "candory.v2",   0x1000, 0x7d16bdff, 2 | BRF_GRA },			//  8 Graphics
+	{ "candory.v1",   0x1000, 0xe08ac188, 2 | BRF_GRA },			//  9
+
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			// 10 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			// 11
+
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			// 12 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 13 Timing Prom (not used)
+};
+
+STD_ROM_PICK(Candory)
+STD_ROM_FN(Candory)
+
+struct BurnDriver BurnDrvCandory = {
+	"candory", "ponpoko", NULL, NULL, "1982",
+	"Candory (Bootleg)\0", NULL, "Bootleg", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
+	NULL, CandoryRomInfo, CandoryRomName, NULL, NULL, NULL, NULL, ponpokoInputInfo, ponpokoDIPInfo,
 	ponpokoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
@@ -5515,26 +6233,28 @@ struct BurnDriver BurnDrvponpokov = {
 	"Ponpoko (Venture Line)\0", NULL, "Sigma Enterprises Inc. (Venture Line license)", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, ponpokovRomInfo, ponpokovRomName, NULL, NULL, ponpokoInputInfo, ponpokoDIPInfo,
+	NULL, ponpokovRomInfo, ponpokovRomName, NULL, NULL, NULL, NULL, ponpokoInputInfo, ponpokoDIPInfo,
 	ponpokoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	288, 224, 4, 3
 };
 
 
 // The Glob (Pac-Man hardware)
+// Distributed by:  Eagle Conversions, 25 Eagle St., Bldg #5, Providence, RI 02908
+// Pac-Man PCB conversion kit. Includes a small daughtercard (2 roms + 4 PLDs, plugs in through the Z80 socket), 2 roms + 2 BPROMs
 
 static struct BurnRomInfo theglobpRomDesc[] = {
-	{ "glob.u2",      0x2000, 0x829d0bea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "glob.u3",      0x2000, 0x31de6628, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "u_2_the_glob_pg02284_eagle.u2",      0x2000, 0x829d0bea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "u_3_the_glob_pg02284_eagle.u3",      0x2000, 0x31de6628, 1 | BRF_ESS | BRF_PRG },	//  1
 
-	{ "glob.5e",      0x1000, 0x53688260, 2 | BRF_GRA },			//  2 Graphics
-	{ "glob.5f",      0x1000, 0x051f59c7, 2 | BRF_GRA },			//  3
+	{ "5_e_the_glob_pg02284_eagle.5e",      0x1000, 0x53688260, 2 | BRF_GRA },				//  2 Graphics
+	{ "5_f_the_glob_pg02284_eagle.5f",      0x1000, 0x051f59c7, 2 | BRF_GRA },				//  3
 
-	{ "glob.7f",      0x0020, 0x1f617527, 3 | BRF_GRA },			//  4 Color Proms
-	{ "glob.4a",      0x0100, 0x28faa769, 3 | BRF_GRA },			//  5
+	{ "7_f_the_glob.7f",      				0x0020, 0x1f617527, 3 | BRF_GRA },				//  4 Color Proms
+	{ "4_a_the_glob.4a",      				0x0100, 0x28faa769, 3 | BRF_GRA },				//  5
 
-	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  6 Sound Prom
-	{ "82s126.3m"  ,  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
+	{ "82s126.1m",    						0x0100, 0xa9cc86bf, 4 | BRF_SND },				//  6 Sound Prom
+	{ "82s126.3m"  ,  						0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
 };
 
 STD_ROM_PICK(theglobp)
@@ -5560,7 +6280,7 @@ struct BurnDriver BurnDrvtheglobp = {
 	"The Glob (Pac-Man hardware)\0", NULL, "Epos Corporation", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, theglobpRomInfo, theglobpRomName, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
+	NULL, theglobpRomInfo, theglobpRomName, NULL, NULL, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
 	theglobpInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5569,17 +6289,17 @@ struct BurnDriver BurnDrvtheglobp = {
 // Super Glob (Pac-Man hardware)
 
 static struct BurnRomInfo sprglobpRomDesc[] = {
-	{ "glob.u2",      0x2000, 0x829d0bea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "glob.u3",      0x2000, 0x31de6628, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "u_2_the_glob_pg02284_eagle.u2",      0x2000, 0x829d0bea, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "u_3_the_glob_pg02284_eagle.u3",      0x2000, 0x31de6628, 1 | BRF_ESS | BRF_PRG },	//  1
 
-	{ "5e_2532.dat",  0x1000, 0x1aa16109, 2 | BRF_GRA },			//  2 Graphics
-	{ "5f_2532.dat",  0x1000, 0xafe72a89, 2 | BRF_GRA },			//  3
+	{ "5e_2532.dat",  						0x1000, 0x1aa16109, 2 | BRF_GRA },				//  2 Graphics
+	{ "5f_2532.dat",  						0x1000, 0xafe72a89, 2 | BRF_GRA },				//  3
 
-	{ "glob.7f",      0x0020, 0x1f617527, 3 | BRF_GRA },			//  4 Color Prom
-	{ "glob.4a",      0x0100, 0x28faa769, 3 | BRF_GRA },			//  5
+	{ "7_f_the_glob.7f",      				0x0020, 0x1f617527, 3 | BRF_GRA },				//  4 Color Prom
+	{ "4_a_the_glob.4a",      				0x0100, 0x28faa769, 3 | BRF_GRA },				//  5
 
-	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  6 Sound Prom
-	{ "82s126.3m"  ,  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
+	{ "82s126.1m",    						0x0100, 0xa9cc86bf, 4 | BRF_SND },				//  6 Sound Prom
+	{ "82s126.3m"  ,  						0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
 };
 
 STD_ROM_PICK(sprglobp)
@@ -5590,7 +6310,7 @@ struct BurnDriver BurnDrvsprglobp = {
 	"Super Glob (Pac-Man hardware)\0", NULL, "Epos Corporation", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, sprglobpRomInfo, sprglobpRomName, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
+	NULL, sprglobpRomInfo, sprglobpRomName, NULL, NULL, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
 	theglobpInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5604,7 +6324,7 @@ static struct BurnRomInfo sprglbpgRomDesc[] = {
 	{ "ic15.3",       0x1000, 0xa252047f, 1 | BRF_ESS | BRF_PRG },	//  2
 	{ "ic14.4",       0x1000, 0x7efa81f1, 1 | BRF_ESS | BRF_PRG },	//  3
 
-	{ "ic92.5",       0x2000, 0xE54F484D, 2 | BRF_GRA },			//  4 Graphics
+	{ "ic92.5",       0x2000, 0xe54f484d, 2 | BRF_GRA },			//  4 Graphics
 
 	{ "ic78.prm",     0x0020, 0x1f617527, 3 | BRF_GRA },			//  5 Color Prom
 	{ "ic88.prm",     0x0100, 0x28faa769, 3 | BRF_GRA },			//  6
@@ -5621,7 +6341,7 @@ struct BurnDriver BurnDrvsprglbpg = {
 	"Super Glob (Pac-Man hardware) German\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, sprglbpgRomInfo, sprglbpgRomName, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
+	NULL, sprglbpgRomInfo, sprglbpgRomName, NULL, NULL, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
 	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5629,30 +6349,80 @@ struct BurnDriver BurnDrvsprglbpg = {
 
 // Beastie Feastie
 
-static struct BurnRomInfo beastfRomDesc[] = {
-	{ "bf-u2.bin",    0x2000, 0x3afc517b, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "bf-u3.bin",    0x2000, 0x8dbd76d0, 1 | BRF_ESS | BRF_PRG },	//  1
+static struct BurnRomInfo beastfpRomDesc[] = {
+	{ "bf-u2.bin",    			0x2000, 0x3afc517b, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "bf-u3.bin",    			0x2000, 0x8dbd76d0, 1 | BRF_ESS | BRF_PRG },	//  1
 
-	{ "beastf.5e",    0x1000, 0x5654dc34, 2 | BRF_GRA },			//  2 Graphics
-	{ "beastf.5f",    0x1000, 0x1b30ca61, 2 | BRF_GRA },			//  3
+	{ "beastf.5e",    			0x1000, 0x5654dc34, 2 | BRF_GRA },				//  2 Graphics
+	{ "beastf.5f",    			0x1000, 0x1b30ca61, 2 | BRF_GRA },				//  3
 
-	{ "glob.7f",      0x0020, 0x1f617527, 3 | BRF_GRA },			//  4 Color Proms
-	{ "glob.4a",      0x0100, 0x28faa769, 3 | BRF_GRA },			//  5
+	{ "7_f_the_glob.7f",      	0x0020, 0x1f617527, 3 | BRF_GRA },				//  4 Color Proms
+	{ "4_a_the_glob.4a",      	0x0100, 0x28faa769, 3 | BRF_GRA },				//  5
 
-	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  6 Sound Prom
-	{ "82s126.3m"  ,  0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
+	{ "82s126.1m",    			0x0100, 0xa9cc86bf, 4 | BRF_SND },				//  6 Sound Prom
+	{ "82s126.3m"  ,  			0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  7 Timing Prom (not used)
+	
+	{ "beastf.ic4",   			0x002c, 0xa6ab926d, 0 | BRF_OPT },				//  8 PAL
 };
 
-STD_ROM_PICK(beastf)
-STD_ROM_FN(beastf)
+STD_ROM_PICK(beastfp)
+STD_ROM_FN(beastfp)
 
-struct BurnDriver BurnDrvbeastf = {
-	"beastf", "suprglob", NULL, NULL, "1984",
+struct BurnDriver BurnDrvbeastfp = {
+	"beastfp", "suprglob", NULL, NULL, "1984",
 	"Beastie Feastie\0", NULL, "Epos Corporation", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, beastfRomInfo, beastfRomName, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
+	NULL, beastfpRomInfo, beastfpRomName, NULL, NULL, NULL, NULL, theglobpInputInfo, theglobpDIPInfo,
 	theglobpInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Eeekk!
+
+static struct BurnRomInfo eeekkRomDesc[] = {
+	{ "u_2_eeekk_pg03094.u2",	0x2000, 0x701e37f2, 1 | BRF_PRG | BRF_ESS }, //  0 Z80 Code
+	{ "u_3_eeekk_pg03094.u3",	0x2000, 0xbcf524ae, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "5_e_eeekk_pg03094.5e",	0x1000, 0x780183a8, 2 | BRF_GRA },           //  2 Graphics
+	{ "5_f_eeekk_pg03094.5f",	0x1000, 0x418526e4, 2 | BRF_GRA },           //  3
+
+	{ "7_f_eeekk.7f",	0x0020, 0xc64c8a53, 3 | BRF_GRA },           //  4 Color Proms
+	{ "4_a_eeekk.4a",	0x0100, 0xa5044ded, 3 | BRF_GRA },           //  5
+
+	{ "82s126.1m",	0x0100, 0xa9cc86bf, 4 | BRF_SND },           //  6 Sound Prom
+
+	{ "82s126.3m",	0x0100, 0x77245b66, 0 | BRF_OPT },           //  7 Timing Prom (not used)
+
+	{ "eeekk.ic4",	0x002c, 0xf588ba4e, 0 | BRF_OPT },           //  4 epos_pal10h8
+};
+
+STD_ROM_PICK(eeekk)
+STD_ROM_FN(eeekk)
+
+static void eeekk_decrypt()
+{
+	for (INT32 i = 0; i < 0x4000; i++) {
+		DrvZ80ROM[0x10000 + i] = BITSWAP08(DrvZ80ROM[i] ^ 0xfd, 7, 6, 1, 3, 0, 4, 2, 5);
+		DrvZ80ROM[0x14000 + i] = BITSWAP08(DrvZ80ROM[i] ^ 0xbf, 7, 1, 4, 3, 0, 6, 2, 5);
+		DrvZ80ROM[0x18000 + i] = BITSWAP08(DrvZ80ROM[i] ^ 0x75, 7, 6, 1, 0, 3, 4, 2, 5);
+		DrvZ80ROM[0x1c000 + i] = BITSWAP08(DrvZ80ROM[i] ^ 0x37, 7, 1, 4, 0, 3, 6, 2, 5);
+	}
+}
+
+static INT32 eeekkInit()
+{
+	return DrvInit(StandardMap, eeekk_decrypt, EPOS);
+}
+
+struct BurnDriver BurnDrvEeekk = {
+	"eeekk", NULL, NULL, NULL, "1984",
+	"Eeekk!\0", NULL, "Epos Corporation", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
+	NULL, eeekkRomInfo, eeekkRomName, NULL, NULL, NULL, NULL, EeekkInputInfo, EeekkDIPInfo,
+	eeekkInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
@@ -5692,10 +6462,10 @@ struct BurnDriver BurnDrvvanvan = {
 	"vanvan", NULL, NULL, NULL, "1983",
 	"Van-Van Car\0", NULL, "Sanritsu", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, vanvanRomInfo, vanvanRomName, NULL, NULL, vanvanInputInfo, vanvanDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, vanvanRomInfo, vanvanRomName, NULL, NULL, NULL, NULL, vanvanInputInfo, vanvanDIPInfo,
 	vanvanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
-	224, 288, 3, 4
+	224, 256, 3, 4
 };
 
 
@@ -5722,10 +6492,10 @@ struct BurnDriver BurnDrvvanvank = {
 	"vanvank", "vanvan", NULL, NULL, "1983",
 	"Van-Van Car (Karateco)\0", NULL, "Karateco", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, vanvankRomInfo, vanvankRomName, NULL, NULL, vanvankInputInfo, vanvanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, vanvankRomInfo, vanvankRomName, NULL, NULL, NULL, NULL, vanvankInputInfo, vanvanDIPInfo,
 	vanvanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
-	224, 288, 3, 4
+	224, 256, 3, 4
 };
 
 
@@ -5752,10 +6522,10 @@ struct BurnDriver BurnDrvvanvanb = {
 	"vanvanb", "vanvan", NULL, NULL, "1983",
 	"Van-Van Car (set 3)\0", NULL, "Karateco", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, vanvanbRomInfo, vanvanbRomName, NULL, NULL, vanvankInputInfo, vanvanDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, vanvanbRomInfo, vanvanbRomName, NULL, NULL, NULL, NULL, vanvankInputInfo, vanvanDIPInfo,
 	vanvanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
-	224, 288, 3, 4
+	224, 256, 3, 4
 };
 
 
@@ -5796,7 +6566,7 @@ struct BurnDriver BurnDrvnmouse = {
 	"Naughty Mouse (set 1)\0", NULL, "Amenip (Palcom Queen River)", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, nmouseRomInfo, nmouseRomName, NULL, NULL, DrvInputInfo, nmouseDIPInfo,
+	NULL, nmouseRomInfo, nmouseRomName, NULL, NULL, NULL, NULL, DrvInputInfo, nmouseDIPInfo,
 	nmouseInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5834,7 +6604,7 @@ struct BurnDriver BurnDrvnmouseb = {
 	"Naughty Mouse (set 2)\0", NULL, "Amenip Nova Games Ltd.", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_PLATFORM, 0,
-	NULL, nmousebRomInfo, nmousebRomName, NULL, NULL, DrvInputInfo, nmouseDIPInfo,
+	NULL, nmousebRomInfo, nmousebRomName, NULL, NULL, NULL, NULL, DrvInputInfo, nmouseDIPInfo,
 	nmouseInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5873,7 +6643,7 @@ struct BurnDriver BurnDrvdremshpr = {
 	"Dream Shopper\0", NULL, "Sanritsu", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_PUZZLE, 0,
-	NULL, dremshprRomInfo, dremshprRomName, NULL, NULL, dremshprInputInfo, dremshprDIPInfo,
+	NULL, dremshprRomInfo, dremshprRomName, NULL, NULL, NULL, NULL, dremshprInputInfo, dremshprDIPInfo,
 	dremshprInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5882,13 +6652,13 @@ struct BurnDriver BurnDrvdremshpr = {
 // Boardwalk Casino
 
 static struct BurnRomInfo bwcasinoRomDesc[] = {
-	{ "bwc_u2.bin",   0x2000, 0xe2eea868, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
-	{ "bwc_u3.bin",   0x2000, 0xa935571e, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "u_2_boardwalk_casino_pp09144.u2",   0x2000, 0xe2eea868, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "u_3_boardwalk_casino_pp09144.u3",   0x2000, 0xa935571e, 1 | BRF_ESS | BRF_PRG },	//  1
 
-	{ "bwc_5e.bin",   0x1000, 0xe334c01e, 2 | BRF_GRA },			//  2 Graphics
+	{ "5_e_boardwalk_casino_pp09144.5e",   0x1000, 0xe334c01e, 2 | BRF_GRA },			//  2 Graphics
 
-	{ "aca_7f.bin",   0x0020, 0x133bb744, 3 | BRF_GRA },			//  3 Color Proms
-	{ "aca_4a.bin",   0x0100, 0x8e29208f, 3 | BRF_GRA },			//  4
+	{ "7_f_b.w.c.7f",   0x0020, 0x133bb744, 3 | BRF_GRA },			//  3 Color Proms
+	{ "4_a_b.w.c.4a",   0x0100, 0x8e29208f, 3 | BRF_GRA },			//  4
 
 	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  5 Sound Prom
 	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  6 Timing Prom (not used)
@@ -5919,7 +6689,7 @@ struct BurnDriver BurnDrvbwcasino = {
 	"Boardwalk Casino\0", NULL, "EPOS Corporation", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_CASINO, 0,
-	NULL, bwcasinoRomInfo, bwcasinoRomName, NULL, NULL, bwcasinoInputInfo, bwcasinoDIPInfo,
+	NULL, bwcasinoRomInfo, bwcasinoRomName, NULL, NULL, NULL, NULL, bwcasinoInputInfo, bwcasinoDIPInfo,
 	acityaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5948,7 +6718,7 @@ struct BurnDriver BurnDrvacitya = {
 	"Atlantic City Action\0", NULL, "EPOS Corporation", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_CASINO, 0,
-	NULL, acityaRomInfo, acityaRomName, NULL, NULL, acityaInputInfo, acityaDIPInfo,
+	NULL, acityaRomInfo, acityaRomName, NULL, NULL, NULL, NULL, acityaInputInfo, acityaDIPInfo,
 	acityaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -5995,7 +6765,7 @@ struct BurnDriver BurnDrvbigbucks = {
 	"Big Bucks\0", NULL, "Dynasoft Inc.", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_QUIZ, 0,
-	NULL, bigbucksRomInfo, bigbucksRomName, NULL, NULL, bigbucksInputInfo, bigbucksDIPInfo,
+	NULL, bigbucksRomInfo, bigbucksRomName, NULL, NULL, NULL, NULL, bigbucksInputInfo, bigbucksDIPInfo,
 	bigbucksInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6052,7 +6822,7 @@ struct BurnDriver BurnDrvrocktrv2 = {
 	"MTV Rock-N-Roll Trivia (Part 2)\0", NULL, "Triumph Software Inc.", "Pac-man",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_QUIZ, 0,
-	NULL, rocktrv2RomInfo, rocktrv2RomName, NULL, NULL, rocktrv2InputInfo, rocktrv2DIPInfo,
+	NULL, rocktrv2RomInfo, rocktrv2RomName, NULL, NULL, NULL, NULL, rocktrv2InputInfo, rocktrv2DIPInfo,
 	rocktrv2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6100,8 +6870,8 @@ struct BurnDriver BurnDrvalibaba = {
 	"alibaba", NULL, NULL, NULL, "1982",
 	"Ali Baba and 40 Thieves\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, alibabaRomInfo, alibabaRomName, NULL, NULL, alibabaInputInfo, alibabaDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, alibabaRomInfo, alibabaRomName, NULL, NULL, NULL, NULL, alibabaInputInfo, alibabaDIPInfo,
 	alibabaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6138,8 +6908,8 @@ struct BurnDriver BurnDrvalibabab = {
 	"alibabab", "alibaba", NULL, NULL, "1982",
 	"Mustafa and 40 Thieves (bootleg)\0", NULL, "bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, alibababRomInfo, alibababRomName, NULL, NULL, alibabaInputInfo, alibabaDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, alibababRomInfo, alibababRomName, NULL, NULL, NULL, NULL, alibabaInputInfo, alibabaDIPInfo,
 	alibabaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6175,8 +6945,8 @@ struct BurnDriver BurnDrvbirdiy = {
 	"birdiy", NULL, NULL, NULL, "1982",
 	"Birdiy\0", NULL, "Mama Top", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, birdiyRomInfo, birdiyRomName, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, birdiyRomInfo, birdiyRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	birdiyInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6281,8 +7051,8 @@ struct BurnDriver BurnDrvpengo = {
 	"pengo", NULL, NULL, NULL, "1982",
 	"Pengo (set 1 rev c)\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengoRomInfo, pengoRomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengoRomInfo, pengoRomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6317,8 +7087,8 @@ struct BurnDriver BurnDrvpengo2 = {
 	"pengo2", "pengo", NULL, NULL, "1982",
 	"Pengo (set 2)\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengo2RomInfo, pengo2RomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengo2RomInfo, pengo2RomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6365,8 +7135,8 @@ struct BurnDriver BurnDrvpengo2u = {
 	"pengo2u", "pengo", NULL, NULL, "1982",
 	"Pengo (set 2 not encrypted)\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengo2uRomInfo, pengo2uRomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengo2uRomInfo, pengo2uRomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengouInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6401,8 +7171,8 @@ struct BurnDriver BurnDrvpengo3u = {
 	"pengo3u", "pengo", NULL, NULL, "1982",
 	"Pengo (set 3 not encrypted)\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengo3uRomInfo, pengo3uRomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengo3uRomInfo, pengo3uRomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengouInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6437,8 +7207,45 @@ struct BurnDriver BurnDrvpengo4 = {
 	"pengo4", "pengo", NULL, NULL, "1982",
 	"Pengo (set 4)\0", NULL, "Sega", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengo4RomInfo, pengo4RomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengo4RomInfo, pengo4RomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	pengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
+
+
+// Pengo (set 5)
+// PCB has an additional label Bally N.E.
+
+static struct BurnRomInfo pengo5RomDesc[] = {
+	{ "0_oct6-82.bin",		0x1000, 0x43e45441, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "1_oct11-82.bin", 	0x1000, 0x30a52a90, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "2_oct11-82.bin",    	0x1000, 0x09783cc2, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "3_oct6-82.bin",    	0x1000, 0x452c80c9, 1 | BRF_ESS | BRF_PRG },	//  3
+	{ "4_oct6-82.bin",    	0x1000, 0xb72084ec, 1 | BRF_ESS | BRF_PRG },	//  4
+	{ "5_oct11-82.bin",    	0x1000, 0x770570cf, 1 | BRF_ESS | BRF_PRG },	//  5
+	{ "6_oct11-82.bin",    	0x1000, 0xaf7b12c4, 1 | BRF_ESS | BRF_PRG },	//  6
+	{ "7_oct11-82.bin",    	0x1000, 0x1350ca0e, 1 | BRF_ESS | BRF_PRG },	//  7
+
+	{ "ep1640.92",    		0x2000, 0xd7eec6cd, 2 | BRF_GRA },				//  8 Graphics
+	{ "ep1695.105",   		0x2000, 0x5bfd26e9, 2 | BRF_GRA },				//  9
+
+	{ "pr1633.78",    		0x0020, 0x3a5844ec, 3 | BRF_GRA },				// 10 Color Proms
+	{ "pr1634.88",    		0x0400, 0x766b139b, 3 | BRF_GRA },				// 11
+
+	{ "pr1635.51",    		0x0100, 0xc29dea27, 4 | BRF_SND },				// 12 Sound Prom
+	{ "pr1636.70",    		0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	// 13 Timing Prom
+};
+
+STD_ROM_PICK(pengo5)
+STD_ROM_FN(pengo5)
+
+struct BurnDriver BurnDrvpengo5 = {
+	"pengo5", "pengo", NULL, NULL, "1982",
+	"Pengo (set 5)\0", NULL, "Sega", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengo5RomInfo, pengo5RomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengoInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6523,8 +7330,8 @@ struct BurnDriver BurnDrvpengob = {
 	"pengob", "pengo", NULL, NULL, "1982",
 	"Pengo (bootleg)\0", NULL, "Bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pengobRomInfo, pengobRomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pengobRomInfo, pengobRomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengobInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
@@ -6559,10 +7366,42 @@ struct BurnDriver BurnDrvpenta = {
 	"penta", "pengo", NULL, NULL, "1982",
 	"Penta\0", NULL, "Bootleg", "Pac-man",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE, 0,
-	NULL, pentaRomInfo, pentaRomName, NULL, NULL, PengoInputInfo, PengoDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, pentaRomInfo, pentaRomName, NULL, NULL, NULL, NULL, PengoInputInfo, PengoDIPInfo,
 	pengobInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 288, 3, 4
 };
 
+
+// Alien Rescue (Homebrew, Test Build)
+
+static struct BurnRomInfo alienresRomDesc[] = {
+	{ "pacman.6e",    0x1000, 0x4D94CE2A, 1 | BRF_ESS | BRF_PRG },	//  0 Z80 Code
+	{ "pacman.6f",    0x1000, 0x5F81D441, 1 | BRF_ESS | BRF_PRG },	//  1
+	{ "pacman.6h",    0x1000, 0xC71C0011, 1 | BRF_ESS | BRF_PRG },	//  2
+	{ "pacman.6j",    0x1000, 0xC71C0011, 1 | BRF_ESS | BRF_PRG },	//  3
+
+	{ "pacman.5e",    0x1000, 0xAB38F274, 2 | BRF_GRA },			//  4 Graphics
+	{ "pacman.5f",    0x1000, 0xCE1C6CB2, 2 | BRF_GRA },			//  5
+
+	{ "82s123.7f",    0x0020, 0x2fc650bd, 3 | BRF_GRA },			//  6 Color Proms
+	{ "82s126.4a",    0x0100, 0x3eb3a8e4, 3 | BRF_GRA },			//  7
+
+	{ "82s126.1m",    0x0100, 0xa9cc86bf, 4 | BRF_SND },			//  8 Sound Prom
+	{ "82s126.3m",    0x0100, 0x77245b66, 0 | BRF_SND | BRF_OPT },	//  9 Timing Prom (not used)
+	{ "pacman.1k",	  0x0400, 0xB9D2E5E6, 0 | BRF_SND | BRF_OPT },	// 10 What's this?
+};
+
+STD_ROM_PICK(alienres)
+STD_ROM_FN(alienres)
+
+struct BurnDriver BurnDrvalienres = {
+	"alienres", NULL, NULL, NULL, "2019",
+	"Alien Rescue (Homebrew, Test Build July 2019)\0", "monstersgoboom.itch.io", "MonstersGoBoom", "Pac-man",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PACMAN, GBF_MAZE | GBF_ACTION, 0,
+	NULL, alienresRomInfo, alienresRomName, NULL, NULL, NULL, NULL, AlienresInputInfo, DrvDIPInfo,
+	puckmanInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	224, 288, 3, 4
+};
 

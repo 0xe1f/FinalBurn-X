@@ -28,7 +28,7 @@ static UINT8 *soundlatch;
 static UINT8 *RamEnd;
 static UINT8 *MemEnd;
 
-static UINT32  *DrvPalette;
+static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
 static INT32 bank0;
@@ -270,7 +270,7 @@ void __fastcall ultraman_sound_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0xe000:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 
 		case 0xf000:
@@ -291,11 +291,11 @@ UINT8 __fastcall ultraman_sound_read(UINT16 address)
 			return *soundlatch;
 
 		case 0xe000:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0xf000:
 		case 0xf001:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 	}
 
 	return 0;
@@ -369,6 +369,7 @@ static INT32 MemIndex()
 	MSM6295ROM	= Next;
 	DrvSndROM	= Next; Next += 0x040000;
 
+	konami_palette32= (UINT32*)Next;
 	DrvPalette	= (UINT32*)Next; Next += 0x2000 * sizeof(UINT32);
 
 	AllRam		= Next;
@@ -388,18 +389,12 @@ static INT32 MemIndex()
 
 static INT32 DrvGfxDecode()
 {
-	INT32 Plane0[4]  = { 0x000, 0x008, 0x010, 0x018 };
-	INT32 XOffs0[16] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
-			   0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x106, 0x107 };
-	INT32 YOffs0[16] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0,
-			   0x200, 0x220, 0x240, 0x260, 0x280, 0x2a0, 0x2c0, 0x2e0 };
-	INT32 Plane1[4]  = { 0x000, 0x001, 0x002, 0x003 };
-	INT32 XOffs1[16] = { 0x000, 0x004, 0x008, 0x00c, 0x010, 0x014, 0x018, 0x01c,
-			   0x020, 0x024, 0x028, 0x02c, 0x030, 0x034, 0x038, 0x03c };
-	INT32 YOffs1[16] = { 0x000, 0x040, 0x080, 0x0c0, 0x100, 0x140, 0x180, 0x1c0,
-			   0x200, 0x240, 0x280, 0x2c0, 0x300, 0x340, 0x380, 0x3c0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x100000);
+	INT32 Plane0[4]  = { STEP4(0,8) };
+	INT32 XOffs0[16] = { STEP8(0, 1), STEP8(256, 1) };
+	INT32 YOffs0[16] = { STEP8(0,32), STEP8(512,32) };
+	INT32 Plane1[4]  = { STEP4(0,1) };
+	INT32 XOffs1[16] = { STEP16(0,4) };
+	INT32 YOffs1[16] = { STEP16(0,64) };
 
 	GfxDecode(0x02000, 4, 16, 16, Plane0, XOffs0, YOffs0, 0x400, DrvGfxROM0, DrvGfxROMExp0);
 	GfxDecode(0x01000, 4, 16, 16, Plane1, XOffs1, YOffs1, 0x400, DrvGfxROM1, DrvGfxROMExp1);
@@ -411,6 +406,8 @@ static INT32 DrvGfxDecode()
 
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -424,8 +421,8 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  2, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  3, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x080000,  4, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  3, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  4, 4, 2)) return 1;
 
 		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  5, 1)) return 1;
 		if (BurnLoadRom(DrvGfxROM1 + 0x020000,  6, 1)) return 1;
@@ -449,9 +446,9 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x080000, 0x08ffff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x180000, 0x183fff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x080000, 0x08ffff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x180000, 0x183fff, MAP_RAM);
 	SekSetWriteByteHandler(0,	ultraman_write_byte);
 	SekSetReadByteHandler(0,	ultraman_read_byte);
 	SekClose();
@@ -467,7 +464,7 @@ static INT32 DrvInit()
 	ZetSetReadHandler(ultraman_sound_read);
 	ZetClose();
 
-	K051960Init(DrvGfxROM0, 0xfffff);
+	K051960Init(DrvGfxROM0, DrvGfxROMExp0, 0xfffff);
 	K051960SetCallback(K051960Callback);
 	K051960SetSpriteOffset(9, 0);
 
@@ -486,8 +483,6 @@ static INT32 DrvInit()
 
 	MSM6295Init(0, 1056000 / 132, 1);
 	MSM6295SetRoute(0, 0.50, BURN_SND_ROUTE_BOTH);
-
-	GenericTilesInit();
 
 	DrvDoReset();
 
@@ -524,7 +519,7 @@ static inline void DrvRecalcPalette()
 		g = (g << 3) | (g >> 2);
 		b = (b << 3) | (b >> 2);
 
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
+		DrvPalette[i] = (r << 16) + (g << 8) + b;
 	}
 }
 
@@ -534,15 +529,15 @@ static INT32 DrvDraw()
 		DrvRecalcPalette();
 	}
 
-	BurnTransferClear();
+	KonamiClearBitmaps(0);
 
 	K051316_zoom_draw(2, 0);
 	K051316_zoom_draw(1, 0);
-	K051960SpritesRender(DrvGfxROMExp0, 0);
+	K051960SpritesRender(0, 0);
 	K051316_zoom_draw(0, 0);
-	K051960SpritesRender(DrvGfxROMExp0, 1);
+	K051960SpritesRender(1, 1);
 
-	BurnTransferCopy(DrvPalette);
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -597,7 +592,7 @@ static INT32 DrvFrame()
 		}
 	}
 
-	SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -637,8 +632,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 
@@ -690,7 +685,7 @@ struct BurnDriver BurnDrvUltraman = {
 	"Ultraman (Japan)\0", NULL, "Banpresto / Bandai", "GX910",
 	L"\uFEFF\u30A6\u30EB\u30c8\u30E9\u30DE\u30f3  \u7A7A\u60F3\u7279\u64AE\u30B7\u30EA\u30FC\u30BA (Japan)\0Ultraman\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_VSFIGHT, 0,
-	NULL, ultramanRomInfo, ultramanRomName, NULL, NULL, UltramanInputInfo, UltramanDIPInfo,
+	NULL, ultramanRomInfo, ultramanRomName, NULL, NULL, NULL, NULL, UltramanInputInfo, UltramanDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };

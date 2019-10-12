@@ -61,7 +61,7 @@ STDDIPINFO(Tjumpman)
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 tjumpman_hopper_read()
@@ -114,7 +114,7 @@ UINT8 __fastcall tjumpmanReadByte(UINT32 sekAddress)
 		}
 
 		case 0x800001:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		default: {
 //			bprintf(PRINT_NORMAL, _T("Attempt to read byte value of location %x\n"), sekAddress);
@@ -158,7 +158,7 @@ UINT16 __fastcall tjumpmanReadWord(UINT32 sekAddress)
 		}
 
 		case 0x800000:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		default: {
 // 			bprintf(PRINT_NORMAL, _T("Attempt to read word value of location %x\n"), sekAddress);
@@ -172,7 +172,7 @@ void __fastcall tjumpmanWriteByte(UINT32 sekAddress, UINT8 byteValue)
 	switch (sekAddress)
 	{
 		case 0x800001:
-			MSM6295Command(0, byteValue);
+			MSM6295Write(0, byteValue);
 			break;
 
 		case 0xc00000:
@@ -222,7 +222,7 @@ void __fastcall tjumpmanWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			break;
 
 		case 0x800000:
-			MSM6295Command(0, wordValue);
+			MSM6295Write(0, wordValue);
 			break;
 
 		case 0xc00000:
@@ -473,7 +473,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);
 
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -519,18 +519,18 @@ static INT32 DrvInit()
 	{
 		SekInit(0, 0x68000);
 		SekOpen(0);
-		SekMapMemory(Rom01,				0x000000, 0x07FFFF, SM_ROM);
-		SekMapMemory(Ram01,				0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],			0x300000, 0x303FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],			0x304000, 0x307FFF, SM_RAM);	// mirror
-		SekMapMemory(CaveSpriteRAM,			0x200000, 0x20FFFF, SM_RAM);
-		SekMapMemory(CavePalSrc,			0x500000, 0x50FFFF, SM_ROM);
+		SekMapMemory(Rom01,				0x000000, 0x07FFFF, MAP_ROM);
+		SekMapMemory(Ram01,				0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],			0x300000, 0x303FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],			0x304000, 0x307FFF, MAP_RAM);	// mirror
+		SekMapMemory(CaveSpriteRAM,			0x200000, 0x20FFFF, MAP_RAM);
+		SekMapMemory(CavePalSrc,			0x500000, 0x50FFFF, MAP_ROM);
 		SekSetReadWordHandler(0, 			tjumpmanReadWord);
 		SekSetReadByteHandler(0,			tjumpmanReadByte);
 		SekSetWriteWordHandler(0, 			tjumpmanWriteWord);
 		SekSetWriteByteHandler(0, 			tjumpmanWriteByte);
 
-		SekMapHandler(1,				0x500000, 0x50FFFF, SM_WRITE);
+		SekMapHandler(1,				0x500000, 0x50FFFF, MAP_WRITE);
 		SekSetWriteWordHandler(1, 			tjumpmanWriteWordPalette);
 		SekSetWriteByteHandler(1, 			tjumpmanWriteBytePalette);
 		SekClose();
@@ -578,7 +578,7 @@ struct BurnDriverD BurnDrvTjumpman = {
 	"Tobikose! Jumpman\0", "Coin input not working?", "Namco", "Cave",
 	L"\u30E1\u30B0\u30EB\u3092\u3044\u308C\u3066\u306D!\0Tobikose! Jumpman\0", NULL, NULL, NULL,
 	BDF_16BIT_ONLY, 1, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_MISC, 0,
-	NULL, tjumpmanRomInfo, tjumpmanRomName, NULL, NULL, TjumpmanInputInfo, TjumpmanDIPInfo,
+	NULL, tjumpmanRomInfo, tjumpmanRomName, NULL, NULL, NULL, NULL, TjumpmanInputInfo, TjumpmanDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 240, 4, 3
 };

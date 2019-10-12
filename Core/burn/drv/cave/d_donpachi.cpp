@@ -1,12 +1,20 @@
 // Donpachi
 #include "cave.h"
 #include "msm6295.h"
+#include "nmk112.h"
+
+#define USE_SAMPLE_HACK // allow use of high quality music samples.
 
 #define CAVE_VBLANK_LINES 12
+
+#ifdef USE_SAMPLE_HACK
+#include "samples.h"
+#endif
 
 static UINT8 DrvJoy1[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static UINT8 DrvJoy2[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static UINT16 DrvInput[2] = {0x0000, 0x0000};
+static UINT8 DrvDips[1];
 
 static UINT8 *Mem = NULL, *MemEnd = NULL;
 static UINT8 *RamStart, *RamEnd;
@@ -15,16 +23,22 @@ static UINT8 *Ram01;
 static UINT8 *DefaultEEPROM = NULL;
 
 static UINT8 DrvReset = 0;
-static UINT8 bDrawScreen;
 static bool bVBlank;
-
-static INT32 nBankSize[2] = {0x200000, 0x300000};
 
 static INT8 nVideoIRQ;
 static INT8 nSoundIRQ;
 static INT8 nUnknownIRQ;
 
 static INT8 nIRQPending;
+
+static UINT8 bHasSamples = 0;
+static UINT8 bLastSampleDIPMode = 0;
+
+static INT32 nCyclesExtra;
+
+#ifdef USE_SAMPLE_HACK
+static UINT8 previous_sound_write[3] = { 0, 0, 0 };
+#endif
 
 static struct BurnInputInfo donpachiInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 8,	"p1 coin"},
@@ -52,14 +66,35 @@ static struct BurnInputInfo donpachiInputList[] = {
 	{"Reset",		BIT_DIGITAL,	&DrvReset,		"reset"},
 	{"Diagnostics",	BIT_DIGITAL,	DrvJoy1 + 9,	"diag"},
 	{"Service",		BIT_DIGITAL,	DrvJoy2 + 9,	"service"},
+	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"},
 };
 
 STDINPUTINFO(donpachi)
 
+static struct BurnDIPInfo donpachiDIPList[]=
+{
+	{0x15, 0xff, 0xff, 0x00, NULL			},
+
+	{0   , 0xfe, 0   ,    2, "Enable high-quality music w/samples"},
+	{0x15, 0x01, 0x08, 0x08, "On"			},
+	{0x15, 0x01, 0x08, 0x00, "Off"			},
+};
+
+STDDIPINFO(donpachi)
+
+static void DrvSampleReset()
+{
+	BurnSampleReset();
+	// don't autoplay everything @ reset w/ SAMPLE_AUTOLOOP
+	for (INT32 i = 0;i < 20; i++){
+		BurnSampleStop(i);
+	}
+}
+
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall donpachiReadByte(UINT32 sekAddress)
@@ -89,9 +124,9 @@ UINT8 __fastcall donpachiReadByte(UINT32 sekAddress)
 		}
 
 		case 0xB00001:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0xB00011:
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 
 		case 0xC00000:
 			return (DrvInput[0] >> 8) ^ 0xFF;
@@ -132,9 +167,9 @@ UINT16 __fastcall donpachiReadWord(UINT32 sekAddress)
 		}
 
 		case 0xB00000:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0xB00010:
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 
 		case 0xC00000:
 			return DrvInput[0] ^ 0xFFFF;
@@ -156,13 +191,13 @@ void __fastcall donpachiWriteByte(UINT32 sekAddress, UINT8 byteValue)
 		case 0xB00001:
 		case 0xB00002:
 		case 0xB00003:
-			MSM6295Command(0, byteValue);
+			MSM6295Write(0, byteValue);
 			break;
 		case 0xB00010:
 		case 0xB00011:
 		case 0xB00012:
 		case 0xB00013:
-			MSM6295Command(1, byteValue);
+			MSM6295Write(1, byteValue);
 			break;
 
 		case 0xB00020:
@@ -181,25 +216,7 @@ void __fastcall donpachiWriteByte(UINT32 sekAddress, UINT8 byteValue)
 		case 0xB0002D:
 		case 0xB0002E:
 		case 0xB0002F: {
-			INT32 nBank = (sekAddress >> 1) & 3;
-			INT32 nChip = (sekAddress >> 3) & 1;
-			INT32 nAddress = byteValue << 16;
-			while (nAddress > nBankSize[nChip]) {
-				nAddress -= nBankSize[nChip];
-			}
-
-			if (nChip == 1) {
-				MSM6295SampleData[1][nBank] = MSM6295ROM + nAddress;
-				MSM6295SampleInfo[1][nBank] = MSM6295ROM + nAddress + (nBank << 8);
-			} else {
-				MSM6295SampleData[0][nBank] = MSM6295ROM + 0x100000 + nAddress;
-				if (nBank == 0) {
-					MSM6295SampleInfo[0][0] = MSM6295ROM + 0x100000 + nAddress + 0x0000;
-					MSM6295SampleInfo[0][1] = MSM6295ROM + 0x100000 + nAddress + 0x0100;
-					MSM6295SampleInfo[0][2] = MSM6295ROM + 0x100000 + nAddress + 0x0200;
-					MSM6295SampleInfo[0][3] = MSM6295ROM + 0x100000 + nAddress + 0x0300;
-				}
-			}
+			NMK112_okibank_write((sekAddress / 2) & 0x07, byteValue);
 			break;
 		}
 
@@ -253,17 +270,58 @@ void __fastcall donpachiWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			nCaveYOffset = wordValue;
 			return;
 		case 0x900008:
-			CaveSpriteBuffer();
 			nCaveSpriteBank = wordValue;
 			return;
 
 		case 0xB00000:
 		case 0xB00002:
-			MSM6295Command(0, wordValue);
+#ifdef USE_SAMPLE_HACK
+			if (wordValue == 0x78) {
+				memset (previous_sound_write, 0, 3);
+				DrvSampleReset(); // STOP
+			} else {
+				previous_sound_write[0] = previous_sound_write[1];
+				previous_sound_write[1] = previous_sound_write[2];
+				previous_sound_write[2] = wordValue;
+
+				if (previous_sound_write[0] == 0x08) {
+					UINT16 select = (previous_sound_write[1]*256) + previous_sound_write[2];
+					INT32 sample = 0xff;
+					switch (select)
+					{
+
+						// I'm silencing all sounds from the music chip atm, it may be necessary to let some of
+						// these actually play. Just set use BurnSampleReset, and restore the volume of the music chip.
+
+						case 0xcc12: sample = 0x00; break;
+						case 0x8112: sample = 0x01; break;
+						case 0x9814: sample = 0x02; break;
+						case 0xb113: sample = 0x03; break;
+						case 0xa112: sample = 0x04; break;
+						case 0xd812: sample = 0x05; break;
+						case 0x9313: sample = 0x06; break;
+						case 0xe813: sample = 0x07; break;
+						case 0xf013: sample = 0x08; break;
+						case 0xf111: sample = 0x09; break;
+						case 0x9a13: sample = 0x0a; break;
+						case 0xf813: sample = 0x0b; break;
+						case 0xd013: sample = 0x0c; break;
+						case 0xc813: sample = 0x0d; break;
+					}
+
+					if (sample != 0xff && BurnSampleGetStatus(sample) == 0) {
+						DrvSampleReset();
+						BurnSamplePlay(sample);
+//						bprintf (0, _T("Sample playing: %d\n"), sample);
+					}
+				}
+			}
+#endif
+			MSM6295Write(0, wordValue);
 			break;
 		case 0xB00010:
 		case 0xB00012:
-			MSM6295Command(1, wordValue);
+			MSM6295Write(1, wordValue);
 			break;
 
 		case 0xB00020:
@@ -282,25 +340,7 @@ void __fastcall donpachiWriteWord(UINT32 sekAddress, UINT16 wordValue)
 		case 0xB0002D:
 		case 0xB0002E:
 		case 0xB0002F: {
-			INT32 nBank = (sekAddress >> 1) & 3;
-			INT32 nChip = (sekAddress >> 3) & 1;
-			INT32 nAddress = wordValue << 16;
-			while (nAddress > nBankSize[nChip]) {
-				nAddress -= nBankSize[nChip];
-			}
-
-			if (nChip == 1) {
-				MSM6295SampleData[1][nBank] = MSM6295ROM + nAddress;
-				MSM6295SampleInfo[1][nBank] = MSM6295ROM + nAddress + (nBank << 8);
-			} else {
-				MSM6295SampleData[0][nBank] = MSM6295ROM + 0x100000 + nAddress;
-				if (nBank == 0) {
-					MSM6295SampleInfo[0][0] = MSM6295ROM + 0x100000 + nAddress + 0x0000;
-					MSM6295SampleInfo[0][1] = MSM6295ROM + 0x100000 + nAddress + 0x0100;
-					MSM6295SampleInfo[0][2] = MSM6295ROM + 0x100000 + nAddress + 0x0200;
-					MSM6295SampleInfo[0][3] = MSM6295ROM + 0x100000 + nAddress + 0x0300;
-				}
-			}
+			NMK112_okibank_write((sekAddress / 2) & 0x07, wordValue & 0xff);
 			break;
 		}
 
@@ -320,12 +360,14 @@ static INT32 DrvExit()
 {
 	EEPROMExit();
 	
-	MSM6295Exit(0);
-	MSM6295Exit(1);
+	MSM6295Exit();
+#ifdef USE_SAMPLE_HACK
+	BurnSampleExit();
+#endif
 
 	CaveTileExit();
 	CaveSpriteExit();
-    CavePalExit();
+	CavePalExit();
 
 	SekExit();				// Deallocate 68000s
 
@@ -348,9 +390,15 @@ static INT32 DrvDoReset()
 
 	nIRQPending = 0;
 
-	MSM6295Reset(0);
-	MSM6295Reset(1);
+	nCyclesExtra = 0;
 
+	MSM6295Reset();
+	NMK112Reset();
+#ifdef USE_SAMPLE_HACK
+	DrvSampleReset();
+	memset (previous_sound_write, 0, 3);
+#endif
+	HiscoreReset();
 	return 0;
 }
 
@@ -359,24 +407,26 @@ static INT32 DrvDraw()
 	CavePalUpdate4Bit(0, 128);				// Update the palette
 	CaveClearScreen(CavePalette[0x7F00]);
 
-	if (bDrawScreen) {
-//		CaveGetBitmap();
-
-		CaveTileRender(1);					// Render tiles
-	}
+	CaveTileRender(1);					    // Render tiles
 
 	return 0;
 }
 
-inline static INT32 CheckSleep(INT32)
+static void CheckDIP()
 {
-	return 0;
+	if (bHasSamples && bLastSampleDIPMode != DrvDips[0]) {
+		//bprintf(0, _T("DIP Changed! %X\n"), DrvDips[0]);
+		bLastSampleDIPMode = DrvDips[0];
+
+		MSM6295SetRoute(0, (bLastSampleDIPMode == 8) ? 0.00 : 1.60, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetAllRoutesAllSamples((bLastSampleDIPMode == 8) ? 0.40 : 0.00, BURN_SND_ROUTE_BOTH);
+	}
 }
 
 static INT32 DrvFrame()
 {
 	INT32 nCyclesVBlank;
-	INT32 nInterleave = 8;
+	INT32 nInterleave = 32;
 
 	INT32 nCyclesTotal[2];
 	INT32 nCyclesDone[2];
@@ -386,6 +436,8 @@ static INT32 DrvFrame()
 	if (DrvReset) {														// Reset machine
 		DrvDoReset();
 	}
+
+	CheckDIP();
 
 	// Compile digital inputs
 	DrvInput[0] = 0x0000;  												// Player 1
@@ -402,7 +454,8 @@ static INT32 DrvFrame()
 	nCyclesTotal[0] = (INT32)((INT64)16000000 * nBurnCPUSpeedAdjust / (0x0100 * CAVE_REFRESHRATE));
 	nCyclesDone[0] = 0;
 
-	nCyclesVBlank = nCyclesTotal[0] - (INT32)((nCyclesTotal[0] * CAVE_VBLANK_LINES) / 271.5);
+	// this vbl timing gives 2 frames response time
+	nCyclesVBlank = nCyclesTotal[0] - 1300; //(INT32)((nCyclesTotal[0] * CAVE_VBLANK_LINES) / 271.5);
 	bVBlank = false;
 
 	INT32 nSoundBufferPos = 0;
@@ -416,31 +469,22 @@ static INT32 DrvFrame()
 		// Run 68000
 
 		// See if we need to trigger the VBlank interrupt
-		if (!bVBlank && nNext > nCyclesVBlank) {
+		if (!bVBlank && nNext >= nCyclesVBlank) {
 			if (nCyclesDone[nCurrentCPU] < nCyclesVBlank) {
 				nCyclesSegment = nCyclesVBlank - nCyclesDone[nCurrentCPU];
-				if (!CheckSleep(nCurrentCPU)) {							// See if this CPU is busywaiting
-					nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-				} else {
-					nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-				}
-			}
-
-			if (pBurnDraw != NULL) {
-				DrvDraw();												// Draw screen if needed
+				nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
 			}
 
 			bVBlank = true;
 			nVideoIRQ = 0;
 			UpdateIRQStatus();
+
+			CaveSpriteBuffer();
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		if (!CheckSleep(nCurrentCPU)) {									// See if this CPU is busywaiting
-			nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		} else {
-			nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-		}
+		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment - nCyclesExtra);
+		nCyclesExtra = 0;
 	}
 
 	// Make sure the buffer is entirely filled.
@@ -449,13 +493,20 @@ static INT32 DrvFrame()
 			INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			if (nSegmentLength) {
-				MSM6295Render(0, pSoundBuf, nSegmentLength);
-				MSM6295Render(1, pSoundBuf, nSegmentLength);
+				MSM6295Render(pSoundBuf, nSegmentLength);
+#ifdef USE_SAMPLE_HACK
+				BurnSampleRender(pSoundBuf, nSegmentLength);
+#endif
 			}
 		}
 	}
 
+	nCyclesExtra = SekTotalCycles() - nCyclesTotal[0];
 	SekClose();
+
+	if (pBurnDraw != NULL) {
+		DrvDraw();												// Draw screen if needed
+	}
 
 	return 0;
 }
@@ -516,8 +567,8 @@ static INT32 LoadRoms()
 	NibbleSwap2(CaveTileROM[2], 0x040000);
 
 	// Load MSM6295 ADPCM data
-	BurnLoadRom(MSM6295ROM, 6, 1);
-	BurnLoadRom(MSM6295ROM + 0x100000, 7, 1);
+	BurnLoadRom(MSM6295ROM + 0x000000, 6, 1); // OKI #1 ONLY
+	BurnLoadRom(MSM6295ROM + 0x100000, 7, 1); // OKI #0 & #1
 	
 	BurnLoadRom(DefaultEEPROM, 8, 1);
 
@@ -538,15 +589,15 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_VOLATILE) {		// Scan volatile ram
 
 		memset(&ba, 0, sizeof(ba));
-    	ba.Data		= RamStart;
+		ba.Data		= RamStart;
 		ba.nLen		= RamEnd - RamStart;
 		ba.szName	= "RAM";
 		BurnAcb(&ba);
 
 		SekScan(nAction);				// scan 68000 states
 
-		MSM6295Scan(0, nAction);
-		MSM6295Scan(1, nAction);
+		MSM6295Scan(nAction, pnMin);
+		NMK112_Scan(nAction);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -556,10 +607,14 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		CaveScanGraphics();
 
 		SCAN_VAR(DrvInput);
+#ifdef USE_SAMPLE_HACK
+		BurnSampleScan(nAction, pnMin); // Must be at the end to maintain compatibility between sample and non-sample mode.
+#endif
 	}
 
 	if (nAction & ACB_WRITE) {
 		CaveRecalcPalette = 1;
+		bLastSampleDIPMode = 0xf7;
 	}
 
 	return 0;
@@ -591,17 +646,17 @@ static INT32 DrvInit()
 
 	{
 		SekInit(0, 0x68000);													// Allocate 68000
-	    SekOpen(0);
+		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,						0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,						0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[1],			0x200000, 0x207FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],			0x300000, 0x307FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x400000, 0x403FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x404000, 0x407FFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,				0x500000, 0x50FFFF, SM_RAM);
-		SekMapMemory(CavePalSrc,				0xA08000, 0xA08FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,						0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,						0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[1],			0x200000, 0x207FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],			0x300000, 0x307FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x400000, 0x403FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x404000, 0x407FFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,				0x500000, 0x50FFFF, MAP_RAM);
+		SekMapMemory(CavePalSrc,				0xA08000, 0xA08FFF, MAP_RAM);	// Palette RAM
 
 		SekSetReadWordHandler(0, donpachiReadWord);
 		SekSetReadByteHandler(0, donpachiReadByte);
@@ -620,19 +675,29 @@ static INT32 DrvInit()
 
 	MSM6295Init(0, 8000, 0);
 	MSM6295Init(1, 16000, 0);
+#ifdef USE_SAMPLE_HACK
+	MSM6295SetRoute(0, 0.00, BURN_SND_ROUTE_BOTH);
+#else
 	MSM6295SetRoute(0, 1.60, BURN_SND_ROUTE_BOTH);
+#endif
 	MSM6295SetRoute(1, 1.00, BURN_SND_ROUTE_BOTH);
 
-	MSM6295SampleData[0][0] = MSM6295ROM + 0x100000;
-	MSM6295SampleInfo[0][0] = MSM6295ROM + 0x100000 + 0x0000;
-	MSM6295SampleData[0][1] = MSM6295ROM + 0x100000;
-	MSM6295SampleInfo[0][1] = MSM6295ROM + 0x100000 + 0x0100;
-	MSM6295SampleData[0][2] = MSM6295ROM + 0x100000;
-	MSM6295SampleInfo[0][2] = MSM6295ROM + 0x100000 + 0x0200;
-	MSM6295SampleData[0][3] = MSM6295ROM + 0x100000;
-	MSM6295SampleInfo[0][3] = MSM6295ROM + 0x100000 + 0x0300;
+	NMK112_init(1 << 0, MSM6295ROM + 0x100000, MSM6295ROM, 0x200000, 0x300000);
 
-	bDrawScreen = true;
+
+#ifdef USE_SAMPLE_HACK
+	BurnUpdateProgress(0.0, _T("Loading samples..."), 0);
+	bBurnSampleTrimSampleEnd = 1;
+	BurnSampleInit(1);
+	BurnSampleSetAllRoutesAllSamples(0.40, BURN_SND_ROUTE_BOTH);
+    bHasSamples = BurnSampleGetStatus(0) != -1;
+	bLastSampleDIPMode = DrvDips[0];
+
+	if (!(bLastSampleDIPMode == 8) || !bHasSamples) { // Samples not found, fallback to internal samples.
+		MSM6295SetRoute(0, 1.60, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetAllRoutesAllSamples(0.00, BURN_SND_ROUTE_BOTH);
+	}
+#endif
 
 	DrvDoReset(); // Reset machine
 
@@ -724,47 +789,70 @@ static struct BurnRomInfo donpachihkRomDesc[] = {
 	{ "peel18cv8p-15.u18", 0x0155, 0x3f4787e9, BRF_OPT },
 };
 
-
 STD_ROM_PICK(donpachihk)
 STD_ROM_FN(donpachihk)
 
+static struct BurnSampleInfo DonpachiSampleDesc[] = {
+#ifdef USE_SAMPLE_HACK
+#if !defined ROM_VERIFY
+	{ "02 - Sortie Instruction", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "03 - Silent Outpost Base", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "04 - Gale Force", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "05 - God of Destruction", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "06 - Advance Through the Sky", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "07 - The Battle Intensifies", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "08 - An Equal Match", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "09 - It's All Up To Me!!", SAMPLE_NOLOOP | SAMPLE_NOSTORE },
+	{ "10 - Chief's Congratulations", SAMPLE_NOLOOP | SAMPLE_NOSTORE },
+	{ "11 - Breakthrough", SAMPLE_NOLOOP | SAMPLE_NOSTORE },
+	{ "12 - Pressure", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "13 - My Duty is Done", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "14 - Eternal Soldier", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+	{ "15 - Chase in the Dark", SAMPLE_AUTOLOOP | SAMPLE_NOSTORE },
+#endif
+#endif
+	{ "", 0 }
+};
+
+STD_SAMPLE_PICK(Donpachi)
+STD_SAMPLE_FN(Donpachi)
 
 struct BurnDriver BurnDrvDonpachi = {
-	"donpachi", NULL, NULL, NULL, "1995",
+	"donpachi", NULL, NULL, "donpachi", "1995",
 	"DonPachi (USA, ver. 1.12, 95/05/2x)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u9996\u9818\u8702 DonPachi (USA, ver. 1.12, 95/05/2x)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, 0,
-	NULL, donpachiRomInfo, donpachiRomName, NULL, NULL, donpachiInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, donpachiRomInfo, donpachiRomName, NULL, NULL, DonpachiSampleInfo, DonpachiSampleName, donpachiInputInfo, donpachiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvDonpachij = {
-	"donpachij", "donpachi", NULL, NULL, "1995",
+	"donpachij", "donpachi", NULL, "donpachi", "1995",
 	"DonPachi (Japan, ver. 1.01, 95/05/11)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u9996\u9818\u8702 DonPachi (Japan, ver. 1.01, 95/05/11)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, 0,
-	NULL, donpachijRomInfo, donpachijRomName, NULL, NULL, donpachiInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, donpachijRomInfo, donpachijRomName, NULL, NULL, DonpachiSampleInfo, DonpachiSampleName, donpachiInputInfo, donpachiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvDonpachikr = {
-	"donpachikr", "donpachi", NULL, NULL, "1995",
+	"donpachikr", "donpachi", NULL, "donpachi", "1995",
 	"DonPachi (Korea, ver. 1.12, 95/05/2x)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u9996\u9818\u8702 DonPachi (Korea, ver. 1.12, 95/05/2x)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, 0,
-	NULL, donpachikrRomInfo, donpachikrRomName, NULL, NULL, donpachiInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, donpachikrRomInfo, donpachikrRomName, NULL, NULL, DonpachiSampleInfo, DonpachiSampleName, donpachiInputInfo, donpachiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
 
 struct BurnDriver BurnDrvDonpachihk = {
-	"donpachihk", "donpachi", NULL, NULL, "1995",
+	"donpachihk", "donpachi", NULL, "donpachi", "1995",
 	"DonPachi (Hong Kong, ver. 1.10, 95/05/17)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u9996\u9818\u8702 DonPachi (Hong Kong, ver. 1.10, 95/05/17)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, 0,
-	NULL, donpachihkRomInfo, donpachihkRomName, NULL, NULL, donpachiInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY | HARDWARE_CAVE_M6295, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, donpachihkRomInfo, donpachihkRomName, NULL, NULL, DonpachiSampleInfo, DonpachiSampleName, donpachiInputInfo, donpachiDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };

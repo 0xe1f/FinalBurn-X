@@ -220,6 +220,8 @@ void DrvYM2203WritePortA(UINT32, UINT32 d)
 
 void DrvYM2203WritePortB(UINT32, UINT32 d)
 {
+	if (ZetGetActive() == -1) return; // fix crash on init
+
 	INT32 bank = (d & 0x0f) * 0x8000;
 
 	ZetMapArea(0x8000, 0xffff, 0, DrvZ80Banks + bank);
@@ -228,21 +230,14 @@ void DrvYM2203WritePortB(UINT32, UINT32 d)
 
 inline static void DrvIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
+static INT32 DrvSynchroniseStream(INT32 nSoundRate) // msm5205
 {
+	if (ZetGetActive() == -1) return 0;
+
 	return (INT64)(double)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
 }
 
 static void ashnojoe_vclk_cb()
@@ -264,9 +259,7 @@ static INT32 DrvDoReset()
 {
 	memset (AllRam, 0, RamEnd - AllRam);
 
-	SekOpen(0);
-	SekReset();
-	SekClose();
+	SekReset(0);
 
 	ZetOpen(0);
 	ZetReset();
@@ -377,11 +370,11 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x03ffff, SM_ROM);
-	SekMapMemory(DrvPfRAM,			0x040000, 0x048fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x049000, 0x049fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x04c000, 0x04ffff, SM_RAM);
-	SekMapMemory(Drv68KROM + 0x080000,	0x080000, 0x0bffff, SM_ROM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x03ffff, MAP_ROM);
+	SekMapMemory(DrvPfRAM,			0x040000, 0x048fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x049000, 0x049fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x04c000, 0x04ffff, MAP_RAM);
+	SekMapMemory(Drv68KROM + 0x080000,	0x080000, 0x0bffff, MAP_ROM);
 	SekSetWriteWordHandler(0,		ashnojoe_write_word);
 	SekSetWriteByteHandler(0,		ashnojoe_write_byte);
 	SekSetReadWordHandler(0,		ashnojoe_read_word);
@@ -401,7 +394,7 @@ static INT32 DrvInit()
 	MSM5205Init(0, DrvSynchroniseStream, 384000, ashnojoe_vclk_cb, MSM5205_S48_4B, 1);
 	MSM5205SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
 
-	BurnYM2203Init(1, 4000000, &DrvIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(1, 4000000, &DrvIRQHandler, 0);
 	BurnYM2203SetPorts(0, NULL, NULL, &DrvYM2203WritePortA, &DrvYM2203WritePortB);
 	BurnTimerAttachZet(4000000);
 	BurnYM2203SetAllRoutes(0, 0.10, BURN_SND_ROUTE_BOTH);
@@ -573,7 +566,7 @@ static INT32 DrvFrame()
 		nNext[0] += nCyclesTotal[0] / nInterleave;
 
 		nCyclesDone[0] += SekRun(nNext[0] - nCyclesDone[0]);
-		if (i == (nInterleave - 1)) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 		nNext[1] += nCyclesTotal[1] / nInterleave;
 		BurnTimerUpdate(nNext[1]);
@@ -664,8 +657,8 @@ struct BurnDriver BurnDrvScessjoe = {
 	"scessjoe", NULL, NULL, NULL, "1990",
 	"Success Joe (World)\0", "Incomplete sound", "Taito Corporation / Wave", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_MISC, 0,
-	NULL, scessjoeRomInfo, scessjoeRomName, NULL, NULL, AshnojoeInputInfo, AshnojoeDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
+	NULL, scessjoeRomInfo, scessjoeRomName, NULL, NULL, NULL, NULL, AshnojoeInputInfo, AshnojoeDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x800,
 	288, 208, 4, 3
 };
@@ -709,8 +702,8 @@ struct BurnDriver BurnDrvAshnojoe = {
 	"ashnojoe", "scessjoe", NULL, NULL, "1990",
 	"Ashita no Joe (Japan)\0", "Incomplete sound", "Taito Corporation / Wave", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_MISC, 0,
-	NULL, ashnojoeRomInfo, ashnojoeRomName, NULL, NULL, AshnojoeInputInfo, AshnojoeDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
+	NULL, ashnojoeRomInfo, ashnojoeRomName, NULL, NULL, NULL, NULL, AshnojoeInputInfo, AshnojoeDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x800,
 	288, 208, 4, 3
 };

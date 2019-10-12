@@ -1,5 +1,7 @@
 // FB Alpha The Speed Rumbler driver module
 // Based on MAME driver by Paul Leaman
+// Note: main cpu oc'd otherwise there is terrible slowdown, I wonder if our
+// m6809 is cycle accurate or not? (I tried several different timing/irq methods) -dink
 
 #include "tiles_generic.h"
 #include "z80_intf.h"
@@ -26,6 +28,7 @@ static UINT8 *DrvZ80RAM;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
+static UINT8 DrvPalRAMWrite;
 
 static UINT8 *DrvBank;
 static UINT8 *DrvScroll;
@@ -40,37 +43,37 @@ static UINT8 DrvInputs[3];
 static UINT8 DrvReset;
 
 static struct BurnInputInfo SrumblerInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 coin"	},
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 6,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 left"	},
+	{"P1 Up",			BIT_DIGITAL,	DrvJoy2 + 3,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy2 + 2,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy2 + 1,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 2"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 7,	"p2 coin"	},
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy1 + 7,	"p2 coin"	},
 	{"P2 Start",		BIT_DIGITAL,	DrvJoy1 + 1,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy3 + 2,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy3 + 1,	"p2 left"	},
+	{"P2 Up",			BIT_DIGITAL,	DrvJoy3 + 3,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy3 + 2,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	DrvJoy3 + 0,	"p2 right"	},
 	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy3 + 4,	"p2 fire 1"	},
 	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy3 + 5,	"p2 fire 2"	},
 
-	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
-	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
 };
 
 STDINPUTINFO(Srumbler)
 
 static struct BurnDIPInfo SrumblerDIPList[]=
 {
-	{0x11, 0xff, 0xff, 0xff, NULL			},
-	{0x12, 0xff, 0xff, 0x73, NULL			},
+	{0x11, 0xff, 0xff, 0xff, NULL					},
+	{0x12, 0xff, 0xff, 0x77, NULL					},
 
-	{0   , 0xfe, 0   ,    8, "Coin B"		},
+	{0   , 0xfe, 0   ,    8, "Coin B"				},
 	{0x11, 0x01, 0x07, 0x00, "4 Coins 1 Credits"	},
 	{0x11, 0x01, 0x07, 0x01, "3 Coins 1 Credits"	},
 	{0x11, 0x01, 0x07, 0x02, "2 Coins 1 Credits"	},
@@ -80,7 +83,7 @@ static struct BurnDIPInfo SrumblerDIPList[]=
 	{0x11, 0x01, 0x07, 0x04, "1 Coin  4 Credits"	},
 	{0x11, 0x01, 0x07, 0x03, "1 Coin  6 Credits"	},
 
-	{0   , 0xfe, 0   ,    8, "Coin A"		},
+	{0   , 0xfe, 0   ,    8, "Coin A"				},
 	{0x11, 0x01, 0x38, 0x00, "4 Coins 1 Credits"	},
 	{0x11, 0x01, 0x38, 0x08, "3 Coins 1 Credits"	},
 	{0x11, 0x01, 0x38, 0x10, "2 Coins 1 Credits"	},
@@ -90,39 +93,39 @@ static struct BurnDIPInfo SrumblerDIPList[]=
 	{0x11, 0x01, 0x38, 0x20, "1 Coin  4 Credits"	},
 	{0x11, 0x01, 0x38, 0x18, "1 Coin  6 Credits"	},
 
-	{0   , 0xfe, 0   ,    2, "Service Mode"		},
-	{0x11, 0x01, 0x40, 0x40, "Off"			},
-	{0x11, 0x01, 0x40, 0x00, "On"			},
+	{0   , 0xfe, 0   ,    2, "Service Mode"			},
+	{0x11, 0x01, 0x40, 0x40, "Off"					},
+	{0x11, 0x01, 0x40, 0x00, "On"					},
 
-	{0   , 0xfe, 0   ,    2, "Flip Screen"		},
-	{0x11, 0x01, 0x80, 0x80, "Off"			},
-	{0x11, 0x01, 0x80, 0x00, "On"			},
+	{0   , 0xfe, 0   ,    2, "Flip Screen"			},
+	{0x11, 0x01, 0x80, 0x80, "Off"					},
+	{0x11, 0x01, 0x80, 0x00, "On"					},
 
-	{0   , 0xfe, 0   ,    4, "Lives"		},
-	{0x12, 0x01, 0x03, 0x03, "3"			},
-	{0x12, 0x01, 0x03, 0x02, "4"			},
-	{0x12, 0x01, 0x03, 0x01, "5"			},
-	{0x12, 0x01, 0x03, 0x00, "7"			},
+	{0   , 0xfe, 0   ,    4, "Lives"				},
+	{0x12, 0x01, 0x03, 0x03, "3"					},
+	{0x12, 0x01, 0x03, 0x02, "4"					},
+	{0x12, 0x01, 0x03, 0x01, "5"					},
+	{0x12, 0x01, 0x03, 0x00, "7"					},
 
-	{0   , 0xfe, 0   ,    2, "Cabinet"		},
-	{0x12, 0x01, 0x04, 0x00, "Upright"		},
-	{0x12, 0x01, 0x04, 0x04, "Cocktail"		},
+	{0   , 0xfe, 0   ,    2, "Cabinet"				},
+	{0x12, 0x01, 0x04, 0x00, "Upright"				},
+	{0x12, 0x01, 0x04, 0x04, "Cocktail"				},
 
-	{0   , 0xfe, 0   ,    4, "Bonus Life"		},
+	{0   , 0xfe, 0   ,    4, "Bonus Life"			},
 	{0x12, 0x01, 0x18, 0x18, "20k 70k and every 70k"},
 	{0x12, 0x01, 0x18, 0x10, "30k 80k and every 80k"},
-	{0x12, 0x01, 0x18, 0x08, "20k 80k"		},
-	{0x12, 0x01, 0x18, 0x00, "30k 80k"		},
+	{0x12, 0x01, 0x18, 0x08, "20k 80k"				},
+	{0x12, 0x01, 0x18, 0x00, "30k 80k"				},
 
-	{0   , 0xfe, 0   ,    4, "Difficulty"		},
-	{0x12, 0x01, 0x60, 0x40, "Easy"			},
-	{0x12, 0x01, 0x60, 0x60, "Normal"		},
-	{0x12, 0x01, 0x60, 0x20, "Difficult"		},
-	{0x12, 0x01, 0x60, 0x00, "Very Difficult"	},
+	{0   , 0xfe, 0   ,    4, "Difficulty"			},
+	{0x12, 0x01, 0x60, 0x40, "Easy"					},
+	{0x12, 0x01, 0x60, 0x60, "Normal"				},
+	{0x12, 0x01, 0x60, 0x20, "Difficult"			},
+	{0x12, 0x01, 0x60, 0x00, "Very Difficult"		},
 
-	{0   , 0xfe, 0   ,    2, "Allow Continue"	},
-	{0x12, 0x01, 0x80, 0x00, "No"			},
-	{0x12, 0x01, 0x80, 0x80, "Yes"			},
+	{0   , 0xfe, 0   ,    2, "Allow Continue"		},
+	{0x12, 0x01, 0x80, 0x00, "No"					},
+	{0x12, 0x01, 0x80, 0x80, "Yes"					},
 };
 
 STDDIPINFO(Srumbler)
@@ -135,12 +138,17 @@ static void bankswitch(INT32 data)
 	{
 		INT32 bank = DrvPROM[(data & 0xf0) | i] | DrvPROM[0x100 | ((data & 0x0f) << 4) | i];
 
-		M6809MapMemory(DrvM6809ROM + bank * 0x1000, 0x1000 * i, 0x1000 * i + 0x0fff, M6809_ROM);
+		M6809MapMemory(DrvM6809ROM + bank * 0x1000, 0x1000 * i, 0x1000 * i + 0x0fff, MAP_ROM);
 	}
 }
 
-void srumbler_main_write(UINT16 address, UINT8 data)
+static void srumbler_main_write(UINT16 address, UINT8 data)
 {
+	if (address >= 0x7000 && address <= 0x73ff) {
+		DrvPalRAM[address - 0x7000] = data;
+		DrvPalRAMWrite = 1;
+		DrvRecalc = 1;
+	}
 	switch (address)
 	{
 		case 0x4008:
@@ -148,7 +156,7 @@ void srumbler_main_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x4009:
-			*flipscreen = data & 1;
+			*flipscreen = 0; // data & 1; ignore flipscreen
 		return;
 
 		case 0x400a:
@@ -164,7 +172,7 @@ void srumbler_main_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 srumbler_main_read(UINT16 address)
+static UINT8 srumbler_main_read(UINT16 address)
 {
 	switch (address)
 	{
@@ -187,7 +195,7 @@ UINT8 srumbler_main_read(UINT16 address)
 	return 0;
 }
 
-void __fastcall srumbler_sound_write(UINT16 address, UINT8 data)
+static void __fastcall srumbler_sound_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -203,7 +211,7 @@ void __fastcall srumbler_sound_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 __fastcall srumbler_sound_read(UINT16 address)
+static UINT8 __fastcall srumbler_sound_read(UINT16 address)
 {
 	if (address == 0xe000) {
 		return *soundlatch;
@@ -212,19 +220,20 @@ UINT8 __fastcall srumbler_sound_read(UINT16 address)
 	return 0;
 }
 
-inline static INT32 DrvSynchroniseStream(INT32 nSoundRate)
+static void DrvPaletteInit()
 {
-	return (INT64)(ZetTotalCycles() * nSoundRate / 3000000);
-}
-
-inline static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 3000000;
+	for (INT32 i = 0; i < 0x200; i++) {
+		UINT8 r = ((i & 1) ? 0xff : 0);
+		UINT8 g = ((i & 2) ? 0xff : 0);
+		UINT8 b = ((i & 4) ? 0xff : 0);
+		DrvPalette[i] = BurnHighCol(r,g,b,0);
+	}
 }
 
 static INT32 DrvDoReset()
 {
 	DrvReset = 0;
+	DrvPalRAMWrite = 0;
 
 	memset (AllRam, 0, RamEnd - AllRam);
 
@@ -237,7 +246,11 @@ static INT32 DrvDoReset()
 	ZetReset();
 	ZetClose();
 
+	DrvPaletteInit();
+
 	BurnYM2203Reset();
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -370,13 +383,13 @@ static INT32 DrvInit()
 		DrvGfxDecode();
 	}
 
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvM6809RAM,		0x0000, 0x1dff, M6809_RAM);
-	M6809MapMemory(DrvSprRAM,		0x1e00, 0x1fff, M6809_RAM);
-	M6809MapMemory(DrvBgRAM,		0x2000, 0x3fff, M6809_RAM);
-	M6809MapMemory(DrvFgRAM,		0x5000, 0x5fff, M6809_WRITE);
-	M6809MapMemory(DrvPalRAM,		0x7000, 0x73ff, M6809_WRITE);
+	M6809MapMemory(DrvM6809RAM,		0x0000, 0x1dff, MAP_RAM);
+	M6809MapMemory(DrvSprRAM,		0x1e00, 0x1fff, MAP_RAM);
+	M6809MapMemory(DrvBgRAM,		0x2000, 0x3fff, MAP_RAM);
+	M6809MapMemory(DrvFgRAM,		0x5000, 0x5fff, MAP_WRITE);
+	//M6809MapMemory(DrvPalRAM,		0x7000, 0x73ff, MAP_WRITE); // in handler
 	M6809SetReadHandler(srumbler_main_read);
 	M6809SetWriteHandler(srumbler_main_write);
 	M6809Close();
@@ -392,7 +405,7 @@ static INT32 DrvInit()
 	ZetSetReadHandler(srumbler_sound_read);
 	ZetClose();
 
-	BurnYM2203Init(2, 4000000, NULL, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(2, 4000000, NULL, 0);
 	BurnTimerAttachZet(3000000);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.30, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.10, BURN_SND_ROUTE_BOTH);
@@ -563,28 +576,34 @@ static void draw_sprites()
 static INT32 DrvDraw()
 {
 	if (DrvRecalc) {
-		UINT8 r,g,b;
-		for (INT32 i = 0; i < 0x400; i+=2) {
-			INT32 d = DrvPalRAM[i + 1] | (DrvPalRAM[i + 0] << 8);
+		if (DrvPalRAMWrite) {
+			UINT8 r,g,b;
+			for (INT32 i = 0; i < 0x400; i+=2) {
+				INT32 d = DrvPalRAM[i + 1] | (DrvPalRAM[i + 0] << 8);
 
-			r = (d >> 12);
-			g = (d >>  8) & 0x0f;
-			b = (d >>  4) & 0x0f;
+				r = (d >> 12);
+				g = (d >>  8) & 0x0f;
+				b = (d >>  4) & 0x0f;
 
-			DrvPalette[i >> 1] = BurnHighCol((r << 4) | r, (g << 4) | g, (b << 4) | b, 0);
+				DrvPalette[i >> 1] = BurnHighCol((r << 4) | r, (g << 4) | g, (b << 4) | b, 0);
+			}
+		} else {
+			DrvPaletteInit();
 		}
+		DrvRecalc = 0;
 	}
 
 	if (nSpriteEnable & 1) draw_background_layer(1); // opaque
 	else BurnTransferClear();
 
 	if (nBurnLayer & 2) draw_background_layer(3);
-	if (nBurnLayer & 4) draw_foreground_layer(0);
 
 	draw_sprites();
 
-	if (nBurnLayer & 1) draw_background_layer(2);
-	if (nBurnLayer & 8) draw_foreground_layer(1);
+	if (nSpriteEnable & 2) draw_background_layer(0);
+	if (nSpriteEnable & 4) draw_background_layer(2);
+	if (nBurnLayer & 8) draw_foreground_layer(0);
+	if (nBurnLayer & 4) draw_foreground_layer(1);
 
 	BurnTransferCopy(DrvPalette);
 
@@ -608,24 +627,31 @@ static INT32 DrvFrame()
 		}
 	}
 
-	INT32 nInterleave = 4;
-	INT32 nCyclesTotal[2] = { 1500000 / 60, 3000000 / 60 };
+	INT32 nInterleave = 262;
+	INT32 nCyclesTotal[2] = { 3000000 / 60, 3000000 / 60 };
 	INT32 nCyclesDone[2] = { 0, 0 };
 
 	M6809Open(0);
 	ZetOpen(0);
 
 	for (INT32 i = 0; i < nInterleave; i++) {
-		nCyclesDone[0] += M6809Run(nCyclesTotal[0] / nInterleave);
-		if (i == (nInterleave / 2) - 1) M6809SetIRQLine(1, M6809_IRQSTATUS_AUTO);
-		if (i == (nInterleave / 1) - 1) M6809SetIRQLine(0, M6809_IRQSTATUS_AUTO);
+		CPU_RUN(0, M6809);
 
-		BurnTimerUpdate(i * (nCyclesTotal[1] / nInterleave));
-		ZetRaiseIrq(0);
+		if (i == (nInterleave / 2) - 1) {
+			M6809SetIRQLine(1, CPU_IRQSTATUS_HOLD);
+			memcpy (DrvSprBuf, DrvSprRAM, 0x200);
+		}
+		if (i == (nInterleave / 1) - 1) M6809SetIRQLine(0, CPU_IRQSTATUS_HOLD);
+
+		BurnTimerUpdate((i + 1) * (nCyclesTotal[1] / nInterleave));
+
+		if (i % (nInterleave/4) == (nInterleave/4) - 1) {
+			ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+		}
 	}
-	
+
 	BurnTimerEndFrame(nCyclesTotal[1]);
-	
+
 	if (pBurnSoundOut) BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
 
 	ZetClose();
@@ -635,12 +661,10 @@ static INT32 DrvFrame()
 		DrvDraw();
 	}
 
-	memcpy (DrvSprBuf, DrvSprRAM, 0x200);
-
 	return 0;
 }
 
-static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
+static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
 
@@ -663,7 +687,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		BurnYM2203Scan(nAction, pnMin);
 	}
 
-	{
+	if (nAction & ACB_WRITE) {
 		M6809Open(0);
 		bankswitch(DrvBank[0]);
 		M6809Close();
@@ -677,15 +701,15 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 
 static struct BurnRomInfo srumblerRomDesc[] = {
 	{ "rc04.14e",		0x8000, 0xa68ce89c, 1 | BRF_PRG | BRF_ESS }, //  0 M6809 Code
-	{ "rc03(__srumbler).13e", 0x8000, 0x87bda812, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "rc02(__srumbler).12e", 0x8000, 0xd8609cca, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "rc01(__srumbler).11e", 0x8000, 0x27ec4776, 1 | BRF_PRG | BRF_ESS }, //  3
-	{ "rc09(__srumbler).14f", 0x8000, 0x2146101d, 1 | BRF_PRG | BRF_ESS }, //  4
-	{ "rc08(__srumbler).13f", 0x8000, 0x838369a6, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "rc03.13e", 		0x8000, 0x87bda812, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "rc02.12e", 		0x8000, 0xd8609cca, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "rc01.11e", 		0x8000, 0x27ec4776, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "rc09.14f", 		0x8000, 0x2146101d, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "rc08.13f", 		0x8000, 0x838369a6, 1 | BRF_PRG | BRF_ESS }, //  5
 	{ "rc07.12f",		0x8000, 0xde785076, 1 | BRF_PRG | BRF_ESS }, //  6
 	{ "rc06.11f",		0x8000, 0xa70f4fd4, 1 | BRF_PRG | BRF_ESS }, //  7
 
-	{ "rc05(__srumbler).2f", 0x8000, 0x0177cebe, 2 | BRF_PRG | BRF_ESS }, //  8 Z80 Code
+	{ "rc05.2f", 		0x8000, 0x0177cebe, 2 | BRF_PRG | BRF_ESS }, //  8 Z80 Code
 
 	{ "rc10.6g",		0x4000, 0xadabe271, 3 | BRF_GRA },           //  9 Characters
 
@@ -720,8 +744,8 @@ struct BurnDriver BurnDrvSrumbler = {
 	"srumbler", NULL, NULL, NULL, "1986",
 	"The Speed Rumbler (set 1)\0", NULL, "Capcom", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARWARE_CAPCOM_MISC, GBF_SHOOT, 0,
-	NULL, srumblerRomInfo, srumblerRomName, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_RUNGUN, 0,
+	NULL, srumblerRomInfo, srumblerRomName, NULL, NULL, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x200, 240, 352, 3, 4
 };
@@ -731,11 +755,11 @@ struct BurnDriver BurnDrvSrumbler = {
 
 static struct BurnRomInfo srumblr2RomDesc[] = {
 	{ "rc04.14e",		0x8000, 0xa68ce89c, 1 | BRF_PRG | BRF_ESS }, //  0 M6809 Code
-	{ "rc03(__srumbler2).13e", 0x8000, 0xe82f78d4, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "rc03.13e", 		0x8000, 0xe82f78d4, 1 | BRF_PRG | BRF_ESS }, //  1
 	{ "rc02.12e",		0x8000, 0x009a62d8, 1 | BRF_PRG | BRF_ESS }, //  2
 	{ "rc01.11e",		0x8000, 0x2ac48d1d, 1 | BRF_PRG | BRF_ESS }, //  3
 	{ "rc09.14f",		0x8000, 0x64f23e72, 1 | BRF_PRG | BRF_ESS }, //  4
-	{ "rc08(__srumbler2).13f", 0x8000, 0x74c71007, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "rc08.13f", 		0x8000, 0x74c71007, 1 | BRF_PRG | BRF_ESS }, //  5
 	{ "rc07.12f",		0x8000, 0xde785076, 1 | BRF_PRG | BRF_ESS }, //  6
 	{ "rc06.11f",		0x8000, 0xa70f4fd4, 1 | BRF_PRG | BRF_ESS }, //  7
 
@@ -774,8 +798,8 @@ struct BurnDriver BurnDrvSrumblr2 = {
 	"srumbler2", "srumbler", NULL, NULL, "1986",
 	"The Speed Rumbler (set 2)\0", NULL, "Capcom", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARWARE_CAPCOM_MISC, GBF_SHOOT, 0,
-	NULL, srumblr2RomInfo, srumblr2RomName, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_RUNGUN, 0,
+	NULL, srumblr2RomInfo, srumblr2RomName, NULL, NULL, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x200, 240, 352, 3, 4
 };
@@ -785,11 +809,11 @@ struct BurnDriver BurnDrvSrumblr2 = {
 
 static struct BurnRomInfo srumblr3RomDesc[] = {
 	{ "rc04.14e",		0x8000, 0xa68ce89c, 1 | BRF_PRG | BRF_ESS }, //  0 M6809 Code
-	{ "rc03(__srumbler3).13e", 0x8000, 0x0a21992b, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "rc03.13e", 		0x8000, 0x0a21992b, 1 | BRF_PRG | BRF_ESS }, //  1
 	{ "rc02.12e",		0x8000, 0x009a62d8, 1 | BRF_PRG | BRF_ESS }, //  2
 	{ "rc01.11e",		0x8000, 0x2ac48d1d, 1 | BRF_PRG | BRF_ESS }, //  3
 	{ "rc09.14f",		0x8000, 0x64f23e72, 1 | BRF_PRG | BRF_ESS }, //  4
-	{ "rc08(__srumbler3).13f", 0x8000, 0xe361b55c, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "rc08.13f", 		0x8000, 0xe361b55c, 1 | BRF_PRG | BRF_ESS }, //  5
 	{ "rc07.12f",		0x8000, 0xde785076, 1 | BRF_PRG | BRF_ESS }, //  6
 	{ "rc06.11f",		0x8000, 0xa70f4fd4, 1 | BRF_PRG | BRF_ESS }, //  7
 
@@ -828,8 +852,8 @@ struct BurnDriver BurnDrvSrumblr3 = {
 	"srumbler3", "srumbler", NULL, NULL, "1986",
 	"The Speed Rumbler (set 3)\0", NULL, "Capcom (Tecfri license)", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARWARE_CAPCOM_MISC, GBF_SHOOT, 0,
-	NULL, srumblr3RomInfo, srumblr3RomName, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_RUNGUN, 0,
+	NULL, srumblr3RomInfo, srumblr3RomName, NULL, NULL, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x200, 240, 352, 3, 4
 };
@@ -849,7 +873,7 @@ static struct BurnRomInfo rushcrshRomDesc[] = {
 
 	{ "rc05.2f",		0x8000, 0xea04fa07, 2 | BRF_PRG | BRF_ESS }, //  8 Z80 Code
 
-	{ "rc10(__rushcrsh).6g", 0x4000, 0x0a3c0b0d, 3 | BRF_GRA },           //  9 Characters
+	{ "rc10.6g", 		0x4000, 0x0a3c0b0d, 3 | BRF_GRA },           //  9 Characters
 
 	{ "rc11.11a",		0x8000, 0x5fa042ba, 4 | BRF_GRA },           // 10 Tiles
 	{ "rc12.13a",		0x8000, 0xa2db64af, 4 | BRF_GRA },           // 11
@@ -882,8 +906,8 @@ struct BurnDriver BurnDrvRushcrsh = {
 	"rushcrsh", "srumbler", NULL, NULL, "1986",
 	"Rush & Crash (Japan)\0", NULL, "Capcom", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARWARE_CAPCOM_MISC, GBF_SHOOT, 0,
-	NULL, rushcrshRomInfo, rushcrshRomName, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_RUNGUN, 0,
+	NULL, rushcrshRomInfo, rushcrshRomName, NULL, NULL, NULL, NULL, SrumblerInputInfo, SrumblerDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x200, 240, 352, 3, 4
 };

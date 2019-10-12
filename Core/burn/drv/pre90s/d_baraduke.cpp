@@ -19,12 +19,10 @@ static UINT8 *DrvGfxROM2;
 static UINT8 *DrvColPROM;
 static UINT8 *DrvHD63701RAM1;
 static UINT8 *DrvHD63701RAM;
-static UINT8 *DrvWavRAM;
 static UINT8 *DrvVidRAM;
 static UINT8 *DrvTxtRAM;
 static UINT8 *DrvSprRAM;
 
-static UINT32 *Palette;
 static UINT32 *DrvPalette;
 static UINT8  DrvRecalc;
 
@@ -33,6 +31,7 @@ static UINT8 *buffer_sprites;
 static UINT8 *coin_lockout;
 static UINT8 *scroll;
 static UINT8 *ip_select;
+static INT32 *kludge1105;
 
 static INT32 watchdog;
 
@@ -43,30 +42,28 @@ static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 static UINT8 DrvInputs[8];
 
-static INT32 nCyclesDone[2];
-
 static struct BurnInputInfo BaradukeInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 1,	"p1 coin"	},
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 1,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 left"	},
+	{"P1 Up",			BIT_DIGITAL,	DrvJoy2 + 3,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy2 + 2,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy2 + 0,	"p1 left"	},
 	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 2,	"p2 coin"	},
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy1 + 2,	"p2 coin"	},
 	{"P2 Start",		BIT_DIGITAL,	DrvJoy1 + 4,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy3 + 2,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy3 + 0,	"p2 left"	},
+	{"P2 Up",			BIT_DIGITAL,	DrvJoy3 + 3,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy3 + 2,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy3 + 0,	"p2 left"	},
 	{"P2 Right",		BIT_DIGITAL,	DrvJoy3 + 1,	"p2 right"	},
 	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy3 + 4,	"p2 fire 1"	},
 
-	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
-	{"Service",		BIT_DIGITAL,	DrvJoy1 + 0,	"service"	},
-	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",		BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Service",			BIT_DIGITAL,	DrvJoy1 + 0,	"service"	},
+	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Baraduke)
@@ -77,17 +74,17 @@ static struct BurnDIPInfo BaradukeDIPList[]=
 	{0x11, 0xff, 0xff, 0xff, NULL			},
 	{0x12, 0xff, 0xff, 0xff, NULL			},
 
-	{0   , 0xfe, 0   ,    0, "Coin B"		},
+	{0   , 0xfe, 0   ,    4, "Coin B"		},
 	{0x10, 0x01, 0x03, 0x00, "3 Coins 1 Credits"	},
 	{0x10, 0x01, 0x03, 0x01, "2 Coins 1 Credits"	},
 	{0x10, 0x01, 0x03, 0x03, "1 Coin  1 Credits"	},
 	{0x10, 0x01, 0x03, 0x02, "1 Coin  2 Credits"	},
 
-	{0   , 0xfe, 0   ,    4, "Demo Sounds"		},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"		},
 	{0x10, 0x01, 0x04, 0x00, "Off"			},
 	{0x10, 0x01, 0x04, 0x04, "On"			},
 
-	{0   , 0xfe, 0   ,    2, "Coin A"		},
+	{0   , 0xfe, 0   ,    4, "Coin A"		},
 	{0x10, 0x01, 0x18, 0x00, "3 Coins 1 Credits"	},
 	{0x10, 0x01, 0x18, 0x08, "2 Coins 1 Credits"	},
 	{0x10, 0x01, 0x18, 0x18, "1 Coin  1 Credits"	},
@@ -99,7 +96,7 @@ static struct BurnDIPInfo BaradukeDIPList[]=
 	{0x10, 0x01, 0x60, 0x20, "4"			},
 	{0x10, 0x01, 0x60, 0x00, "5"			},
 
-	{0   , 0xfe, 0   ,    4, "Service Mode"		},
+	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x10, 0x01, 0x80, 0x80, "Off"			},
 	{0x10, 0x01, 0x80, 0x00, "On"			},
 
@@ -107,7 +104,7 @@ static struct BurnDIPInfo BaradukeDIPList[]=
 	{0x11, 0x01, 0x02, 0x02, "Off"			},
 	{0x11, 0x01, 0x02, 0x00, "On"			},
 
-	{0   , 0xfe, 0   ,    0, "Freeze"		},
+	{0   , 0xfe, 0   ,    2, "Freeze"		},
 	{0x11, 0x01, 0x04, 0x04, "Off"			},
 	{0x11, 0x01, 0x04, 0x00, "On"			},
 
@@ -115,13 +112,13 @@ static struct BurnDIPInfo BaradukeDIPList[]=
 	{0x11, 0x01, 0x08, 0x08, "Off"			},
 	{0x11, 0x01, 0x08, 0x00, "On"			},
 
-	{0   , 0xfe, 0   ,    2, "Difficulty"		},
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
 	{0x11, 0x01, 0x30, 0x20, "Easy"			},
 	{0x11, 0x01, 0x30, 0x30, "Normal"		},
 	{0x11, 0x01, 0x30, 0x10, "Hard"			},
 	{0x11, 0x01, 0x30, 0x00, "Very Hard"		},
 
-	{0   , 0xfe, 0   ,    2, "Bonus Life"		},
+	{0   , 0xfe, 0   ,    4, "Bonus Life"		},
 	{0x11, 0x01, 0xc0, 0x80, "Every 10k"		},
 	{0x11, 0x01, 0xc0, 0xc0, "10k And Every 20k"	},
 	{0x11, 0x01, 0xc0, 0x40, "Every 20k"		},
@@ -205,7 +202,7 @@ void baraduke_main_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x8800:
-			M6809SetIRQLine(0, M6809_IRQSTATUS_NONE);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_NONE);
 		return;
 
 		case 0xb000:
@@ -257,9 +254,7 @@ UINT8 baraduke_mcu_read(UINT16 address)
 	}
 
 	if (address == 0x1105) {
-		static INT32 kludge = 0;
-		kludge++;
-		return kludge>>4;
+		return ((*kludge1105)++ >> 4) & 0xff;
 	}
 
 	if ((address & 0xfc00) == 0x1000) {
@@ -319,15 +314,19 @@ static INT32 DrvDoReset(INT32 ClearRAM)
 	M6809Reset();
 	M6809Close();
 
-//	HD63701Open(0);
+	HD63701Open(0);
 	HD63701Reset();
-//	HD63701Close();
+	HD63701Close();
+
+	NamcoSoundReset();
 
 	BurnLEDReset();
 
 	BurnLEDSetFlipscreen(1);
 
 	watchdog = 0;
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -337,7 +336,7 @@ static INT32 MemIndex()
 	UINT8 *Next; Next = AllMem;
 
 	DrvM6809ROM		= Next; Next += 0x010000;
-	DrvHD63701ROM		= Next; Next += 0x010000;
+	DrvHD63701ROM	= Next; Next += 0x010000;
 
 	DrvGfxROM0		= Next; Next += 0x008000;
 	DrvGfxROM1		= Next; Next += 0x020000;
@@ -345,24 +344,21 @@ static INT32 MemIndex()
 
 	DrvColPROM		= Next; Next += 0x001000;
 
-	Palette			= (UINT32*)Next; Next += 0x0800 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x0800 * sizeof(UINT32);
 
 	AllRam			= Next;
 
-	DrvHD63701RAM1		= Next; Next += 0x000080;
-	DrvHD63701RAM		= Next; Next += 0x000800;
-
-	NamcoSoundProm		= Next;
-	DrvWavRAM		= Next; Next += 0x000400;
+	DrvHD63701RAM1	= Next; Next += 0x000080;
+	DrvHD63701RAM	= Next; Next += 0x000800;
 
 	DrvVidRAM		= Next; Next += 0x002000;
 	DrvTxtRAM		= Next; Next += 0x000800;
 	DrvSprRAM		= Next; Next += 0x002000;
 
-	coin_lockout		= Next; Next += 0x000001;
+	kludge1105      = (INT32*)Next; Next += 0x000004;
+	coin_lockout	= Next; Next += 0x000001;
 	ip_select		= Next; Next += 0x000001;
-	buffer_sprites		= Next; Next += 0x000001;
+	buffer_sprites	= Next; Next += 0x000001;
 	flipscreen		= Next; Next += 0x000001;
 
 	scroll			= Next; Next += 0x000008;
@@ -384,21 +380,20 @@ static void DrvPaletteInit()
 		INT32 bit3 = (DrvColPROM[0x800 + i] >> 3) & 0x01;
 		INT32 r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		    bit0 = (DrvColPROM[0x000 + i] >> 0) & 0x01;
-		    bit1 = (DrvColPROM[0x000 + i] >> 1) & 0x01;
-		    bit2 = (DrvColPROM[0x000 + i] >> 2) & 0x01;
-		    bit3 = (DrvColPROM[0x000 + i] >> 3) & 0x01;
+		bit0 = (DrvColPROM[0x000 + i] >> 0) & 0x01;
+		bit1 = (DrvColPROM[0x000 + i] >> 1) & 0x01;
+		bit2 = (DrvColPROM[0x000 + i] >> 2) & 0x01;
+		bit3 = (DrvColPROM[0x000 + i] >> 3) & 0x01;
 		INT32 g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		    bit0 = (DrvColPROM[0x000 + i] >> 4) & 0x01;
-		    bit1 = (DrvColPROM[0x000 + i] >> 5) & 0x01;
-		    bit2 = (DrvColPROM[0x000 + i] >> 6) & 0x01;
-		    bit3 = (DrvColPROM[0x000 + i] >> 7) & 0x01;
+		bit0 = (DrvColPROM[0x000 + i] >> 4) & 0x01;
+		bit1 = (DrvColPROM[0x000 + i] >> 5) & 0x01;
+		bit2 = (DrvColPROM[0x000 + i] >> 6) & 0x01;
+		bit3 = (DrvColPROM[0x000 + i] >> 7) & 0x01;
 		INT32 b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		Palette[i] = (r << 16) | (g << 8) | b;
+		DrvPalette[i] = BurnHighCol(r,g,b,0);
 	}
-	DrvRecalc = 1;
 }
 
 static void DrvGfxExpand()
@@ -489,30 +484,31 @@ static INT32 DrvInit(INT32 type)
 		DrvPaletteInit();
 	}
 
-	M6809Init(1);
+	M6809Init(0);
 	M6809Open(0);
-	M6809MapMemory(DrvSprRAM,			0x0000, 0x1fff, M6809_READ | M6809_FETCH);
-	M6809MapMemory(DrvSprRAM,			0x0000, 0x1eff, M6809_WRITE);
-	M6809MapMemory(DrvVidRAM,			0x2000, 0x3fff, M6809_RAM);
-	M6809MapMemory(DrvTxtRAM,			0x4800, 0x4fff, M6809_RAM);
-	M6809MapMemory(DrvM6809ROM + 0x06000,		0x6000, 0xffff, M6809_ROM);
+	M6809MapMemory(DrvSprRAM,			0x0000, 0x1fff, MAP_READ | MAP_FETCH);
+	M6809MapMemory(DrvSprRAM,			0x0000, 0x1eff, MAP_WRITE);
+	M6809MapMemory(DrvVidRAM,			0x2000, 0x3fff, MAP_RAM);
+	M6809MapMemory(DrvTxtRAM,			0x4800, 0x4fff, MAP_RAM);
+	M6809MapMemory(DrvM6809ROM + 0x06000,		0x6000, 0xffff, MAP_ROM);
 	M6809SetWriteHandler(baraduke_main_write);
 	M6809SetReadHandler(baraduke_main_read);
 	M6809Close();
 
-	HD63701Init(1);
-//	HD63701Open(0);
-	HD63701MapMemory(DrvHD63701ROM + 0x8000,	0x8000, 0xbfff, HD63701_ROM);
-	HD63701MapMemory(DrvHD63701RAM,			0xc000, 0xc7ff, HD63701_RAM);
-	HD63701MapMemory(DrvHD63701ROM + 0xf000,	0xf000, 0xffff, HD63701_ROM);
+	HD63701Init(0);
+	HD63701Open(0);
+	HD63701MapMemory(DrvHD63701ROM + 0x8000,	0x8000, 0xbfff, MAP_ROM);
+	HD63701MapMemory(DrvHD63701RAM,				0xc000, 0xc7ff, MAP_RAM);
+	HD63701MapMemory(DrvHD63701ROM + 0xf000,	0xf000, 0xffff, MAP_ROM);
 	HD63701SetReadHandler(baraduke_mcu_read);
 	HD63701SetWriteHandler(baraduke_mcu_write);
 	HD63701SetReadPortHandler(baraduke_mcu_read_port);
 	HD63701SetWritePortHandler(baraduke_mcu_write_port);
-//	HD63701Close();
+	HD63701Close();
 
-	NamcoSoundInit(49152000/2048, 8);
-	NacmoSoundSetAllRoutes(0.50, BURN_SND_ROUTE_BOTH); // MAME uses 1.00, which is way too loud
+	NamcoSoundInit(49152000/2048, 8, 0);
+	NamcoSoundSetAllRoutes(0.50, BURN_SND_ROUTE_BOTH);
+	NamcoSoundSetBuffered(HD63701TotalCycles, 1536000);
 
 	BurnLEDInit(2, LED_POSITION_BOTTOM_RIGHT, LED_SIZE_5x5, LED_COLOR_GREEN, 100);
 
@@ -671,10 +667,7 @@ static void draw_sprites(INT32 prio)
 static INT32 DrvDraw()
 {
 	if (DrvRecalc) {
-		for (INT32 i = 0; i < 0x800; i++) {
-			INT32 p = Palette[i];
-			DrvPalette[i] = BurnHighCol(p >> 16, p >> 8, p, 0);
-		}
+		DrvPaletteInit();
 		DrvRecalc = 0;
 	}
 
@@ -739,31 +732,28 @@ static INT32 DrvFrame()
 	M6809NewFrame();
 	HD63701NewFrame();
 
-	INT32 nInterleave = 100; // 1000?
-	INT32 nCyclesTotal[2] = { 1536000 / 60, 6144000 / 60 };
-	//INT32 nCyclesDone[2] = { 0, 0 };
-	nCyclesDone[0] = nCyclesDone[1] = 0;
+	INT32 nInterleave = 256;
+	INT32 nCyclesTotal[2] = { 1536000 / 60, 1536000 / 60 };
+	INT32 nCyclesDone[2] = { 0, 0 };
+
+	M6809Open(0);
+	HD63701Open(0);
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		INT32 nNext;
-
-		M6809Open(0);
-		nNext = (i + 1) * nCyclesTotal[0] / nInterleave;
-		nCyclesDone[0] += M6809Run(nNext - nCyclesDone[0]);
+		CPU_RUN(0, M6809);
 		if (i == (nInterleave - 1)) {
-			M6809SetIRQLine(0, M6809_IRQSTATUS_ACK);
+			M6809SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		}
-		M6809Close();
 
-	//	HD63701Open(0);
-		nNext = (i + 1) * nCyclesTotal[1] / nInterleave;
-		nCyclesDone[1] += HD63701Run(nNext - nCyclesDone[1]);
+		CPU_RUN(1, HD63701);
 		if (i == (nInterleave - 1)) {
-			HD63701SetIRQLine(0, M6800_IRQSTATUS_AUTO);
+			HD63701SetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		}
-	//	HD63701Close();
 	}
+
+	HD63701Close();
+	M6809Close();
 
 	if (pBurnSoundOut) {
 		NamcoSoundUpdate(pBurnSoundOut, nBurnSoundLen);
@@ -780,15 +770,13 @@ static INT32 DrvFrame()
 
 static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
-	return 1; // Broken :(
-
 	struct BurnArea ba;
 
 	if (pnMin) {
 		*pnMin = 0x029707;
 	}
 
-	if (nAction & ACB_VOLATILE) {		
+	if (nAction & ACB_VOLATILE) {
 		memset(&ba, 0, sizeof(ba));
 
 		ba.Data	  = AllRam;
@@ -845,8 +833,8 @@ struct BurnDriver BurnDrvAliensec = {
 	"aliensec", NULL, NULL, NULL, "1985",
 	"Alien Sector\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, aliensecRomInfo, aliensecRomName, NULL, NULL, BaradukeInputInfo, BaradukeDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, aliensecRomInfo, aliensecRomName, NULL, NULL, NULL, NULL, BaradukeInputInfo, BaradukeDIPInfo,
 	AlienInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -884,8 +872,8 @@ struct BurnDriver BurnDrvBaraduke = {
 	"baraduke", "aliensec", NULL, NULL, "1985",
 	"Baraduke\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
-	NULL, baradukeRomInfo, baradukeRomName, NULL, NULL, BaradukeInputInfo, BaradukeDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_HORSHOOT, 0,
+	NULL, baradukeRomInfo, baradukeRomName, NULL, NULL, NULL, NULL, BaradukeInputInfo, BaradukeDIPInfo,
 	AlienInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -925,8 +913,8 @@ struct BurnDriver BurnDrvMetrocrs = {
 	"metrocrs", NULL, NULL, NULL, "1985",
 	"Metro-Cross (set 1)\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, metrocrsRomInfo, metrocrsRomName, NULL, NULL, BaradukeInputInfo, MetrocrsDIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
+	NULL, metrocrsRomInfo, metrocrsRomName, NULL, NULL, NULL, NULL, BaradukeInputInfo, MetrocrsDIPInfo,
 	MetroInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -961,8 +949,8 @@ struct BurnDriver BurnDrvMetrocrsa = {
 	"metrocrsa", "metrocrs", NULL, NULL, "1985",
 	"Metro-Cross (set 2)\0", NULL, "Namco", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
-	NULL, metrocrsaRomInfo, metrocrsaRomName, NULL, NULL, BaradukeInputInfo, MetrocrsDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
+	NULL, metrocrsaRomInfo, metrocrsaRomName, NULL, NULL, NULL, NULL, BaradukeInputInfo, MetrocrsDIPInfo,
 	MetroInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };

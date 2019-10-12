@@ -33,7 +33,6 @@ static UINT8 *DrvVidRAM2	= NULL;
 static UINT8 *DrvVidRAM3	= NULL;
 static UINT8 *DrvScrRAM		= NULL;
 static UINT8 *DrvSprRAM		= NULL;
-static UINT8 *DrvProtRAM	= NULL;
 static UINT8 *DrvZ80RAM		= NULL;
 
 static UINT32 *DrvPalette	= NULL;
@@ -278,7 +277,7 @@ static const short lordgun_gun_x_table[] =
 	0x183,0x184,0x185,0x186,0x187,0x188,0x189,0x18A,0x18B,0x18C,0x18D,0x18E,0x18F,0x190,0x191,0x192,
 	0x193,0x194,0x195,0x196,0x197,0x198,0x199,0x19A,0x19B,0x19C,0x19D,0x19E,0x19F,0x1A0,0x1A1,0x1A2,
 	0x1A3,0x1A4,0x1A5,0x1A6,0x1A7,0x1A8,0x1A9,0x1AA,0x1AB,0x1AC,0x1AD,0x1AE,0x1AF,0x1B0,0x1B1,0x1B2,
-	0x1B3,0x1B4,0x1B5,0x1B6,0x1B7,0x1B8,0x1B9,0x1BA,0x1BB,0x1BC,0x1BD,0x1BE,0x1BF,0x1BF
+	0x1B3,0x1B4,0x1B5,0x1B6,0x1B7,0x1B8,0x1B9,0x1BA,0x1BB,0x1BC,0x1BD,0x1BE,-100,-100
 };
 
 static void lordgun_update_gun(INT32 i)
@@ -294,38 +293,121 @@ static void lordgun_update_gun(INT32 i)
 	INT32 scrx = lordgun_gun_x_table[x];
 	INT32 scry = DrvAnalogInput[i+2];
 
-	if ((scrx < 0) || (scrx >= nScreenWidth) || (scry < 0) || (scry > nScreenHeight)) {
-		lordgun_gun_hw_x[i] = lordgun_gun_hw_y[i] = 0;
+	if ((scrx < 0) || (scrx >= nScreenWidth) || (scry <= 0) || (scry >= 0xe0)) {
+		lordgun_gun_hw_x[i] = lordgun_gun_hw_y[i] = 0; // reload! (any border shot)
 	}
 }
 
-static void lordgun_protection_w(UINT8 offset)
+static void lordgun_protection_write(UINT32 offset)
 {
-	switch (offset & 0xc0)
+	switch (offset & 0x60)
 	{
-		case 0x00:
+		case 0x00/2: // increment counter
+		{
 			lordgun_protection_data++;
-		return;
+			lordgun_protection_data &= 0x1f;
 
-		case 0xc0:
+			return;
+		}
+
+		case 0xc0/2: // reset protection device
+		{
 			lordgun_protection_data = 0;
-		return;
+
+			return;
+		}
 	}
 }
 
-static UINT8 lordgun_protection_r()
+static UINT8 lordgun_protection_read(INT32 offset)
 {
-	if ((lordgun_protection_data & 0x11) == 0x01) return 0x10;
-	if ((lordgun_protection_data & 0x06) == 0x02) return 0x10;
-	if ((lordgun_protection_data & 0x09) == 0x08) return 0x10;
+	switch (offset & 0x60)
+	{
+		case 0x40/2: // bitswap and xor counter
+		{
+			UINT8 x = lordgun_protection_data;
+
+			lordgun_protection_data  = ((( x >> 0) | ( x >> 1)) & 1) << 4;
+			lordgun_protection_data |=  ((~x >> 2) & 1) << 3;
+			lordgun_protection_data |= (((~x >> 4) | ( x >> 0)) & 1) << 2;
+			lordgun_protection_data |=  (( x >> 3) & 1) << 1;
+			lordgun_protection_data |= (((~x >> 0) | ( x >> 2)) & 1) << 0;
+
+			return 0;
+		}
+
+		case 0x80/2: // return value if conditions are met
+		{
+			if ((lordgun_protection_data & 0x11) == 0x01) return 0x10;
+			if ((lordgun_protection_data & 0x06) == 0x02) return 0x10;
+			if ((lordgun_protection_data & 0x09) == 0x08) return 0x10;
+
+			return 0;
+		}
+	}
 
 	return 0;
 }
 
+static void aliencha_protection_write(UINT32 offset)
+{
+	switch (offset & 0x60)
+	{
+		case 0xc0/2: // reset protection device
+		{
+			lordgun_protection_data = 0;
+
+			return;
+		}
+	}
+}
+
+static UINT8 aliencha_protection_read(INT32 offset)
+{
+	switch (offset & 0x60)
+	{
+		case 0x00/2: // de-increment counter
+		{
+			lordgun_protection_data--;
+			lordgun_protection_data &= 0x1f;
+
+			return 0;
+		}
+
+		case 0x40/2: // bitswap and xor counter
+		{
+			UINT8 x = lordgun_protection_data;
+
+			lordgun_protection_data  = (((x >> 3) ^ (x >> 2)) & 1) << 4;
+			lordgun_protection_data |= (((x >> 2) ^ (x >> 1)) & 1) << 3;
+			lordgun_protection_data |= (((x >> 1) ^ (x >> 0)) & 1) << 2;
+			lordgun_protection_data |= (((x >> 4) ^ (x >> 0)) & 1) << 1;
+			lordgun_protection_data |= (((x >> 4) ^ (x >> 3)) & 1) << 0;
+
+			return 0;
+		}
+
+		case 0x80/2: // return value if conditions are met
+		{
+			if ((lordgun_protection_data & 0x11) == 0x00) return 0x20;
+			if ((lordgun_protection_data & 0x06) != 0x06) return 0x20;
+			if ((lordgun_protection_data & 0x18) == 0x00) return 0x20;
+
+			return 0;
+		}
+	}
+
+	return 0;
+}
 void __fastcall lordgun_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff00) == 0x50a900) {
-		lordgun_protection_w(address);
+		lordgun_protection_write(address/2);
+		return;
+	}
+
+	if ((address & 0xfffff00) == 0x50b900) {
+		aliencha_protection_write(address/2);
 		return;
 	}
 
@@ -391,13 +473,17 @@ void __fastcall lordgun_write_word(UINT32 address, UINT16 data)
 
 void __fastcall lordgun_write_byte(UINT32 /*address*/, UINT8 /*data*/)
 {
-//	address = data; // kill warnings...
+
 }
 
 UINT16 __fastcall lordgun_read_word(UINT32 address)
 {
 	if ((address & 0xfffff00) == 0x50a900) {
-		return lordgun_protection_r();
+		return lordgun_protection_read(address/2);
+	}
+
+	if ((address & 0xfffff00) == 0x50b900) {
+		return aliencha_protection_read(address/2);
 	}
 
 	switch (address)
@@ -465,11 +551,11 @@ void __fastcall lordgun_sound_write_port(UINT16 port, UINT8 data)
 	{
 		case 0x1000:	// lordgun
 		case 0x1001:
-			BurnYM3812Write(port & 1, data);
+			BurnYM3812Write(0, port & 1, data);
 		return;
 
 		case 0x2000:	// lordgun
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 
 		case 0x6000:	// lordgun
@@ -489,11 +575,11 @@ void __fastcall lordgun_sound_write_port(UINT16 port, UINT8 data)
 		return;
 
 		case 0x7400:	// aliencha
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 
 		case 0x7800:	// aliencha
-			MSM6295Command(1, data);
+			MSM6295Write(1, data);
 		return;
 	}
 }
@@ -503,7 +589,7 @@ UINT8 __fastcall lordgun_sound_read_port(UINT16 port)
 	switch (port)
 	{
 		case 0x2000:	// lordgun
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0x3000:
 			return soundlatch[0];
@@ -515,10 +601,10 @@ UINT8 __fastcall lordgun_sound_read_port(UINT16 port)
 			return BurnYMF278BReadStatus();
 
 		case 0x7400:	// aliencha
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0x7800:	// aliencha
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 	}
 
 	return 0;
@@ -583,7 +669,7 @@ static UINT8 aliencha_dip_read()
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	ZetSetIRQLine(0, nStatus ? ZET_IRQSTATUS_ACK : ZET_IRQSTATUS_NONE);
+	ZetSetIRQLine(0, nStatus ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 DrvSynchroniseStream(INT32 nSoundRate)
@@ -605,8 +691,7 @@ static INT32 DrvDoReset()
 
 	BurnYMF278BReset(); // aliencha
 	BurnYM3812Reset();
-	MSM6295Reset(0);
-	MSM6295Reset(1); // aliencha
+	MSM6295Reset();
 
 	*okibank = -1;
 	set_oki_bank(0); // lordgun
@@ -678,7 +763,6 @@ static INT32 MemIndex()
 	DrvVidRAM3	= Next; Next += 0x002000;
 	DrvScrRAM	= Next; Next += 0x000800;
 	DrvSprRAM	= Next; Next += 0x000800;
-	DrvProtRAM	= Next; Next += 0x000400;
 	DrvPalRAM	= Next; Next += 0x001000;
 
 	DrvZ80RAM	= Next; Next += 0x001000;
@@ -769,18 +853,16 @@ static INT32 DrvInit(INT32 (*pInitCallback)(), INT32 lordgun)
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x1fffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x200000, 0x20ffff, SM_RAM);
-	SekMapMemory(DrvPriRAM,		0x210000, 0x21ffff, SM_RAM);
-	SekMapMemory(DrvVidRAM0,	0x300000, 0x30ffff, SM_RAM);
-	SekMapMemory(DrvVidRAM1,	0x310000, 0x313fff, SM_RAM);
-	SekMapMemory(DrvVidRAM2	,	0x314000, 0x317fff, SM_RAM);
-	SekMapMemory(DrvVidRAM3,	0x318000, 0x319fff, SM_RAM);
-	SekMapMemory(DrvScrRAM,		0x31c000, 0x31c7ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x400000, 0x4007ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x500000, 0x500fff, SM_RAM);
-//	SekMapMemory(DrvProtRAM,	0x50a800, 0x50abff, SM_RAM); // 900-9ff (lordgun)
-	SekMapMemory(DrvProtRAM,	0x50b800, 0x50bbff, SM_RAM); // 900-9ff (aliencha)
+	SekMapMemory(Drv68KROM,		0x000000, 0x1fffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x200000, 0x20ffff, MAP_RAM);
+	SekMapMemory(DrvPriRAM,		0x210000, 0x21ffff, MAP_RAM);
+	SekMapMemory(DrvVidRAM0,	0x300000, 0x30ffff, MAP_RAM);
+	SekMapMemory(DrvVidRAM1,	0x310000, 0x313fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM2	,	0x314000, 0x317fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM3,	0x318000, 0x319fff, MAP_RAM);
+	SekMapMemory(DrvScrRAM,		0x31c000, 0x31c7ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x400000, 0x4007ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x500000, 0x500fff, MAP_RAM);
 	SekSetWriteWordHandler(0,	lordgun_write_word);
 	SekSetWriteByteHandler(0,	lordgun_write_byte);
 	SekSetReadWordHandler(0,	lordgun_read_word);
@@ -799,14 +881,14 @@ static INT32 DrvInit(INT32 (*pInitCallback)(), INT32 lordgun)
 	ZetClose();
 
 	// aliencha
-	BurnYMF278BInit(0, DrvSndROM2, &DrvFMIRQHandler, DrvSynchroniseStream);
+	BurnYMF278BInit(0, DrvSndROM2, 0x200000, &DrvFMIRQHandler, DrvSynchroniseStream);
 	BurnYMF278BSetAllRoutes(0.50, BURN_SND_ROUTE_BOTH);
 	BurnTimerAttachZet(5000000);
 
 	// lordgun
-	BurnYM3812Init(3579545, &DrvFMIRQHandler, &DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(5000000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, &DrvFMIRQHandler, &DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 5000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	MSM6295Init(0, 1000000 / 132, 1);
 	MSM6295Init(1, 1000000 / 132, 1); // aliencha
@@ -815,19 +897,14 @@ static INT32 DrvInit(INT32 (*pInitCallback)(), INT32 lordgun)
 
 	ppi8255_init(2);
 	if (lordgun) {
-		PPI0PortReadA	= lordgun_dip_read;
-		PPI0PortWriteB	= lordgun_eeprom_write;
-		PPI0PortReadC	= lordgun_service_read;
+		ppi8255_set_read_ports(0, lordgun_dip_read, NULL, lordgun_service_read);
+		ppi8255_set_write_ports(0, NULL, lordgun_eeprom_write, NULL);
 	} else {
-		PPI0PortReadA	= aliencha_dip_read;
-		PPI0PortReadC	= aliencha_service_read;
-		PPI0PortWriteB	= aliencha_eeprom_write;
-		PPI0PortWriteC	= aliencha_dip_select;
+		ppi8255_set_read_ports(0, aliencha_dip_read, NULL, aliencha_service_read);
+		ppi8255_set_write_ports(0, NULL, aliencha_eeprom_write, aliencha_dip_select);
 	}
 
-	PPI1PortReadA	= lordgun_start1_read;
-	PPI1PortReadB	= lordgun_start2_read;
-	PPI1PortReadC	= lordgun_coin_read;
+	ppi8255_set_read_ports(1, lordgun_start1_read, lordgun_start2_read, lordgun_coin_read);
 
 	EEPROMInit(&eeprom_interface_93C46);
 
@@ -846,8 +923,7 @@ static INT32 DrvExit()
 
 	BurnYMF278BExit(); // aliencha
 	BurnYM3812Exit();
-	MSM6295Exit(0);
-	MSM6295Exit(1); // aliencha
+	MSM6295Exit();
 
 	ppi8255_exit();
 	BurnGunExit();
@@ -921,24 +997,6 @@ static INT32 alienchaLoadRoms()
 
 	if (BurnLoadRom(DrvSndROM2 + 0x000000, 13, 1)) return 1;
 
-	UINT16 *rom = (UINT16*)Drv68KROM;
-
-	rom[0x0A558/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0A558  beq.s   $A56C
-	rom[0x0A8DC/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0A8DC  beq.s   $A8F0
-	rom[0x0AC92/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0AC92  beq.s   $ACA6
-	rom[0x124CC/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 124CC  beq.s   $124E0
-	rom[0x12850/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 12850  beq.s   $12864
-	rom[0x12C06/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 12C06  beq.s   $12C1A
-	rom[0x1862A/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 1862A  beq.s   $1863E
-	rom[0x189AE/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 189AE  beq.s   $189C2
-	rom[0x18D64/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 18D64  beq.s   $18D78
-	rom[0x230FC/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 230FC  beq.s   $23110
-	rom[0x23480/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 23480  beq.s   $23494
-	rom[0x23836/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 23836  beq.s   $2384A
-	rom[0x2BD0E/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2BD0E  beq.s   $2BD22
-	rom[0x2C092/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2C092  beq.s   $2C0A6
-	rom[0x2C448/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2C448  beq.s   $2C45C
-
 	return 0;
 }
 
@@ -968,24 +1026,6 @@ static INT32 alienchacLoadRoms()
 	if (BurnLoadRom(DrvSndROM1 + 0x000000, 14, 1)) return 1;
 
 	if (BurnLoadRom(DrvSndROM2 + 0x000000, 15, 1)) return 1;
-
-	UINT16 *rom = (UINT16*)Drv68KROM;
-
-	rom[0x0A550/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0A558  beq.s   $A564
-	rom[0x0A8D4/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0A8D4  beq.s   $A8E8
-	rom[0x0AC8A/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 0AC8A  beq.s   $AC9E
-	rom[0x124B8/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 124B8  beq.s   $124CC
-	rom[0x1283C/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 1283C  beq.s   $12850
-	rom[0x12BF2/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 12BF2  beq.s   $12C06
-	rom[0x18616/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 18616  beq.s   $1862A
-	rom[0x1899A/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 1899A  beq.s   $189AE
-	rom[0x18D50/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 18D50  beq.s   $18D64
-	rom[0x230E8/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 230E8  beq.s   $230FC
-	rom[0x2346C/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2346C  beq.s   $23480
-	rom[0x23822/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 23822  beq.s   $23822
-	rom[0x2BCFA/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2BCFA  beq.s   $2BD0E
-	rom[0x2C07E/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2C07E  beq.s   $2C092
-	rom[0x2C434/2]	=	BURN_ENDIAN_SWAP_INT16(0x6012);		// 2C434  beq.s   $2C448
 
 	return 0;
 }
@@ -1299,7 +1339,7 @@ static INT32 lordgunFrame()
 		nNext = (i + 1) * nTotalCycles[nCurrentCPU] / nInterleave;
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
 		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		
 		BurnTimerUpdateYM3812(i * (nTotalCycles[1] / nInterleave));
 	}
@@ -1308,7 +1348,7 @@ static INT32 lordgunFrame()
 
 	if (pBurnSoundOut) {
 		BurnYM3812Update(pBurnSoundOut, nBurnSoundLen);
-		MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);
+		MSM6295Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	ZetClose();
@@ -1347,7 +1387,7 @@ static INT32 alienchaFrame()
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
 		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		
 		BurnTimerUpdate(i * (nCyclesTotal[1] / nInterleave));
 	}
@@ -1356,8 +1396,7 @@ static INT32 alienchaFrame()
 
 	if (pBurnSoundOut) {
 		BurnYMF278BUpdate(nBurnSoundLen);
-		MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);
-		MSM6295Render(1, pBurnSoundOut, nBurnSoundLen);
+		MSM6295Render(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	ZetClose();
@@ -1379,9 +1418,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_VOLATILE) {
-
 		memset(&ba, 0, sizeof(ba));
-    		ba.Data		= AllRam;
+		ba.Data		= AllRam;
 		ba.nLen		= RamEnd - AllRam;
 		ba.szName	= "All RAM";
 		BurnAcb(&ba);
@@ -1453,7 +1491,7 @@ struct BurnDriver BurnDrvLordgun = {
 	"Lord of Gun (USA)\0", "Imperfect graphics and sound", "IGS", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, lordgunRomInfo, lordgunRomName, NULL, NULL, LordgunInputInfo, LordgunDIPInfo,
+	NULL, lordgunRomInfo, lordgunRomName, NULL, NULL, NULL, NULL, LordgunInputInfo, LordgunDIPInfo,
 	lordgunInit, DrvExit, lordgunFrame, lordgunDraw, DrvScan, &DrvRecalc, 0x800,
 	448, 224, 4, 3
 };
@@ -1497,7 +1535,7 @@ struct BurnDriver BurnDrvAliencha = {
 	"Alien Challenge (World)\0", "Imperfect sound", "IGS", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, alienchaRomInfo, alienchaRomName, NULL, NULL, AlienchaInputInfo, AlienchaDIPInfo,
+	NULL, alienchaRomInfo, alienchaRomName, NULL, NULL, NULL, NULL, AlienchaInputInfo, AlienchaDIPInfo,
 	alienchaInit, DrvExit, alienchaFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	448, 224, 4, 3
 };
@@ -1544,7 +1582,7 @@ struct BurnDriver BurnDrvAlienchac = {
 	"Alien Challenge (China)\0", "Imperfect sound", "IGS", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, alienchacRomInfo, alienchacRomName, NULL, NULL, AlienchaInputInfo, AlienchacDIPInfo,
+	NULL, alienchacRomInfo, alienchacRomName, NULL, NULL, NULL, NULL, AlienchaInputInfo, AlienchacDIPInfo,
 	alienchacInit, DrvExit, alienchaFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	448, 224, 4, 3
 };

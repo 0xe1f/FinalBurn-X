@@ -5,6 +5,7 @@
 #include "m68000_intf.h"
 #include "h6280_intf.h"
 #include "deco16ic.h"
+#include "deco146.h"
 #include "msm6295.h"
 #include "burn_ym2151.h"
 
@@ -31,8 +32,6 @@ static UINT8 *DrvSprRAM1;
 static UINT8 *DrvPalBuf;
 static UINT8 *DrvSprBuf;
 static UINT8 *DrvSprBuf1;
-static UINT8 *DrvProtRAM;
-static UINT8 *DrvUnkRAM;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
@@ -50,28 +49,28 @@ static UINT16 *tempdraw[2];
 static INT32 DrvOkiBank;
 
 static struct BurnInputInfo BoogwingInputList[] = {
-	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	DrvJoy2 + 7,	"p1 start"	},
-	{"P1 Up",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 up"		},
-	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 down"	},
-	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 left"	},
-	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 right"	},
-	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
-	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 2"	},
-	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p1 fire 3"	},
+	{"P1 Coin",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 coin"	},
+	{"P1 Start",		BIT_DIGITAL,	DrvJoy1 + 7,	"p1 start"	},
+	{"P1 Up",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 up"		},
+	{"P1 Down",		BIT_DIGITAL,	DrvJoy1 + 1,	"p1 down"	},
+	{"P1 Left",		BIT_DIGITAL,	DrvJoy1 + 2,	"p1 left"	},
+	{"P1 Right",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 right"	},
+	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
+	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 fire 2"	},
+	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 fire 3"	},
 
-	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 1,	"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	DrvJoy2 + 15,	"p2 start"	},
-	{"P2 Up",		BIT_DIGITAL,	DrvJoy2 + 8,	"p2 up"		},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 9,	"p2 down"	},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 10,	"p2 left"	},
-	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 11,	"p2 right"	},
-	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 12,	"p2 fire 1"	},
-	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy2 + 13,	"p2 fire 2"	},
-	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy2 + 14,	"p2 fire 3"	},
+	{"P2 Coin",		BIT_DIGITAL,	DrvJoy2 + 1,	"p2 coin"	},
+	{"P2 Start",		BIT_DIGITAL,	DrvJoy1 + 15,	"p2 start"	},
+	{"P2 Up",		BIT_DIGITAL,	DrvJoy1 + 8,	"p2 up"		},
+	{"P2 Down",		BIT_DIGITAL,	DrvJoy1 + 9,	"p2 down"	},
+	{"P2 Left",		BIT_DIGITAL,	DrvJoy1 + 10,	"p2 left"	},
+	{"P2 Right",		BIT_DIGITAL,	DrvJoy1 + 11,	"p2 right"	},
+	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy1 + 12,	"p2 fire 1"	},
+	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy1 + 13,	"p2 fire 2"	},
+	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy1 + 14,	"p2 fire 3"	},
 
 	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
-	{"Service",		BIT_DIGITAL,	DrvJoy1 + 2,	"service"	},
+	{"Service",		BIT_DIGITAL,	DrvJoy2 + 2,	"service"	},
 	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
 };
@@ -138,7 +137,7 @@ static struct BurnDIPInfo BoogwingDIPList[]=
 
 STDDIPINFO(Boogwing)
 
-void __fastcall boogwing_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall boogwing_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -157,24 +156,18 @@ void __fastcall boogwing_main_write_byte(UINT32 address, UINT8 data)
 			memcpy (DrvSprBuf1, DrvSprRAM1, 0x800);
 		return;
 
-		case 0x24e151:
-			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
-		break;
-
 		case 0x282008:
 		case 0x282009:
 			memcpy (DrvPalBuf, DrvPalRAM, 0x2000);
 		return;
 	}
 
-	if ((address & 0xffff800) == 0x24e000) {
-		DrvProtRAM[(address & 0x7ff) ^ 1] = data;
-		return;
+	if (address >= 0x24e000 && address <= 0x24efff) {
+		deco146_104_prot_wb(0, address & 0xfff, data);
 	}
 }
 
-void __fastcall boogwing_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall boogwing_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x260000, data)
 	deco16_write_control_word(1, address, 0x270000, data)
@@ -193,58 +186,29 @@ void __fastcall boogwing_main_write_word(UINT32 address, UINT16 data)
 			memcpy (DrvSprBuf1, DrvSprRAM1, 0x800);
 		return;
 
-		case 0x24e150:
-			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
-		break;
-
 		case 0x282008:
 			memcpy (DrvPalBuf, DrvPalRAM, 0x2000);
 		return;
 	}
 
-	if ((address & 0xffff800) == 0x24e000) {
-		*((UINT16*)(DrvProtRAM + (address & 0x7fe))) = BURN_ENDIAN_SWAP_INT16(data);
-		return;
+	if (address >= 0x24e000 && address <= 0x24efff) {
+		deco146_104_prot_ww(0, address & 0xfff, data);
 	}
 }
 
-UINT8 __fastcall boogwing_main_read_byte(UINT32 address)
+static UINT8 __fastcall boogwing_main_read_byte(UINT32 address)
 {
-	switch (address)
-	{
-		case 0x24e6c0:
-			return DrvDips[1];
-
-		case 0x24e6c1:
-			return DrvDips[0];
-
-		case 0x24e138:
-		case 0x24e139:
-			return (DrvInputs[0] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x24e344:
-			return DrvInputs[1] >> 8;
-
-		case 0x24e345:
-			return DrvInputs[1] >> 0;
+	if (address >= 0x24e000 && address <= 0x24efff) {
+		return deco146_104_prot_rb(0, address & 0xfff);
 	}
 
 	return 0;
 }
 
-UINT16 __fastcall boogwing_main_read_word(UINT32 address)
+static UINT16 __fastcall boogwing_main_read_word(UINT32 address)
 {
-	switch (address)
-	{
-		case 0x24e6c0:
-			return (DrvDips[1] << 8) | (DrvDips[0] << 0);
-
-		case 0x24e138:
-			return (DrvInputs[0] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x24e344:
-			return DrvInputs[1];
+	if (address >= 0x24e000 && address <= 0x24efff) {
+		return deco146_104_prot_rw(0, address & 0xfff);
 	}
 
 	return 0;
@@ -265,13 +229,30 @@ static INT32 boogwing_bank_callback2( const INT32 bank )
 
 static void DrvYM2151WritePort(UINT32, UINT32 data)
 {
-	if ((data & 0x02) != (UINT32)(DrvOkiBank & 0x02))
-		memcpy (DrvSndROM1, DrvSndROM1 + 0x40000 + ((data & 0x02) >> 1) * 0x40000, 0x40000);
+	MSM6295SetBank(1, DrvSndROM1 + ((data & 0x02) >> 1) * 0x40000, 0, 0x3ffff);
+	MSM6295SetBank(0, DrvSndROM0 + (data & 1) * 0x40000, 0, 0x3ffff);
+	DrvOkiBank = data;
+}
 
-	if ((data & 0x01) != (UINT32)(DrvOkiBank & 0x01))
-		memcpy (DrvSndROM0, DrvSndROM0 + 0x40000 + ((data & 0x01) >> 0) * 0x40000, 0x40000);
+static UINT16 inputs_read()
+{
+	return DrvInputs[0];
+}
 
-	DrvOkiBank = data;	
+static UINT16 system_read()
+{
+	return (DrvInputs[1] & 7) | deco16_vblank;
+}
+
+static UINT16 dips_read()
+{
+	return (DrvDips[1] << 8) | (DrvDips[0] << 0);
+}
+
+static void soundlatch_write(UINT16 data)
+{
+	deco16_soundlatch = data & 0xff;
+	h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 }
 
 static INT32 DrvDoReset()
@@ -283,7 +264,7 @@ static INT32 DrvDoReset()
 	SekClose();
 
 	deco16SoundReset();
-	DrvYM2151WritePort(0, 1);
+	DrvYM2151WritePort(0, 0);
 
 	deco16Reset();
 
@@ -305,9 +286,8 @@ static INT32 MemIndex()
 	DrvGfxROM3	= Next; Next += 0x800000;
 	DrvGfxROM4	= Next; Next += 0x800000;
 
-	MSM6295ROM	= Next;
-	DrvSndROM0	= Next; Next += 0x100000;
-	DrvSndROM1	= Next; Next += 0x0c0000;
+	DrvSndROM0	= Next; Next += 0x080000;
+	DrvSndROM1	= Next; Next += 0x080000;
 
 	DrvPalette	= (UINT32*)Next; Next += 0x0800 * sizeof(UINT32);
 
@@ -324,9 +304,6 @@ static INT32 MemIndex()
 	DrvSprBuf1	= Next; Next += 0x000800;
 	DrvPalRAM	= Next; Next += 0x002000;
 	DrvPalBuf	= Next; Next += 0x002000;
-
-	DrvProtRAM	= Next; Next += 0x000800;
-	DrvUnkRAM	= Next; Next += 0x000400;
 
 	flipscreen	= Next; Next += 0x000001;
 
@@ -399,9 +376,9 @@ static INT32 DrvInit()
 		if (BurnLoadRom(DrvGfxROM4 + 0x000001, 14, 2)) return 1;
 		if (BurnLoadRom(DrvGfxROM4 + 0x000000, 15, 2)) return 1;
 
-		if (BurnLoadRom(DrvSndROM0 + 0x040000, 16, 1)) return 1;
+		if (BurnLoadRom(DrvSndROM0 + 0x000000, 16, 1)) return 1;
 
-		if (BurnLoadRom(DrvSndROM1 + 0x040000, 17, 1)) return 1;
+		if (BurnLoadRom(DrvSndROM1 + 0x000000, 17, 1)) return 1;
 
 		deco56_decrypt_gfx(DrvGfxROM0, 0x020000);
 		deco56_decrypt_gfx(DrvGfxROM1, 0x300000);
@@ -430,22 +407,31 @@ static INT32 DrvInit()
 	deco16_set_bank_callback(2, boogwing_bank_callback2);
 	deco16_set_bank_callback(3, boogwing_bank_callback2);
 
+	// 146_104 prot
+	deco_104_init();
+	deco_146_104_set_port_a_cb(inputs_read); // inputs
+	deco_146_104_set_port_b_cb(system_read); // system
+	deco_146_104_set_port_c_cb(dips_read); // dips
+	deco_146_104_set_soundlatch_cb(soundlatch_write);
+	deco_146_104_set_interface_scramble_reverse();
+	deco_146_104_set_use_magic_read_address_xor(1);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, SM_READ);
-	SekMapMemory(Drv68KCode,		0x000000, 0x0fffff, SM_FETCH);
-	SekMapMemory(Drv68KRAM,			0x200000, 0x20ffff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x242000, 0x2427ff, SM_RAM);
-	SekMapMemory(DrvSprRAM1,		0x246000, 0x2467ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x264000, 0x265fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x266000, 0x267fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x268000, 0x268fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x26a000, 0x26afff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x274000, 0x275fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x276000, 0x277fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x278000, 0x278fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x27a000, 0x27afff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x284000, 0x285fff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, MAP_READ);
+	SekMapMemory(Drv68KCode,		0x000000, 0x0fffff, MAP_FETCH);
+	SekMapMemory(Drv68KRAM,			0x200000, 0x20ffff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x242000, 0x2427ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM1,		0x246000, 0x2467ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x264000, 0x265fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x266000, 0x267fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x268000, 0x268fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x26a000, 0x26afff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x274000, 0x275fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x276000, 0x277fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x278000, 0x278fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x27a000, 0x27afff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x284000, 0x285fff, MAP_RAM);
 	SekSetWriteWordHandler(0,		boogwing_main_write_word);
 	SekSetWriteByteHandler(0,		boogwing_main_write_byte);
 	SekSetReadWordHandler(0,		boogwing_main_read_word);
@@ -701,7 +687,7 @@ static INT32 DrvFrame()
 	}
 
 	{
-		memset (DrvInputs, 0xff, 2 * sizeof(INT16)); 
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
@@ -723,18 +709,19 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
 		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
 
-		if (i == 248) deco16_vblank = 0x08;
-		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
+		if (i == 248) {
+			SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
+			deco16_vblank = 0x08;
+		}
+
+		if (pBurnSoundOut && i%8 == 7) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 8);
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			deco16SoundUpdate(pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
-	
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
 		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
@@ -772,16 +759,14 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-		
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
-		
+
 		SCAN_VAR(DrvOkiBank);
 
-		INT32 bank = DrvOkiBank;
-		DrvOkiBank = -1;
-		DrvYM2151WritePort(0, bank);
+		DrvYM2151WritePort(0, DrvOkiBank);
 	}
 
 	return 0;
@@ -815,7 +800,6 @@ static struct BurnRomInfo boogwingRomDesc[] = {
 	{ "mbd-08.19b",		0x200000, 0xf13b1e56,  7 | BRF_GRA },           // 15
 
 	{ "mbd-10.17p",		0x080000, 0xf159f76a,  9 | BRF_SND },           // 16 OKI M6295 Samples 0
-
 	{ "mbd-09.16p",		0x080000, 0xf44f2f87, 10 | BRF_SND },           // 17 OKI M6295 Samples 1
 
 	{ "kj-00.15n",		0x000400, 0xadd4d50b, 11 | BRF_OPT },           // 18 Unknown PROMs
@@ -829,7 +813,53 @@ struct BurnDriver BurnDrvBoogwing = {
 	"Boogie Wings (Euro v1.5, 92.12.07)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, boogwingRomInfo, boogwingRomName, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
+	NULL, boogwingRomInfo, boogwingRomName, NULL, NULL, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	320, 240, 4, 3
+};
+
+
+// Boogie Wings (USA v1.7, 92.12.14)
+
+static struct BurnRomInfo boogwinguRomDesc[] = {
+	{ "kl_00.2b",		0x040000, 0x4dc14798,  1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "kl_02.2e",		0x040000, 0x3bb3b0a0,  1 | BRF_PRG | BRF_ESS }, //  1
+	{ "kl_01.4b",		0x040000, 0xd109ba13,  1 | BRF_PRG | BRF_ESS }, //  2
+	{ "kl_03.4e",		0x040000, 0xfef2a176,  1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "kl06.18p",		0x010000, 0x3e8bc4e1,  2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+
+	{ "kl05.9e",		0x010000, 0xd10aef95,  3 | BRF_GRA },           //  5 Characters
+	{ "kl04.8e",		0x010000, 0x329323a8,  3 | BRF_GRA },           //  6
+
+	{ "mbd-01.9b",		0x100000, 0xd7de4f4b,  4 | BRF_GRA },           //  7 Foreground Tiles
+	{ "mbd-00.8b",		0x100000, 0xadb20ba9,  4 | BRF_GRA },           //  8
+	{ "mbd-02.10e",		0x080000, 0xb25aa721,  4 | BRF_GRA },           //  9
+
+	{ "mbd-03.13b",		0x100000, 0xcf798f2c,  5 | BRF_GRA },           // 10 Background Tiles
+	{ "mbd-04.14b",		0x100000, 0xd9764d0b,  5 | BRF_GRA },           // 11
+
+	{ "mbd-05.16b",		0x200000, 0x1768c66a,  6 | BRF_GRA },           // 12 Sprite Bank A
+	{ "mbd-06.17b",		0x200000, 0x7750847a,  6 | BRF_GRA },           // 13
+
+	{ "mbd-07.18b",		0x200000, 0x241faac1,  7 | BRF_GRA },           // 14 Sprite Bank B
+	{ "mbd-08.19b",		0x200000, 0xf13b1e56,  7 | BRF_GRA },           // 15
+
+	{ "mbd-10.17p",		0x080000, 0xf159f76a,  8 | BRF_SND },           // 16 OKI M6295 Samples 0
+	{ "mbd-09.16p",		0x080000, 0xf44f2f87,  9 | BRF_SND },           // 17 OKI M6295 Samples 1
+
+	{ "kj-00.15n",		0x000400, 0xadd4d50b, 10 | BRF_OPT },           // 18 Unknown PROMs
+};
+
+STD_ROM_PICK(boogwingu)
+STD_ROM_FN(boogwingu)
+
+struct BurnDriver BurnDrvBoogwingu = {
+	"boogwingu", "boogwing", NULL, NULL, "1992",
+	"Boogie Wings (USA v1.7, 92.12.14)\0", NULL, "Data East Corporation", "DECO IC16",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
+	NULL, boogwinguRomInfo, boogwinguRomName, NULL, NULL, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -862,7 +892,6 @@ static struct BurnRomInfo boogwingaRomDesc[] = {
 	{ "mbd-08.19b",		0x200000, 0xf13b1e56,  7 | BRF_GRA },           // 15
 
 	{ "mbd-10.17p",		0x080000, 0xf159f76a,  8 | BRF_SND },           // 16 OKI M6295 Samples 0
-
 	{ "mbd-09.16p",		0x080000, 0xf44f2f87,  9 | BRF_SND },           // 17 OKI M6295 Samples 1
 
 	{ "kj-00.15n",		0x000400, 0xadd4d50b, 10 | BRF_OPT },           // 18 Unknown PROMs
@@ -876,7 +905,7 @@ struct BurnDriver BurnDrvBoogwinga = {
 	"Boogie Wings (Asia v1.5, 92.12.07)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, boogwingaRomInfo, boogwingaRomName, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
+	NULL, boogwingaRomInfo, boogwingaRomName, NULL, NULL, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -909,7 +938,6 @@ static struct BurnRomInfo ragtimeRomDesc[] = {
 	{ "mbd-08.19b",		0x200000, 0xf13b1e56,  7 | BRF_GRA },           // 15
 
 	{ "mbd-10.17p",		0x080000, 0xf159f76a,  9 | BRF_SND },           // 16 OKI M6295 Samples 0
-
 	{ "mbd-09.16p",		0x080000, 0xf44f2f87, 10 | BRF_SND },           // 17 OKI M6295 Samples 1
 
 	{ "kj-00.15n",		0x000400, 0xadd4d50b, 11 | BRF_OPT },           // 18 Unknown PROMs
@@ -923,7 +951,7 @@ struct BurnDriver BurnDrvRagtime = {
 	"The Great Ragtime Show (Japan v1.5, 92.12.07)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, ragtimeRomInfo, ragtimeRomName, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
+	NULL, ragtimeRomInfo, ragtimeRomName, NULL, NULL, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -956,7 +984,6 @@ static struct BurnRomInfo ragtimeaRomDesc[] = {
 	{ "mbd-08.19b",		0x200000, 0xf13b1e56,  7 | BRF_GRA },           // 15
 
 	{ "mbd-10.17p",		0x080000, 0xf159f76a,  9 | BRF_SND },           // 16 OKI M6295 Samples 0
-
 	{ "mbd-09.16p",		0x080000, 0xf44f2f87, 10 | BRF_SND },           // 17 OKI M6295 Samples 1
 
 	{ "kj-00.15n",		0x000400, 0xadd4d50b, 11 | BRF_OPT },           // 18 Unknown PROMs
@@ -970,7 +997,7 @@ struct BurnDriver BurnDrvRagtimea = {
 	"The Great Ragtime Show (Japan v1.3, 92.11.26)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_HORSHOOT, 0,
-	NULL, ragtimeaRomInfo, ragtimeaRomName, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
+	NULL, ragtimeaRomInfo, ragtimeaRomName, NULL, NULL, NULL, NULL, BoogwingInputInfo, BoogwingDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };

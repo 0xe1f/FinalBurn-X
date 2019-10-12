@@ -1,12 +1,14 @@
 // FB Alpha Caveman Ninja driver module
 // Based on MAME driver by Bryan McPhail
 
+// TOFIX: cninjabl backgrounds won't display
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "z80_intf.h"
 #include "h6280_intf.h"
-#include "bitswap.h"
 #include "deco16ic.h"
+#include "deco146.h"
 #include "burn_ym2203.h"
 #include "burn_ym2151.h"
 #include "msm6295.h"
@@ -33,13 +35,10 @@ static UINT8 *DrvSprRAM;
 static UINT8 *DrvSprRAM1;
 static UINT8 *DrvSprBuf;
 static UINT8 *DrvSprBuf1;
-static UINT8 *DrvPrtRAM;
 static UINT8 *DrvZ80RAM;
 
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
-
-static INT16 *SoundBuffer;
 
 static UINT8 *soundlatch;
 static UINT8 *flipscreen;
@@ -482,7 +481,7 @@ static struct BurnDIPInfo Robocop2DIPList[]=
 
 STDDIPINFO(Robocop2)
 
-void __fastcall cninja_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall cninja_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x140000, data)
 	deco16_write_control_word(1, address, 0x150000, data)
@@ -499,7 +498,7 @@ void __fastcall cninja_main_write_word(UINT32 address, UINT16 data)
 		{
 			scanline = data & 0xff;
 
-			if ((!BIT(scanline,1)) && (scanline > 0) && (scanline < 240)) {
+			if ((~irq_mask & 0x02) && (scanline > 0) && (scanline < 240)) {
 				irq_timer = scanline;
 			} else {
 				irq_timer = -1;
@@ -520,25 +519,33 @@ void __fastcall cninja_main_write_word(UINT32 address, UINT16 data)
 				ZetNmi();
 			} else {
 				deco16_soundlatch = data & 0xff;
-				h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+				h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 			}
 		break;
 	}
 
-	if ((address & 0xfffff800) == 0x198000) {
-		deco16_66_prot_w(address, data, 0xffff);
+	if (address >= 0x198000 && address <= 0x19bfff) { // edrandy
+		deco146_104_prot_ww(0x198000, address, data);
 		return;
 	}
 
-	if ((address & 0xffffff00) == 0x1bc000) {
-		UINT16 *ProtRam = (UINT16*)deco16_prot_ram;
-		ProtRam[(address - 0x1bc000) >> 1] = data;
+	if (address >= 0x1a0000 && address <= 0x1a3fff) { // edrandy
+		deco146_104_prot_ww(0x1a0000, address, data);
+		return;
+	}
+
+	if (address >= 0x1bc000 && address <= 0x1bffff) { // cninja
+		deco146_104_prot_ww(0, address, data);
 		return;
 	}
 }
 
-void __fastcall cninja_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall cninja_main_write_byte(UINT32 address, UINT8 data)
 {
+	// need for cliffhanger
+	deco16_write_control_byte(0, address, 0x140000, data)
+	deco16_write_control_byte(1, address, 0x150000, data)
+
 	switch (address)
 	{
 	//	case 0x190000:
@@ -548,12 +555,13 @@ void __fastcall cninja_main_write_byte(UINT32 address, UINT8 data)
 			irq_mask = data & 0xff;
 		return;
 
-	//	case 0x190002:
+		case 0x190002:
 		case 0x190003:
-	//	case 0x1a4002:
+		case 0x1a4002:
 		case 0x1a4003:
 		{
 			scanline = data & 0xff;
+
 			if ((~irq_mask & 0x02) && (scanline > 0) && (scanline < 240)) {
 				irq_timer = scanline;
 			} else {
@@ -576,26 +584,30 @@ void __fastcall cninja_main_write_byte(UINT32 address, UINT8 data)
 				ZetNmi();
 			} else {
 				deco16_soundlatch = data;
-				h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+				h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 			}
 		break;
 	}
 
-	if ((address & 0xfffff800) == 0x198000) { 
-		deco16_66_prot_w(address, data, 0x00ff << ((address & 1) << 3));
+	if (address >= 0x198000 && address <= 0x19bfff) { // edrandy
+		deco146_104_prot_wb(0x198000, address, data);
 		return;
 	}
 
-	if ((address & 0xffffff00) == 0x1bc000) {
-		DrvPrtRAM[(address & 0xff)^1] = data;
+	if (address >= 0x1a0000 && address <= 0x1a3fff) { // edrandy
+		deco146_104_prot_wb(0x1a0000, address, data);
+		return;
+	}
 
+	if (address >= 0x1bc000 && address <= 0x1bffff) { // cninja
+		deco146_104_prot_wb(0, address, data);
 		return;
 	}
 	
-	bprintf(PRINT_NORMAL, _T("Write Byte %x, %x\n"), address, data);
+	//bprintf(PRINT_NORMAL, _T("Write Byte %x, %x\n"), address, data);
 }
 
-UINT16 __fastcall cninja_main_read_word(UINT32 address)
+static UINT16 __fastcall cninja_main_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -614,25 +626,29 @@ UINT16 __fastcall cninja_main_read_word(UINT32 address)
 
 		case 0x1a4004:
 		case 0x190004:
-			SekSetIRQLine(3, SEK_IRQSTATUS_NONE);
-			SekSetIRQLine(4, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(3, CPU_IRQSTATUS_NONE);
+			SekSetIRQLine(4, CPU_IRQSTATUS_NONE);
 			return 0;
 	}
 
-	if ((address & 0xfffffc00) == 0x1bc000) {
-		return deco16_104_cninja_prot_r(address);
+	if (address >= 0x198000 && address <= 0x19bfff) { // edrandy
+		return deco146_104_prot_rw(0x198000, address);
 	}
 
-	if ((address & 0xfffff800) == 0x198000) {
-		return deco16_60_prot_r(address);
+	if (address >= 0x1a0000 && address <= 0x1a3fff) { // edrandy
+		return deco146_104_prot_rw(0x1a0000, address);
+	}
+
+	if (address >= 0x1bc000 && address <= 0x1bffff) { // cninja
+		return deco146_104_prot_rw(0, address);
 	}
 	
-	bprintf(PRINT_NORMAL, _T("Read Word %x, %x\n"), address);
+	//bprintf(PRINT_NORMAL, _T("Read Word %x, %x\n"), address);
 
 	return 0;
 }
 
-UINT8 __fastcall cninja_main_read_byte(UINT32 address)
+static UINT8 __fastcall cninja_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
@@ -662,25 +678,29 @@ UINT8 __fastcall cninja_main_read_byte(UINT32 address)
 		case 0x1a4005:
 	//	case 0x190004:
 		case 0x190005:
-			SekSetIRQLine(3, SEK_IRQSTATUS_NONE);
-			SekSetIRQLine(4, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(3, CPU_IRQSTATUS_NONE);
+			SekSetIRQLine(4, CPU_IRQSTATUS_NONE);
 			return 0;
 	}
 
-	if ((address & 0xfffff800) == 0x198000) {
-		return deco16_60_prot_r(address) >> ((~address & 1) << 3);
+	if (address >= 0x198000 && address <= 0x19bfff) { // edrandy
+		return deco146_104_prot_rb(0x198000, address);
 	}
 
-	if ((address & 0xfffffc00) == 0x1bc000) {
-		return deco16_104_cninja_prot_r(address) >> ((~address & 1) << 3);
+	if (address >= 0x1a0000 && address <= 0x1a3fff) { // edrandy
+		return deco146_104_prot_rb(0x1a0000, address);
+	}
+
+	if (address >= 0x1bc000 && address <= 0x1bffff) { // cninja
+		return deco146_104_prot_rb(0, address);
 	}
 	
-	bprintf(PRINT_NORMAL, _T("Read Byte %x, %x\n"), address);
+	//bprintf(PRINT_NORMAL, _T("Read Byte %x, %x\n"), address);
 
 	return 0;
 }
 
-void __fastcall mutantf_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall mutantf_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x300000, data)
 	deco16_write_control_word(1, address, 0x310000, data)
@@ -693,7 +713,7 @@ void __fastcall mutantf_main_write_word(UINT32 address, UINT16 data)
 
 		case 0x1a0064:
 			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		break;
 
 		case 0x1c0000:
@@ -705,13 +725,12 @@ void __fastcall mutantf_main_write_word(UINT32 address, UINT16 data)
 		return;
 	}
 
-	if ((address & 0xfffff800) == 0x1a0000) {
-		deco16_66_prot_w(address, data, 0xffff);
-		return;
+	if (address >= 0x1a0000 && address <= 0x1a3fff) {
+		deco146_104_prot_ww(0, address, data);
 	}
 }
 
-void __fastcall mutantf_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall mutantf_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -732,37 +751,36 @@ void __fastcall mutantf_main_write_byte(UINT32 address, UINT8 data)
 
 		case 0x1a0065:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		break;
 	}
 
-	if ((address & 0xfffff800) == 0x1a0000) {
-		deco16_66_prot_w(address, data, 0x00ff << ((address & 1) << 3));
-		return;
+	if (address >= 0x1a0000 && address <= 0x1a3fff) {
+		deco146_104_prot_wb(0, address, data);
 	}
 }
 
-UINT16 __fastcall mutantf_main_read_word(UINT32 address)
+static UINT16 __fastcall mutantf_main_read_word(UINT32 address)
 {
-	if ((address & 0xfffff800) == 0x1a0000) {
-		return deco16_66_prot_r(address);
+	if (address >= 0x1a0000 && address <= 0x1a3fff) {
+		return deco146_104_prot_rw(0, address);
 	}
 
 	return 0;
 }
 
-UINT8 __fastcall mutantf_main_read_byte(UINT32 address)
+static UINT8 __fastcall mutantf_main_read_byte(UINT32 address)
 {
 	if (address == 0x1c0001) return deco16ic_71_read() & 0xff;
 
-	if ((address & 0xfffff800) == 0x1a0000) {
-		return deco16_66_prot_r(address) >> ((~address & 1) << 3);
+	if (address >= 0x1a0000 && address <= 0x1a3fff) {
+		return deco146_104_prot_rb(0, address);
 	}
 
 	return 0;
 }
 
-void __fastcall robocop2_main_write_word(UINT32 address, UINT16 data)
+static void __fastcall robocop2_main_write_word(UINT32 address, UINT16 data)
 {
 	deco16_write_control_word(0, address, 0x140000, data)
 	deco16_write_control_word(1, address, 0x150000, data)
@@ -776,7 +794,7 @@ void __fastcall robocop2_main_write_word(UINT32 address, UINT16 data)
 		case 0x1b0002: {
 			scanline = data & 0xff;
 
-			if ((!BIT(scanline,1)) && (scanline > 0) && (scanline < 240)) {
+			if ((~irq_mask & 0x02) && (scanline > 0) && (scanline < 240)) {
 				irq_timer = scanline;
 			} else {
 				irq_timer = -1;
@@ -790,16 +808,21 @@ void __fastcall robocop2_main_write_word(UINT32 address, UINT16 data)
 
 		case 0x18c064:
 			deco16_soundlatch = data & 0xff;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		return;;
 
 		case 0x1f0000:
 			deco16_priority = data;
 		return;
 	}
+
+	if (address >= 0x18c000 && address <= 0x18ffff) {
+		deco146_104_prot_ww(0, address, data);
+	}
+
 }
 
-void __fastcall robocop2_main_write_byte(UINT32 address, UINT8 data)
+static void __fastcall robocop2_main_write_byte(UINT32 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -827,7 +850,7 @@ void __fastcall robocop2_main_write_byte(UINT32 address, UINT8 data)
 
 		case 0x18c065:
 			deco16_soundlatch = data;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 		break;
 
 		case 0x1f0000:
@@ -835,71 +858,47 @@ void __fastcall robocop2_main_write_byte(UINT32 address, UINT8 data)
 			deco16_priority = data;
 		return;
 	}
+
+	if (address >= 0x18c000 && address <= 0x18ffff) {
+		deco146_104_prot_wb(0, address, data);
+	}
 }
 
-UINT16 __fastcall robocop2_main_read_word(UINT32 address)
+static UINT16 __fastcall robocop2_main_read_word(UINT32 address)
 {
 	switch (address)
 	{
-		case 0x18c41a:
-			return DrvInputs[0];
-
-		case 0x18c320:
-			return (DrvInputs[1] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x18c4e6:
-			return (DrvDips[1] << 8) | (DrvDips[0] << 0);
-
-		case 0x18c504:
-			return 0x0084;
-
 		case 0x1b0002:
 			return scanline;
 
 		case 0x1b0004:
-			SekSetIRQLine(3, SEK_IRQSTATUS_NONE);
-			SekSetIRQLine(4, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(3, CPU_IRQSTATUS_NONE);
+			SekSetIRQLine(4, CPU_IRQSTATUS_NONE);
 			return 0;
 
 		case 0x1f8000:
 			return DrvDips[2];
 	}
 
+	if (address >= 0x18c000 && address <= 0x18ffff) {
+		return deco146_104_prot_rw(0, address);
+	}
+
 	return 0;
 }
 
-UINT8 __fastcall robocop2_main_read_byte(UINT32 address)
+static UINT8 __fastcall robocop2_main_read_byte(UINT32 address)
 {
 	switch (address)
 	{
-		case 0x18c41a:
-			return DrvInputs[0] >> 8;
-
-		case 0x18c41b:
-			return DrvInputs[0] >> 0;
-
-		case 0x18c320:
-		case 0x18c321:
-			return (DrvInputs[1] & 0x07) | (deco16_vblank & 0x08);
-
-		case 0x18c4e6:
-			return DrvDips[0];
-
-		case 0x18c4e7:
-			return DrvDips[1];
-
-		case 0x18c504:
-		case 0x18c505:
-			return 0x0084;
-
 		case 0x1b0002:
 		case 0x1b0003:
 			return scanline;
 
 		case 0x1b0004:
 		case 0x1b0005:
-			SekSetIRQLine(3, SEK_IRQSTATUS_NONE);
-			SekSetIRQLine(4, SEK_IRQSTATUS_NONE);
+			SekSetIRQLine(3, CPU_IRQSTATUS_NONE);
+			SekSetIRQLine(4, CPU_IRQSTATUS_NONE);
 			return 0;
 
 		case 0x1f8000:
@@ -907,10 +906,14 @@ UINT8 __fastcall robocop2_main_read_byte(UINT32 address)
 			return DrvDips[2];
 	}
 
+	if (address >= 0x18c000 && address <= 0x18ffff) {
+		return deco146_104_prot_rb(0, address);
+	}
+
 	return 0;
 }
 
-void __fastcall stoneage_sound_write(UINT16 address, UINT8 data)
+static void __fastcall stoneage_sound_write(UINT16 address, UINT8 data)
 {
 	switch (address)
 	{
@@ -923,24 +926,24 @@ void __fastcall stoneage_sound_write(UINT16 address, UINT8 data)
 		return;
 
 		case 0x9800:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
 
-UINT8 __fastcall stoneage_sound_read(UINT16 address)
+static UINT8 __fastcall stoneage_sound_read(UINT16 address)
 {
 	switch (address)
 	{
 		case 0x8800:
 		case 0x8801:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		case 0x9800:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 
 		case 0xa000:
-			ZetSetIRQLine(0x20, ZET_IRQSTATUS_NONE);
+			ZetSetIRQLine(0x20, CPU_IRQSTATUS_NONE);
 			return *soundlatch;
 	}
 
@@ -949,7 +952,7 @@ UINT8 __fastcall stoneage_sound_read(UINT16 address)
 
 static void DrvYM2151IrqHandler(INT32 state)
 {
-	ZetSetIRQLine(0, state ? ZET_IRQSTATUS_ACK : ZET_IRQSTATUS_NONE);
+	ZetSetIRQLine(0, state ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static void DrvYM2151WritePort(UINT32, UINT32 data)
@@ -993,8 +996,7 @@ static INT32 DrvDoReset()
 		ZetReset();
 		ZetClose();
 		
-		MSM6295Reset(0);
-		MSM6295Reset(1);
+		MSM6295Reset();
 		BurnYM2151Reset();
 	} else {
 		deco16SoundReset();
@@ -1013,7 +1015,7 @@ static INT32 DrvDoReset()
 
 static void DrvBootlegCharDecode(UINT8 *gfx, INT32 len)
 {
-	UINT8 *dst = (UINT8*)BurnMalloc(len);
+	UINT8 *dst = (UINT8*)BurnMalloc(len+4);
 
 	memcpy (dst, gfx, len);
 
@@ -1061,21 +1063,30 @@ static INT32 MemIndex()
 	DrvSprBuf1	= Next; Next += 0x000800;
 	DrvPalRAM	= Next; Next += 0x002000;
 
-	deco16_prot_ram	= (UINT16*)Next;
-	DrvPrtRAM	= Next; Next += 0x000800;
-
 	DrvZ80RAM	= Next; Next += 0x000800;
 
 	soundlatch	= Next; Next += 0x000001;
 	flipscreen	= Next; Next += 0x000001;
 
 	RamEnd		= Next;
-	
-	SoundBuffer = (INT16*)Next; Next += nBurnSoundLen * 2 * sizeof(INT16);
-
 	MemEnd		= Next;
 
 	return 0;
+}
+
+static UINT16 deco_104_port_a_cb()
+{
+	return DrvInputs[0];
+}
+
+static UINT16 deco_104_port_b_cb()
+{
+	return (DrvInputs[1] & ~8) | deco16_vblank;
+}
+
+static UINT16 deco_104_port_c_cb()
+{
+	return DrvInputs[2];
 }
 
 static void cninja_patch()
@@ -1162,28 +1173,37 @@ static INT32 CninjaInit()
 	deco16_set_bank_callback(2, cninja_bank_callback);
 	deco16_set_bank_callback(3, cninja_bank_callback);
 
+	// 146_104 prot
+	deco_104_init();
+	deco_146_104_set_use_magic_read_address_xor(1);
+	deco_146_104_set_port_a_cb(deco_104_port_a_cb);
+	deco_146_104_set_port_b_cb(deco_104_port_b_cb);
+	deco_146_104_set_port_c_cb(deco_104_port_c_cb);
+	//deco_146_104_set_soundlatch_cb(deco_146_soundlatch_dummy);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, SM_ROM);
-	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x184000, 0x187fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x1a4000, 0x1a47ff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, MAP_ROM);
+	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x184000, 0x187fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x1a4000, 0x1a47ff, MAP_RAM);
 	SekSetWriteWordHandler(0,		cninja_main_write_word);
 	SekSetWriteByteHandler(0,		cninja_main_write_byte);
 	SekSetReadWordHandler(0,		cninja_main_read_word);
 	SekSetReadByteHandler(0,		cninja_main_read_byte);
 	SekClose();
 
-	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
+	deco16SoundInit(DrvHucROM, DrvHucRAM, 4027500, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
 	BurnYM2203SetAllRoutes(0, 0.60, BURN_SND_ROUTE_BOTH);
+	BurnYM2151SetInterleave(117); // "BurnYM2151Render()" called this many times per frame
 
 	GenericTilesInit();
 
@@ -1262,27 +1282,34 @@ static INT32 EdrandyInit()
 	deco16_set_bank_callback(2, cninja_bank_callback);
 	deco16_set_bank_callback(3, cninja_bank_callback);
 
+	// 146_104 prot
+	deco_146_init();
+	deco_146_104_set_port_a_cb(deco_104_port_a_cb);
+	deco_146_104_set_port_b_cb(deco_104_port_b_cb);
+	deco_146_104_set_port_c_cb(deco_104_port_c_cb);
+	//deco_146_104_set_soundlatch_cb(deco_146_soundlatch_dummy);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x188000, 0x189fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x194000, 0x197fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x1bc000, 0x1bc7ff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x188000, 0x189fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x194000, 0x197fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x1bc000, 0x1bc7ff, MAP_RAM);
 	SekSetWriteWordHandler(0,		cninja_main_write_word);
 	SekSetWriteByteHandler(0,		cninja_main_write_byte);
 	SekSetReadWordHandler(0,		cninja_main_read_word);
 	SekSetReadByteHandler(0,		cninja_main_read_byte);
 	SekClose();
 
-	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
+	deco16SoundInit(DrvHucROM, DrvHucRAM, 4027500, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
 	BurnYM2203SetAllRoutes(0, 0.60, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
@@ -1372,28 +1399,35 @@ static INT32 MutantfInit()
 	deco16_set_bank_callback(2, mutantf_1_bank_callback);
 	deco16_set_bank_callback(3, mutantf_1_bank_callback);
 
+	// 146_104 prot
+	deco_146_init();
+	deco_146_104_set_port_a_cb(deco_104_port_a_cb);
+	deco_146_104_set_port_b_cb(deco_104_port_b_cb);
+	deco_146_104_set_port_c_cb(deco_104_port_c_cb);
+	//deco_146_104_set_soundlatch_cb(deco_146_soundlatch_dummy);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,			0x100000, 0x103fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x120000, 0x1207ff, SM_RAM);
-	SekMapMemory(DrvSprRAM1,		0x140000, 0x1407ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x160000, 0x161fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x304000, 0x305fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x306000, 0x307fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x308000, 0x3087ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x30a000, 0x30a7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x314000, 0x315fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x316000, 0x317fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x318000, 0x3187ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x31a000, 0x31a7ff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,			0x100000, 0x103fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x120000, 0x1207ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM1,		0x140000, 0x1407ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x160000, 0x161fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x304000, 0x305fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x306000, 0x307fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x308000, 0x3087ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x30a000, 0x30a7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x314000, 0x315fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x316000, 0x317fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x318000, 0x3187ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x31a000, 0x31a7ff, MAP_RAM);
 	SekSetWriteWordHandler(0,		mutantf_main_write_word);
 	SekSetWriteByteHandler(0,		mutantf_main_write_byte);
 	SekSetReadWordHandler(0,		mutantf_main_read_word);
 	SekSetReadByteHandler(0,		mutantf_main_read_byte);
 	SekClose();
 
-	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 0, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
+	deco16SoundInit(DrvHucROM, DrvHucRAM, 4027500, 0, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 0.45, BURN_SND_ROUTE_LEFT);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 0.45, BURN_SND_ROUTE_RIGHT);
 
@@ -1421,7 +1455,7 @@ static INT32 CninjablInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x00000,  2, 1)) return 1;
 
-		UINT8 *tmp = (UINT8*)malloc(0x400000);
+		UINT8 *tmp = (UINT8*)BurnMalloc(0x400000);
 
 		if (BurnLoadRom(tmp + 0x00000,  3, 2)) return 1;
 		if (BurnLoadRom(tmp + 0x00001,  4, 2)) return 1;
@@ -1435,10 +1469,7 @@ static INT32 CninjablInit()
 		memcpy (DrvGfxROM2 + 0x080000, tmp + 0x100000, 0x080000);
 		memcpy (DrvGfxROM3 + 0x000000, tmp + 0x200000, 0x200000);
 
-		if (tmp) {
-			free (tmp);
-			tmp = NULL;
-		}
+		BurnFree(tmp);
 
 		if (BurnLoadRom(DrvSndROM0  + 0x00000,  5, 1)) return 1;
 
@@ -1460,18 +1491,18 @@ static INT32 CninjablInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, SM_ROM);
-	SekMapMemory(DrvSprRAM,			0x138000, 0x1387ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x180000, 0x187fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, MAP_ROM);
+	SekMapMemory(DrvSprRAM,			0x138000, 0x1387ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x180000, 0x187fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, MAP_RAM);
 	SekSetWriteWordHandler(0,		cninja_main_write_word);
 	SekSetWriteByteHandler(0,		cninja_main_write_byte);
 	SekSetReadWordHandler(0,		cninja_main_read_word);
@@ -1572,20 +1603,28 @@ static INT32 StoneageInit()
 	deco16_set_bank_callback(2, cninja_bank_callback);
 	deco16_set_bank_callback(3, cninja_bank_callback);
 
+	// 146_104 prot
+	deco_104_init();
+	deco_146_104_set_use_magic_read_address_xor(1);
+	deco_146_104_set_port_a_cb(deco_104_port_a_cb);
+	deco_146_104_set_port_b_cb(deco_104_port_b_cb);
+	deco_146_104_set_port_c_cb(deco_104_port_c_cb);
+	//deco_146_104_set_soundlatch_cb(deco_146_soundlatch_dummy);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, SM_ROM);
-	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x184000, 0x187fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x1a4000, 0x1a47ff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0bffff, MAP_ROM);
+	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x184000, 0x187fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x19c000, 0x19dfff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x1a4000, 0x1a47ff, MAP_RAM);
 	SekSetWriteWordHandler(0,		cninja_main_write_word);
 	SekSetWriteByteHandler(0,		cninja_main_write_byte);
 	SekSetReadWordHandler(0,		cninja_main_read_word);
@@ -1699,27 +1738,35 @@ static INT32 Robocop2Init()
 	deco16_set_bank_callback(2, robocop2_bank_callback);
 	deco16_set_bank_callback(3, robocop2_bank_callback);
 
+	// 146_104 prot
+	deco_146_init();
+	deco_146_104_set_use_magic_read_address_xor(1);
+	deco_146_104_set_port_a_cb(deco_104_port_a_cb);
+	deco_146_104_set_port_b_cb(deco_104_port_b_cb);
+	deco_146_104_set_port_c_cb(deco_104_port_c_cb);
+	//deco_146_104_set_soundlatch_cb(deco_146_soundlatch_dummy);
+
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, SM_RAM);
-	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, SM_RAM);
-	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, SM_RAM);
-	SekMapMemory(DrvSprRAM,			0x180000, 0x1807ff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0x1a8000, 0x1a9fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0x1b8000, 0x1bbfff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(deco16_pf_ram[0],		0x144000, 0x144fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[1],		0x146000, 0x146fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[0],	0x14c000, 0x14c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[1],	0x14e000, 0x14e7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[2],		0x154000, 0x154fff, MAP_RAM);
+	SekMapMemory(deco16_pf_ram[3],		0x156000, 0x156fff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[2],	0x15c000, 0x15c7ff, MAP_RAM);
+	SekMapMemory(deco16_pf_rowscroll[3],	0x15e000, 0x15e7ff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,			0x180000, 0x1807ff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0x1a8000, 0x1a9fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0x1b8000, 0x1bbfff, MAP_RAM);
 	SekSetWriteWordHandler(0,		robocop2_main_write_word);
 	SekSetWriteByteHandler(0,		robocop2_main_write_byte);
 	SekSetReadWordHandler(0,		robocop2_main_read_word);
 	SekSetReadByteHandler(0,		robocop2_main_read_byte);
 	SekClose();
 
-	deco16SoundInit(DrvHucROM, DrvHucRAM, 8055000, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
+	deco16SoundInit(DrvHucROM, DrvHucRAM, 4027500, 1, DrvYM2151WritePort, 0.45, 1006875, 0.75, 2013750, 0.60);
 	BurnYM2203SetAllRoutes(0, 0.60, BURN_SND_ROUTE_BOTH);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 0.45, BURN_SND_ROUTE_LEFT);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 0.45, BURN_SND_ROUTE_RIGHT);
@@ -1741,8 +1788,7 @@ static INT32 DrvExit()
 	if (has_z80) {
 		ZetExit();
 		has_z80 = 0;
-		MSM6295Exit(0);
-		MSM6295Exit(1);
+		MSM6295Exit();
 		BurnYM2151Exit();
 	} else {
 		deco16SoundExit();
@@ -1755,7 +1801,7 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void cninja_draw_sprites()
+static void cninja_draw_sprites(int xoffset)
 {
 	UINT16 *buffered_spriteram = (UINT16*)DrvSprBuf;
 
@@ -1816,7 +1862,7 @@ static void cninja_draw_sprites()
 
 		while (multi >= 0)
 		{
-			deco16_draw_prio_sprite(pTransDraw, DrvGfxROM3, sprite - multi * inc, (color << 4) + 0x300, x, y + mult * multi, flipx, flipy, pri);
+			deco16_draw_prio_sprite(pTransDraw, DrvGfxROM3, sprite - multi * inc, (color << 4) + 0x300, x+xoffset, y + mult * multi, flipx, flipy, pri);
 
 			multi--;
 		}
@@ -2013,9 +2059,7 @@ static INT32 CninjaDraw()
 	deco16_pf12_update();
 	deco16_pf34_update();
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x200;
-	}
+	BurnTransferClear(0x200);
 
 	deco16_clear_prio_map();
 
@@ -2024,7 +2068,7 @@ static INT32 CninjaDraw()
 	if (nSpriteEnable &  4) deco16_draw_layer(1, pTransDraw, DECO16_LAYER_PRIORITY(0x02) | DECO16_LAYER_TRANSMASK1);
 	if (nSpriteEnable &  8) deco16_draw_layer(1, pTransDraw, DECO16_LAYER_PRIORITY(0x04) | DECO16_LAYER_TRANSMASK0);
  
-	cninja_draw_sprites();
+	cninja_draw_sprites(0);
 
 	if (nSpriteEnable & 16) deco16_draw_layer(0, pTransDraw, 0);
 
@@ -2043,9 +2087,7 @@ static INT32 CninjablDraw()
 	deco16_pf12_update();
 	deco16_pf34_update();
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x200;
-	}
+	BurnTransferClear(0x200);
 
 	deco16_clear_prio_map();
 
@@ -2063,27 +2105,43 @@ static INT32 CninjablDraw()
 	return 0;
 }
 
+static INT32 lastline;
+
+static INT32 EdrandyStartDraw()
+{
+	deco16_clear_prio_map();
+
+	BurnTransferClear();
+
+	lastline = 0;
+
+	return 0;
+}
+
+static INT32 EdrandyDrawScanline(INT32 line)
+{
+	if (line > nScreenHeight) return 0;
+
+	deco16_pf12_update();
+	deco16_pf34_update();
+
+	if (nSpriteEnable &  1) deco16_draw_layer_by_line(lastline, line, 3, pTransDraw, DECO16_LAYER_PRIORITY(0x01) | DECO16_LAYER_OPAQUE);
+	if (nSpriteEnable &  2) deco16_draw_layer_by_line(lastline, line, 2, pTransDraw, DECO16_LAYER_PRIORITY(0x02));
+	if (nSpriteEnable &  4) deco16_draw_layer_by_line(lastline, line, 1, pTransDraw, DECO16_LAYER_PRIORITY(0x04));
+
+	lastline = line;
+
+	return 0;
+}
+
 static INT32 EdrandyDraw()
 {
 //	if (DrvRecalc) {
 		deco16_palette_recalculate(DrvPalette, DrvPalRAM);
 		DrvRecalc = 0;
 //	}
-
-	deco16_pf12_update();
-	deco16_pf34_update();
-
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0;
-	}
-
-	deco16_clear_prio_map();
-
-	if (nSpriteEnable &  1) deco16_draw_layer(3, pTransDraw, DECO16_LAYER_PRIORITY(0x01) | DECO16_LAYER_OPAQUE);
-	if (nSpriteEnable &  2) deco16_draw_layer(2, pTransDraw, DECO16_LAYER_PRIORITY(0x02));
-	if (nSpriteEnable &  4) deco16_draw_layer(1, pTransDraw, DECO16_LAYER_PRIORITY(0x04));
  
-	cninja_draw_sprites();
+	if (nBurnLayer & 1) cninja_draw_sprites(0);
 
 	if (nSpriteEnable &  8) deco16_draw_layer(0, pTransDraw, 0);
 
@@ -2092,21 +2150,23 @@ static INT32 EdrandyDraw()
 	return 0;
 }
 
-static INT32 Robocop2Draw()
+static INT32 Robocop2StartDraw()
 {
-//	if (DrvRecalc) {
-		deco16_palette_recalculate(DrvPalette, DrvPalRAM);
-		DrvRecalc = 0;
-//	}
+	deco16_clear_prio_map();
+
+	BurnTransferClear(0x200);
+
+	lastline = 0;
+
+	return 0;
+}
+
+static INT32 Robocop2DrawScanline(INT32 line)
+{
+	if (line > nScreenHeight) return 0;
 
 	deco16_pf12_update();
 	deco16_pf34_update();
-
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x200;
-	}
-
-	deco16_clear_prio_map();
 
 	INT32 layer_8bpp = 0;
 
@@ -2123,18 +2183,30 @@ static INT32 Robocop2Draw()
 		deco16_set_color_mask(3, 0xf);
 		deco16_set_graphics(2, DrvGfxROM2, 0x300000, 16);
 
-		if (nSpriteEnable &  1) deco16_draw_layer(3, pTransDraw, DECO16_LAYER_OPAQUE | DECO16_LAYER_PRIORITY(0x01));
+		if (nSpriteEnable &  1) deco16_draw_layer_by_line(lastline, line, 3, pTransDraw, DECO16_LAYER_OPAQUE | DECO16_LAYER_PRIORITY(0x01));
 	}
 
 	if (deco16_priority & 8) {
-		if (nSpriteEnable &  2) deco16_draw_layer(1, pTransDraw, DECO16_LAYER_PRIORITY(0x02));
-		if (nSpriteEnable &  4) deco16_draw_layer(2, pTransDraw, DECO16_LAYER_PRIORITY(0x04) | layer_8bpp);
+		if (nSpriteEnable &  2) deco16_draw_layer_by_line(lastline, line, 1, pTransDraw, DECO16_LAYER_PRIORITY(0x02));
+		if (nSpriteEnable &  4) deco16_draw_layer_by_line(lastline, line, 2, pTransDraw, DECO16_LAYER_PRIORITY(0x04) | layer_8bpp);
 	} else {
-		if (nSpriteEnable &  2) deco16_draw_layer(2, pTransDraw, DECO16_LAYER_PRIORITY(0x02) | layer_8bpp);
-		if (nSpriteEnable &  4) deco16_draw_layer(1, pTransDraw, DECO16_LAYER_PRIORITY(0x04));
+		if (nSpriteEnable &  2) deco16_draw_layer_by_line(lastline, line, 2, pTransDraw, DECO16_LAYER_PRIORITY(0x02) | layer_8bpp);
+		if (nSpriteEnable &  4) deco16_draw_layer_by_line(lastline, line, 1, pTransDraw, DECO16_LAYER_PRIORITY(0x04));
 	}
 
-	cninja_draw_sprites();
+	lastline = line;
+
+	return 0;
+}
+
+static INT32 Robocop2Draw()
+{
+//	if (DrvRecalc) {
+		deco16_palette_recalculate(DrvPalette, DrvPalRAM);
+		DrvRecalc = 0;
+//	}
+
+	cninja_draw_sprites(64);
 
 	if (nSpriteEnable &  8) deco16_draw_layer(0, pTransDraw, 0);
 
@@ -2154,14 +2226,12 @@ static INT32 MutantfDraw()
 	deco16_pf12_update();
 	deco16_pf34_update();
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x400;
-	}
+	BurnTransferClear(0x400);
 
 	if (nSpriteEnable &  1) deco16_draw_layer(3, pTransDraw, DECO16_LAYER_OPAQUE);
 	if (nSpriteEnable &  2) deco16_draw_layer(1, pTransDraw, 0);
 	if (nSpriteEnable &  4) deco16_draw_layer(2, pTransDraw, 0);
- 
+
 	if (deco16_priority & 1)
 	{
 		deco16_clear_prio_map();
@@ -2191,8 +2261,7 @@ static INT32 CninjaFrame()
 	}
 
 	{
-		deco16_prot_inputs = DrvInputs;
-		memset (DrvInputs, 0xff, 2 * sizeof(INT16)); 
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
@@ -2200,9 +2269,79 @@ static INT32 CninjaFrame()
 		DrvInputs[2] = (DrvDips[1] << 8) | (DrvDips[0] << 0);
 	}
 
-	INT32 nInterleave = 256;
+	INT32 nInterleave = 232; //58 * 4
 	INT32 nSoundBufferPos = 0;
-	INT32 nCyclesTotal[2] = { 12000000 / 58, 8055000 / 58 };
+	INT32 nCyclesTotal[2] = { 12000000 / 58, 4027500 / 58 };
+	INT32 nCyclesDone[2] = { 0, 0 };
+
+	h6280NewFrame();
+
+	SekOpen(0);
+	h6280Open(0);
+
+	deco16_vblank = 0x00;
+
+	for (INT32 i = 0; i < nInterleave; i++)
+	{
+		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / nInterleave);
+
+		if (irq_timer == i) {
+			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, CPU_IRQSTATUS_ACK);
+			irq_timer = -1;
+		}
+		if (i == 206) deco16_vblank = 0x08;
+		
+		if (pBurnSoundOut && i&1) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 2);
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
+	}
+
+	SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
+	BurnTimerEndFrame(nCyclesTotal[1]);
+
+	if (pBurnSoundOut) {
+		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+
+		if (nSegmentLength) {
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+		}
+
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
+	}
+
+	h6280Close();
+	SekClose();
+
+	if (pBurnDraw) {
+		BurnDrvRedraw();
+	}
+
+	return 0;
+}
+
+static INT32 EdrandyFrame()
+{
+	if (DrvReset) {
+		DrvDoReset();
+	}
+
+	{
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
+		for (INT32 i = 0; i < 16; i++) {
+			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
+			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
+		}
+		DrvInputs[2] = (DrvDips[1] << 8) | (DrvDips[0] << 0);
+	}
+
+	INT32 nInterleave = 256; // scanlines
+	INT32 nSoundBufferPos = 0;
+	INT32 nCyclesTotal[2] = { 12000000 / 58, 4027500 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
 
 	h6280NewFrame();
@@ -2210,42 +2349,125 @@ static INT32 CninjaFrame()
 	SekOpen(0);
 	h6280Open(0);
 
-	deco16_vblank = 0;
+	deco16_vblank = 0x00;
+	EdrandyStartDraw();
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
-		nCyclesDone[1] += h6280Run(nCyclesTotal[1] / nInterleave);
-
 		if (irq_timer == i) {
-			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, SEK_IRQSTATUS_ACK);
+			if (i >= 8 && i < 248) EdrandyDrawScanline(i-8);
+			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, CPU_IRQSTATUS_ACK);
 			irq_timer = -1;
 		}
-		if (i == 248) deco16_vblank = 0x08;
-		
-		INT32 nSegmentLength = nBurnSoundLen / nInterleave;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
-		deco16SoundUpdate(pSoundBuf, nSegmentLength);
-		nSoundBufferPos += nSegmentLength;
+		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / nInterleave);
+
+		if (i == 248) {
+			EdrandyDrawScanline(i-8);
+			SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
+			deco16_vblank = 0x08;
+		}
+
+		if (pBurnSoundOut && i%4 == 3) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 4);
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
 	}
 
-	SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
 	BurnTimerEndFrame(nCyclesTotal[1]);
 
 	if (pBurnSoundOut) {
-		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
-		
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-		INT16* pSoundBuf = SoundBuffer + (nSoundBufferPos << 1);
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 
 		if (nSegmentLength) {
 			deco16SoundUpdate(pSoundBuf, nSegmentLength);
 		}
-		
-		for (INT32 i = 0; i < nBurnSoundLen; i++) {
-			pBurnSoundOut[(i << 1) + 0] += SoundBuffer[(i << 1) + 0];
-			pBurnSoundOut[(i << 1) + 1] += SoundBuffer[(i << 1) + 1];
+
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
+	}
+
+	h6280Close();
+	SekClose();
+
+	if (pBurnDraw) {
+		BurnDrvRedraw();
+	}
+
+	return 0;
+}
+
+static INT32 Robocop2Frame()
+{
+	if (DrvReset) {
+		DrvDoReset();
+	}
+
+	{
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
+		for (INT32 i = 0; i < 16; i++) {
+			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
+			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
 		}
+		DrvInputs[2] = (DrvDips[1] << 8) | (DrvDips[0] << 0);
+	}
+
+	INT32 nInterleave = 256;	// scanlines
+	INT32 nSoundBufferPos = 0;
+	INT32 nCyclesTotal[2] = { 14000000 / 58, 4027500 / 58 };
+	INT32 nCyclesDone[2] = { 0, 0 };
+
+	h6280NewFrame();
+	
+	SekOpen(0);
+	h6280Open(0);
+
+	deco16_vblank = 0x08;
+
+	Robocop2StartDraw();
+
+	for (INT32 i = 0; i < nInterleave; i++)
+	{
+		nCyclesDone[0] += SekRun(nCyclesTotal[0] / nInterleave);
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / nInterleave);
+
+		if (irq_timer == i) {
+			if (i >= 8 && i < 248) Robocop2DrawScanline(i-8);
+			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, CPU_IRQSTATUS_ACK);
+			irq_timer = -1;
+		}
+
+		if (i >= 8) {
+			deco16_vblank = 0;
+		}
+
+		if (i == 248) {
+			Robocop2DrawScanline(i-8);
+			deco16_vblank = 0x08;
+		}
+
+		if (pBurnSoundOut && i%8 == 7) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 8);
+			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+			nSoundBufferPos += nSegmentLength;
+		}
+	}
+	SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
+
+	BurnTimerEndFrame(nCyclesTotal[1]);
+
+	if (pBurnSoundOut) {
+		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+
+		if (nSegmentLength) {
+			deco16SoundUpdate(pSoundBuf, nSegmentLength);
+		}
+
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
 	}
 
 	h6280Close();
@@ -2265,8 +2487,7 @@ static INT32 MutantfFrame()
 	}
 
 	{
-		deco16_prot_inputs = DrvInputs;
-		memset (DrvInputs, 0xff, 2 * sizeof(INT16)); 
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
@@ -2276,11 +2497,11 @@ static INT32 MutantfFrame()
 
 	INT32 nInterleave = 256;
 	INT32 nSoundBufferPos = 0;
-	INT32 nCyclesTotal[2] = { 14000000 / 58, 8055000 / 58 };
+	INT32 nCyclesTotal[2] = { 14000000 / 58, 4027500 / 58 };
 	INT32 nCyclesDone[2] = { 0, 0 };
 
 	h6280NewFrame();
-	
+
 	SekOpen(0);
 	h6280Open(0);
 
@@ -2293,15 +2514,15 @@ static INT32 MutantfFrame()
 
 		if (i == 240) deco16_vblank = 0x08;
 		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
+		if (pBurnSoundOut && i%4 == 3) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 4);
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			deco16SoundUpdate(pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}
 	}
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 	
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -2329,8 +2550,7 @@ static INT32 StoneageFrame()
 	}
 
 	{
-		deco16_prot_inputs = DrvInputs;
-		memset (DrvInputs, 0xff, 2 * sizeof(INT16)); 
+		memset (DrvInputs, 0xff, 2 * sizeof(INT16));
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
@@ -2354,30 +2574,28 @@ static INT32 StoneageFrame()
 		nCyclesDone[1] += ZetRun(nCyclesTotal[1] / nInterleave);
 
 		if (irq_timer == i) {
-			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, SEK_IRQSTATUS_ACK);
+			SekSetIRQLine((irq_mask & 0x10) ? 3 : 4, CPU_IRQSTATUS_ACK);
 			irq_timer = -1;
 		}
 		if (i == 248) deco16_vblank = 0x08;
 		
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
+		if (pBurnSoundOut && i%4 == 3) {
+			INT32 nSegmentLength = nBurnSoundLen / (nInterleave / 4);
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			MSM6295Render(0, pSoundBuf, nSegmentLength);
-			MSM6295Render(1, pSoundBuf, nSegmentLength);
+			MSM6295Render(pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}
 	}
 
-	SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
 		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 		if (nSegmentLength) {
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			MSM6295Render(0, pSoundBuf, nSegmentLength);
-			MSM6295Render(1, pSoundBuf, nSegmentLength);
+			MSM6295Render(pSoundBuf, nSegmentLength);
 		}
 	}
 
@@ -2409,7 +2627,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-	
+
 		deco16SoundScan(nAction, pnMin);
 
 		deco16Scan();
@@ -2444,10 +2662,9 @@ static INT32 StoneageScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
 		ZetScan(nAction);
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(0, nAction);
-		MSM6295Scan(1, nAction);
-	
+		BurnYM2151Scan(nAction, pnMin);
+		MSM6295Scan(nAction, pnMin);
+
 		deco16Scan();
 
 		SCAN_VAR(scanline);
@@ -2491,6 +2708,13 @@ static struct BurnRomInfo cninjaRomDesc[] = {
 	{ "mag-07.13f",		0x080000, 0x08eb5264, 8 | BRF_SND }, 	       // 17 OKI M6295 Samples 1
 
 	{ "mb7122h.7v",		0x000400, 0xa1267336, 0 | BRF_OPT }, 	       // 18 Unused PROMs
+	
+	{ "tj-00.9j",		0x000117, 0x46defe8f, 0 | BRF_OPT }, 	       // 19 PLDs
+	{ "tj-01.9h",		0x000117, 0x7a86902d, 0 | BRF_OPT }, 	       // 20 
+	{ "tj-02.9h",		0x000117, 0xb476d59c, 0 | BRF_OPT }, 	       // 21
+	{ "tj-03.9e",		0x000117, 0xcfb6e4aa, 0 | BRF_OPT }, 	       // 22
+	{ "tj-04.5n",		0x000117, 0xbca07086, 0 | BRF_OPT }, 	       // 23
+	{ "tj-05.1r",		0x000117, 0x0dfc091b, 0 | BRF_OPT }, 	       // 24
 };
 
 STD_ROM_PICK(cninja)
@@ -2501,7 +2725,7 @@ struct BurnDriver BurnDrvCninja = {
 	"Caveman Ninja (World ver 4)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, cninjaRomInfo, cninjaRomName, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
+	NULL, cninjaRomInfo, cninjaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
 	CninjaInit, DrvExit, CninjaFrame, CninjaDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2537,6 +2761,13 @@ static struct BurnRomInfo cninja1RomDesc[] = {
 	{ "mag-07.13f",		0x080000, 0x08eb5264, 8 | BRF_SND }, 	       // 17 OKI M6295 Samples 1
 
 	{ "mb7122h.7v",		0x000400, 0xa1267336, 0 | BRF_OPT }, 	       // 18 Unused PROMs
+	
+	{ "tj-00.9j",		0x000117, 0x46defe8f, 0 | BRF_OPT }, 	       // 19 PLDs
+	{ "tj-01.9h",		0x000117, 0x7a86902d, 0 | BRF_OPT }, 	       // 20 
+	{ "tj-02.9h",		0x000117, 0xb476d59c, 0 | BRF_OPT }, 	       // 21
+	{ "tj-03.9e",		0x000117, 0xcfb6e4aa, 0 | BRF_OPT }, 	       // 22
+	{ "tj-04.5n",		0x000117, 0xbca07086, 0 | BRF_OPT }, 	       // 23
+	{ "tj-05.1r",		0x000117, 0x0dfc091b, 0 | BRF_OPT }, 	       // 24
 };
 
 STD_ROM_PICK(cninja1)
@@ -2547,7 +2778,7 @@ struct BurnDriver BurnDrvCninja1 = {
 	"Caveman Ninja (World ver 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, cninja1RomInfo, cninja1RomName, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
+	NULL, cninja1RomInfo, cninja1RomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
 	CninjaInit, DrvExit, CninjaFrame, CninjaDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2583,6 +2814,13 @@ static struct BurnRomInfo cninjauRomDesc[] = {
 	{ "mag-07.13f",		0x080000, 0x08eb5264, 8 | BRF_SND }, 	       // 17 OKI M6295 Samples 1
 
 	{ "mb7122h.7v",		0x000400, 0xa1267336, 0 | BRF_OPT }, 	       // 18 Unused PROMs
+	
+	{ "tj-00.9j",		0x000117, 0x46defe8f, 0 | BRF_OPT }, 	       // 19 PLDs
+	{ "tj-01.9h",		0x000117, 0x7a86902d, 0 | BRF_OPT }, 	       // 20 
+	{ "tj-02.9h",		0x000117, 0xb476d59c, 0 | BRF_OPT }, 	       // 21
+	{ "tj-03.9e",		0x000117, 0xcfb6e4aa, 0 | BRF_OPT }, 	       // 22
+	{ "tj-04.5n",		0x000117, 0xbca07086, 0 | BRF_OPT }, 	       // 23
+	{ "tj-05.1r",		0x000117, 0x0dfc091b, 0 | BRF_OPT }, 	       // 24
 };
 
 STD_ROM_PICK(cninjau)
@@ -2593,7 +2831,7 @@ struct BurnDriver BurnDrvCninjau = {
 	"Caveman Ninja (US ver 4)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, cninjauRomInfo, cninjauRomName, NULL, NULL, DrvInputInfo, CninjauDIPInfo,
+	NULL, cninjauRomInfo, cninjauRomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjauDIPInfo,
 	CninjaInit, DrvExit, CninjaFrame, CninjaDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2629,6 +2867,13 @@ static struct BurnRomInfo joemacRomDesc[] = {
 	{ "mag-07.13f",		0x080000, 0x08eb5264, 8 | BRF_SND }, 	       // 17 OKI M6295 Samples 1
 
 	{ "mb7122h.7v",		0x000400, 0xa1267336, 0 | BRF_OPT }, 	       // 18 Unused PROMs
+	
+	{ "tj-00.9j",		0x000117, 0x46defe8f, 0 | BRF_OPT }, 	       // 19 PLDs
+	{ "tj-01.9h",		0x000117, 0x7a86902d, 0 | BRF_OPT }, 	       // 20 
+	{ "tj-02.9h",		0x000117, 0xb476d59c, 0 | BRF_OPT }, 	       // 21
+	{ "tj-03.9e",		0x000117, 0xcfb6e4aa, 0 | BRF_OPT }, 	       // 22
+	{ "tj-04.5n",		0x000117, 0xbca07086, 0 | BRF_OPT }, 	       // 23
+	{ "tj-05.1r",		0x000117, 0x0dfc091b, 0 | BRF_OPT }, 	       // 24
 };
 
 STD_ROM_PICK(joemac)
@@ -2639,7 +2884,7 @@ struct BurnDriver BurnDrvJoemac = {
 	"Tatakae Genshizin Joe & Mac (Japan ver 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, joemacRomInfo, joemacRomName, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
+	NULL, joemacRomInfo, joemacRomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
 	CninjaInit, DrvExit, CninjaFrame, CninjaDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2681,7 +2926,7 @@ struct BurnDriver BurnDrvStoneage = {
 	"Stoneage (bootleg of Caveman Ninja)\0", NULL, "bootleg", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, stoneageRomInfo, stoneageRomName, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
+	NULL, stoneageRomInfo, stoneageRomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
 	StoneageInit, DrvExit, StoneageFrame, CninjaDraw, StoneageScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2690,13 +2935,13 @@ struct BurnDriver BurnDrvStoneage = {
 // Caveman Ninja (bootleg)
 
 static struct BurnRomInfo cninjablRomDesc[] = {
-	{ "joe mac 3.68k",	0x080000, 0xdc931d80, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "joe mac 4.68k",	0x080000, 0xe8dfe0b5, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "joe mac 3.68k",		0x080000, 0xdc931d80, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "joe mac 4.68k",		0x080000, 0xe8dfe0b5, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "joe mac 5.z80",	0x010000, 0xd791b9d7, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
+	{ "joe mac 5.z80",		0x010000, 0xd791b9d7, 2 | BRF_PRG | BRF_ESS }, //  2 Huc6280 Code
 
-	{ "joe mac 1.gfx",	0x200000, 0x17ea5931, 3 | BRF_GRA }, 	       //  3 Graphics (Expanded on init)
-	{ "joe mac 2.gfx",	0x200000, 0xcc95317b, 3 | BRF_GRA }, 	       //  4
+	{ "joe mac 1.gfx",		0x200000, 0x17ea5931, 3 | BRF_GRA }, 	       //  3 Graphics (Expanded on init)
+	{ "joe mac 2.gfx",		0x200000, 0xcc95317b, 3 | BRF_GRA }, 	       //  4
 
 	{ "joe mac 6.samples",	0x080000, 0xdbecad83, 4 | BRF_SND }, 	       //  5 OKI M6295 Samples
 };
@@ -2709,7 +2954,7 @@ struct BurnDriver BurnDrvCninjabl = {
 	"Caveman Ninja (bootleg)\0", NULL, "bootleg", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_PREFIX_DATAEAST, GBF_PLATFORM, 0,
-	NULL, cninjablRomInfo, cninjablRomName, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
+	NULL, cninjablRomInfo, cninjablRomName, NULL, NULL, NULL, NULL, DrvInputInfo, CninjaDIPInfo,
 	CninjablInit, DrvExit, StoneageFrame, CninjablDraw, StoneageScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
@@ -2758,7 +3003,7 @@ struct BurnDriver BurnDrvMutantf = {
 	"Mutant Fighter (World ver EM-5)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_VSFIGHT, 0,
-	NULL, mutantfRomInfo, mutantfRomName, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
+	NULL, mutantfRomInfo, mutantfRomName, NULL, NULL, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
 	MutantfInit, DrvExit, MutantfFrame, MutantfDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -2807,7 +3052,7 @@ struct BurnDriver BurnDrvMutantf4 = {
 	"Mutant Fighter (World ver EM-4)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_VSFIGHT, 0,
-	NULL, mutantf4RomInfo, mutantf4RomName, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
+	NULL, mutantf4RomInfo, mutantf4RomName, NULL, NULL, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
 	MutantfInit, DrvExit, MutantfFrame, MutantfDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -2856,7 +3101,56 @@ struct BurnDriver BurnDrvMutantf3 = {
 	"Mutant Fighter (World ver EM-3)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_VSFIGHT, 0,
-	NULL, mutantf3RomInfo, mutantf3RomName, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
+	NULL, mutantf3RomInfo, mutantf3RomName, NULL, NULL, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
+	MutantfInit, DrvExit, MutantfFrame, MutantfDraw, DrvScan, &DrvRecalc, 0x800,
+	320, 240, 4, 3
+};
+
+
+// Mutant Fighter (World ver EM-2)
+
+static struct BurnRomInfo mutantf2RomDesc[] = {
+	{ "hd-03-1.2c",		0x020000, 0x7110cefc, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "hd-00-1.2a",		0x020000, 0xb279875b, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "hd-04-1.4c",		0x020000, 0xfd2ea8d7, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "hd-01-1.4a",		0x020000, 0x48a247ac, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "hd-12.21j",		0x010000, 0x13d55f11, 2 | BRF_PRG | BRF_ESS }, //  4 Huc6280 Code
+
+	{ "hd-06-1.8d",		0x010000, 0x8b7a558b, 3 | BRF_GRA }, 	       //  5 Characters
+	{ "hd-07-1.9d",		0x010000, 0xd2a3d449, 3 | BRF_GRA }, 	       //  6
+
+	{ "maf-00.8a",		0x080000, 0xe56f528d, 4 | BRF_GRA }, 	       //  7 Foreground Tiles
+
+	{ "maf-01.9a",		0x080000, 0xc3d5173d, 5 | BRF_GRA }, 	       //  8 Background Tiles
+	{ "maf-02.11a",		0x080000, 0x0b37d849, 5 | BRF_GRA }, 	       //  9
+
+	{ "maf-03.18a",		0x100000, 0xf4366d2c, 6 | BRF_GRA }, 	       // 10 Sprite Bank A
+	{ "maf-04.20a",		0x100000, 0x0c8f654e, 6 | BRF_GRA }, 	       // 11
+	{ "maf-05.21a",		0x080000, 0xb0cfeb80, 6 | BRF_GRA }, 	       // 12
+	{ "maf-06.18d",		0x100000, 0xf5c7a9b5, 6 | BRF_GRA }, 	       // 13
+	{ "maf-07.20d",		0x100000, 0xfd6008a3, 6 | BRF_GRA }, 	       // 14
+	{ "maf-08.21d",		0x080000, 0xe41cf1e7, 6 | BRF_GRA }, 	       // 15
+
+	{ "hf-08.15a",		0x010000, 0x93b7279f, 7 | BRF_GRA }, 	       // 16 Sprite Bank B
+	{ "hf-09.17a",		0x010000, 0x05e2c074, 7 | BRF_GRA }, 	       // 17
+	{ "hf-10.15c",		0x010000, 0x9b06f418, 7 | BRF_GRA }, 	       // 18
+	{ "hf-11.17c",		0x010000, 0x3859a531, 7 | BRF_GRA }, 	       // 19
+
+	{ "maf-10.20l",		0x040000, 0x7c57f48b, 8 | BRF_SND }, 	       // 20 OKI M6295 Samples 0
+
+	{ "maf-09.18l",		0x080000, 0x28e7ed81, 9 | BRF_SND }, 	       // 21 OKI M6295 Samples 1
+};
+
+STD_ROM_PICK(mutantf2)
+STD_ROM_FN(mutantf2)
+
+struct BurnDriver BurnDrvMutantf2 = {
+	"mutantf2", "mutantf", NULL, NULL, "1992",
+	"Mutant Fighter (World ver EM-2)\0", NULL, "Data East Corporation", "DECO IC16",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_VSFIGHT, 0,
+	NULL, mutantf2RomInfo, mutantf2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
 	MutantfInit, DrvExit, MutantfFrame, MutantfDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -2905,7 +3199,7 @@ struct BurnDriver BurnDrvDeathbrd = {
 	"Death Brade (Japan ver JM-3)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_VSFIGHT, 0,
-	NULL, deathbrdRomInfo, deathbrdRomName, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
+	NULL, deathbrdRomInfo, deathbrdRomName, NULL, NULL, NULL, NULL, DrvInputInfo, MutantfDIPInfo,
 	MutantfInit, DrvExit, MutantfFrame, MutantfDraw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
@@ -2928,25 +3222,25 @@ static struct BurnRomInfo edrandyRomDesc[] = {
 	{ "gg-10.y6",		0x010000, 0xb96c6cbe, 3 | BRF_GRA }, 	       //  9 Characters
 	{ "gg-11.z6",		0x010000, 0xee567448, 3 | BRF_GRA }, 	       // 10
 
-	{ "mad-02",		0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
+	{ "mad-02",			0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
 
-	{ "mad-00",		0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
-	{ "mad-01",		0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
+	{ "mad-00",			0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
+	{ "mad-01",			0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
 
-	{ "mad-03",		0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
-	{ "mad-05",		0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
-	{ "mad-04",		0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
-	{ "mad-06",		0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
-	{ "mad-07",		0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
-	{ "mad-08",		0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
-	{ "mad-10",		0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
-	{ "mad-11",		0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
-	{ "mad-09",		0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
-	{ "mad-12",		0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
+	{ "mad-03",			0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
+	{ "mad-05",			0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
+	{ "mad-04",			0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
+	{ "mad-06",			0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
+	{ "mad-07",			0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
+	{ "mad-08",			0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
+	{ "mad-10",			0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
+	{ "mad-11",			0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
+	{ "mad-09",			0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
+	{ "mad-12",			0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
 
 	{ "ge-08.j13",		0x020000, 0xdfe28c7b, 7 | BRF_SND }, 	       // 24 OKI M6295 Samples 0
 
-	{ "mad-13",		0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
+	{ "mad-13",			0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
 
 	{ "ge-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 26 Unused PROMs
 };
@@ -2959,8 +3253,8 @@ struct BurnDriver BurnDrvEdrandy = {
 	"The Cliffhanger - Edward Randy (World ver 3)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, edrandyRomInfo, edrandyRomName, NULL, NULL, DrvInputInfo, EdrandyDIPInfo,
-	EdrandyInit, DrvExit, CninjaFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
+	NULL, edrandyRomInfo, edrandyRomName, NULL, NULL, NULL, NULL, DrvInputInfo, EdrandyDIPInfo,
+	EdrandyInit, DrvExit, EdrandyFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
@@ -2982,25 +3276,25 @@ static struct BurnRomInfo edrandy2RomDesc[] = {
 	{ "gg-10.y6",		0x010000, 0xb96c6cbe, 3 | BRF_GRA }, 	       //  9 Characters
 	{ "gg-11.z6",		0x010000, 0xee567448, 3 | BRF_GRA }, 	       // 10
 
-	{ "mad-02",		0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
+	{ "mad-02",			0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
 
-	{ "mad-00",		0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
-	{ "mad-01",		0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
+	{ "mad-00",			0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
+	{ "mad-01",			0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
 
-	{ "mad-03",		0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
-	{ "mad-05",		0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
-	{ "mad-04",		0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
-	{ "mad-06",		0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
-	{ "mad-07",		0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
-	{ "mad-08",		0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
-	{ "mad-10",		0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
-	{ "mad-11",		0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
-	{ "mad-09",		0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
-	{ "mad-12",		0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
+	{ "mad-03",			0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
+	{ "mad-05",			0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
+	{ "mad-04",			0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
+	{ "mad-06",			0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
+	{ "mad-07",			0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
+	{ "mad-08",			0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
+	{ "mad-10",			0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
+	{ "mad-11",			0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
+	{ "mad-09",			0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
+	{ "mad-12",			0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
 
 	{ "ge-08.j13",		0x020000, 0xdfe28c7b, 7 | BRF_SND }, 	       // 24 OKI M6295 Samples 0
 
-	{ "mad-13",		0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
+	{ "mad-13",			0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
 
 	{ "ge-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 26 Unused PROMs
 };
@@ -3013,8 +3307,8 @@ struct BurnDriver BurnDrvEdrandy2 = {
 	"The Cliffhanger - Edward Randy (World ver 2)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, edrandy2RomInfo, edrandy2RomName, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
-	EdrandyInit, DrvExit, CninjaFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
+	NULL, edrandy2RomInfo, edrandy2RomName, NULL, NULL, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
+	EdrandyInit, DrvExit, EdrandyFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
@@ -3022,10 +3316,10 @@ struct BurnDriver BurnDrvEdrandy2 = {
 // The Cliffhanger - Edward Randy (World ver 1)
 
 static struct BurnRomInfo edrandy1RomDesc[] = {
-	{ "1.k1",		0x020000, 0xf184cdaa, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "5.k3",		0x020000, 0x7e3a4b81, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "2.j1",		0x020000, 0x212cd593, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "6.j3",		0x020000, 0x4a96fb07, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "1.k1",			0x020000, 0xf184cdaa, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "5.k3",			0x020000, 0x7e3a4b81, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "2.j1",			0x020000, 0x212cd593, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "6.j3",			0x020000, 0x4a96fb07, 1 | BRF_PRG | BRF_ESS }, //  3
 	{ "ge-02.h1",		0x020000, 0xc2969fbb, 1 | BRF_PRG | BRF_ESS }, //  4
 	{ "ge-06.h3",		0x020000, 0x5c2e6418, 1 | BRF_PRG | BRF_ESS }, //  5
 	{ "ge-03.f1",		0x020000, 0x5e7b19a8, 1 | BRF_PRG | BRF_ESS }, //  6
@@ -3036,25 +3330,25 @@ static struct BurnRomInfo edrandy1RomDesc[] = {
 	{ "ge-10.y6",		0x010000, 0x2528d795, 3 | BRF_GRA }, 	       //  9 Characters
 	{ "ge-11.z6",		0x010000, 0xe34a931e, 3 | BRF_GRA }, 	       // 10
 
-	{ "mad-02",		0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
+	{ "mad-02",			0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
 
-	{ "mad-00",		0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
-	{ "mad-01",		0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
+	{ "mad-00",			0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
+	{ "mad-01",			0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
 
-	{ "mad-03",		0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
-	{ "mad-05",		0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
-	{ "mad-04",		0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
-	{ "mad-06",		0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
-	{ "mad-07",		0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
-	{ "mad-08",		0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
-	{ "mad-10",		0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
-	{ "mad-11",		0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
-	{ "mad-09",		0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
-	{ "mad-12",		0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
+	{ "mad-03",			0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
+	{ "mad-05",			0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
+	{ "mad-04",			0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
+	{ "mad-06",			0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
+	{ "mad-07",			0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
+	{ "mad-08",			0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
+	{ "mad-10",			0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
+	{ "mad-11",			0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
+	{ "mad-09",			0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
+	{ "mad-12",			0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
 
 	{ "ge-08.j13",		0x020000, 0xdfe28c7b, 7 | BRF_SND }, 	       // 24 OKI M6295 Samples 0
 
-	{ "mad-13",		0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
+	{ "mad-13",			0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
 
 	{ "ge-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 26 Unused PROMs
 };
@@ -3067,8 +3361,8 @@ struct BurnDriver BurnDrvEdrandy1 = {
 	"The Cliffhanger - Edward Randy (World ver 1)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, edrandy1RomInfo, edrandy1RomName, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
-	EdrandyInit, DrvExit, CninjaFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
+	NULL, edrandy1RomInfo, edrandy1RomName, NULL, NULL, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
+	EdrandyInit, DrvExit, EdrandyFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
@@ -3090,25 +3384,25 @@ static struct BurnRomInfo edrandyjRomDesc[] = {
 	{ "ge-10.y6",		0x010000, 0x2528d795, 3 | BRF_GRA }, 	       //  9 Characters
 	{ "ge-11.z6",		0x010000, 0xe34a931e, 3 | BRF_GRA }, 	       // 10
 
-	{ "mad-02",		0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
+	{ "mad-02",			0x080000, 0x6c76face, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
 
-	{ "mad-00",		0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
-	{ "mad-01",		0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
+	{ "mad-00",			0x080000, 0x3735b22d, 5 | BRF_GRA }, 	       // 12 Background Tiles
+	{ "mad-01",			0x080000, 0x7bb13e1c, 5 | BRF_GRA }, 	       // 13
 
-	{ "mad-03",		0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
-	{ "mad-05",		0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
-	{ "mad-04",		0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
-	{ "mad-06",		0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
-	{ "mad-07",		0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
-	{ "mad-08",		0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
-	{ "mad-10",		0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
-	{ "mad-11",		0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
-	{ "mad-09",		0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
-	{ "mad-12",		0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
+	{ "mad-03",			0x080000, 0xc0bff892, 6 | BRF_GRA }, 	       // 14 Sprites
+	{ "mad-05",			0x080000, 0x3f2ccf95, 6 | BRF_GRA }, 	       // 15
+	{ "mad-04",			0x080000, 0x464f3eb9, 6 | BRF_GRA }, 	       // 16
+	{ "mad-06",			0x080000, 0x60871f77, 6 | BRF_GRA }, 	       // 17
+	{ "mad-07",			0x080000, 0xac03466e, 6 | BRF_GRA }, 	       // 18
+	{ "mad-08",			0x080000, 0x1b420ec8, 6 | BRF_GRA }, 	       // 19
+	{ "mad-10",			0x080000, 0x42da8ef0, 6 | BRF_GRA }, 	       // 20
+	{ "mad-11",			0x080000, 0x03c1f982, 6 | BRF_GRA }, 	       // 21
+	{ "mad-09",			0x080000, 0x930f4900, 6 | BRF_GRA }, 	       // 22
+	{ "mad-12",			0x080000, 0xa0bd62b6, 6 | BRF_GRA }, 	       // 23
 
 	{ "ge-08.j13",		0x020000, 0xdfe28c7b, 7 | BRF_SND }, 	       // 24 OKI M6295 Samples 0
 
-	{ "mad-13",		0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
+	{ "mad-13",			0x080000, 0x6ab28eba, 8 | BRF_SND }, 	       // 25 OKI M6295 Samples 1
 
 	{ "ge-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 26 Unused PROMs
 };
@@ -3121,8 +3415,8 @@ struct BurnDriver BurnDrvEdrandyj = {
 	"The Cliffhanger - Edward Randy (Japan ver 3)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, edrandyjRomInfo, edrandyjRomName, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
-	EdrandyInit, DrvExit, CninjaFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
+	NULL, edrandyjRomInfo, edrandyjRomName, NULL, NULL, NULL, NULL, DrvInputInfo, EdrandcDIPInfo,
+	EdrandyInit, DrvExit, EdrandyFrame, EdrandyDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
 
@@ -3172,16 +3466,68 @@ struct BurnDriver BurnDrvRobocop2 = {
 	"robocop2", NULL, NULL, NULL, "1991",
 	"Robocop 2 (Euro/Asia v0.10)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, robocop2RomInfo, robocop2RomName, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
-	Robocop2Init, DrvExit, CninjaFrame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, robocop2RomInfo, robocop2RomName, NULL, NULL, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
+	Robocop2Init, DrvExit, Robocop2Frame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
+	320, 240, 4, 3
+};
+
+
+// Robocop 2 (US v0.10)
+
+static struct BurnRomInfo robocop2uRomDesc[] = {
+	{ "gp03-3.k1",		0x020000, 0xc016a84b, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "gp07-3.k3",		0x020000, 0x54c541ae, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "gp02-3.j1",		0x020000, 0x6777b8a0, 1 | BRF_PRG | BRF_ESS }, //  2 // == gq-02.j1 in 'robocop2'
+	{ "gp06-3.j3",		0x020000, 0x73b8cf96, 1 | BRF_PRG | BRF_ESS }, //  3 
+	{ "gp01-.h1",		0x020000, 0xab5356c0, 1 | BRF_PRG | BRF_ESS }, //  4 // no '-1' but matches other '-1' roms we have
+	{ "gp05-.h3",		0x020000, 0xce21bda5, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "gp00-.f1",		0x020000, 0xa93369ea, 1 | BRF_PRG | BRF_ESS }, //  6
+	{ "gp04-.f3",		0x020000, 0xee2f6ad9, 1 | BRF_PRG | BRF_ESS }, //  7
+
+	{ "gp-09.k13",		0x010000, 0x4a4e0f8d, 2 | BRF_PRG | BRF_ESS }, //  8 Huc6280 Code
+
+	{ "gp10-1.y6",		0x010000, 0xd25d719c, 3 | BRF_GRA }, 	       //  9 Characters
+	{ "gp11-1.z6",		0x010000, 0x030ded47, 3 | BRF_GRA }, 	       // 10
+
+	{ "mah-04.z4",		0x080000, 0x9b6ca18c, 4 | BRF_GRA }, 	       // 11 Foreground Tiles
+	{ "mah-03.y4",		0x080000, 0x37894ddc, 4 | BRF_GRA }, 	       // 12
+
+	{ "mah-01.z1",		0x080000, 0x26e0dfff, 5 | BRF_GRA }, 	       // 13 Background Tiles
+	{ "mah-00.y1",		0x080000, 0x7bd69e41, 5 | BRF_GRA }, 	       // 14
+	{ "mah-02.a1",		0x080000, 0x328a247d, 5 | BRF_GRA }, 	       // 15
+
+	{ "mah-05.y9",		0x080000, 0x6773e613, 6 | BRF_GRA }, 	       // 16 Sprites
+	{ "mah-08.y12",		0x080000, 0x88d310a5, 6 | BRF_GRA }, 	       // 17
+	{ "mah-06.z9",		0x080000, 0x27a8808a, 6 | BRF_GRA }, 	       // 18
+	{ "mah-09.z12",		0x080000, 0xa58c43a7, 6 | BRF_GRA }, 	       // 19
+	{ "mah-07.a9",		0x080000, 0x526f4190, 6 | BRF_GRA }, 	       // 20
+	{ "mah-10.a12",		0x080000, 0x14b770da, 6 | BRF_GRA }, 	       // 21
+
+	{ "gp-08.j13",		0x020000, 0x365183b1, 7 | BRF_SND }, 	       // 22 OKI M6295 Samples 0
+
+	{ "mah-11.f13",		0x080000, 0x642bc692, 8 | BRF_SND }, 	       // 23 OKI M6295 Samples 1
+
+	{ "go-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 24 Unused PROMs
+};
+
+STD_ROM_PICK(robocop2u)
+STD_ROM_FN(robocop2u)
+
+struct BurnDriver BurnDrvRobocop2u = {
+	"robocop2u", "robocop2", NULL, NULL, "1991",
+	"Robocop 2 (US v0.10)\0", NULL, "Data East Corporation", "DECO IC16",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, robocop2uRomInfo, robocop2uRomName, NULL, NULL, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
+	Robocop2Init, DrvExit, Robocop2Frame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
 
 
 // Robocop 2 (US v0.05)
 
-static struct BurnRomInfo robocop2uRomDesc[] = {
+static struct BurnRomInfo robocop2uaRomDesc[] = {
 	{ "robo03.k1",		0x020000, 0xf4c96cc9, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
 	{ "robo07.k3",		0x020000, 0x11e53a7c, 1 | BRF_PRG | BRF_ESS }, //  1
 	{ "robo02.j1",		0x020000, 0xfa086a0d, 1 | BRF_PRG | BRF_ESS }, //  2
@@ -3217,16 +3563,16 @@ static struct BurnRomInfo robocop2uRomDesc[] = {
 	{ "go-12.v7",		0x000400, 0x278f674f, 0 | BRF_OPT }, 	       // 24 Unused PROMs
 };
 
-STD_ROM_PICK(robocop2u)
-STD_ROM_FN(robocop2u)
+STD_ROM_PICK(robocop2ua)
+STD_ROM_FN(robocop2ua)
 
-struct BurnDriver BurnDrvRobocop2u = {
-	"robocop2u", "robocop2", NULL, NULL, "1991",
+struct BurnDriver BurnDrvRobocop2ua = {
+	"robocop2ua", "robocop2", NULL, NULL, "1991",
 	"Robocop 2 (US v0.05)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, robocop2uRomInfo, robocop2uRomName, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
-	Robocop2Init, DrvExit, CninjaFrame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, robocop2uaRomInfo, robocop2uaRomName, NULL, NULL, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
+	Robocop2Init, DrvExit, Robocop2Frame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };
 
@@ -3276,8 +3622,8 @@ struct BurnDriver BurnDrvRobocop2j = {
 	"robocop2j", "robocop2", NULL, NULL, "1991",
 	"Robocop 2 (Japan v0.11)\0", NULL, "Data East Corporation", "DECO IC16",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
-	NULL, robocop2jRomInfo, robocop2jRomName, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
-	Robocop2Init, DrvExit, CninjaFrame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_DATAEAST, GBF_RUNGUN, 0,
+	NULL, robocop2jRomInfo, robocop2jRomName, NULL, NULL, NULL, NULL, Robocop2InputInfo, Robocop2DIPInfo,
+	Robocop2Init, DrvExit, Robocop2Frame, Robocop2Draw, DrvScan, &DrvRecalc, 0x800,
 	320, 240, 4, 3
 };

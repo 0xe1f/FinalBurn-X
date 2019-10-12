@@ -5,6 +5,7 @@
 #include "m68000_intf.h"
 #include "z80_intf.h"
 #include "burn_ymf278b.h"
+#include "burn_ymf262.h"
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -51,28 +52,30 @@ static UINT8 DrvReset;
 
 static INT32 nEnableRaster[3];
 
+static INT32 asurablade = 0;
+
 static struct BurnInputInfo AsurabldInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 start"	},
+	{"P1 Start",	BIT_DIGITAL,	DrvJoy1 + 4,	"p1 start"	},
 	{"P1 Up",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 up"		},
 	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 down"	},
 	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 left"	},
-	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 right"	},
-	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
-	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 2"	},
-	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p1 fire 3"	},
+	{"P1 Right",	BIT_DIGITAL,	DrvJoy2 + 3,	"p1 right"	},
+	{"P1 Button 1",	BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
+	{"P1 Button 2",	BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 2"	},
+	{"P1 Button 3",	BIT_DIGITAL,	DrvJoy2 + 6,	"p1 fire 3"	},
 
 	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 1,	"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	DrvJoy1 + 5,	"p2 start"	},
+	{"P2 Start",	BIT_DIGITAL,	DrvJoy1 + 5,	"p2 start"	},
 	{"P2 Up",		BIT_DIGITAL,	DrvJoy2 + 8,	"p2 up"		},
 	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 9,	"p2 down"	},
 	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 10,	"p2 left"	},
-	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 11,	"p2 right"	},
-	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 12,	"p2 fire 1"	},
-	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy2 + 13,	"p2 fire 2"	},
-	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy2 + 14,	"p2 fire 3"	},
+	{"P2 Right",	BIT_DIGITAL,	DrvJoy2 + 11,	"p2 right"	},
+	{"P2 Button 1",	BIT_DIGITAL,	DrvJoy2 + 12,	"p2 fire 1"	},
+	{"P2 Button 2",	BIT_DIGITAL,	DrvJoy2 + 13,	"p2 fire 2"	},
+	{"P2 Button 3",	BIT_DIGITAL,	DrvJoy2 + 14,	"p2 fire 3"	},
 
-	{"Reset",		BIT_DIGITAL,	&DrvReset,	"reset"		},
+	{"Reset",		BIT_DIGITAL,	&DrvReset,	    "reset"		},
 	{"Service",		BIT_DIGITAL,	DrvJoy1 + 8,	"service"	},
 	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
@@ -80,6 +83,38 @@ static struct BurnInputInfo AsurabldInputList[] = {
 };
 
 STDINPUTINFO(Asurabld)
+
+static struct BurnInputInfo AsurabusaInputList[] = {
+	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 0,	"p1 coin"	},
+	{"P1 Start",	BIT_DIGITAL,	DrvJoy1 + 4,	"p1 start"	},
+	{"P1 Up",		BIT_DIGITAL,	DrvJoy2 + 0,	"p1 up"		},
+	{"P1 Down",		BIT_DIGITAL,	DrvJoy2 + 1,	"p1 down"	},
+	{"P1 Left",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 left"	},
+	{"P1 Right",	BIT_DIGITAL,	DrvJoy2 + 3,	"p1 right"	},
+	{"P1 Button 1",	BIT_DIGITAL,	DrvJoy2 + 4,	"p1 fire 1"	},
+	{"P1 Button 2",	BIT_DIGITAL,	DrvJoy2 + 5,	"p1 fire 2"	},
+	{"P1 Button 3",	BIT_DIGITAL,	DrvJoy2 + 6,	"p1 fire 3"	},
+	{"P1 Button 4",	BIT_DIGITAL,	DrvJoy2 + 7,	"p1 fire 4"	},
+
+	{"P2 Coin",		BIT_DIGITAL,	DrvJoy1 + 1,	"p2 coin"	},
+	{"P2 Start",	BIT_DIGITAL,	DrvJoy1 + 5,	"p2 start"	},
+	{"P2 Up",		BIT_DIGITAL,	DrvJoy2 + 8,	"p2 up"		},
+	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 9,	"p2 down"	},
+	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 10,	"p2 left"	},
+	{"P2 Right",	BIT_DIGITAL,	DrvJoy2 + 11,	"p2 right"	},
+	{"P2 Button 1",	BIT_DIGITAL,	DrvJoy2 + 12,	"p2 fire 1"	},
+	{"P2 Button 2",	BIT_DIGITAL,	DrvJoy2 + 13,	"p2 fire 2"	},
+	{"P2 Button 3",	BIT_DIGITAL,	DrvJoy2 + 14,	"p2 fire 3"	},
+	{"P2 Button 4",	BIT_DIGITAL,	DrvJoy2 + 15,	"p2 fire 4"	},
+
+	{"Reset",		BIT_DIGITAL,	&DrvReset,	    "reset"		},
+	{"Service",		BIT_DIGITAL,	DrvJoy1 + 8,	"service"	},
+	{"Dip A",		BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",		BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",		BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
+};
+
+STDINPUTINFO(Asurabusa)
 
 static struct BurnDIPInfo AsurabldDIPList[]=
 {
@@ -95,6 +130,12 @@ static struct BurnDIPInfo AsurabldDIPList[]=
 	{0x14, 0x01, 0x02, 0x02, "Red"			},
 	{0x14, 0x01, 0x02, 0x00, "Green"		},
 
+	{0   , 0xfe, 0   ,    4, "Demo Sounds & Music"	},
+	{0x14, 0x01, 0x0c, 0x0c, "Both On"		},
+	{0x14, 0x01, 0x0c, 0x08, "Music Off"	},
+	{0x14, 0x01, 0x0c, 0x04, "Both Off"		},
+	{0x14, 0x01, 0x0c, 0x00, "Both Off"		},  /* Duplicate setting */
+
 	{0   , 0xfe, 0   ,    4, "Timer"		},
 	{0x14, 0x01, 0x30, 0x00, "Slow"			},
 	{0x14, 0x01, 0x30, 0x30, "Medium"		},
@@ -109,28 +150,28 @@ static struct BurnDIPInfo AsurabldDIPList[]=
 //	{0x15, 0x01, 0x01, 0x01, "Off"			},
 //	{0x15, 0x01, 0x01, 0x00, "On"			},
 
-	{0   , 0xfe, 0   ,    8, "Computer Level"	},
-	{0x15, 0x01, 0x0e, 0x00, "0"			},
-	{0x15, 0x01, 0x0e, 0x08, "1"			},
-	{0x15, 0x01, 0x0e, 0x04, "2"			},
-	{0x15, 0x01, 0x0e, 0x0c, "3"			},
-	{0x15, 0x01, 0x0e, 0x0e, "4"			},
-	{0x15, 0x01, 0x0e, 0x02, "5"			},
-	{0x15, 0x01, 0x0e, 0x0a, "6"			},
-	{0x15, 0x01, 0x0e, 0x06, "7"			},
+	{0   , 0xfe, 0   ,    8, "Difficulty"	},
+	{0x15, 0x01, 0x0e, 0x00, "Easiest"		},  // Level 1
+	{0x15, 0x01, 0x0e, 0x08, "Very_Easy"	},  // Level 2
+	{0x15, 0x01, 0x0e, 0x04, "Easier"		},  // Level 3
+	{0x15, 0x01, 0x0e, 0x0c, "Easy"			},  // Level 4
+	{0x15, 0x01, 0x0e, 0x0e, "Normal"		},  // Level 5
+	{0x15, 0x01, 0x0e, 0x02, "Hard"			},  // Level 6
+	{0x15, 0x01, 0x0e, 0x0a, "Very_Hard"	},  // Level 7
+	{0x15, 0x01, 0x0e, 0x06, "Hardest"		},  // Level 8
 
 	{0   , 0xfe, 0   ,    4, "Damage"		},
-	{0x15, 0x01, 0x30, 0x20, "Lowest"		},
-	{0x15, 0x01, 0x30, 0x30, "Low"			},
-	{0x15, 0x01, 0x30, 0x10, "Medium"		},
-	{0x15, 0x01, 0x30, 0x00, "High"			},
+	{0x15, 0x01, 0x30, 0x20, "75%"			},
+	{0x15, 0x01, 0x30, 0x30, "100%"			},
+	{0x15, 0x01, 0x30, 0x10, "125%"		},
+	{0x15, 0x01, 0x30, 0x00, "150%"			},
 
 	{0   , 0xfe, 0   ,    3, "Max Rounds"		},
 	{0x15, 0x01, 0xc0, 0x00, "1"			},
 	{0x15, 0x01, 0xc0, 0x40, "3"			},
 	{0x15, 0x01, 0xc0, 0x80, "5"			},
 
-	{0   , 0xfe, 0   ,    9, "Coin B"		},
+	{0   , 0xfe, 0   ,   14, "Coin B"		},
 	{0x16, 0x01, 0x0f, 0x08, "8 Coins 1 Credits "	},
 	{0x16, 0x01, 0x0f, 0x09, "7 Coins 1 Credits "	},
 	{0x16, 0x01, 0x0f, 0x0a, "6 Coins 1 Credits "	},
@@ -139,21 +180,121 @@ static struct BurnDIPInfo AsurabldDIPList[]=
 	{0x16, 0x01, 0x0f, 0x0d, "3 Coins 1 Credits "	},
 	{0x16, 0x01, 0x0f, 0x0e, "2 Coins 1 Credits "	},
 	{0x16, 0x01, 0x0f, 0x0f, "1 Coin  1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x06, "1 Coin  2 Credits"	},
+	{0x16, 0x01, 0x0f, 0x05, "1 Coin  3 Credits"	},
+	{0x16, 0x01, 0x0f, 0x04, "1 Coin  4 Credits"	},
+	{0x16, 0x01, 0x0f, 0x03, "1 Coin  5 Credits"	},
+	{0x16, 0x01, 0x0f, 0x02, "2 Coin Start / 1 Credit Continue"	},
 	{0x16, 0x01, 0x0f, 0x00, "Free Play"		},
 
-	{0   , 0xfe, 0   ,    9, "Coin A"		},
-	{0x16, 0x01, 0xf0, 0x80, "8 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0x90, "7 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits "	},
-	{0x16, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits "	},
+	{0   , 0xfe, 0   ,   14, "Coin A"		},
+	{0x16, 0x01, 0xf0, 0x80, "8 Coins 1 Credit"		},
+	{0x16, 0x01, 0xf0, 0x90, "7 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits"	},
+	{0x16, 0x01, 0xf0, 0x60, "1 Coin  2 Credits"	},
+	{0x16, 0x01, 0xf0, 0x50, "1 Coin  3 Credits"	},
+	{0x16, 0x01, 0xf0, 0x40, "1 Coin  4 Credits"	},
+	{0x16, 0x01, 0xf0, 0x30, "1 Coin  5 Credits"	},
+	{0x16, 0x01, 0xf0, 0x20, "2 Coin Start / 1 Credit Continue"	},
 	{0x16, 0x01, 0xf0, 0x00, "Free Play"		},
 };
 
 STDDIPINFO(Asurabld)
+
+static struct BurnDIPInfo AsurabusDIPList[]=
+{
+	{0x14, 0xff, 0xff, 0x3f, NULL			},
+	{0x15, 0xff, 0xff, 0x7f, NULL			},
+	{0x16, 0xff, 0xff, 0xff, NULL			},
+
+	{0   , 0xfe, 0   ,    2, "Service Mode"		},
+	{0x14, 0x01, 0x01, 0x01, "Off"			},
+	{0x14, 0x01, 0x01, 0x00, "On"			},
+
+	{0   , 0xfe, 0   ,    2, "Blood Colour"		},
+	{0x14, 0x01, 0x02, 0x02, "Red"			},
+	{0x14, 0x01, 0x02, 0x00, "Green"		},
+
+	{0   , 0xfe, 0   ,    4, "Demo Sounds & Music"	},
+	{0x14, 0x01, 0x0c, 0x0c, "Both On"		},
+	{0x14, 0x01, 0x0c, 0x08, "Sounds Off"	},
+	{0x14, 0x01, 0x0c, 0x04, "Music Off"	},
+	{0x14, 0x01, 0x0c, 0x00, "Both Off"		},
+
+	{0   , 0xfe, 0   ,    4, "Timer"		},
+	{0x14, 0x01, 0x30, 0x00, "Slow"			},
+	{0x14, 0x01, 0x30, 0x30, "Medium"		},
+	{0x14, 0x01, 0x30, 0x10, "Fast"			},
+	{0x14, 0x01, 0x30, 0x20, "Very Fast"		},
+
+	{0   , 0xfe, 0   ,    2, "Coinage Mode"		},
+	{0x14, 0x01, 0xc0, 0xc0, "Split"		},
+	{0x14, 0x01, 0xc0, 0x00, "Joint"		},
+
+//	{0   , 0xfe, 0   ,    2, "Flip Screen"		},
+//	{0x15, 0x01, 0x01, 0x01, "Off"			},
+//	{0x15, 0x01, 0x01, 0x00, "On"			},
+
+	{0   , 0xfe, 0   ,    8, "Difficulty"	},
+	{0x15, 0x01, 0x0e, 0x00, "Easiest"		},  // Level 1
+	{0x15, 0x01, 0x0e, 0x08, "Very_Easy"	},  // Level 2
+	{0x15, 0x01, 0x0e, 0x04, "Easier"		},  // Level 3
+	{0x15, 0x01, 0x0e, 0x0c, "Easy"			},  // Level 4
+	{0x15, 0x01, 0x0e, 0x0e, "Normal"		},  // Level 5
+	{0x15, 0x01, 0x0e, 0x02, "Hard"			},  // Level 6
+	{0x15, 0x01, 0x0e, 0x0a, "Very_Hard"	},  // Level 7
+	{0x15, 0x01, 0x0e, 0x06, "Hardest"		},  // Level 8
+
+	{0   , 0xfe, 0   ,    4, "Damage"		},
+	{0x15, 0x01, 0x30, 0x20, "75%"			},
+	{0x15, 0x01, 0x30, 0x30, "100%"			},
+	{0x15, 0x01, 0x30, 0x10, "125%"		},
+	{0x15, 0x01, 0x30, 0x00, "150%"			},
+
+	{0   , 0xfe, 0   ,    3, "Max Rounds"		},
+	{0x15, 0x01, 0xc0, 0x00, "1"			},
+	{0x15, 0x01, 0xc0, 0x40, "3"			},
+	{0x15, 0x01, 0xc0, 0x80, "5"			},
+
+	{0   , 0xfe, 0   ,   14, "Coin B"		},
+	{0x16, 0x01, 0x0f, 0x08, "8 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x09, "7 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0a, "6 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0b, "5 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0c, "4 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0d, "3 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0e, "2 Coins 1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x0f, "1 Coin  1 Credits "	},
+	{0x16, 0x01, 0x0f, 0x06, "1 Coin  2 Credits"	},
+	{0x16, 0x01, 0x0f, 0x05, "1 Coin  3 Credits"	},
+	{0x16, 0x01, 0x0f, 0x04, "1 Coin  4 Credits"	},
+	{0x16, 0x01, 0x0f, 0x03, "1 Coin  5 Credits"	},
+	{0x16, 0x01, 0x0f, 0x02, "2 Coin Start / 1 Credit Continue"	},
+	{0x16, 0x01, 0x0f, 0x00, "Free Play"		},
+
+	{0   , 0xfe, 0   ,   14, "Coin A"		},
+	{0x16, 0x01, 0xf0, 0x80, "8 Coins 1 Credit"		},
+	{0x16, 0x01, 0xf0, 0x90, "7 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xa0, "6 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xb0, "5 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xc0, "4 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xd0, "3 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xe0, "2 Coins 1 Credits"	},
+	{0x16, 0x01, 0xf0, 0xf0, "1 Coin  1 Credits"	},
+	{0x16, 0x01, 0xf0, 0x60, "1 Coin  2 Credits"	},
+	{0x16, 0x01, 0xf0, 0x50, "1 Coin  3 Credits"	},
+	{0x16, 0x01, 0xf0, 0x40, "1 Coin  4 Credits"	},
+	{0x16, 0x01, 0xf0, 0x30, "1 Coin  5 Credits"	},
+	{0x16, 0x01, 0xf0, 0x20, "2 Coin Start / 1 Credit Continue"	},
+	{0x16, 0x01, 0xf0, 0x00, "Free Play"		},
+};
+
+STDDIPINFO(Asurabus)
 
 static inline void cpu_sync() // sync z80 & 68k
 {
@@ -164,12 +305,7 @@ static inline void cpu_sync() // sync z80 & 68k
 	}
 }
 
-void __fastcall fuuki32_write_long(UINT32 , UINT32 )
-{
-
-}
-
-void __fastcall fuuki32_write_word(UINT32 address, UINT16 data)
+static void __fastcall fuuki32_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xffffe0) == 0x8c0000) {
 
@@ -201,7 +337,7 @@ void __fastcall fuuki32_write_word(UINT32 address, UINT16 data)
 	}
 }
 
-void __fastcall fuuki32_write_byte(UINT32 address, UINT8 data)
+static void __fastcall fuuki32_write_byte(UINT32 address, UINT8 data)
 {
 	if ((address & 0xffffe0) == 0x903fe0) {
 		cpu_sync();
@@ -211,12 +347,7 @@ void __fastcall fuuki32_write_byte(UINT32 address, UINT8 data)
 	}
 }
 
-UINT32 __fastcall fuuki32_read_long(UINT32)
-{
-	return 0;
-}
-
-UINT16 __fastcall fuuki32_read_word(UINT32 address)
+static UINT16 __fastcall fuuki32_read_word(UINT32 address)
 {
 	switch (address)
 	{
@@ -239,7 +370,7 @@ UINT16 __fastcall fuuki32_read_word(UINT32 address)
 	return 0;
 }
 
-UINT8 __fastcall fuuki32_read_byte(UINT32 address)
+static UINT8 __fastcall fuuki32_read_byte(UINT32 address)
 {
 	if ((address & 0xffffe0) == 0x903fe0) {
 		cpu_sync();
@@ -259,7 +390,7 @@ static void bankswitch(INT32 data)
 	ZetMapArea(0x8000, 0xffff, 2, DrvZ80ROM + nBank);
 }
 
-void __fastcall fuuki32_sound_write(UINT16 address, UINT8 data)
+static void __fastcall fuuki32_sound_write(UINT16 address, UINT8 data)
 {
 	if ((address & 0xfff0) == 0x7ff0) {
 		DrvShareRAM[address & 0x0f] = data;
@@ -267,7 +398,7 @@ void __fastcall fuuki32_sound_write(UINT16 address, UINT8 data)
 	}
 }
 
-UINT8 __fastcall fuuki32_sound_read(UINT16 address)
+static UINT8 __fastcall fuuki32_sound_read(UINT16 address)
 {
 	if ((address & 0xfff0) == 0x7ff0) {
 		return DrvShareRAM[address & 0x0f];
@@ -276,7 +407,7 @@ UINT8 __fastcall fuuki32_sound_read(UINT16 address)
 	return 0;
 }
 
-void __fastcall fuuki32_sound_out(UINT16 port, UINT8 data)
+static void __fastcall fuuki32_sound_out(UINT16 port, UINT8 data)
 {
 	switch (port & 0xff)
 	{
@@ -285,25 +416,28 @@ void __fastcall fuuki32_sound_out(UINT16 port, UINT8 data)
 		return;
 
 		case 0x40:
+		case 0x41:
 		case 0x42:
+		case 0x43:
+			BurnYMF262Write(port&3, data);
+		return;
+
 		case 0x44:
 			BurnYMF278BSelectRegister((port >> 1) & 3, data);
 		return;
 
-		case 0x41:
-		case 0x43:
 		case 0x45:
 			BurnYMF278BWriteRegister((port >> 1) & 3, data);
 		return;
 	}
 }
 
-UINT8 __fastcall fuuki32_sound_in(UINT16 port)
+static UINT8 __fastcall fuuki32_sound_in(UINT16 port)
 {
 	switch (port & 0xff)
 	{
 		case 0x40:
-			return BurnYMF278BReadStatus();
+			return BurnYMF262Read(0);
 	}
 
 	return 0;
@@ -311,11 +445,7 @@ UINT8 __fastcall fuuki32_sound_in(UINT16 port)
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 DrvSynchroniseStream(INT32 nSoundRate)
@@ -325,8 +455,6 @@ static INT32 DrvSynchroniseStream(INT32 nSoundRate)
 
 static INT32 DrvDoReset()
 {
-	DrvReset = 0;
-
 	memset (AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
@@ -335,9 +463,9 @@ static INT32 DrvDoReset()
 
 	ZetOpen(0);
 	ZetReset();
-	ZetClose();
-
 	BurnYMF278BReset();
+	BurnYMF262Reset();
+	ZetClose();
 
 	return 0;
 }
@@ -349,9 +477,9 @@ static INT32 MemIndex()
 	Drv68KROM	= Next; Next += 0x200000;
 	DrvZ80ROM	= Next; Next += 0x080000;
 
-	DrvTransTab1	= Next; Next += 0x008000;
-	DrvTransTab2	= Next; Next += 0x008000;
-	DrvTransTab3	= Next; Next += 0x010000;
+	DrvTransTab1= Next; Next += 0x008000;
+	DrvTransTab2= Next; Next += 0x008000;
+	DrvTransTab3= Next; Next += 0x010000;
 
 	DrvGfxROM0	= Next; Next += 0x4000000;
 	DrvGfxROM1	= Next; Next += 0x800000;
@@ -360,9 +488,9 @@ static INT32 MemIndex()
 
 	DrvSndROM	= Next; Next += 0x400000;
 
-	DrvPalette	= (UINT32  *)Next; Next += 0x2000 * sizeof(UINT32);
-	DrvScrollBuf	= (UINT32  *)Next; Next += 256 * 4 * sizeof(UINT32);
-	DrvRasterPos	= (UINT16*)Next; Next += 0x0001 * sizeof(UINT16);
+	DrvPalette	= (UINT32*)Next; Next += 0x2000 * sizeof(UINT32);
+	DrvScrollBuf= (UINT32*)Next; Next += 256 * 4 * sizeof(UINT32);
+	DrvRasterPos= (UINT16*)Next; Next += 0x0001 * sizeof(UINT32);
 
 	AllRam		= Next;
 
@@ -380,12 +508,12 @@ static INT32 MemIndex()
 	DrvSprBuf0	= Next; Next += 0x002000;
 	DrvSprBuf1	= Next; Next += 0x002000;
 
-	priority	= Next; Next += 0x000001;
+	priority	= Next; Next += 0x000001 * sizeof(UINT32); // (sizeof(UINT32) for alignment)
 
-	tilebank	= (UINT16*)Next; Next += 0x0001 * sizeof(UINT16);
-	tilebank_buf	= (UINT16*)Next; Next += 0x0002 * sizeof(UINT16);
+	tilebank	= (UINT16*)Next; Next += 0x0001 * sizeof(UINT32);
+	tilebank_buf= (UINT16*)Next; Next += 0x0002 * sizeof(UINT32);
 
-	nDrvZ80Bank	= Next; Next += 0x000001;
+	nDrvZ80Bank	= Next; Next += 0x000001 * sizeof(UINT32);
 
 	RamEnd		= Next;
 
@@ -514,20 +642,18 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68ec020);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x1fffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x400000, 0x40ffff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0x410000, 0x41ffff, SM_RAM);
-	SekMapMemory(DrvBgRAM1,		0x500000, 0x501fff, SM_RAM);
-	SekMapMemory(DrvBgRAM2,		0x502000, 0x503fff, SM_RAM);
-	SekMapMemory(DrvFgRAM1,		0x504000, 0x505fff, SM_RAM);
-	SekMapMemory(DrvFgRAM2,		0x506000, 0x507fff, SM_RAM);
-	SekMapMemory(DrvFgRAM2 + 0x2000,0x508000, 0x517fff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x600000, 0x601fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x700000, 0x703fff, SM_RAM);
-	SekSetWriteLongHandler(0,	fuuki32_write_long);
+	SekMapMemory(Drv68KROM,		0x000000, 0x1fffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x400000, 0x40ffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0x410000, 0x41ffff, MAP_RAM);
+	SekMapMemory(DrvBgRAM1,		0x500000, 0x501fff, MAP_RAM);
+	SekMapMemory(DrvBgRAM2,		0x502000, 0x503fff, MAP_RAM);
+	SekMapMemory(DrvFgRAM1,		0x504000, 0x505fff, MAP_RAM);
+	SekMapMemory(DrvFgRAM2,		0x506000, 0x507fff, MAP_RAM);
+	SekMapMemory(DrvFgRAM2 + 0x2000,0x508000, 0x517fff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x600000, 0x601fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x700000, 0x703fff, MAP_RAM);
 	SekSetWriteWordHandler(0,	fuuki32_write_word);
 	SekSetWriteByteHandler(0,	fuuki32_write_byte);
-	SekSetReadLongHandler(0,	fuuki32_read_long);
 	SekSetReadWordHandler(0,	fuuki32_read_word);
 	SekSetReadByteHandler(0,	fuuki32_read_byte);
 	SekClose();
@@ -547,9 +673,13 @@ static INT32 DrvInit()
 	ZetSetInHandler(fuuki32_sound_in);
 	ZetClose();
 
-	BurnYMF278BInit(0, DrvSndROM, &DrvFMIRQHandler, DrvSynchroniseStream);
+	BurnYMF278BInit(0, DrvSndROM, 0x400000, NULL, DrvSynchroniseStream);
 	BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_1, 0.50, BURN_SND_ROUTE_LEFT);
 	BurnYMF278BSetRoute(BURN_SND_YMF278B_YMF278B_ROUTE_2, 0.50, BURN_SND_ROUTE_RIGHT);
+
+	BurnYMF262Init(14318180, &DrvFMIRQHandler, DrvSynchroniseStream, 1);
+	BurnYMF262SetRoute(BURN_SND_YMF262_YMF262_ROUTE_1, 0.50, BURN_SND_ROUTE_LEFT);
+	BurnYMF262SetRoute(BURN_SND_YMF262_YMF262_ROUTE_2, 0.50, BURN_SND_ROUTE_RIGHT);
 	BurnTimerAttachZet(6000000);
 
 	GenericTilesInit();
@@ -563,11 +693,14 @@ static INT32 DrvExit()
 {
 	GenericTilesExit();
 
+	BurnYMF262Exit();
 	BurnYMF278BExit();
 	SekExit();
 	ZetExit();
 
 	BurnFree (AllMem);
+
+	asurablade = 0;
 
 	return 0;
 }
@@ -578,8 +711,8 @@ static void draw_sprites(INT32 prio)
 
 	for (INT32 offs = 0; offs < 0x2000 / 2; offs += 4)
 	{
-		INT32 sx		= BURN_ENDIAN_SWAP_INT16(src[offs + 0]);
-		INT32 sy		= BURN_ENDIAN_SWAP_INT16(src[offs + 1]);
+		INT32 sx	= BURN_ENDIAN_SWAP_INT16(src[offs + 0]);
+		INT32 sy	= BURN_ENDIAN_SWAP_INT16(src[offs + 1]);
 		INT32 attr	= BURN_ENDIAN_SWAP_INT16(src[offs + 2]);
 		INT32 code	= BURN_ENDIAN_SWAP_INT16(src[offs + 3]);
 
@@ -650,8 +783,8 @@ static void draw_sprites(INT32 prio)
 
 static void draw_background_layer(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT32 coloff, INT32 soff)
 {
-	INT32 yoff     = (DrvScrollBuf[0x300] & 0xffff) - 0x1f3;
-	INT32 xoff     = (DrvScrollBuf[0x300] >> 16) - 0x3f6;
+	INT32 yoff    = (DrvScrollBuf[0x300] & 0xffff) - 0x1f3;
+	INT32 xoff    = (DrvScrollBuf[0x300] >> 16) - 0x3f6;
 	INT32 scrolly = ((DrvScrollBuf[soff*256] & 0xffff) + yoff) & 0x1ff;
 	INT32 scrollx = ((DrvScrollBuf[soff*256] >> 16) + xoff) & 0x3ff;
 
@@ -670,7 +803,7 @@ static void draw_background_layer(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT32 colo
 		INT32 code = BURN_ENDIAN_SWAP_INT16(vram[offs*2]) & 0x7fff;
 		if (tab[code] == 2) continue;
 		INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[offs*2 + 1]);
-	
+
 		INT32 color = (attr & 0x30) >> 4;
 		INT32 flipx = (attr >> 6) & 1;
 		INT32 flipy = (attr >> 7) & 1;
@@ -748,8 +881,8 @@ static void draw_background_layer_byline(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT
 
 	for (INT32 y = 0; y < nScreenHeight; y++)
 	{
-		INT32 yoff     = (DrvScrollBuf[0x300 + y] & 0xffff) - 0x1f3;
-		INT32 xoff     = (DrvScrollBuf[0x300 + y] >> 16) - 0x3f6;
+		INT32 yoff    = (DrvScrollBuf[0x300 + y] & 0xffff) - 0x1f3;
+		INT32 xoff    = (DrvScrollBuf[0x300 + y] >> 16) - 0x3f6;
 		INT32 scrolly = ((DrvScrollBuf[(soff*256) + y] & 0xffff) + yoff + y) & 0x1ff;
 		INT32 scrollx = ((DrvScrollBuf[(soff*256) + y] >> 16) + xoff) & 0x3ff;
 
@@ -766,7 +899,7 @@ static void draw_background_layer_byline(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT
 			INT32 code = BURN_ENDIAN_SWAP_INT16(vram[ofst]) & 0x7fff;
 			if (tab[code] == 2) continue;
 			INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[ofst + 1]);
-	
+
 			INT32 color = (attr & 0x30) << 4;
 			INT32 flipx = ((attr >> 6) & 1) * 0x0f;
 			INT32 flipy = ((attr >> 7) & 1) * 0xf0;
@@ -807,7 +940,7 @@ static void draw_background_layer_byline(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT
 				if (xxx >= 0 && xxx < (nScreenWidth - 15)) {
 					for (INT32 sx = 0; sx < 16; sx++, xxx++) {
 						INT32 pxl = src[sx ^ flipx];
-	
+
 						if (pxl != 0xff) {
 							dst[xxx] = pxl | color;
 						}
@@ -815,7 +948,7 @@ static void draw_background_layer_byline(UINT8 *ram, UINT8 *gfx, UINT8 *tab, INT
 				} else {
 					for (INT32 sx = 0; sx < 16; sx++, xxx++) {
 						INT32 pxl = src[sx ^ flipx];
-	
+
 						if (xxx >= 0 && xxx < nScreenWidth && pxl != 0xff) {
 							dst[xxx] = pxl | color;
 						}
@@ -942,7 +1075,7 @@ static void draw_foreground_layer_byline(UINT8 *ram)
 			INT32 code = BURN_ENDIAN_SWAP_INT16(vram[ofst]);
 			if (DrvTransTab3[code] == 2) continue;
 			INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[ofst + 1]);
-	
+
 			INT32 color = attr & 0x3f;
 			INT32 flipx = ((attr >> 6) & 1) * 0x07;
 			INT32 flipy = ((attr >> 7) & 1) * 0x38;
@@ -1091,9 +1224,7 @@ static INT32 DrvDraw()
 	INT32 tm_back   = pri_table[ priority[0] ][2];
 	INT32 buffer = BURN_ENDIAN_SWAP_INT32(vregs[0x1e/4]) & 0x40;
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 0x1fff;
-	}
+	BurnTransferClear(0x1fff);
 
 	enable_rasters();
 
@@ -1123,7 +1254,8 @@ static INT32 DrvFrame()
 	}
 
 	{
-		memset (DrvInputs, 0xff, 0x04);
+		DrvInputs[0] = 0xffff;
+		DrvInputs[1] = 0xffff;
 		for (INT32 i = 0; i < 16; i++) {
 			DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
@@ -1135,8 +1267,7 @@ static INT32 DrvFrame()
 	SekNewFrame();
 	ZetNewFrame();
 
-	INT32 nSegment;
-	INT32 nInterleave = 248; // ?
+	INT32 nInterleave = 256;
 	INT32 nCyclesTotal[2] = { 20000000 / 60, 6000000 / 60 };
 	INT32 nCyclesDone[2] = { 0, 0 };
 	UINT32 *vregs = (UINT32*)DrvVidRegs;
@@ -1144,20 +1275,19 @@ static INT32 DrvFrame()
 	SekOpen(0);
 	ZetOpen(0);
 
-	// 68ec020 timing probably not right...
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nSegment = (nCyclesTotal[0] / nInterleave) * (i + 1);
-		nCyclesDone[0] += SekRun(nSegment - nCyclesDone[0]);
-	//	if (i ==  16) SekSetIRQLine(5, SEK_IRQSTATUS_AUTO); // raster line -- 0 not 16?
+		nCyclesDone[0] += SekRun(((nCyclesTotal[0] / nInterleave) * (i + 1)) - nCyclesDone[0]);
 
 		if (i == DrvRasterPos[0]) {
-			SekSetIRQLine(5, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(5, CPU_IRQSTATUS_AUTO);
 			DrvRasterPos[0] = 0x1000;
 		}
 
-		if (i == 247) SekSetIRQLine(1, SEK_IRQSTATUS_AUTO); // level 1 or 8 ?
-		if (i == 239) SekSetIRQLine(3, SEK_IRQSTATUS_AUTO); // vblank
+		if (i == 248) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO); // level 1
+		if (i == 240) SekSetIRQLine(3, CPU_IRQSTATUS_AUTO); // vblank
+
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / nInterleave);
 
 		// hack -- save scroll/offset registers so the
 		// lines can be drawn in one pass -- should save
@@ -1166,22 +1296,26 @@ static INT32 DrvFrame()
 		DrvScrollBuf[i + 0x100] = BURN_ENDIAN_SWAP_INT32(vregs[1]);
 		DrvScrollBuf[i + 0x200] = BURN_ENDIAN_SWAP_INT32(vregs[2]);
 		DrvScrollBuf[i + 0x300] = BURN_ENDIAN_SWAP_INT32(vregs[3]);
+
+		if (i == 240) { // eliminate glitches in sprites, backgrounds
+			if (pBurnDraw) DrvDraw();
+
+			memcpy (DrvSprBuf1, DrvSprBuf0, 0x2000);
+			memcpy (DrvSprBuf0, DrvSprRAM,  0x2000);
+			tilebank_buf[1] = tilebank_buf[0];
+			tilebank_buf[0] = tilebank[0];
+		}
 	}
 
 	BurnTimerEndFrame(nCyclesTotal[1]);
-	BurnYMF278BUpdate(nBurnSoundLen);
+
+	if (pBurnSoundOut) {
+		BurnYMF278BUpdate(nBurnSoundLen);
+		BurnYMF262Update(nBurnSoundLen);
+	}
 
 	ZetClose();
 	SekClose();
-
-	if (pBurnDraw) {
-		DrvDraw();
-	}
-
-	memcpy (DrvSprBuf1, DrvSprBuf0, 0x2000);
-	memcpy (DrvSprBuf0, DrvSprRAM,  0x2000);
-	tilebank_buf[1] = tilebank_buf[0];
-	tilebank_buf[0] = tilebank[0];
 
 	return 0;
 }
@@ -1189,7 +1323,7 @@ static INT32 DrvFrame()
 static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
 	struct BurnArea ba;
-	
+
 	if (pnMin != NULL) {
 		*pnMin = 0x029704;
 	}
@@ -1207,6 +1341,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ZetScan(nAction);
 
 		BurnYMF278BScan(nAction, pnMin);
+		BurnYMF262Scan(nAction, pnMin);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -1229,7 +1364,7 @@ static struct BurnRomInfo asurabldRomDesc[] = {
 
 	{ "srom.u7",	0x080000, 0xbb1deb89, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
 
-	{ "pcm.u6",	0x400000, 0xac72225a, 3 | BRF_SND },           //  5 Samples
+	{ "pcm.u6",		0x400000, 0xac72225a, 3 | BRF_SND },           //  5 Samples
 
 	{ "bg1113.u23",	0x400000, 0x94338267, 4 | BRF_GRA },           //  6 Background Tiles 0
 	{ "bg1012.u22",	0x400000, 0xd717a0a1, 4 | BRF_GRA },           //  7
@@ -1237,7 +1372,7 @@ static struct BurnRomInfo asurabldRomDesc[] = {
 	{ "bg2123.u24",	0x400000, 0x4acfc469, 5 | BRF_GRA },           //  8 Background Tiles 1
 	{ "bg2022.u25",	0x400000, 0xee312cd3, 5 | BRF_GRA },           //  9
 
-	{ "map.u5",	0x200000, 0xe681155e, 6 | BRF_GRA },           // 10 Character Tiles
+	{ "map.u5",		0x200000, 0xe681155e, 6 | BRF_GRA },           // 10 Character Tiles
 
 	{ "sp23.u14",	0x400000, 0x7df492eb, 7 | BRF_GRA },           // 11 Sprite Tiles
 	{ "sp45.u15",	0x400000, 0x1890f42a, 7 | BRF_GRA },           // 12
@@ -1250,13 +1385,20 @@ static struct BurnRomInfo asurabldRomDesc[] = {
 STD_ROM_PICK(asurabld)
 STD_ROM_FN(asurabld)
 
+static INT32 BladeDrvInit()
+{
+	asurablade = 1;
+
+	return DrvInit();
+}
+
 struct BurnDriver BurnDrvAsurabld = {
 	"asurabld", NULL, NULL, NULL, "1998",
-	"Asura Blade - Sword of Dynasty (Japan)\0", "Imperfect GFX", "Fuuki", "FG-3",
+	"Asura Blade - Sword of Dynasty (Japan)\0", NULL, "Fuuki", "FG-3",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, asurabldRomInfo, asurabldRomName, NULL, NULL, AsurabldInputInfo, AsurabldDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	NULL, asurabldRomInfo, asurabldRomName, NULL, NULL, NULL, NULL, AsurabldInputInfo, AsurabldDIPInfo,
+	BladeDrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	320, 240, 4, 3
 };
 
@@ -1271,7 +1413,7 @@ static struct BurnRomInfo asurabusRomDesc[] = {
 
 	{ "srom.u7",	0x080000, 0x368da389, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
 
-	{ "opm.u6",	0x400000, 0x31b05be4, 3 | BRF_SND },           //  5 Samples
+	{ "opm.u6",		0x400000, 0x31b05be4, 3 | BRF_SND },           //  5 Samples
 
 	{ "bg1113.u23",	0x400000, 0x5f8657e6, 4 | BRF_GRA },           //  6 Background Tiles 0
 	{ "bg1012.u22",	0x400000, 0xe3fb9af0, 4 | BRF_GRA },           //  7
@@ -1279,7 +1421,7 @@ static struct BurnRomInfo asurabusRomDesc[] = {
 	{ "bg2123.u24",	0x400000, 0xc4ebb86b, 5 | BRF_GRA },           //  8 Background Tiles 1
 	{ "bg2022.u25",	0x400000, 0xf46eda52, 5 | BRF_GRA },           //  9
 
-	{ "map.u5",	0x200000, 0xbd179dc5, 6 | BRF_GRA },           // 10 Character Tiles
+	{ "map.u5",		0x200000, 0xbd179dc5, 6 | BRF_GRA },           // 10 Character Tiles
 
 	{ "sp01.u13",	0x400000, 0x5edea463, 7 | BRF_GRA },           // 11 Sprite Tiles
 	{ "sp23.u14",	0x400000, 0x91b1b0de, 7 | BRF_GRA },           // 12
@@ -1296,10 +1438,54 @@ STD_ROM_FN(asurabus)
 
 struct BurnDriver BurnDrvAsurabus = {
 	"asurabus", NULL, NULL, NULL, "2000",
-	"Asura Buster - Eternal Warriors (Japan)\0", "Imperfect SND, freezes on first boss", "Fuuki", "FG-3",
+	"Asura Buster - Eternal Warriors (Japan)\0", NULL, "Fuuki", "FG-3",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
-	NULL, asurabusRomInfo, asurabusRomName, NULL, NULL, AsurabldInputInfo, AsurabldDIPInfo,
+	NULL, asurabusRomInfo, asurabusRomName, NULL, NULL, NULL, NULL, AsurabldInputInfo, AsurabusDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	320, 240, 4, 3
+};
+
+
+// Asura Buster - Eternal Warriors (Japan) (ARCADIA review build)
+
+static struct BurnRomInfo asurabusaRomDesc[] = {
+	{ "24-31.pgm3",	0x080000, 0xcfcb9c75, 1 | BRF_PRG | BRF_ESS }, //  0 68ec020 Code
+	{ "16-23.pgm2",	0x080000, 0xe4d07738, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "8-15.pgm1",	0x080000, 0x1dd67fe7, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "0-7.pgm0",	0x080000, 0x3af08de3, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "srom.u7",	0x080000, 0x368da389, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "opm.u6",		0x400000, 0x31b05be4, 3 | BRF_SND },           //  5 Samples
+
+	{ "bg1113.u23",	0x400000, 0x5f8657e6, 4 | BRF_GRA },           //  6 Background Tiles 0
+	{ "bg1012.u22",	0x400000, 0xe3fb9af0, 4 | BRF_GRA },           //  7
+
+	{ "bg2123.u24",	0x400000, 0xc4ebb86b, 5 | BRF_GRA },           //  8 Background Tiles 1
+	{ "bg2022.u25",	0x400000, 0xf46eda52, 5 | BRF_GRA },           //  9
+
+	{ "map.u5",		0x200000, 0xbd179dc5, 6 | BRF_GRA },           // 10 Character Tiles
+
+	{ "sp01.u13",	0x400000, 0x5edea463, 7 | BRF_GRA },           // 11 Sprite Tiles
+	{ "sp23.u14",	0x400000, 0x91b1b0de, 7 | BRF_GRA },           // 12
+	{ "sp45.u15",	0x400000, 0x96c69aac, 7 | BRF_GRA },           // 13
+	{ "sp67.u16",	0x400000, 0x7c3d83bf, 7 | BRF_GRA },           // 14
+	{ "sp89.u17",	0x400000, 0xcb1e14f8, 7 | BRF_GRA },           // 15
+	{ "spab.u18",	0x400000, 0xe5a4608d, 7 | BRF_GRA },           // 16
+	{ "spcd.u19",	0x400000, 0x99bfbe32, 7 | BRF_GRA },           // 17
+	{ "spef.u20",	0x400000, 0xc9c799cc, 7 | BRF_GRA },           // 18
+};
+
+STD_ROM_PICK(asurabusa)
+STD_ROM_FN(asurabusa)
+
+struct BurnDriver BurnDrvAsurabusa = {
+	"asurabusa", "asurabus", NULL, NULL, "2000",
+	"Asura Buster - Eternal Warriors (Japan) (ARCADIA review build)\0", NULL, "Fuuki", "FG-3",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, asurabusaRomInfo, asurabusaRomName, NULL, NULL, NULL, NULL, AsurabusaInputInfo, AsurabusDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	320, 240, 4, 3
 };

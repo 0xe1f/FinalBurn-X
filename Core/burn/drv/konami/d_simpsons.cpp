@@ -25,7 +25,6 @@ static UINT8 *DrvPalRAM;
 static UINT8 *DrvSprRAM;
 static UINT8 *DrvZ80RAM;
 
-static UINT32 *Palette;
 static UINT32 *DrvPalette;
 static UINT8 DrvRecalc;
 
@@ -216,7 +215,7 @@ UINT8 simpsons_main_read(UINT16 address)
 
 		case 0x1fc4: 
 			ZetSetVector(0xff);
-			ZetSetIRQLine(0, ZET_IRQSTATUS_ACK);
+			ZetSetIRQLine(0, CPU_IRQSTATUS_ACK);
 			return 0;
 
 		case 0x1fc6:
@@ -299,11 +298,11 @@ UINT8 __fastcall simpsons_sound_read(UINT16 address)
 		case 0xf800:
 			return 0xff;
 		case 0xf801:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 	}
 
 	if (address >= 0xfc00 && address < 0xfc30) {
-		if ((address & 0x3f) == 0x01) ZetSetIRQLine(0, ZET_IRQSTATUS_NONE);
+		if ((address & 0x3f) == 0x01) ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 
 		return K053260Read(0, address & 0xff);
 	}
@@ -317,7 +316,7 @@ static void simpsons_set_lines(INT32 lines)
 
 	INT32 nBank = (lines & 0x3f) * 0x2000;
 
-	konamiMapMemory(DrvKonROM + 0x10000 + nBank, 0x6000, 0x7fff, KON_ROM); 
+	konamiMapMemory(DrvKonROM + 0x10000 + nBank, 0x6000, 0x7fff, MAP_ROM); 
 }
 
 static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, INT32 *, INT32 *)
@@ -327,13 +326,13 @@ static void K052109Callback(INT32 layer, INT32 bank, INT32 *code, INT32 *color, 
 	*code &= 0x7fff;
 }
 
-static void K053247Callback(INT32 *code, INT32 *color, INT32 *priority)
+static void DrvK053247Callback(INT32 *code, INT32 *color, INT32 *priority)
 {
 	INT32 pri = (*color & 0x0f80) >> 6;
-	if (pri <= layerpri[2])					*priority = 0;
-	else if (pri > layerpri[2] && pri <= layerpri[1])	*priority = 1;
-	else if (pri > layerpri[1] && pri <= layerpri[0])	*priority = 2;
-	else 							*priority = 3;
+	if (pri <= layerpri[2])					*priority = 0x00;
+	else if (pri > layerpri[2] && pri <= layerpri[1])	*priority = 0xf0;
+	else if (pri > layerpri[1] && pri <= layerpri[0])	*priority = 0xfc;
+	else 							*priority = 0xfe;
 
 	*color = sprite_colorbase + (*color & 0x001f);
 
@@ -390,7 +389,6 @@ static INT32 MemIndex()
 
 	DrvSndROM		= Next; Next += 0x200000;
 
-	Palette			= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 	DrvPalette		= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
 
 	AllRam			= Next;
@@ -405,22 +403,6 @@ static INT32 MemIndex()
 
 	RamEnd			= Next;
 	MemEnd			= Next;
-
-	return 0;
-}
-
-static INT32 DrvGfxDecode()
-{
-	INT32 Plane[4] = { 0x018, 0x010, 0x008, 0x000 };
-	INT32 XOffs[8] = { 0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007 };
-	INT32 YOffs[8] = { 0x000, 0x020, 0x040, 0x060, 0x080, 0x0a0, 0x0c0, 0x0e0 };
-
-	konami_rom_deinterleave_2(DrvGfxROM0, 0x100000);
-	konami_rom_deinterleave_4(DrvGfxROM1, 0x400000);
-
-	GfxDecode(0x8000, 4, 8, 8, Plane, XOffs, YOffs, 0x100, DrvGfxROM0, DrvGfxROMExp0);
-
-	K053247GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x400000);
 
 	return 0;
 }
@@ -440,6 +422,8 @@ static const eeprom_interface simpsons_eeprom_intf =
 
 static INT32 DrvInit()
 {
+	GenericTilesInit();
+
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
@@ -456,25 +440,26 @@ static INT32 DrvInit()
 
 		if (BurnLoadRom(DrvZ80ROM  + 0x000000,  4, 1)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM0 + 0x000000,  5, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM0 + 0x080000,  6, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000,  5, 4, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM0 + 0x000002,  6, 4, 2)) return 1;
 
-		if (BurnLoadRom(DrvGfxROM1 + 0x000000,  7, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x100000,  8, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x200000,  9, 1)) return 1;
-		if (BurnLoadRom(DrvGfxROM1 + 0x300000, 10, 1)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000000,  7, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000002,  8, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000004,  9, 8, 2)) return 1;
+		if (BurnLoadRomExt(DrvGfxROM1 + 0x000006, 10, 8, 2)) return 1;
 
 		if (BurnLoadRom(DrvSndROM  + 0x000000, 11, 1)) return 1;
 		if (BurnLoadRom(DrvSndROM  + 0x100000, 12, 1)) return 1;
 
-		DrvGfxDecode();
+		K052109GfxDecode(DrvGfxROM0, DrvGfxROMExp0, 0x100000);
+		K053247GfxDecode(DrvGfxROM1, DrvGfxROMExp1, 0x400000);
 	}
 
-	konamiInit(1);
+	konamiInit(0);
 	konamiOpen(0);
-	konamiMapMemory(DrvKonRAM,		0x4000, 0x5fff, KON_RAM);
-	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x7fff, KON_ROM);
-	konamiMapMemory(DrvKonROM + 0x08000,	0x8000, 0xffff, KON_ROM);
+	konamiMapMemory(DrvKonRAM,		0x4000, 0x5fff, MAP_RAM);
+	konamiMapMemory(DrvKonROM + 0x10000,	0x6000, 0x7fff, MAP_ROM);
+	konamiMapMemory(DrvKonROM + 0x08000,	0x8000, 0xffff, MAP_ROM);
 	konamiSetWriteHandler(simpsons_main_write);
 	konamiSetReadHandler(simpsons_main_read);
 	konamiSetlinesCallback(simpsons_set_lines);
@@ -495,22 +480,20 @@ static INT32 DrvInit()
 
 	EEPROMInit(&simpsons_eeprom_intf);
 
-	K052109Init(DrvGfxROM0, 0x0fffff);
+	K052109Init(DrvGfxROM0, DrvGfxROMExp0, 0x0fffff);
 	K052109SetCallback(K052109Callback);
 	K052109AdjustScroll(8, 0);
 
-	K053247Init(DrvGfxROM1, 0x3fffff, K053247Callback, 0x03 /* shadows & highlights */);
-	K053247SetSpriteOffset(-59, 39);
+	K053247Init(DrvGfxROM1, DrvGfxROMExp1, 0x3fffff, DrvK053247Callback, 0x03 /* shadows & highlights */);
+	K053247SetSpriteOffset(-59, -39);
 
 	BurnYM2151Init(3579545);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 1.00, BURN_SND_ROUTE_BOTH);
 	BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 0.00, BURN_SND_ROUTE_BOTH); // not connected
 
 	K053260Init(0, 3579545, DrvSndROM, 0x140000);
-	K053260SetRoute(0, BURN_SND_K053260_ROUTE_1, 0.75, BURN_SND_ROUTE_LEFT);
-	K053260SetRoute(0, BURN_SND_K053260_ROUTE_2, 0.75, BURN_SND_ROUTE_RIGHT);
-
-	GenericTilesInit();
+	K053260SetRoute(0, BURN_SND_K053260_ROUTE_1, 0.75, BURN_SND_ROUTE_RIGHT);
+	K053260SetRoute(0, BURN_SND_K053260_ROUTE_2, 0.75, BURN_SND_ROUTE_LEFT);
 
 	DrvDoReset();
 
@@ -561,46 +544,9 @@ static void simpsons_objdma()
 	if (num_inactive) do { *dst = 0; dst += 8; } while (--num_inactive);
 }
 
-static void DrvRecalcPal()
-{
-	UINT8 r,g,b;
-	UINT16 *p = (UINT16*)DrvPalRAM;
-	for (INT32 i = 0; i < 0x1000 / 2; i++) {
-		UINT16 d = BURN_ENDIAN_SWAP_INT16((p[i] << 8) | (p[i] >> 8));
-
-		b = (d >> 10) & 0x1f;
-		g = (d >>  5) & 0x1f;
-		r = (d >>  0) & 0x1f;
-
-		r = (r << 3) | (r >> 2);
-		g = (g << 3) | (g >> 2);
-		b = (b << 3) | (b >> 2);
-
-		DrvPalette[i] = BurnHighCol(r, g, b, 0);
-		Palette[i] = (r << 16) | (g << 8) | b;
-	}
-}
-
-static void sortlayers(INT32 *layer,INT32 *pri)
-{
-#define SWAP(a,b) \
-	if (pri[a] < pri[b]) \
-	{ \
-		INT32 t; \
-		t = pri[a]; pri[a] = pri[b]; pri[b] = t; \
-		t = layer[a]; layer[a] = layer[b]; layer[b] = t; \
-	}
-
-	SWAP(0,1)
-	SWAP(0,2)
-	SWAP(1,2)
-}
-
 static INT32 DrvDraw()
 {
-	if (DrvRecalc) {
-		DrvRecalcPal();
-	}
+	KonamiRecalcPalette(DrvPalRAM, DrvPalette, 0x1000);
 
 	K052109UpdateScroll();
 
@@ -619,21 +565,17 @@ static INT32 DrvDraw()
 	layer[1] = 1;
 	layer[2] = 2;
 
-	sortlayers(layer,layerpri);
+	konami_sortlayers3(layer,layerpri);
 
-	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
-		pTransDraw[i] = 16 * bg_colorbase;
-	}
+	KonamiClearBitmaps(DrvPalette[16 * bg_colorbase]);
 
-	if (nSpriteEnable & 8) K053247SpritesRender(DrvGfxROMExp1, 3);		// title (simpsons behind clouds)
-	if (nBurnLayer & 1)    K052109RenderLayer(layer[0], 0, DrvGfxROMExp0);	// title (back-most cloud)
-	if (nSpriteEnable & 4) K053247SpritesRender(DrvGfxROMExp1, 2);		// smithers' on first stage
-	if (nBurnLayer & 2)    K052109RenderLayer(layer[1], 0, DrvGfxROMExp0);	// main layer (buildings, stage 1)
-	if (nSpriteEnable & 2) K053247SpritesRender(DrvGfxROMExp1, 1);		// smithers' thugs on stage 1
-	if (nBurnLayer & 4)    K052109RenderLayer(layer[2], 0, DrvGfxROMExp0);	// game over text
-	if (nSpriteEnable & 1) K053247SpritesRender(DrvGfxROMExp1, 0);		// not used? seems to make sense here...
+	if (nBurnLayer & 1) K052109RenderLayer(layer[0], 0, 1);
+	if (nBurnLayer & 2) K052109RenderLayer(layer[1], 0, 2);
+	if (nBurnLayer & 4) K052109RenderLayer(layer[2], 0, 4);
 
-	KonamiBlendCopy(Palette, DrvPalette);
+	if (nSpriteEnable & 1) K053247SpritesRender();
+
+	KonamiBlendCopy(DrvPalette);
 
 	return 0;
 }
@@ -686,7 +628,7 @@ static INT32 DrvFrame()
 		nCyclesDone[0] += nCyclesSegment;
 
 		if (i == 1 && K053246Irq && simpsons_firq_enabled) {
-			konamiSetIrqLine(KONAMI_FIRQ_LINE, KONAMI_HOLD_LINE);
+			konamiSetIrqLine(KONAMI_FIRQ_LINE, CPU_IRQSTATUS_AUTO);
 		}
 
 		K053246Irq = K053246_is_IRQ_enabled();
@@ -706,7 +648,7 @@ static INT32 DrvFrame()
 	}
 
 	if (K053246Irq) simpsons_objdma();
-	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, KONAMI_HOLD_LINE);
+	if (K052109_irq_enabled) konamiSetIrqLine(KONAMI_IRQ_LINE, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -743,11 +685,11 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ba.szName = "All Ram";
 		BurnAcb(&ba);
 
-		konamiCpuScan(nAction, pnMin);
+		konamiCpuScan(nAction);
 		ZetScan(nAction);
 
-		BurnYM2151Scan(nAction);
-		K053260Scan(nAction);
+		BurnYM2151Scan(nAction, pnMin);
+		K053260Scan(nAction, pnMin);
 
 		KonamiICScan(nAction);
 
@@ -794,7 +736,7 @@ static struct BurnRomInfo simpsonsRomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons.nv",  0x000080, 0xec3f0449, BRF_OPT },
+	{ "simpsons.12c.nv",  0x000080, 0xec3f0449, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons)
@@ -805,7 +747,7 @@ struct BurnDriver BurnDrvSimpsons = {
 	"The Simpsons (4 Players World, set 1)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsonsRomInfo, simpsonsRomName, NULL, NULL, SimpsonsInputInfo, NULL,
+	NULL, simpsonsRomInfo, simpsonsRomName, NULL, NULL, NULL, NULL, SimpsonsInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -813,7 +755,7 @@ struct BurnDriver BurnDrvSimpsons = {
 
 // The Simpsons (4 Players World, set 2)
 
-static struct BurnRomInfo simpsons4paRomDesc[] = {
+static struct BurnRomInfo simpsons4peRomDesc[] = {
 	{ "072-g02.16c",	0x020000, 0x580ce1d6, 1 | BRF_PRG | BRF_ESS }, //  0 Konami Custom Code
 	{ "072-g01.17c",	0x020000, 0x9f843def, 1 | BRF_PRG | BRF_ESS }, //  1
 	{ "072-m13.13c",	0x020000, 0xf36c9423, 1 | BRF_PRG | BRF_ESS }, //  2
@@ -832,7 +774,45 @@ static struct BurnRomInfo simpsons4paRomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons4pa.nv",  0x000080, 0xec3f0449, BRF_OPT },
+	{ "simpsons4pe.12c.nv",  0x000080, 0xec3f0449, BRF_OPT },
+};
+
+STD_ROM_PICK(simpsons4pe)
+STD_ROM_FN(simpsons4pe)
+
+struct BurnDriver BurnDrvSimpsons4pe = {
+	"simpsons4pe", "simpsons", NULL, NULL, "1991",
+	"The Simpsons (4 Players World, set 2)\0", NULL, "Konami", "GX072",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
+	NULL, simpsons4peRomInfo, simpsons4peRomName, NULL, NULL, NULL, NULL, SimpsonsInputInfo, NULL,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	288, 224, 4, 3
+};
+
+
+// The Simpsons (4 Players Asia)
+
+static struct BurnRomInfo simpsons4paRomDesc[] = {
+	{ "072-v02.16c",	0x020000, 0x580ce1d6, 1 | BRF_PRG | BRF_ESS }, //  0 Konami Custom Code
+	{ "072-v01.17c",	0x020000, 0xeffd6c09, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "072-x13.13c",	0x020000, 0x3304abb9, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "072-x12.15c",	0x020000, 0xfa4fca12, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "072-g03.6g",		0x020000, 0x76c1850c, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "072-b07.18h",	0x080000, 0xba1ec910, 3 | BRF_GRA },           //  5 K052109 Tiles
+	{ "072-b06.16h",	0x080000, 0xcf2bbcab, 3 | BRF_GRA },           //  6
+
+	{ "072-b08.3n",		0x100000, 0x7de500ad, 4 | BRF_GRA },           //  7 K053247 Tiles
+	{ "072-b09.8n",		0x100000, 0xaa085093, 4 | BRF_GRA },           //  8
+	{ "072-b10.12n",	0x100000, 0x577dbd53, 4 | BRF_GRA },           //  9
+	{ "072-b11.16l",	0x100000, 0x55fab05d, 4 | BRF_GRA },           // 10
+
+	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
+	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
+
+	{ "simpsons4pa.12c.nv",  0x000080, 0xec3f0449, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons4pa)
@@ -840,10 +820,10 @@ STD_ROM_FN(simpsons4pa)
 
 struct BurnDriver BurnDrvSimpsons4pa = {
 	"simpsons4pa", "simpsons", NULL, NULL, "1991",
-	"The Simpsons (4 Players World, set 2)\0", NULL, "Konami", "GX072",
+	"The Simpsons (4 Players Asia)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsons4paRomInfo, simpsons4paRomName, NULL, NULL, SimpsonsInputInfo, NULL,
+	NULL, simpsons4paRomInfo, simpsons4paRomName, NULL, NULL, NULL, NULL, SimpsonsInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -870,7 +850,7 @@ static struct BurnRomInfo simpsons2pRomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons2p.nv",  0x000080, 0xfbac4e30, BRF_OPT },
+	{ "simpsons2p.12c.nv",  0x000080, 0xfbac4e30, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons2p)
@@ -881,7 +861,7 @@ struct BurnDriver BurnDrvSimpsons2p = {
 	"The Simpsons (2 Players World, set 1)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsons2pRomInfo, simpsons2pRomName, NULL, NULL, Simpsons2pInputInfo, NULL,
+	NULL, simpsons2pRomInfo, simpsons2pRomName, NULL, NULL, NULL, NULL, Simpsons2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -908,7 +888,7 @@ static struct BurnRomInfo simpsons2p2RomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons2p2.nv",  0x000080, 0xfbac4e30, BRF_OPT },
+	{ "simpsons2p2.12c.nv",  0x000080, 0xfbac4e30, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons2p2)
@@ -919,8 +899,46 @@ struct BurnDriver BurnDrvSimpsons2p2 = {
 	"The Simpsons (2 Players World, set 2)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsons2p2RomInfo, simpsons2p2RomName, NULL, NULL, SimpsonsInputInfo, NULL,
+	NULL, simpsons2p2RomInfo, simpsons2p2RomName, NULL, NULL, NULL, NULL, SimpsonsInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	288, 224, 4, 3
+};
+
+
+// The Simpsons (2 Players World, set 3) // no rom labels
+
+static struct BurnRomInfo simpsons2p3RomDesc[] = {
+	{ "072-g02.16c",    0x020000, 0x580ce1d6, 1 | BRF_PRG | BRF_ESS }, //  0 Konami Custom Code
+	{ "072-p01.17c",    0x020000, 0x07ceeaea, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "4.13c",          0x020000, 0xc3040e4f, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "3.15c",          0x020000, 0xeb4f5781, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "072-g03.6g",        0x020000, 0x76c1850c, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "072-b07.18h",    0x080000, 0xba1ec910, 3 | BRF_GRA },           //  5 K052109 Tiles
+	{ "072-b06.16h",    0x080000, 0xcf2bbcab, 3 | BRF_GRA },           //  6
+
+	{ "072-b08.3n",        0x100000, 0x7de500ad, 4 | BRF_GRA },           //  7 K053247 Tiles
+	{ "072-b09.8n",        0x100000, 0xaa085093, 4 | BRF_GRA },           //  8
+	{ "072-b10.12n",    0x100000, 0x577dbd53, 4 | BRF_GRA },           //  9
+	{ "072-b11.16l",    0x100000, 0x55fab05d, 4 | BRF_GRA },           // 10
+
+	{ "072-d05.1f",        0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
+	{ "072-d04.1d",        0x040000, 0x78778013, 5 | BRF_SND },           // 12
+
+	{ "simpsons2p.12c.nv",  0x000080, 0xfbac4e30, BRF_OPT },
+};
+
+STD_ROM_PICK(simpsons2p3)
+STD_ROM_FN(simpsons2p3)
+
+struct BurnDriver BurnDrvSimpsons2p3 = {
+	"simpsons2p3", "simpsons", NULL, NULL, "1991",
+	"The Simpsons (2 Players World, set 3)\0", NULL, "Konami", "GX072",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
+	NULL, simpsons2p3RomInfo, simpsons2p3RomName, NULL, NULL, NULL, NULL, SimpsonsInputInfo, NULL,
+ 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
 
@@ -946,7 +964,7 @@ static struct BurnRomInfo simpsons2paRomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons2pa.nv",  0x000080, 0xfbac4e30, BRF_OPT },
+	{ "simpsons2pa.12c.nv",  0x000080, 0xfbac4e30, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons2pa)
@@ -957,7 +975,7 @@ struct BurnDriver BurnDrvSimpsons2pa = {
 	"The Simpsons (2 Players Asia)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsons2paRomInfo, simpsons2paRomName, NULL, NULL, Simpsons2pInputInfo, NULL,
+	NULL, simpsons2paRomInfo, simpsons2paRomName, NULL, NULL, NULL, NULL, Simpsons2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
@@ -984,7 +1002,7 @@ static struct BurnRomInfo simpsons2pjRomDesc[] = {
 	{ "072-d05.1f",		0x100000, 0x1397a73b, 5 | BRF_SND },           // 11 K053260 Samples
 	{ "072-d04.1d",		0x040000, 0x78778013, 5 | BRF_SND },           // 12
 
-	{ "simpsons2pj.nv",  0x000080, 0x3550a54e, BRF_OPT },
+	{ "simpsons2pj.12c.nv",  0x000080, 0x3550a54e, BRF_OPT },
 };
 
 STD_ROM_PICK(simpsons2pj)
@@ -995,7 +1013,7 @@ struct BurnDriver BurnDrvSimpsons2pj = {
 	"The Simpsons (2 Players Japan)\0", NULL, "Konami", "GX072",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
-	NULL, simpsons2pjRomInfo, simpsons2pjRomName, NULL, NULL, Simpsons2pInputInfo, NULL,
+	NULL, simpsons2pjRomInfo, simpsons2pjRomName, NULL, NULL, NULL, NULL, Simpsons2pInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };

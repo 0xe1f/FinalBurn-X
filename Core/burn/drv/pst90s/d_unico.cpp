@@ -1,3 +1,6 @@
+// FB Alpha Unico driver module
+// Based on MAME driver by Luca Elia
+
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "burn_ym3812.h"
@@ -499,7 +502,7 @@ static INT32 DrvDoReset()
 	SekClose();
 	
 	BurnYM3812Reset();
-	MSM6295Reset(0);
+	MSM6295Reset();
 	
 	DrvScrollX0 = 0;
 	DrvScrollY0 = 0;
@@ -521,15 +524,14 @@ static INT32 Zeropnt2DoReset()
 	EEPROMReset();
 	
 	BurnYM2151Reset();
-	MSM6295Reset(0);
-	MSM6295Reset(1);
+	MSM6295Reset();
 	
 	DrvOkiBank = 0;
 	
 	return 0;
 }
 
-UINT8 __fastcall Burglarx68KReadByte(UINT32 a)
+static UINT8 __fastcall Burglarx68KReadByte(UINT32 a)
 {
 	switch (a) {
 		case 0x800000: {
@@ -553,11 +555,11 @@ UINT8 __fastcall Burglarx68KReadByte(UINT32 a)
 		}
 		
 		case 0x800189: {
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		}
 		
 		case 0x80018c: {
-			return BurnYM3812Read(0);
+			return BurnYM3812Read(0, 0);
 		}
 		
 		default: {
@@ -568,21 +570,21 @@ UINT8 __fastcall Burglarx68KReadByte(UINT32 a)
 	return 0;
 }
 
-void __fastcall Burglarx68KWriteByte(UINT32 a, UINT8 d)
+static void __fastcall Burglarx68KWriteByte(UINT32 a, UINT8 d)
 {
 	switch (a) {
 		case 0x800189: {
-			MSM6295Command(0, d);
+			MSM6295Write(0, d);
 			return;
 		}
 		
 		case 0x80018a: {
-			BurnYM3812Write(1, d);
+			BurnYM3812Write(0, 1, d);
 			return;
 		}
 		
 		case 0x80018c: {
-			BurnYM3812Write(0, d);
+			BurnYM3812Write(0, 0, d);
 			return;
 		}
 		
@@ -598,7 +600,7 @@ void __fastcall Burglarx68KWriteByte(UINT32 a, UINT8 d)
 	}
 }
 
-UINT16 __fastcall Burglarx68KReadWord(UINT32 a)
+static UINT16 __fastcall Burglarx68KReadWord(UINT32 a)
 {
 	switch (a) {
 		default: {
@@ -609,7 +611,7 @@ UINT16 __fastcall Burglarx68KReadWord(UINT32 a)
 	return 0;
 }
 
-void __fastcall Burglarx68KWriteWord(UINT32 a, UINT16 d)
+static void __fastcall Burglarx68KWriteWord(UINT32 a, UINT16 d)
 {
 	switch (a) {
 		case 0x800030: {
@@ -658,7 +660,31 @@ void __fastcall Burglarx68KWriteWord(UINT32 a, UINT16 d)
 	}
 }
 
-UINT8 __fastcall Zeropnt68KReadByte(UINT32 a)
+static UINT8 GetGunX(INT32 gun)
+{
+	INT32 x = BurnGunReturnX(gun);
+
+	x = x * 384 / 256;
+	if (x < 0x160) {
+		x = 0x30 + (x * 0xd0 / 0x15f);
+	} else {
+		x = ((x - 0x160) * 0x20) / 0x1f;
+	}
+
+	return ((x & 0xff) ^ (GetCurrentFrame() & 3));
+}
+
+static UINT8 GetGunY(INT32 gun)
+{
+	INT32 y = BurnGunReturnY(gun);
+			
+	y = 0x18 + ((y * 0xe0) / 0xff);
+			
+	return ((y & 0xff) ^ (GetCurrentFrame() & 3));
+
+}
+
+static UINT8 __fastcall Zeropnt68KReadByte(UINT32 a)
 {
 	switch (a) {
 		case 0x800018: {
@@ -678,54 +704,27 @@ UINT8 __fastcall Zeropnt68KReadByte(UINT32 a)
 		}
 		
 		case 0x800170: {
-			INT32 y = BurnGunReturnY(1);
-			
-			y = 0x18 + ((y * 0xe0) / 0xff);
-			
-			return ((y & 0xff) ^ (GetCurrentFrame() & 1));
+			return GetGunY(1);
 		}
 		
 		case 0x800174: {
-			INT32 x = BurnGunReturnX(1);
-			
-			x = x * 384 / 256;
-			if (x < 0x160) {
-				x = 0x30 + (x * 0xd0 / 0x15f);
-			} else {
-				x = ((x - 0x160) * 0x20) / 0x1f;
-			}
-			
-			return ((x & 0xff) ^ (GetCurrentFrame() & 1));
+			return GetGunX(1);
 		}
 		
 		case 0x800178: {
-			INT32 y = BurnGunReturnY(0);
-			
-			y = 0x18 + ((y * 0xe0) / 0xff);
-			
-			return ((y & 0xff) ^ (GetCurrentFrame() & 1));
+			return GetGunY(0);
 		}
 		
 		case 0x80017c: {
-			INT32 x = BurnGunReturnX(0);
-			
-			x = x * 384 / 256;
-			if (x < 0x160) {
-				x = 0x30 + (x * 0xd0 / 0x15f);
-			} else {
-				x = ((x - 0x160) * 0x20) / 0x1f;
-			}
-			
-			return ((x & 0xff) ^ (GetCurrentFrame() & 1));
-		
+			return GetGunX(0);
 		}
 		
 		case 0x800189: {
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		}
 		
 		case 0x80018c: {
-			return BurnYM3812Read(0);
+			return BurnYM3812Read(0, 0);
 		}
 		
 		default: {
@@ -736,21 +735,21 @@ UINT8 __fastcall Zeropnt68KReadByte(UINT32 a)
 	return 0;
 }
 
-void __fastcall Zeropnt68KWriteByte(UINT32 a, UINT8 d)
+static void __fastcall Zeropnt68KWriteByte(UINT32 a, UINT8 d)
 {
 	switch (a) {
 		case 0x800189: {
-			MSM6295Command(0, d);
+			MSM6295Write(0, d);
 			return;
 		}
 		
 		case 0x80018a: {
-			BurnYM3812Write(1, d);
+			BurnYM3812Write(0, 1, d);
 			return;
 		}
 		
 		case 0x80018c: {
-			BurnYM3812Write(0, d);
+			BurnYM3812Write(0, 0, d);
 			return;
 		}
 		
@@ -766,7 +765,7 @@ void __fastcall Zeropnt68KWriteByte(UINT32 a, UINT8 d)
 	}
 }
 
-UINT16 __fastcall Zeropnt68KReadWord(UINT32 a)
+static UINT16 __fastcall Zeropnt68KReadWord(UINT32 a)
 {
 	switch (a) {
 		default: {
@@ -777,9 +776,10 @@ UINT16 __fastcall Zeropnt68KReadWord(UINT32 a)
 	return 0;
 }
 
-void __fastcall Zeropnt68KWriteWord(UINT32 a, UINT16 d)
+static void __fastcall Zeropnt68KWriteWord(UINT32 a, UINT16 d)
 {
 	switch (a) {
+		case 0x000000:
 		case 0x800030: {
 			// NOP???
 			return;
@@ -826,7 +826,7 @@ void __fastcall Zeropnt68KWriteWord(UINT32 a, UINT16 d)
 	}
 }
 
-UINT8 __fastcall Zeropnt268KReadByte(UINT32 a)
+static UINT8 __fastcall Zeropnt268KReadByte(UINT32 a)
 {
 	switch (a) {
 		case 0x800019: {
@@ -834,57 +834,31 @@ UINT8 __fastcall Zeropnt268KReadByte(UINT32 a)
 		}
 		
 		case 0x800025: {
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		}
 		
 		case 0x80002d: {
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 		}
 		
 		case 0x800031: {
-			return MSM6295ReadStatus(1);
+			return MSM6295Read(1);
 		}
 		
 		case 0x800140: {
-			INT32 y = BurnGunReturnY(1);
-			
-			y = 0x18 + ((y * 0xe0) / 0xff);
-			
-			return ((y & 0xff) ^ (GetCurrentFrame() & 1)) + 0x08;
+			return GetGunY(1) + 0x08;
 		}
 		
 		case 0x800144: {
-			INT32 x = BurnGunReturnX(1);
-			
-			x = x * 384 / 256;
-			if (x < 0x160) {
-				x = 0x30 + (x * 0xd0 / 0x15f);
-			} else {
-				x = ((x - 0x160) * 0x20) / 0x1f;
-			}
-			
-			return ((x & 0xff) ^ (GetCurrentFrame() & 1)) - 0x08;
+			return GetGunX(1) - 0x08;
 		}
 		
 		case 0x800148: {
-			INT32 y = BurnGunReturnY(0);
-			
-			y = 0x18 + ((y * 0xe0) / 0xff);
-			
-			return ((y & 0xff) ^ (GetCurrentFrame() & 1)) + 0x08;
+			return GetGunY(0) + 0x08;
 		}
 		
 		case 0x80014c: {
-			INT32 x = BurnGunReturnX(0);
-			
-			x = x * 384 / 256;
-			if (x < 0x160) {
-				x = 0x30 + (x * 0xd0 / 0x15f);
-			} else {
-				x = ((x - 0x160) * 0x20) / 0x1f;
-			}
-			
-			return ((x & 0xff) ^ (GetCurrentFrame() & 1)) - 0x08;
+			return GetGunX(0) - 0x08;
 		}
 		
 		case 0x800150: {
@@ -907,11 +881,11 @@ UINT8 __fastcall Zeropnt268KReadByte(UINT32 a)
 	return 0;
 }
 
-void __fastcall Zeropnt268KWriteByte(UINT32 a, UINT8 d)
+static void __fastcall Zeropnt268KWriteByte(UINT32 a, UINT8 d)
 {
 	switch (a) {
 		case 0x800025: {
-			MSM6295Command(0, d);
+			MSM6295Write(0, d);
 			return;
 		}
 		
@@ -926,7 +900,7 @@ void __fastcall Zeropnt268KWriteByte(UINT32 a, UINT8 d)
 		}
 		
 		case 0x800031: {
-			MSM6295Command(1, d);
+			MSM6295Write(1, d);
 			return;
 		}
 		
@@ -952,7 +926,7 @@ void __fastcall Zeropnt268KWriteByte(UINT32 a, UINT8 d)
 	}
 }
 
-UINT16 __fastcall Zeropnt268KReadWord(UINT32 a)
+static UINT16 __fastcall Zeropnt268KReadWord(UINT32 a)
 {
 	switch (a) {
 		default: {
@@ -963,7 +937,7 @@ UINT16 __fastcall Zeropnt268KReadWord(UINT32 a)
 	return 0;
 }
 
-void __fastcall Zeropnt268KWriteWord(UINT32 a, UINT16 d)
+static void __fastcall Zeropnt268KWriteWord(UINT32 a, UINT16 d)
 {
 	switch (a) {
 		case 0x80010c: {
@@ -1013,7 +987,7 @@ void __fastcall Zeropnt268KWriteWord(UINT32 a, UINT16 d)
 	}
 }
 
-UINT32 __fastcall Zeropnt268KReadLong(UINT32 a)
+static UINT32 __fastcall Zeropnt268KReadLong(UINT32 a)
 {
 	switch (a) {
 		default: {
@@ -1024,7 +998,7 @@ UINT32 __fastcall Zeropnt268KReadLong(UINT32 a)
 	return 0;
 }
 
-void __fastcall Zeropnt268KWriteLong(UINT32 a, UINT32 d)
+static void __fastcall Zeropnt268KWriteLong(UINT32 a, UINT32 d)
 {
 	switch (a) {
 		default: {
@@ -1103,23 +1077,23 @@ static INT32 BurglarxInit()
 	// Setup the 68000 emulation
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KRom           , 0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, SM_RAM);
-	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, SM_RAM);
-	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, SM_RAM);
-	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, SM_RAM);
-	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, SM_RAM);
-	SekMapMemory(Drv68KRam           , 0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KRom           , 0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, MAP_RAM);
+	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, MAP_RAM);
+	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, MAP_RAM);
+	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, MAP_RAM);
+	SekMapMemory(Drv68KRam           , 0xff0000, 0xffffff, MAP_RAM);
 	SekSetReadWordHandler(0, Burglarx68KReadWord);
 	SekSetWriteWordHandler(0, Burglarx68KWriteWord);
 	SekSetReadByteHandler(0, Burglarx68KReadByte);
 	SekSetWriteByteHandler(0, Burglarx68KWriteByte);
 	SekClose();
 	
-	BurnYM3812Init(3579545, NULL, &BurglarxSynchroniseStream, 0);
-	BurnTimerAttachSekYM3812(16000000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, NULL, &BurglarxSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&SekConfig, 16000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
 	
 	// Setup the OKIM6295 emulation
 	MSM6295Init(0, 1056000 / 132, 1);
@@ -1186,23 +1160,23 @@ static INT32 ZeropntInit()
 	// Setup the 68000 emulation
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KRom           , 0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, SM_RAM);
-	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, SM_RAM);
-	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, SM_RAM);
-	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, SM_RAM);
-	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, SM_RAM);
-	SekMapMemory(Drv68KRam           , 0xef0000, 0xefffff, SM_RAM);
+	SekMapMemory(Drv68KRom           , 0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, MAP_RAM);
+	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, MAP_RAM);
+	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, MAP_RAM);
+	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, MAP_RAM);
+	SekMapMemory(Drv68KRam           , 0xef0000, 0xefffff, MAP_RAM);
 	SekSetReadWordHandler(0, Zeropnt68KReadWord);
 	SekSetWriteWordHandler(0, Zeropnt68KWriteWord);
 	SekSetReadByteHandler(0, Zeropnt68KReadByte);
 	SekSetWriteByteHandler(0, Zeropnt68KWriteByte);
 	SekClose();
 	
-	BurnYM3812Init(3579545, NULL, &BurglarxSynchroniseStream, 0);
-	BurnTimerAttachSekYM3812(16000000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3579545, NULL, &BurglarxSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&SekConfig, 16000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
 	
 	// Setup the OKIM6295 emulation
 	MSM6295Init(0, 1056000 / 132, 1);
@@ -1291,14 +1265,14 @@ static INT32 Zeropnt2Init()
 	// Setup the 68000 emulation
 	SekInit(0, 0x68EC020);
 	SekOpen(0);
-	SekMapMemory(Drv68KRom           , 0x000000, 0x1fffff, SM_ROM);
-	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, SM_RAM);
-	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, SM_RAM);
-	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, SM_RAM);
-	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, SM_RAM);
-	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, SM_RAM);
-	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, SM_RAM);
-	SekMapMemory(Drv68KRam           , 0xfe0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KRom           , 0x000000, 0x1fffff, MAP_ROM);
+	SekMapMemory(DrvVideo1Ram        , 0x904000, 0x907fff, MAP_RAM);
+	SekMapMemory(DrvVideo2Ram        , 0x908000, 0x90bfff, MAP_RAM);
+	SekMapMemory(DrvVideo0Ram        , 0x90c000, 0x90ffff, MAP_RAM);
+	SekMapMemory(Drv68KRam + 0x10000 , 0x920000, 0x923fff, MAP_RAM);
+	SekMapMemory(DrvSpriteRam        , 0x930000, 0x9307ff, MAP_RAM);
+	SekMapMemory(DrvPaletteRam       , 0x940000, 0x947fff, MAP_RAM);
+	SekMapMemory(Drv68KRam           , 0xfe0000, 0xffffff, MAP_RAM);
 	SekSetReadWordHandler(0, Zeropnt268KReadWord);
 	SekSetWriteWordHandler(0, Zeropnt268KWriteWord);
 	SekSetReadByteHandler(0, Zeropnt268KReadByte);
@@ -1315,8 +1289,8 @@ static INT32 Zeropnt2Init()
 	
 	MSM6295Init(0, 1056000 / 132, 1);
 	MSM6295Init(1, 3960000 / 132, 1);
-	MSM6295SetRoute(0, 0.40, BURN_SND_ROUTE_LEFT);
-	MSM6295SetRoute(0, 0.20, BURN_SND_ROUTE_RIGHT);
+	MSM6295SetRoute(0, 0.40, BURN_SND_ROUTE_BOTH);
+	MSM6295SetRoute(1, 0.20, BURN_SND_ROUTE_BOTH);
 	
 	GenericTilesInit();
 	
@@ -1332,7 +1306,7 @@ static INT32 CommonExit()
 {
 	SekExit();
 	
-	MSM6295Exit(0);
+	MSM6295Exit();
 	
 	GenericTilesExit();
 	if (nBurnGunNumPlayers) BurnGunExit();
@@ -1367,7 +1341,6 @@ static INT32 Zeropnt2Exit()
 	INT32 nRet = CommonExit();
 	
 	BurnYM2151Exit();
-	MSM6295Exit(1);
 	
 	EEPROMExit();
 	
@@ -1550,7 +1523,7 @@ static void DrvRenderLayer(INT32 Layer)
 			if (y < -16) y += 1024;
 			
 			y -= 15;
-			if (Layer == 0) x -= 0x32;
+			if (Layer == 0) x -= 0x31;
 			if (Layer == 1) x -= 0x30;
 			if (Layer == 2) x -= 0x2e;
 			
@@ -1700,7 +1673,7 @@ static void Zeropnt2CalcPalette()
 	}
 }
 
-static void DrvDraw()
+static INT32 DrvDraw()
 {
 	BurnTransferClear();
 	DrvCalcPalette();
@@ -1709,22 +1682,24 @@ static void DrvDraw()
 		pTransDraw[i] = 0x1f00;	
 	}
 	
-	DrvRenderLayer(0);
-	DrvRenderSprites(0);
-	DrvRenderLayer(1);
-	DrvRenderSprites(1);
-	DrvRenderLayer(2);
-	DrvRenderSprites(2);
-	DrvRenderSprites(3);
+	if (nSpriteEnable & 1) DrvRenderSprites(0);  // why does spri 0 and 3 need to be swapped?
+	if (nBurnLayer & 1) DrvRenderLayer(0);
+	if (nSpriteEnable & 4) DrvRenderSprites(2);
+	if (nBurnLayer & 2) DrvRenderLayer(1);
+	if (nSpriteEnable & 2) DrvRenderSprites(1);
+	if (nBurnLayer & 4) DrvRenderLayer(2);
+	if (nSpriteEnable & 8) DrvRenderSprites(3);
 	
 	BurnTransferCopy(DrvPalette);
 	
 	for (INT32 i = 0; i < nBurnGunNumPlayers; i++) {
 		BurnGunDrawTarget(i, BurnGunX[i] >> 8, BurnGunY[i] >> 8);
 	}
+
+	return 0;
 }
 
-static void Zeropnt2Draw()
+static INT32 Zeropnt2Draw()
 {
 	BurnTransferClear();
 	Zeropnt2CalcPalette();
@@ -1733,19 +1708,21 @@ static void Zeropnt2Draw()
 		pTransDraw[i] = 0x1f00;	
 	}
 	
-	Zeropnt2RenderSprites(3);
-	Zeropnt2RenderLayer(0);
-	Zeropnt2RenderSprites(2);
-	Zeropnt2RenderLayer(1);
-	Zeropnt2RenderSprites(1);
-	Zeropnt2RenderLayer(2);	
-	Zeropnt2RenderSprites(0);
+	if (nSpriteEnable & 1) Zeropnt2RenderSprites(0); // why does spri 0 and 3 need to be swapped?
+	if (nBurnLayer & 1) Zeropnt2RenderLayer(0);
+	if (nSpriteEnable & 2) Zeropnt2RenderSprites(2);
+	if (nBurnLayer & 2) Zeropnt2RenderLayer(1);
+	if (nSpriteEnable & 4) Zeropnt2RenderSprites(1);
+	if (nBurnLayer & 4) Zeropnt2RenderLayer(2);
+	if (nSpriteEnable & 8) Zeropnt2RenderSprites(3);
 	
 	BurnTransferCopy(DrvPalette);
 	
 	for (INT32 i = 0; i < nBurnGunNumPlayers; i++) {
 		BurnGunDrawTarget(i, BurnGunX[i] >> 8, BurnGunY[i] >> 8);
 	}
+
+	return 0;
 }
 
 static INT32 DrvFrame()
@@ -1761,9 +1738,11 @@ static INT32 DrvFrame()
 	
 	SekOpen(0);
 	BurnTimerEndFrameYM3812(nCyclesTotal[0]);
-	SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
-	BurnYM3812Update(pBurnSoundOut, nBurnSoundLen);
-	MSM6295Render(0, pBurnSoundOut, nBurnSoundLen);	
+	SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
+	if (pBurnSoundOut) {
+		BurnYM3812Update(pBurnSoundOut, nBurnSoundLen);
+		MSM6295Render(pBurnSoundOut, nBurnSoundLen);
+	}
 	SekClose();
 	
 	if (pBurnDraw) DrvDraw();
@@ -1794,15 +1773,14 @@ static INT32 Zeropnt2Frame()
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
 		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		if (i == 9) SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
+		if (i == 9) SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
 		SekClose();
 
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen / nInterleave;
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			MSM6295Render(0, pSoundBuf, nSegmentLength);
-			MSM6295Render(1, pSoundBuf, nSegmentLength);
+			MSM6295Render(pSoundBuf, nSegmentLength);
 			nSoundBufferPos += nSegmentLength;
 		}	
 	}
@@ -1813,8 +1791,7 @@ static INT32 Zeropnt2Frame()
 
 		if (nSegmentLength) {
 			BurnYM2151Render(pSoundBuf, nSegmentLength);
-			MSM6295Render(0, pSoundBuf, nSegmentLength);
-			MSM6295Render(1, pSoundBuf, nSegmentLength);
+			MSM6295Render(pSoundBuf, nSegmentLength);
 		}
 	}
 	
@@ -1841,7 +1818,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
+
+		if (nBurnGunNumPlayers) BurnGunScan();
 
 		// Scan critical driver variables
 		SCAN_VAR(nCyclesDone);
@@ -1891,8 +1870,7 @@ static INT32 Zeropnt2Scan(INT32 nAction, INT32 *pnMin)
 	EEPROMScan(nAction, pnMin);
 	
 	if (nAction & ACB_DRIVER_DATA) {
-		BurnYM2151Scan(nAction);
-		MSM6295Scan(1, nAction);
+		BurnYM2151Scan(nAction, pnMin);
 	}
 	
 	if (nAction & ACB_WRITE) {
@@ -1907,8 +1885,8 @@ struct BurnDriver BurnDrvBurglarx = {
 	"Burglar X\0", NULL, "Unico", "Unico",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MAZE, 0,
-	NULL, BurglarxRomInfo, BurglarxRomName, NULL, NULL, BurglarxInputInfo, BurglarxDIPInfo,
-	BurglarxInit, DrvExit, DrvFrame, NULL, BurglarxScan,
+	NULL, BurglarxRomInfo, BurglarxRomName, NULL, NULL, NULL, NULL, BurglarxInputInfo, BurglarxDIPInfo,
+	BurglarxInit, DrvExit, DrvFrame, DrvDraw, BurglarxScan,
 	NULL, 0x2000, 384, 224, 4, 3
 };
 
@@ -1917,8 +1895,8 @@ struct BurnDriver BurnDrvZeropnt = {
 	"Zero Point (set 1)\0", NULL, "Unico", "Unico",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, ZeropntRomInfo, ZeropntRomName, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
-	ZeropntInit, DrvExit, DrvFrame, NULL, ZeropntScan,
+	NULL, ZeropntRomInfo, ZeropntRomName, NULL, NULL, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
+	ZeropntInit, DrvExit, DrvFrame, DrvDraw, ZeropntScan,
 	NULL, 0x2000, 384, 224, 4, 3
 };
 
@@ -1927,8 +1905,8 @@ struct BurnDriver BurnDrvZeropntj = {
 	"Zero Point (Japan)\0", NULL, "Unico", "Unico",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, ZeropntjRomInfo, ZeropntjRomName, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
-	ZeropntInit, DrvExit, DrvFrame, NULL, ZeropntScan,
+	NULL, ZeropntjRomInfo, ZeropntjRomName, NULL, NULL, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
+	ZeropntInit, DrvExit, DrvFrame, DrvDraw, ZeropntScan,
 	NULL, 0x2000, 384, 224, 4, 3
 };
 
@@ -1937,8 +1915,8 @@ struct BurnDriver BurnDrvZeropnta = {
 	"Zero Point (set 2)\0", NULL, "Unico", "Unico",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, ZeropntaRomInfo, ZeropntaRomName, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
-	ZeropntInit, DrvExit, DrvFrame, NULL, ZeropntScan,
+	NULL, ZeropntaRomInfo, ZeropntaRomName, NULL, NULL, NULL, NULL, ZeropntInputInfo, ZeropntDIPInfo,
+	ZeropntInit, DrvExit, DrvFrame, DrvDraw, ZeropntScan,
 	NULL, 0x2000, 384, 224, 4, 3
 };
 
@@ -1947,7 +1925,7 @@ struct BurnDriver BurnDrvZeropnt2 = {
 	"Zero Point 2\0", NULL, "Unico", "Unico",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
-	NULL, Zeropnt2RomInfo, Zeropnt2RomName, NULL, NULL, ZeropntInputInfo, Zeropnt2DIPInfo,
-	Zeropnt2Init, Zeropnt2Exit, Zeropnt2Frame, NULL, Zeropnt2Scan,
+	NULL, Zeropnt2RomInfo, Zeropnt2RomName, NULL, NULL, NULL, NULL, ZeropntInputInfo, Zeropnt2DIPInfo,
+	Zeropnt2Init, Zeropnt2Exit, Zeropnt2Frame, Zeropnt2Draw, Zeropnt2Scan,
 	NULL, 0x2000, 384, 224, 4, 3
 };

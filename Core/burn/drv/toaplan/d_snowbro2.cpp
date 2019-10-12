@@ -1,3 +1,6 @@
+// FB Alpha Snow Bros. 2 driver module
+// Driver and emulation by Jan Klaassen
+
 #include "toaplan.h"
 // Snow Bros. 2
 
@@ -33,12 +36,12 @@ static struct BurnInputInfo snowbro2InputList[] = {
 	{"P2 Coin",		BIT_DIGITAL,	DrvButton + 4,	"p2 coin"},
 	{"P2 Start",	BIT_DIGITAL,	DrvButton + 6,	"p2 start"},
 
-	{"P2 Up",		BIT_DIGITAL,	DrvJoy3 + 0,	"p2 up"},
-	{"P2 Down",		BIT_DIGITAL,	DrvJoy3 + 1,	"p2 down"},
-	{"P2 Left",		BIT_DIGITAL,	DrvJoy3 + 2,	"p2 left"},
-	{"P2 Right",	BIT_DIGITAL,	DrvJoy3 + 3,	"p2 right"},
-	{"P2 Button 1",	BIT_DIGITAL,	DrvJoy3 + 4,	"p2 fire 1"},
-	{"P2 Button 2",	BIT_DIGITAL,	DrvJoy3 + 5,	"p2 fire 2"},
+	{"P2 Up",		BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"},
+	{"P2 Down",		BIT_DIGITAL,	DrvJoy2 + 1,	"p2 down"},
+	{"P2 Left",		BIT_DIGITAL,	DrvJoy2 + 2,	"p2 left"},
+	{"P2 Right",	BIT_DIGITAL,	DrvJoy2 + 3,	"p2 right"},
+	{"P2 Button 1",	BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"},
+	{"P2 Button 2",	BIT_DIGITAL,	DrvJoy2 + 5,	"p2 fire 2"},
 
 	{"P3 Start",	BIT_DIGITAL,	DrvJoy3 + 6,	"p3 start"},
 
@@ -199,9 +202,9 @@ UINT8 __fastcall snowbro2ReadByte(UINT32 sekAddress)
 			return DrvInput[5];
 
 		case 0x600001:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0x500003:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		default: {
 //			printf("Attempt to read byte value of location %x\n", sekAddress);
@@ -238,9 +241,9 @@ UINT16 __fastcall snowbro2ReadWord(UINT32 sekAddress)
 			return DrvInput[4];
 
 		case 0x600000:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 		case 0x500002:
-			return BurnYM2151ReadStatus();
+			return BurnYM2151Read();
 
 		default: {
 // 			printf("Attempt to read word value of location %x\n", sekAddress);
@@ -253,7 +256,7 @@ void __fastcall snowbro2WriteByte(UINT32 sekAddress, UINT8 byteValue)
 {
 	switch (sekAddress) {
 		case 0x600001:
-			MSM6295Command(0, byteValue);
+			MSM6295Write(0, byteValue);
 			break;
 
 		case 0x500001:
@@ -290,18 +293,10 @@ void __fastcall snowbro2WriteWord(UINT32 sekAddress, UINT16 wordValue)
 			break;
 
 		case 0x600000:
-			MSM6295Command(0, wordValue & 0xFF);
+			MSM6295Write(0, wordValue & 0xFF);
 			break;
 		case 0x700030: {
-			INT32 nBankOffset = (wordValue & 0x01) << 18;
-			MSM6295SampleInfo[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleData[0][0] = MSM6295ROM + nBankOffset;
-			MSM6295SampleInfo[0][1] = MSM6295ROM + nBankOffset + 0x0100;
-			MSM6295SampleData[0][1] = MSM6295ROM + nBankOffset + 0x10000;
-			MSM6295SampleInfo[0][2] = MSM6295ROM + nBankOffset + 0x0200;
-			MSM6295SampleData[0][2] = MSM6295ROM + nBankOffset + 0x20000;
-			MSM6295SampleInfo[0][3] = MSM6295ROM + nBankOffset + 0x0300;
-			MSM6295SampleData[0][3] = MSM6295ROM + nBankOffset + 0x30000;
+			MSM6295SetBank(0, MSM6295ROM + ((wordValue & 0x01) << 18), 0x00000, 0x3ffff);
 			break;
 		}
 
@@ -341,6 +336,8 @@ static INT32 DrvDoReset()
 
 	MSM6295Reset(0);
 	BurnYM2151Reset();
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -424,7 +421,7 @@ static INT32 DrvFrame()
 
 			ToaBufferGP9001Sprites();
 
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
@@ -518,8 +515,8 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		MSM6295Scan(0, nAction);
-		BurnYM2151Scan(nAction);
+		MSM6295Scan(nAction, pnMin);
+		BurnYM2151Scan(nAction, pnMin);
 
 		ToaScanGP9001(nAction, pnMin);
 
@@ -555,12 +552,12 @@ static INT32 DrvInit()
 
 	{
 		SekInit(0, 0x68000);										// Allocate 68000
-	    SekOpen(0);
+		SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,		0x000000, 0x07FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,		0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(RamPal,	0x400000, 0x400FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,		0x000000, 0x07FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(RamPal,	0x400000, 0x400FFF, MAP_RAM);	// Palette RAM
 
 		SekSetReadWordHandler(0, snowbro2ReadWord);
 		SekSetReadByteHandler(0, snowbro2ReadByte);
@@ -613,8 +610,8 @@ struct BurnDriver BurnDrvSnowbro2 = {
 	"snowbro2", NULL, NULL, NULL, "1994",
 	"Snow Bros. 2 - with new elves\0", NULL, "[Toaplan] Hanafram", "Toaplan GP9001 based",
 	L"Snow Bros. 2 - with new elves\0\u304A\u3066\u3093\u304D\u30D1\u30E9\u30C0\u30A4\u30B9\0\u96EA\u4EBA\u5144\u5F1F\uFF12\0\uB208\uC0AC\uB78C\uD615\uC81C\uFF12\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING, 4, HARDWARE_TOAPLAN_68K_ONLY, GBF_PLATFORM, 0,
-	NULL, snowbro2RomInfo, snowbro2RomName, NULL, NULL, snowbro2InputInfo, snowbro2DIPInfo,
+	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 4, HARDWARE_TOAPLAN_68K_ONLY, GBF_PLATFORM, 0,
+	NULL, snowbro2RomInfo, snowbro2RomName, NULL, NULL, NULL, NULL, snowbro2InputInfo, snowbro2DIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };

@@ -208,7 +208,8 @@ static PAIR ea; 		/* effective address */
 #define HD6309_LDS		32	/* set when LDS occured at least once */
 
 /* public globals */
-static int hd6309_ICount;
+static int hd6309_ICount = 0;
+static int hd6309_startcycles = 0;
 
 /* these are re-defined in hd6309.h TO RAM, ROM or functions in cpuintrf.c */
 #define RM(mAddr)		HD6309_RDMEM(mAddr)
@@ -437,6 +438,8 @@ static void CHECK_IRQ_LINES( void )
 		CC |= CC_IF | CC_II;			/* inhibit FIRQ and IRQ */
 		PCD=RM16(0xfff6);
 		CHANGE_PC;
+		if (hd6309.irq_hold[HD6309_FIRQ_LINE])
+			hd6309_set_irq_line(HD6309_FIRQ_LINE, 0);
 //		(void)(*hd6309.irq_callback)(HD6309_FIRQ_LINE);
 	}
 	else
@@ -471,6 +474,8 @@ static void CHECK_IRQ_LINES( void )
 		CC |= CC_II;					/* inhibit IRQ */
 		PCD=RM16(0xfff8);
 		CHANGE_PC;
+		if (hd6309.irq_hold[HD6309_IRQ_LINE])
+			hd6309_set_irq_line(HD6309_IRQ_LINE, 0);
 //		(void)(*hd6309.irq_callback)(HD6309_IRQ_LINE);
 	}
 }
@@ -560,6 +565,10 @@ static void hd6309_exit(void)
  ****************************************************************************/
 void hd6309_set_irq_line(int irqline, int state)
 {
+	int hold = 0;
+
+	if (state == 2) { hold = 1; state = 1; }
+
 	if (irqline == HD6309_INPUT_LINE_NMI)
 	{
 		if (hd6309.nmi_state == state) return;
@@ -605,6 +614,7 @@ void hd6309_set_irq_line(int irqline, int state)
 	{
 //		LOG(("HD6309#%d set_irq_line %d, %d (PC=%4.4X)\n", cpu_getactivecpu(), irqline, state, pPC.d));
 		hd6309.irq_state[irqline] = state;
+		hd6309.irq_hold[irqline] = hold;
 		if (state == HD6309_CLEAR_LINE) return;
 		CHECK_IRQ_LINES();
 	}
@@ -613,11 +623,21 @@ void hd6309_set_irq_line(int irqline, int state)
 /* includes the actual opcode implementations */
 #include "6309ops.c"
 
+static int end_run = 0;
+
+int hd6309_segmentcycles()
+{
+	return hd6309_startcycles - hd6309_ICount;
+}
+
 /* execute instructions on this CPU until icount expires */
 int hd6309_execute(int cycles)	/* NS 970908 */
 {
+	hd6309_startcycles = cycles;
 	hd6309_ICount = cycles - hd6309.extra_cycles;
 	hd6309.extra_cycles = 0;
+
+	end_run = 0;
 
 	if (hd6309.int_state & (HD6309_CWAI | HD6309_SYNC))
 	{
@@ -901,13 +921,26 @@ int hd6309_execute(int cycles)	/* NS 970908 */
 
 			hd6309_ICount -= cycle_counts_page0[hd6309.ireg];
 
-		} while( hd6309_ICount > 0 );
+		} while( hd6309_ICount > 0 && !end_run );
 
 		hd6309_ICount -= hd6309.extra_cycles;
 		hd6309.extra_cycles = 0;
 	}
 
-	return cycles - hd6309_ICount;	 /* NS 970908 */
+	cycles = hd6309_startcycles - hd6309_ICount;
+	hd6309_ICount = hd6309_startcycles = 0;
+
+	return cycles;
+}
+
+void HD6309RunEnd()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_HD6309Initted) bprintf(PRINT_ERROR, _T("HD6309RunEnd called without init\n"));
+//	if (nActiveCPU == -1) bprintf(PRINT_ERROR, _T("HD6309RunEnd called when no CPU open\n"));
+#endif
+
+	end_run = 1;
 }
 
 HD6309_INLINE void fetch_effective_address( void )

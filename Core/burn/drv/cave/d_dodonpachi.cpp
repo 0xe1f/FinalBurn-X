@@ -15,7 +15,6 @@ static UINT8 *Ram01;
 static UINT8 *DefaultEEPROM = NULL;
 
 static UINT8 DrvReset = 0;
-static UINT8 bDrawScreen;
 static bool bVBlank;
 
 static INT8 nVideoIRQ;
@@ -28,6 +27,7 @@ static INT32 nCurrentCPU;
 static INT32 nCyclesDone[2];
 static INT32 nCyclesTotal[2];
 static INT32 nCyclesSegment;
+static INT32 nCyclesExtra;
 
 static struct BurnInputInfo ddonpachInputList[] = {
 	{"P1 Coin",		BIT_DIGITAL,	DrvJoy1 + 8,	"p1 coin"},
@@ -62,7 +62,7 @@ STDINPUTINFO(ddonpach)
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall ddonpachReadByte(UINT32 sekAddress)
@@ -176,7 +176,6 @@ void __fastcall ddonpachWriteWord(UINT32 sekAddress, UINT16 wordValue)
 			nCaveYOffset = wordValue;
 			return;
 		case 0x800008:
-			CaveSpriteBuffer();
 			nCaveSpriteBank = wordValue;
 			return;
 
@@ -274,6 +273,9 @@ static INT32 DrvDoReset()
 	nUnknownIRQ = 1;
 
 	nIRQPending = 0;
+	nCyclesExtra = 0;
+
+	HiscoreReset();
 
 	return 0;
 }
@@ -283,30 +285,19 @@ static INT32 DrvDraw()
 	CavePalUpdate8Bit(0, 128);				// Update the palette
 	CaveClearScreen(CavePalette[0x7F00]);
 
-	if (bDrawScreen) {
-//		CaveGetBitmap();
+	CaveTileRender(1);					    // Render tiles
 
-		CaveTileRender(1);					// Render tiles
-	}
-
-	return 0;
-}
-
-inline static INT32 CheckSleep(INT32)
-{
 	return 0;
 }
 
 static INT32 DrvFrame()
 {
 	INT32 nCyclesVBlank;
-	INT32 nInterleave = 8;
+	INT32 nInterleave = 32;
 
 	if (DrvReset) {														// Reset machine
 		DrvDoReset();
 	}
-
-//	bprintf(PRINT_NORMAL, "\n");
 
 	// Compile digital inputs
 	DrvInput[0] = 0x0000;  												// Player 1
@@ -323,7 +314,8 @@ static INT32 DrvFrame()
 	nCyclesTotal[0] = (INT32)((INT64)16000000 * nBurnCPUSpeedAdjust / (0x0100 * CAVE_REFRESHRATE));
 	nCyclesDone[0] = 0;
 
-	nCyclesVBlank = nCyclesTotal[0] - (INT32)((nCyclesTotal[0] * CAVE_VBLANK_LINES) / 271.5);
+	// this vbl timing gives 2 frames response time
+	nCyclesVBlank = nCyclesTotal[0] - 1300; //(INT32)((nCyclesTotal[0] * CAVE_VBLANK_LINES) / 271.5);
 	bVBlank = false;
 
 	INT32 nSoundBufferPos = 0;
@@ -348,31 +340,22 @@ static INT32 DrvFrame()
 		nNext = i * nCyclesTotal[nCurrentCPU] / nInterleave;
 
 		// See if we need to trigger the VBlank interrupt
-		if (!bVBlank && nNext > nCyclesVBlank) {
+		if (!bVBlank && nNext >= nCyclesVBlank) {
 			if (nCyclesDone[nCurrentCPU] < nCyclesVBlank) {
 				nCyclesSegment = nCyclesVBlank - nCyclesDone[nCurrentCPU];
-				if (!CheckSleep(nCurrentCPU)) {							// See if this CPU is busywaiting
-					nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-				} else {
-					nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-				}
-			}
-
-			if (pBurnDraw != NULL) {
-				DrvDraw();												// Draw screen if needed
+				nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
 			}
 
 			bVBlank = true;
 			nVideoIRQ = 0;
 			UpdateIRQStatus();
+
+			CaveSpriteBuffer();
 		}
 
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
-		if (!CheckSleep(nCurrentCPU)) {									// See if this CPU is busywaiting
-			nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment);
-		} else {
-			nCyclesDone[nCurrentCPU] += SekIdle(nCyclesSegment);
-		}
+		nCyclesDone[nCurrentCPU] += SekRun(nCyclesSegment - nCyclesExtra);
+		nCyclesExtra = 0;
 
 		nCurrentCPU = -1;
 	}
@@ -388,7 +371,12 @@ static INT32 DrvFrame()
 		}
 	}
 
+	nCyclesExtra = SekTotalCycles() - nCyclesTotal[0];
 	SekClose();
+
+	if (pBurnDraw != NULL) {
+		DrvDraw();												// Draw screen if needed
+	}
 
 	return 0;
 }
@@ -460,7 +448,7 @@ static INT32 LoadRoms()
 	// Load YMZ280B data
 	BurnLoadRom(YMZ280BROM + 0x000000, 9, 1);
 	BurnLoadRom(YMZ280BROM + 0x200000, 10, 1);
-	
+
 	BurnLoadRom(DefaultEEPROM, 11, 1);
 
 	return 0;
@@ -487,7 +475,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -495,8 +483,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(bVBlank);
 
 		CaveScanGraphics();
-
-		SCAN_VAR(DrvInput);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -535,18 +521,18 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,						0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,						0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,				0x400000, 0x40FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],			0x500000, 0x507FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[1],			0x600000, 0x607FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x700000, 0x703FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x704000, 0x707FFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x708000, 0x70BFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x70C000, 0x70FFFF, SM_RAM);
+		SekMapMemory(Rom01,						0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,						0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,				0x400000, 0x40FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],			0x500000, 0x507FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[1],			0x600000, 0x607FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x700000, 0x703FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x704000, 0x707FFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x708000, 0x70BFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2] + 0x4000,	0x70C000, 0x70FFFF, MAP_RAM);
 
-		SekMapMemory(CavePalSrc,				0xC00000, 0xC0FFFF, SM_ROM);	// Palette RAM (write goes through handler)
-		SekMapHandler(1,						0xC00000, 0xC0FFFF, SM_WRITE);	//
+		SekMapMemory(CavePalSrc,				0xC00000, 0xC0FFFF, MAP_ROM);	// Palette RAM (write goes through handler)
+		SekMapHandler(1,						0xC00000, 0xC0FFFF, MAP_WRITE);	//
 
 		SekSetReadWordHandler(0, ddonpachReadWord);
 		SekSetReadByteHandler(0, ddonpachReadByte);
@@ -568,11 +554,9 @@ static INT32 DrvInit()
 	CaveTileInitLayer(1, 0x400000, 8, 0x4000);
 	CaveTileInitLayer(2, 0x200000, 8, 0x4000);
 
-	YMZ280BInit(16934400, &TriggerSoundIRQ);
+	YMZ280BInit(16934400, &TriggerSoundIRQ, 0x400000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
-
-	bDrawScreen = true;
 
 	DrvDoReset(); // Reset machine
 
@@ -581,20 +565,20 @@ static INT32 DrvInit()
 
 // Rom information
 static struct BurnRomInfo ddonpachRomDesc[] = {
-	{ "b1.u27",       0x080000, 0xB5CDC8D3, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "b2.u26",       0x080000, 0x6BBB063A, BRF_ESS | BRF_PRG }, //  1
+	{ "b1.u27",       0x080000, 0xb5cdc8d3, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "b2.u26",       0x080000, 0x6bbb063a, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u50.bin",      0x200000, 0x14B260EC, BRF_GRA },			 //  2 Sprite data
-	{ "u51.bin",      0x200000, 0xE7BA8CCE, BRF_GRA },			 //  3
-	{ "u52.bin",      0x200000, 0x02492EE0, BRF_GRA },			 //  4
-	{ "u53.bin",      0x200000, 0xCB4C10F0, BRF_GRA },			 //  5
+	{ "u50.bin",      0x200000, 0x14b260ec, BRF_GRA },			 //  2 Sprite data
+	{ "u51.bin",      0x200000, 0xe7ba8cce, BRF_GRA },			 //  3
+	{ "u52.bin",      0x200000, 0x02492ee0, BRF_GRA },			 //  4
+	{ "u53.bin",      0x200000, 0xcb4c10f0, BRF_GRA },			 //  5
 
-	{ "u60.bin",      0x200000, 0x903096A7, BRF_GRA },			 //  6 Layer 0 Tile data
-	{ "u61.bin",      0x200000, 0xD89B7631, BRF_GRA },			 //  7 Layer 1 Tile data
-	{ "u62.bin",      0x200000, 0x292BFB6B, BRF_GRA },			 //  8 Layer 2 Tile data
+	{ "u60.bin",      0x200000, 0x903096a7, BRF_GRA },			 //  6 Layer 0 Tile data
+	{ "u61.bin",      0x200000, 0xd89b7631, BRF_GRA },			 //  7 Layer 1 Tile data
+	{ "u62.bin",      0x200000, 0x292bfb6b, BRF_GRA },			 //  8 Layer 2 Tile data
 
-	{ "u6.bin",       0x200000, 0x9DFDAFAF, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "u7.bin",       0x200000, 0x795B17D5, BRF_SND },			 // 10
+	{ "u6.bin",       0x200000, 0x9dfdafaf, BRF_SND },			 //  9 YMZ280B (AD)PCM data
+	{ "u7.bin",       0x200000, 0x795b17d5, BRF_SND },			 // 10
 	
 	{ "eeprom-ddonpach.bin", 0x0080, 0x315fb546, BRF_ESS | BRF_PRG },
 };
@@ -606,20 +590,20 @@ STD_ROM_FN(ddonpach)
 
 // Rom information
 static struct BurnRomInfo ddonpachjRomDesc[] = {
-	{ "u27.bin",      0x080000, 0x2432FF9B, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "u26.bin",      0x080000, 0x4F3A914A, BRF_ESS | BRF_PRG }, //  1
+	{ "u27.bin",      0x080000, 0x2432ff9b, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "u26.bin",      0x080000, 0x4f3a914a, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u50.bin",      0x200000, 0x14B260EC, BRF_GRA },			 //  2 Sprite data
-	{ "u51.bin",      0x200000, 0xE7BA8CCE, BRF_GRA },			 //  3
-	{ "u52.bin",      0x200000, 0x02492EE0, BRF_GRA },			 //  4
-	{ "u53.bin",      0x200000, 0xCB4C10F0, BRF_GRA },			 //  5
+	{ "u50.bin",      0x200000, 0x14b260ec, BRF_GRA },			 //  2 Sprite data
+	{ "u51.bin",      0x200000, 0xe7ba8cce, BRF_GRA },			 //  3
+	{ "u52.bin",      0x200000, 0x02492ee0, BRF_GRA },			 //  4
+	{ "u53.bin",      0x200000, 0xcb4c10f0, BRF_GRA },			 //  5
 
-	{ "u60.bin",      0x200000, 0x903096A7, BRF_GRA },			 //  6 Layer 0 Tile data
-	{ "u61.bin",      0x200000, 0xD89B7631, BRF_GRA },			 //  7 Layer 1 Tile data
-	{ "u62.bin",      0x200000, 0x292BFB6B, BRF_GRA },			 //  8 Layer 2 Tile data
+	{ "u60.bin",      0x200000, 0x903096a7, BRF_GRA },			 //  6 Layer 0 Tile data
+	{ "u61.bin",      0x200000, 0xd89b7631, BRF_GRA },			 //  7 Layer 1 Tile data
+	{ "u62.bin",      0x200000, 0x292bfb6b, BRF_GRA },			 //  8 Layer 2 Tile data
 
-	{ "u6.bin",       0x200000, 0x9DFDAFAF, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "u7.bin",       0x200000, 0x795B17D5, BRF_SND },			 // 10
+	{ "u6.bin",       0x200000, 0x9dfdafaf, BRF_SND },			 //  9 YMZ280B (AD)PCM data
+	{ "u7.bin",       0x200000, 0x795b17d5, BRF_SND },			 // 10
 	
 	{ "eeprom-ddonpach.bin", 0x0080, 0x315fb546, BRF_ESS | BRF_PRG },
 };
@@ -629,36 +613,36 @@ STD_ROM_PICK(ddonpachj)
 STD_ROM_FN(ddonpachj)
 
 
-static struct BurnRomInfo ddonpachjhRomDesc[] = {
-	{ "u27h.bin",     0x080000, 0x44B899AE, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "u26h.bin",     0x080000, 0x727A09A8, BRF_ESS | BRF_PRG }, //  1
+static struct BurnRomInfo ddonpachaRomDesc[] = {
+	{ "arrange_u27.bin",     0x080000, 0x44b899ae, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "arrange_u26.bin",     0x080000, 0x727a09a8, BRF_ESS | BRF_PRG }, //  1
 
-	{ "u50.bin",      0x200000, 0x14B260EC, BRF_GRA },			 //  2 Sprite data
-	{ "u51h.bin",     0x200000, 0x0F3E5148, BRF_GRA },			 //  3
-	{ "u52.bin",      0x200000, 0x02492EE0, BRF_GRA },			 //  4
-	{ "u53.bin",      0x200000, 0xCB4C10F0, BRF_GRA },			 //  5
+	{ "u50.bin",             0x200000, 0x14b260ec, BRF_GRA },			 //  2 Sprite data
+	{ "arrange_u51.bin",     0x200000, 0x0f3e5148, BRF_GRA },			 //  3
+	{ "u52.bin",             0x200000, 0x02492ee0, BRF_GRA },			 //  4
+	{ "u53.bin",             0x200000, 0xcb4c10f0, BRF_GRA },			 //  5
 
-	{ "u60.bin",      0x200000, 0x903096A7, BRF_GRA },			 //  6 Layer 0 Tile data
-	{ "u61.bin",      0x200000, 0xD89B7631, BRF_GRA },			 //  7 Layer 1 Tile data
-	{ "u62h.bin",     0x200000, 0x42E4C6C5, BRF_GRA },			 //  8 Layer 2 Tile data
+	{ "u60.bin",             0x200000, 0x903096a7, BRF_GRA },			 //  6 Layer 0 Tile data
+	{ "u61.bin",             0x200000, 0xd89b7631, BRF_GRA },			 //  7 Layer 1 Tile data
+	{ "arrange_u62.bin",     0x200000, 0x42e4c6c5, BRF_GRA },			 //  8 Layer 2 Tile data
 
-	{ "u6.bin",       0x200000, 0x9DFDAFAF, BRF_SND },			 //  9 YMZ280B (AD)PCM data
-	{ "u7.bin",       0x200000, 0x795B17D5, BRF_SND },			 // 10
+	{ "u6.bin",              0x200000, 0x9dfdafaf, BRF_SND },			 //  9 YMZ280B (AD)PCM data
+	{ "u7.bin",              0x200000, 0x795b17d5, BRF_SND },			 // 10
 	
-	{ "eeprom-ddonpachjh.bin", 0x0080, 0x2DF16438, BRF_ESS | BRF_PRG },
+	{ "eeprom-ddonpach.bin", 0x0080, 0x2df16438, BRF_ESS | BRF_PRG },
 };
 
 
-STD_ROM_PICK(ddonpachjh)
-STD_ROM_FN(ddonpachjh)
+STD_ROM_PICK(ddonpacha)
+STD_ROM_FN(ddonpacha)
 
 
 struct BurnDriver BurnDrvDoDonpachi = {
 	"ddonpach", NULL, NULL, NULL, "1997",
 	"DoDonPachi (International, master ver. 97/02/05)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u6012\u9996\u9818\u8702 DoDonPachi (International, master ver. 97/02/05)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, ddonpachRomInfo, ddonpachRomName, NULL, NULL, ddonpachInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, ddonpachRomInfo, ddonpachRomName, NULL, NULL, NULL, NULL, ddonpachInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
@@ -667,18 +651,18 @@ struct BurnDriver BurnDrvDoDonpachiJ = {
 	"ddonpachj", "ddonpach", NULL, NULL, "1997",
 	"DoDonPachi (Japan, master ver. 97/02/05)\0", NULL, "Atlus / Cave", "Cave",
 	L"\u6012\u9996\u9818\u8702 DoDonPachi (Japan, master ver. 97/02/05)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, ddonpachjRomInfo, ddonpachjRomName, NULL, NULL, ddonpachInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, ddonpachjRomInfo, ddonpachjRomName, NULL, NULL, NULL, NULL, ddonpachInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };
 
-struct BurnDriver BurnDrvDoDonpachijH = {
-	"ddonpachjh", "ddonpach", NULL, NULL, "1997",
+struct BurnDriver BurnDrvDoDonpachia = {
+	"ddonpacha", "ddonpach", NULL, NULL, "2012",
 	"DoDonPachi (Arrange Mode version 1.1, hack by Trap15)\0", NULL, "hack / Trap15", "Cave",
 	L"\u6012\u9996\u9818\u8702 DoDonPachi (Arrange Mode version 1.1, hack by Trap15)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, 0,
-	NULL, ddonpachjhRomInfo, ddonpachjhRomName, NULL, NULL, ddonpachInputInfo, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_VERSHOOT, FBF_DONPACHI,
+	NULL, ddonpachaRomInfo, ddonpachaRomName, NULL, NULL, NULL, NULL, ddonpachInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 240, 320, 3, 4
 };

@@ -37,6 +37,7 @@
 #include "burnint.h"
 #include "konami.h"
 #include "konami_intf.h"
+#include <stddef.h>
 #define VERBOSE 0
 
 #define change_pc(x)	PC=x
@@ -58,10 +59,11 @@ typedef struct
 	UINT8   cc;
 	UINT8	ireg;		/* first opcode */
 	UINT8   irq_state[2];
-	int     extra_cycles; /* cycles used up by interrupts */
+	INT32   extra_cycles; /* cycles used up by interrupts */
 	UINT8   int_state;  /* SYNC and CWAI flags */
 	UINT8	nmi_state;
-	int	nTotalCycles;
+	INT32   nTotalCycles;
+	INT32   hold_irq;
 	int     (*irq_callback)(int irqline);
 	void 	(*setlines_callback)( int lines ); /* callback called when A16-A23 are set */
 } konami_Regs;
@@ -116,10 +118,10 @@ static PAIR ea;         /* effective address */
 static int nCyclesToDo = 0;
 
 #define CHECK_IRQ_LINES 												\
-	if( konami.irq_state[KONAMI_IRQ_LINE] != KONAMI_CLEAR_LINE ||				\
-		konami.irq_state[KONAMI_FIRQ_LINE] != KONAMI_CLEAR_LINE )				\
+	if( konami.irq_state[KONAMI_IRQ_LINE] != CPU_IRQSTATUS_NONE ||				\
+		konami.irq_state[KONAMI_FIRQ_LINE] != CPU_IRQSTATUS_NONE )				\
 		konami.int_state &= ~KONAMI_SYNC; /* clear SYNC flag */			\
-	if( konami.irq_state[KONAMI_FIRQ_LINE]!=KONAMI_CLEAR_LINE && !(CC & CC_IF) ) \
+	if( konami.irq_state[KONAMI_FIRQ_LINE]!=CPU_IRQSTATUS_NONE && !(CC & CC_IF) ) \
 	{																	\
 		/* fast IRQ */													\
 		/* state already saved by CWAI? */								\
@@ -138,10 +140,14 @@ static int nCyclesToDo = 0;
 		CC |= CC_IF | CC_II;			/* inhibit FIRQ and IRQ */		\
 		PCD = RM16(0xfff6); 											\
 		change_pc(PC);					/* TS 971002 */ 				\
-		(void)(*konami.irq_callback)(KONAMI_FIRQ_LINE);					\
+	    if (konami.hold_irq == (1 << KONAMI_FIRQ_LINE)) {               \
+		    konami.hold_irq = 0;                                        \
+		    konami.irq_state[KONAMI_FIRQ_LINE] = 0;                     \
+	    }                                                               \
+        (void)(*konami.irq_callback)(KONAMI_FIRQ_LINE);					\
 	}																	\
 	else																\
-	if( konami.irq_state[KONAMI_IRQ_LINE]!=KONAMI_CLEAR_LINE && !(CC & CC_II) )\
+	if( konami.irq_state[KONAMI_IRQ_LINE]!=CPU_IRQSTATUS_NONE && !(CC & CC_II) )\
 	{																	\
 		/* standard IRQ */												\
 		/* state already saved by CWAI? */								\
@@ -166,6 +172,10 @@ static int nCyclesToDo = 0;
 		CC |= CC_II;					/* inhibit IRQ */				\
 		PCD = RM16(0xfff8); 											\
 		change_pc(PC);					/* TS 971002 */ 				\
+	    if (konami.hold_irq == (1 << KONAMI_IRQ_LINE)) {                \
+		    konami.hold_irq = 0;                                        \
+		    konami.irq_state[KONAMI_IRQ_LINE] = 0;                      \
+	    }                                                               \
 		(void)(*konami.irq_callback)(KONAMI_IRQ_LINE);					\
 	}
 
@@ -406,15 +416,15 @@ void konami_init(int (*irqcallback)(int))
 
 void konamiReset()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiReset called without init\n"));
 #endif
 
 	konami.nTotalCycles = 0;
 	konami.int_state = 0;
-	konami.nmi_state = KONAMI_CLEAR_LINE;
-	konami.irq_state[0] = KONAMI_CLEAR_LINE;
-	konami.irq_state[1] = KONAMI_CLEAR_LINE;
+	konami.nmi_state = CPU_IRQSTATUS_NONE;
+	konami.irq_state[0] = CPU_IRQSTATUS_NONE;
+	konami.irq_state[1] = CPU_IRQSTATUS_NONE;
 
 	DPD = 0;			/* Reset direct page register */
 
@@ -435,9 +445,14 @@ static void konami_exit(void)
 /****************************************************************************
  * Set IRQ line state
  ****************************************************************************/
+void konami_set_irq_hold(INT32 irq)
+{
+	konami.hold_irq = 1 << irq;
+}
+
 void konami_set_irq_line(int irqline, int state)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konami_set_irq_line called without init\n"));
 #endif
 
@@ -446,7 +461,7 @@ void konami_set_irq_line(int irqline, int state)
 		if (konami.nmi_state == state) return;
 		konami.nmi_state = state;
 	//	LOG(("KONAMI#%d set_nmi_line %d\n", cpu_getactivecpu(), state));
-		if( state == KONAMI_CLEAR_LINE ) return;
+		if( state == CPU_IRQSTATUS_NONE ) return;
 
 		/* if the stack was not yet initialized */
 	    if( !(konami.int_state & KONAMI_LDS) ) return;
@@ -479,7 +494,7 @@ void konami_set_irq_line(int irqline, int state)
 	{
 	//	LOG(("KONAMI#%d set_irq_line %d, %d\n", cpu_getactivecpu(), irqline, state));
 		konami.irq_state[irqline] = state;
-		if (state == KONAMI_CLEAR_LINE) return;
+		if (state == CPU_IRQSTATUS_NONE) return;
 		CHECK_IRQ_LINES;
 	}
 }
@@ -490,16 +505,20 @@ void konami_set_irq_line(int irqline, int state)
 /* includes the actual opcode implementations */
 #include "konamops.c"
 
+static int end_run = 0;
+
 /* execute instructions on this CPU until icount expires */
 int konamiRun(int cycles)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiRun called without init\n"));
 #endif
 
 	konami_ICount = cycles - konami.extra_cycles;
-	nCyclesToDo = konami_ICount;
+	nCyclesToDo = cycles;
 	konami.extra_cycles = 0;
+
+	end_run = 0;
 
 	if( konami.int_state & (KONAMI_CWAI | KONAMI_SYNC) )
 	{
@@ -518,50 +537,62 @@ int konamiRun(int cycles)
 
 			konami_ICount -= cycles1[konami.ireg];
 
-		} while( konami_ICount > 0 );
+		} while( konami_ICount > 0 && !end_run );
 
 		konami_ICount -= konami.extra_cycles;
 		konami.extra_cycles = 0;
 	}
 
-	konami.nTotalCycles += cycles - konami_ICount;
-	return cycles - konami_ICount;
+	cycles = cycles - konami_ICount;
+	konami.nTotalCycles += cycles;
+	nCyclesToDo = konami_ICount = 0;
+
+	return cycles;
 }
 
-int konamiCpuScan(int nAction,int *)
+int konamiCpuScan(int nAction)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiCpuScan called without init\n"));
 #endif
 
-	struct BurnArea ba;
-
-	int     (*irq_callback)(int irqline);
-	void 	(*setlines_callback)( int lines );
-
-	irq_callback = konami.irq_callback;
-	setlines_callback = konami.setlines_callback;
-
 	if (nAction & ACB_DRIVER_DATA) {
+		struct BurnArea ba;
+
 		memset(&ba, 0, sizeof(ba));
 		ba.Data	  = (unsigned char*)&konami;
-		ba.nLen	  = sizeof(konami_Regs);
-		ba.szName = "All Registers";
+		ba.nLen	  = STRUCT_SIZE_HELPER(konami_Regs, hold_irq);
+		ba.szName = "KonamiCPU Registers";
 		BurnAcb(&ba);
 
-		SCAN_VAR(ea.w.l);
-		SCAN_VAR(ea.d);
+		SCAN_VAR(ea);
 	}
-
-	konami.irq_callback = irq_callback;
-	konami.setlines_callback = setlines_callback;
 
 	return 0;
 }
 
+void konamiRunEnd()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiRunEnd called without init\n"));
+#endif
+
+	end_run = 1;
+}
+
+INT32 konamiIdle(INT32 cycles)
+{
+#if defined FBNEO_DEBUG
+	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiIdle called without init\n"));
+#endif
+	konami_ICount -= cycles;
+
+	return konami_ICount;
+}
+
 void konamiSetlinesCallback(void  (*setlines_callback)(int lines))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiSetlinesCallback called without init\n"));
 #endif
 
@@ -570,16 +601,16 @@ void konamiSetlinesCallback(void  (*setlines_callback)(int lines))
 
 int konamiTotalCycles()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiTotalCycles called without init\n"));
 #endif
 
-	return konami.nTotalCycles;
+	return konami.nTotalCycles + (nCyclesToDo - konami_ICount);
 }
 
 void konamiNewFrame()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugCPU_KonamiInitted) bprintf(PRINT_ERROR, _T("konamiNewFrame called without init\n"));
 #endif
 

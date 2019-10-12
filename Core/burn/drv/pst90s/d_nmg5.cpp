@@ -263,6 +263,60 @@ static struct BurnDIPInfo SearcheyDIPList[]=
 	{0x11, 0x01, 0x02, 0x02, "Off"				},
 	{0x11, 0x01, 0x02, 0x00, "On"				},
 
+	{0x11, 0xfe,    0,    8, "Language"			},
+	{0x11, 0x01, 0x38, 0x00, "Korean Duplicate 1"	},
+	{0x11, 0x01, 0x38, 0x08, "Korean Duplicate 2"	},
+	{0x11, 0x01, 0x38, 0x10, "Korean Duplicate 3"	},
+	{0x11, 0x01, 0x38, 0x18, "Italian"			},
+	{0x11, 0x01, 0x38, 0x20, "Korean"			},
+	{0x11, 0x01, 0x38, 0x28, "Japanese"			},
+	{0x11, 0x01, 0x38, 0x30, "English"			},
+	{0x11, 0x01, 0x38, 0x38, "Korean Duplicate 4"	},
+
+	{0x11, 0xfe,    0,    2, "Items to find"		},
+	{0x11, 0x01, 0x80, 0x00, "Less"				},
+	{0x11, 0x01, 0x80, 0x80, "More"				},
+};
+
+STDDIPINFO(Searchey)
+
+static struct BurnDIPInfo SearcheyaDIPList[]=
+{
+	{0x10, 0xff, 0xff, 0xff, NULL				},
+	{0x11, 0xff, 0xff, 0xdd, NULL				},
+
+	{0   , 0xfe,    0,    4, "Timer Speed"			},
+	{0x10, 0x01, 0x03, 0x03, "Slowest"			},
+	{0x10, 0x01, 0x03, 0x02, "Slow"				},
+	{0x10, 0x01, 0x03, 0x01, "Fast"				},
+	{0x10, 0x01, 0x03, 0x00, "Fastest"			},
+
+	{0x10, 0xfe,    0,    4, "Helps"			},
+	{0x10, 0x01, 0x0c, 0x0c, "1"				},
+	{0x10, 0x01, 0x0c, 0x08, "2"				},
+	{0x10, 0x01, 0x0c, 0x04, "3"				},
+	{0x10, 0x01, 0x0c, 0x00, "4"				},
+
+	{0x10, 0xfe,    0,    4, "Lives"			},
+	{0x10, 0x01, 0x30, 0x20, "3"				},
+	{0x10, 0x01, 0x30, 0x10, "4"				},
+	{0x10, 0x01, 0x30, 0x30, "5"				},
+	{0x10, 0x01, 0x30, 0x00, "6"				},
+
+	{0x10, 0xfe,    0,    4, "Coinage"			},
+	{0x10, 0x01, 0xc0, 0x00, "3C 1C"			},
+	{0x10, 0x01, 0xc0, 0x40, "2C 1C"			},
+	{0x10, 0x01, 0xc0, 0xc0, "1C 1C"			},
+	{0x10, 0x01, 0xc0, 0x80, "1C 2C"			},
+
+	{0x11, 0xfe,    0,    2, "Service Mode"			},
+	{0x11, 0x01, 0x01, 0x01, "Off"				},
+	{0x11, 0x01, 0x01, 0x00, "On"				},
+
+	{0x11, 0xfe,    0,    2, "Demo Sounds"			},
+	{0x11, 0x01, 0x02, 0x02, "Off"				},
+	{0x11, 0x01, 0x02, 0x00, "On"				},
+
 	{0x11, 0xfe,    0,    2, "Language"			},
 	{0x11, 0x01, 0x20, 0x00, "English"			},
 	{0x11, 0x01, 0x20, 0x20, "Korean"			},
@@ -272,7 +326,7 @@ static struct BurnDIPInfo SearcheyDIPList[]=
 	{0x11, 0x01, 0x80, 0x80, "More"				},
 };
 
-STDDIPINFO(Searchey)
+STDDIPINFO(Searcheya)
 
 static struct BurnDIPInfo Searchp2DIPList[]=
 {
@@ -314,14 +368,14 @@ static struct BurnDIPInfo Searchp2DIPList[]=
 	{0x11, 0x01, 0x06, 0x00, "Table 4"			},
 
 	{0x11, 0xfe,    0,    8, "Language"			},
-	{0x11, 0x01, 0x38, 0x38, "Korean"			},
-	{0x11, 0x01, 0x38, 0x30, "English"			},
-	{0x11, 0x01, 0x38, 0x28, "Japanese"			},
-	{0x11, 0x01, 0x38, 0x20, "Chinese"			},
+	{0x11, 0x01, 0x38, 0x00, "Korean Duplicate 1"	},
+	{0x11, 0x01, 0x38, 0x08, "Korean Duplicate 2"	},
+	{0x11, 0x01, 0x38, 0x10, "Korean "			},
 	{0x11, 0x01, 0x38, 0x18, "Italian"			},
-	{0x11, 0x01, 0x38, 0x10, "Korean"			},
-	{0x11, 0x01, 0x38, 0x08, "Korean"			},
-	{0x11, 0x01, 0x38, 0x00, "Korean"			},
+	{0x11, 0x01, 0x38, 0x20, "Chinese"			},
+	{0x11, 0x01, 0x38, 0x28, "Japanese"			},
+	{0x11, 0x01, 0x38, 0x30, "English"			},
+	{0x11, 0x01, 0x38, 0x38, "Korean Duplicate 3"	},
 
 	{0x11, 0xfe,    0,    2, "Lucky Timer"			},
 	{0x11, 0x01, 0x40, 0x00, "Less"				},
@@ -822,15 +876,15 @@ void __fastcall nmg5_write_port(UINT16 port, UINT8 data)
 		return;
 
 		case 0x10:
-			BurnYM3812Write(0, data);
+			BurnYM3812Write(0, 0, data);
 		return;
 
 		case 0x11:
-			BurnYM3812Write(1, data);
+			BurnYM3812Write(0, 1, data);
 		return;
 
 		case 0x1c:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 
@@ -842,13 +896,13 @@ UINT8 __fastcall nmg5_read_port(UINT16 port)
 	switch (port & 0xff)
 	{
 		case 0x10:
-			return BurnYM3812Read(0);
+			return BurnYM3812Read(0, 0);
 
 		case 0x18:
 			return soundlatch;
 
 		case 0x1c:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -996,9 +1050,9 @@ static INT32 DrvSynchroniseStream(INT32 nSoundRate)
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		ZetSetIRQLine(0xFF, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xFF, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
 }
 
@@ -1044,24 +1098,24 @@ static INT32 DrvInit(INT32 loadtype, INT32 sektype, INT32 zettype) // 0 nmg, 1 p
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x0fffff, SM_ROM);
-	SekMapMemory(DrvBmpRAM,		0x800000, 0x80ffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvBmpRAM,		0x800000, 0x80ffff, MAP_RAM);
 	if (sektype) {
-		SekMapMemory(Drv68KRAM,		0x200000, 0x20ffff, SM_RAM);
-		SekMapMemory(DrvPalRAM,		0x440000, 0x4407ff, SM_ROM);
-		SekMapMemory(DrvSprRAM,		0x460000, 0x4607ff, SM_RAM);
-		SekMapMemory(DrvVidRAM0,	0x520000, 0x521fff, SM_RAM);
-		SekMapMemory(DrvVidRAM1,	0x522000, 0x523fff, SM_RAM);
+		SekMapMemory(Drv68KRAM,		0x200000, 0x20ffff, MAP_RAM);
+		SekMapMemory(DrvPalRAM,		0x440000, 0x4407ff, MAP_ROM);
+		SekMapMemory(DrvSprRAM,		0x460000, 0x4607ff, MAP_RAM);
+		SekMapMemory(DrvVidRAM0,	0x520000, 0x521fff, MAP_RAM);
+		SekMapMemory(DrvVidRAM1,	0x522000, 0x523fff, MAP_RAM);
 		SekSetWriteByteHandler(0,	pclubys_write_byte);
 		SekSetWriteWordHandler(0,	pclubys_write_word);
 		SekSetReadByteHandler(0,	pclubys_read_byte);
 		SekSetReadWordHandler(0,	pclubys_read_word);
 	} else {
-		SekMapMemory(Drv68KRAM,		0x120000, 0x12ffff, SM_RAM);
-		SekMapMemory(DrvPalRAM,		0x140000, 0x1407ff, SM_ROM);
-		SekMapMemory(DrvSprRAM,		0x160000, 0x1607ff, SM_RAM);
-		SekMapMemory(DrvVidRAM0,	0x320000, 0x321fff, SM_RAM);
-		SekMapMemory(DrvVidRAM1,	0x322000, 0x323fff, SM_RAM);
+		SekMapMemory(Drv68KRAM,		0x120000, 0x12ffff, MAP_RAM);
+		SekMapMemory(DrvPalRAM,		0x140000, 0x1407ff, MAP_ROM);
+		SekMapMemory(DrvSprRAM,		0x160000, 0x1607ff, MAP_RAM);
+		SekMapMemory(DrvVidRAM0,	0x320000, 0x321fff, MAP_RAM);
+		SekMapMemory(DrvVidRAM1,	0x322000, 0x323fff, MAP_RAM);
 		SekSetWriteByteHandler(0,	nmg5_write_byte);
 		SekSetWriteWordHandler(0,	nmg5_write_word);
 		SekSetReadByteHandler(0,	nmg5_read_byte);
@@ -1088,9 +1142,9 @@ static INT32 DrvInit(INT32 loadtype, INT32 sektype, INT32 zettype) // 0 nmg, 1 p
 	ZetSetOutHandler(nmg5_write_port);
 	ZetClose();
 
-	BurnYM3812Init(4000000, &DrvFMIRQHandler, &DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(4000000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 4000000, &DrvFMIRQHandler, &DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 4000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	MSM6295Init(0, 1000000 / 132, 1);
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
@@ -1302,7 +1356,7 @@ static INT32 DrvFrame()
 
 	SekRun(nTotalCycles[0]);
 
-	SekSetIRQLine(6, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(6, CPU_IRQSTATUS_AUTO);
 
 	if (pBurnSoundOut) {
 		BurnTimerEndFrameYM3812(nTotalCycles[1]);
@@ -1342,7 +1396,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SekScan(nAction);
 		ZetScan(nAction);
 		BurnYM3812Scan(nAction, pnMin);
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 //		BurnTimerScan(nAction, pnMin);
 
 		SCAN_VAR(soundlatch);
@@ -1362,7 +1416,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 //-----------------------------------------------------------------------------------------------
 
-// Multi 5 / New Multi Game 5
+// Multi 5 / New Multi Game 5 (set 1)
 
 static struct BurnRomInfo nmg5RomDesc[] = {
 	{ "ub15.bin",	0x80000, 0x36af3e2f, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
@@ -1400,16 +1454,56 @@ static INT32 Nmg5Init()
 
 struct BurnDriver BurnDrvNmg5 = {
 	"nmg5", NULL, NULL, NULL, "1998",
-	"Multi 5 / New Multi Game 5\0", NULL, "Yun Sung", "Miscellaneous",
+	"Multi 5 / New Multi Game 5 (set 1)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, nmg5RomInfo, nmg5RomName, NULL, NULL, Nmg5InputInfo, Nmg5DIPInfo,
+	NULL, nmg5RomInfo, nmg5RomName, NULL, NULL, NULL, NULL, Nmg5InputInfo, Nmg5DIPInfo,
 	Nmg5Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
 
 
-// Multi 5 / New Multi Game 5 (earlier)
+// Multi 5 / New Multi Game 5 (set 2)
+
+static struct BurnRomInfo nmg5aRomDesc[] = {
+	{ "m5_p1.ub15",		0x80000, 0x0d63a21d, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
+	{ "m5_p2.ub16",		0x80000, 0x230438db, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "m5_sndcpu.xh15",	0x10000, 0x12d047c4, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
+
+	{ "m5_12.srom1",	0x80000, 0x3adff261, 3 | BRF_GRA },	      //  3 - Tiles
+	{ "m5_8.srom2",		0x80000, 0xb0736b66, 3 | BRF_GRA },	      //  4
+	{ "m5_13.srom3",	0x80000, 0x8e904919, 3 | BRF_GRA },	      //  5
+	{ "m5_9.srom4",		0x80000, 0x779e0e30, 3 | BRF_GRA },	      //  6
+	{ "m5_6.srom5",		0x80000, 0x41061258, 3 | BRF_GRA },	      //  7
+	{ "m5_10.srom6",	0x80000, 0x8147d8ef, 3 | BRF_GRA },	      //  8
+	{ "m5_7.srom7",		0x80000, 0xacb00d15, 3 | BRF_GRA },	      //  9
+	{ "m5_11.srom8",	0x80000, 0x0ba74fce, 3 | BRF_GRA },	      // 10
+
+	{ "m5_3.uf1",		0x40000, 0x9a9fb6f4, 4 | BRF_GRA },	      // 11 - Sprites
+	{ "m5_5.uf2",		0x40000, 0x66954d63, 4 | BRF_GRA },	      // 12
+	{ "m5_1.ufa1",		0x40000, 0xba73ed2d, 4 | BRF_GRA },	      // 13
+	{ "m5_4.uh1",		0x40000, 0xf7726e8e, 4 | BRF_GRA },	      // 14
+	{ "m5_2.uj1",		0x40000, 0x54f7486e, 4 | BRF_GRA },	      // 15
+
+	{ "m5_oki.xra1",	0x20000, 0xc74a4f3e, 5 | BRF_SND },	      // 16 - Samples
+};
+
+STD_ROM_PICK(nmg5a)
+STD_ROM_FN(nmg5a)
+
+struct BurnDriver BurnDrvNmg5a = {
+	"nmg5a", "nmg5", NULL, NULL, "1997",
+	"Multi 5 / New Multi Game 5 (set 2)\0", NULL, "Yun Sung", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
+	NULL, nmg5aRomInfo, nmg5aRomName, NULL, NULL, NULL, NULL, Nmg5InputInfo, Nmg5DIPInfo,
+	Nmg5Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	&DrvRecalc, 0x400, 320, 240, 4, 3
+};
+
+
+// Multi 5 / New Multi Game 5 (set 3, earlier)
 
 static struct BurnRomInfo nmg5eRomDesc[] = {
 	{ "ub15.rom",	0x80000, 0x578516e2, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
@@ -1440,20 +1534,60 @@ STD_ROM_FN(nmg5e)
 
 struct BurnDriver BurnDrvNmg5e = {
 	"nmg5e", "nmg5", NULL, NULL, "1997",
-	"Multi 5 / New Multi Game 5 (earlier)\0", NULL, "Yun Sung", "Miscellaneous",
+	"Multi 5 / New Multi Game 5 (set 3, earlier)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, nmg5eRomInfo, nmg5eRomName, NULL, NULL, Nmg5InputInfo, Nmg5DIPInfo,
+	NULL, nmg5eRomInfo, nmg5eRomName, NULL, NULL, NULL, NULL, Nmg5InputInfo, Nmg5DIPInfo,
 	Nmg5Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
 
 
-// Search Eye
+// Search Eye (English / Korean / Japanese / Italian)
 
 static struct BurnRomInfo searcheyRomDesc[] = {
-	{ "u7.bin",	0x40000, 0x287ce3dd, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
-	{ "u2.bin",	0x40000, 0xb574f033, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "se.u7",		0x40000, 0x332b0d83, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
+	{ "se.u2",		0x40000, 0xbd16114e, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "u128.bin",	0x10000, 0x85bae10c, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
+
+	{ "u63.bin",	0x80000, 0x1b0b7b7d, 3 | BRF_GRA },	      //  3 - Tiles
+	{ "u68.bin",	0x80000, 0xae18b2aa, 3 | BRF_GRA },	      //  4
+	{ "u73.bin",	0x80000, 0xab7f8716, 3 | BRF_GRA },	      //  5
+	{ "u79.bin",	0x80000, 0x7f2c8b83, 3 | BRF_GRA },	      //  6
+	{ "se.u64",		0x80000, 0x32b7e4f3, 3 | BRF_GRA },	      //  7
+	{ "u69.bin",	0x80000, 0xd546eaf8, 3 | BRF_GRA },	      //  8
+	{ "u74.bin",	0x80000, 0xe6134d84, 3 | BRF_GRA },	      //  9
+	{ "u80.bin",	0x80000, 0x9a160918, 3 | BRF_GRA },	      // 10
+
+	{ "u83.bin",	0x20000, 0xc5a1c647, 4 | BRF_GRA },	      // 11 - Sprites
+	{ "u82.bin",	0x20000, 0x25b2ae62, 4 | BRF_GRA },	      // 12
+	{ "u105.bin",	0x20000, 0xb4207ef0, 4 | BRF_GRA },	      // 13
+	{ "u96.bin",	0x20000, 0x8c40818a, 4 | BRF_GRA },	      // 14
+	{ "u97.bin",	0x20000, 0x5dc7f231, 4 | BRF_GRA },	      // 15
+
+	{ "u137.bin",	0x40000, 0x49105e23, 5 | BRF_SND },	      // 16 - Samples
+};
+
+STD_ROM_PICK(searchey)
+STD_ROM_FN(searchey)
+
+struct BurnDriver BurnDrvSearchey = {
+	"searchey", NULL, NULL, NULL, "1999",
+	"Search Eye (English / Korean / Japanese / Italian)\0", NULL, "Yun Sung", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, searcheyRomInfo, searcheyRomName, NULL, NULL, NULL, NULL, SearcheyInputInfo, SearcheyDIPInfo,
+	Nmg5Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	&DrvRecalc, 0x400, 320, 240, 4, 3
+};
+
+
+// Search Eye (English / Korean)
+
+static struct BurnRomInfo searcheyaRomDesc[] = {
+	{ "u7.bin",		0x40000, 0x287ce3dd, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
+	{ "u2.bin",		0x40000, 0xb574f033, 1 | BRF_PRG | BRF_ESS }, //  1
 
 	{ "u128.bin",	0x10000, 0x85bae10c, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
 
@@ -1475,15 +1609,15 @@ static struct BurnRomInfo searcheyRomDesc[] = {
 	{ "u137.bin",	0x40000, 0x49105e23, 5 | BRF_SND },	      // 16 - Samples
 };
 
-STD_ROM_PICK(searchey)
-STD_ROM_FN(searchey)
+STD_ROM_PICK(searcheya)
+STD_ROM_FN(searcheya)
 
-struct BurnDriver BurnDrvSearchey = {
-	"searchey", NULL, NULL, NULL, "1999",
-	"Search Eye\0", NULL, "Yun Sung", "Miscellaneous",
+struct BurnDriver BurnDrvSearcheya = {
+	"searcheya", "searchey", NULL, NULL, "1999",
+	"Search Eye (English / Korean)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, searcheyRomInfo, searcheyRomName, NULL, NULL, SearcheyInputInfo, SearcheyDIPInfo,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, searcheyaRomInfo, searcheyaRomName, NULL, NULL, NULL, NULL, SearcheyInputInfo, SearcheyaDIPInfo,
 	Nmg5Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
@@ -1492,23 +1626,23 @@ struct BurnDriver BurnDrvSearchey = {
 // Search Eye Plus V2.0
 
 static struct BurnRomInfo searchp2RomDesc[] = {
-	{ "u7",		0x080000, 0x37fe9e18, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
-	{ "u2",		0x080000, 0x8278513b, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "u7",			0x080000, 0x37fe9e18, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
+	{ "u2",			0x080000, 0x8278513b, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "u128",	0x010000, 0x85bae10c, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
+	{ "u128",		0x010000, 0x85bae10c, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
 
-	{ "0.u1",	0x400000, 0x28a50dcf, 3 | BRF_GRA },	       //  3 - Tiles
-	{ "2.u3",	0x400000, 0x30d46e19, 3 | BRF_GRA },	       //  4
-	{ "1.u2",	0x400000, 0xf9c4e824, 3 | BRF_GRA },	       //  5
-	{ "3.u4",	0x400000, 0x619f142f, 3 | BRF_GRA },	       //  6
+	{ "0.u1",		0x400000, 0x28a50dcf, 3 | BRF_GRA },	       //  3 - Tiles
+	{ "2.u3",		0x400000, 0x30d46e19, 3 | BRF_GRA },	       //  4
+	{ "1.u2",		0x400000, 0xf9c4e824, 3 | BRF_GRA },	       //  5
+	{ "3.u4",		0x400000, 0x619f142f, 3 | BRF_GRA },	       //  6
 
-	{ "u83",	0x040000, 0x2bae34cb, 4 | BRF_GRA },	       //  7 - Sprites
-	{ "u82",	0x040000, 0x5cb773f0, 4 | BRF_GRA },	       //  8
-	{ "u105",	0x040000, 0xe8adb15e, 4 | BRF_GRA },	       //  9
-	{ "u96",	0x040000, 0x67efb536, 4 | BRF_GRA },	       // 10
-	{ "u97",	0x040000, 0xf7b63826, 4 | BRF_GRA },	       // 11
+	{ "u83",		0x040000, 0x2bae34cb, 4 | BRF_GRA },	       //  7 - Sprites
+	{ "u82",		0x040000, 0x5cb773f0, 4 | BRF_GRA },	       //  8
+	{ "u105",		0x040000, 0xe8adb15e, 4 | BRF_GRA },	       //  9
+	{ "u96",		0x040000, 0x67efb536, 4 | BRF_GRA },	       // 10
+	{ "u97",		0x040000, 0xf7b63826, 4 | BRF_GRA },	       // 11
 
-	{ "u137", 	0x040000, 0xcd037524, 5 | BRF_SND },	       // 12 - Samples
+	{ "u137", 		0x040000, 0xcd037524, 5 | BRF_SND },	       // 12 - Samples
 };
 
 STD_ROM_PICK(searchp2)
@@ -1528,7 +1662,7 @@ struct BurnDriver BurnDrvSearchp2 = {
 	"Search Eye Plus V2.0\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, searchp2RomInfo, searchp2RomName, NULL, NULL, SearcheyInputInfo, Searchp2DIPInfo,
+	NULL, searchp2RomInfo, searchp2RomName, NULL, NULL, NULL, NULL, SearcheyInputInfo, Searchp2DIPInfo,
 	Searchp2Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
@@ -1571,7 +1705,7 @@ struct BurnDriver BurnDrvPclubys = {
 	"Puzzle Club (Yun Sung, set 1)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, pclubysRomInfo, pclubysRomName, NULL, NULL, PclubysInputInfo, PclubysDIPInfo,
+	NULL, pclubysRomInfo, pclubysRomName, NULL, NULL, NULL, NULL, PclubysInputInfo, PclubysDIPInfo,
 	PclubysInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
@@ -1607,7 +1741,7 @@ struct BurnDriver BurnDrvPclubysa = {
 	"Puzzle Club (Yun Sung, set 2)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_MINIGAMES, 0,
-	NULL, pclubysaRomInfo, pclubysaRomName, NULL, NULL, PclubysInputInfo, PclubysDIPInfo,
+	NULL, pclubysaRomInfo, pclubysaRomName, NULL, NULL, NULL, NULL, PclubysInputInfo, PclubysDIPInfo,
 	PclubysInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
@@ -1654,7 +1788,7 @@ struct BurnDriver BurnDrvGarogun = {
 	"Garogun Seroyang (Korea)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_MISC_POST90S, GBF_QUIZ, 0,
-	NULL, garogunRomInfo, garogunRomName, NULL, NULL, GarogunInputInfo, GarogunDIPInfo,
+	NULL, garogunRomInfo, garogunRomName, NULL, NULL, NULL, NULL, GarogunInputInfo, GarogunDIPInfo,
 	GarogunInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
@@ -1711,13 +1845,13 @@ struct BurnDriver BurnDrvOrdi7 = {
 	"7 Ordi (Korea)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_MISC_POST90S, GBF_CASINO, 0,
-	NULL, ordi7RomInfo, ordi7RomName, NULL, NULL, Ordi7InputInfo, Ordi7DIPInfo,
+	NULL, ordi7RomInfo, ordi7RomName, NULL, NULL, NULL, NULL, Ordi7InputInfo, Ordi7DIPInfo,
 	Ordi7Init, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };
 
 
-// Wonder Stick
+// Wonder Stick (set 1)
 
 static struct BurnRomInfo wondstckRomDesc[] = {
 	{ "u4.bin",	0x20000, 0x46a3e9f6, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
@@ -1755,10 +1889,51 @@ static INT32 WondstckInit()
 
 struct BurnDriver BurnDrvWondstck = {
 	"wondstck", NULL, NULL, NULL, "????",
-	"Wonder Stick\0", NULL, "Yun Sung", "Miscellaneous",
+	"Wonder Stick (set 1)\0", NULL, "Yun Sung", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, wondstckRomInfo, wondstckRomName, NULL, NULL, SearcheyInputInfo, WondstckDIPInfo,
+	NULL, wondstckRomInfo, wondstckRomName, NULL, NULL, NULL, NULL, SearcheyInputInfo, WondstckDIPInfo,
+	WondstckInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	&DrvRecalc, 0x400, 320, 240, 4, 3
+};
+
+
+// Wonder Stick (set 2, censored)
+
+static struct BurnRomInfo wondstckaRomDesc[] = {
+	{ "3.u7",		0x20000, 0x5f1337d8, 1 | BRF_PRG | BRF_ESS }, //  0 - 68k Code
+	{ "4.u2",		0x20000, 0x0b28ab9d, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "1.u128",		0x10000, 0x86dba085, 2 | BRF_PRG | BRF_ESS }, //  2 - Z80 Code
+
+	{ "7.u63",		0x80000, 0x25ee44ce, 3 | BRF_GRA },	      //  3 - Tiles
+	{ "2.u68",		0x80000, 0xb26afb40, 3 | BRF_GRA },	      //  4
+	{ "8.u73",		0x80000, 0x7cf46203, 3 | BRF_GRA },	      //  5
+	{ "4.u79",		0x80000, 0x825213e0, 3 | BRF_GRA },	      //  6
+	{ "5.u64",		0x80000, 0x9ece36d6, 3 | BRF_GRA },	      //  7
+	{ "1.u69",		0x80000, 0xec091e87, 3 | BRF_GRA },	      //  8
+	{ "6.u74", 		0x80000, 0x9795ff80, 3 | BRF_GRA },	      //  9
+	{ "3.u80", 		0x80000, 0x553c5781, 3 | BRF_GRA },	      // 10
+
+	{ "8.u83",		0x80000, 0xf51cf9c6, 4 | BRF_GRA },	      // 11 - Sprites
+//	{ "9.u82",		0x80000, 0x8c6cff4d, 4 | BRF_GRA },	      // 12 Bad dump
+	{ "9.u82",		0x80000, 0xddd3c60c, 4 | BRF_GRA },	      // 12
+	{ "7.u105",		0x80000, 0xa7fc624d, 4 | BRF_GRA },	      // 13
+	{ "6.u96",		0x80000, 0x2369d8a3, 4 | BRF_GRA },	      // 14
+	{ "5.u97",		0x80000, 0xaba1bd94, 4 | BRF_GRA },	      // 15
+
+	{ "2.u137",		0x40000, 0x294b6cbd, 5 | BRF_SND },	      // 16 - Samples
+};
+
+STD_ROM_PICK(wondstcka)
+STD_ROM_FN(wondstcka)
+
+struct BurnDriver BurnDrvWondstcka = {
+	"wondstcka", "wondstck", NULL, NULL, "????",
+	"Wonder Stick (set 2, censored)\0", NULL, "Yun Sung", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, wondstckaRomInfo, wondstckaRomName, NULL, NULL, NULL, NULL, SearcheyInputInfo, WondstckDIPInfo,
 	WondstckInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&DrvRecalc, 0x400, 320, 240, 4, 3
 };

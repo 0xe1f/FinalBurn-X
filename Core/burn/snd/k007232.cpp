@@ -1,5 +1,30 @@
+// copyright-holders:Nicola Salmoria,Hiromitsu Shioya
+/*********************************************************/
+/*    Konami PCM controller                              */
+/*********************************************************/
+
+/*
+  Changelog, Hiromitsu Shioya 02/05/2002
+  fix start address decode timing. (sample loop bug.)
+
+    Changelog, Mish, August 1999:
+        Removed interface support for different memory regions per channel.
+        Removed interface support for differing channel volume.
+
+        Added bankswitching.
+        Added support for multiple chips.
+
+        (Nb:  Should different memory regions per channel be needed
+        the bankswitching function can set this up).
+
+NS990821
+support for the k007232_VOL() macro.
+added external port callback, and functions to set the volume of the channels
+
+*/
+
+
 #include "burnint.h"
-#include "burn_sound.h"
 #include "k007232.h"
 
 #define KDAC_A_PCM_MAX	(2)
@@ -17,10 +42,7 @@ struct kdacApcm
 	UINT32			step[KDAC_A_PCM_MAX];
 	UINT32			bank[KDAC_A_PCM_MAX];
 	INT32			play[KDAC_A_PCM_MAX];
-
 	UINT8 			wreg[0x10];
-	
-	INT32			UpdateStep;
 };
 
 // stuff that doesn't need to be saved..
@@ -31,6 +53,7 @@ struct kdacPointers
 	UINT32  		pcmlimit;
 	K07232_PortWrite	K07232PortWriteHandler;
 	
+	INT32			UpdateStep;
 	double			gain[2];
 	INT32			output_dir[2];
 };
@@ -46,7 +69,7 @@ static INT32 nNumChips = 0;
 
 void K007232Update(INT32 chip, INT16* pSoundBuf, INT32 nLength)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232Update called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232Update called with invalid chip %x\n"), chip);
 #endif
@@ -89,7 +112,7 @@ void K007232Update(INT32 chip, INT16* pSoundBuf, INT32 nLength)
 
 				if (Chip->play[i] == 0) break;
 
-				Chip->addr[i] += (Chip->step[i] * Chip->UpdateStep) >> 16;
+				Chip->addr[i] += (Chip->step[i] * Ptr->UpdateStep) >> 16;
 
 				out = (Ptr->pcmbuf[i][addr] & 0x7f) - 0x40;
 
@@ -119,15 +142,15 @@ void K007232Update(INT32 chip, INT16* pSoundBuf, INT32 nLength)
 		nLeftSample = BURN_SND_CLIP(nLeftSample);
 		nRightSample = BURN_SND_CLIP(nRightSample);
 		
-		pSoundBuf[0] += nLeftSample;
-		pSoundBuf[1] += nRightSample;
+		pSoundBuf[0] = BURN_SND_CLIP(pSoundBuf[0] + nLeftSample);
+		pSoundBuf[1] = BURN_SND_CLIP(pSoundBuf[1] + nRightSample);
 		pSoundBuf += 2;
 	}
 }
 
 UINT8 K007232ReadReg(INT32 chip, INT32 r)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232ReadReg called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232ReadReg called with invalid chip %x\n"), chip);
 #endif
@@ -154,7 +177,7 @@ UINT8 K007232ReadReg(INT32 chip, INT32 r)
 
 void K007232WriteReg(INT32 chip, INT32 r, INT32 v)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232WriteReg called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232WriteReg called with invalid chip %x\n"), chip);
 #endif
@@ -208,7 +231,7 @@ void K007232WriteReg(INT32 chip, INT32 r, INT32 v)
 
 void K007232SetPortWriteHandler(INT32 chip, void (*Handler)(INT32 v))
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232SetPortWriteHandler called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232SetPortWriteHandler called with invalid chip %x\n"), chip);
 #endif
@@ -235,11 +258,11 @@ void K007232Init(INT32 chip, INT32 clock, UINT8 *pPCMData, INT32 PCMDataSize)
 	memset(Ptr,	0, sizeof(kdacPointers));
 
 	if (Left == NULL) {
-		Left = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
+		Left = (INT32*)BurnMalloc(nBurnSoundLen * sizeof(INT32));
 	}
 
 	if (Right == NULL) {
-		Right = (INT32*)malloc(nBurnSoundLen * sizeof(INT32));
+		Right = (INT32*)BurnMalloc(nBurnSoundLen * sizeof(INT32));
 	}
 
 	Ptr->pcmbuf[0] = pPCMData;
@@ -247,6 +270,30 @@ void K007232Init(INT32 chip, INT32 clock, UINT8 *pPCMData, INT32 PCMDataSize)
 	Ptr->pcmlimit  = PCMDataSize;
 
 	Ptr->clock = clock;
+
+	KDAC_A_make_fncode();
+
+	double Rate = (double)clock / 128 / nBurnSoundRate;
+	Ptr->UpdateStep = (INT32)(Rate * 0x10000);
+
+	Ptr->gain[BURN_SND_K007232_ROUTE_1] = 1.00;
+	Ptr->gain[BURN_SND_K007232_ROUTE_2] = 1.00;
+	Ptr->output_dir[BURN_SND_K007232_ROUTE_1] = BURN_SND_ROUTE_BOTH;
+	Ptr->output_dir[BURN_SND_K007232_ROUTE_2] = BURN_SND_ROUTE_BOTH;
+	
+	nNumChips = chip;
+
+	K007232Reset(chip);
+}
+
+void K007232Reset(INT32 chip)
+{
+#if defined FBNEO_DEBUG
+	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232Reset called without init\n"));
+	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K007232Reset called with invalid chip %x\n"), chip);
+#endif
+
+	Chip = &Chips[chip];
 
 	for (INT32 i = 0; i < KDAC_A_PCM_MAX; i++) {
 		Chip->start[i] = 0;
@@ -260,25 +307,13 @@ void K007232Init(INT32 chip, INT32 clock, UINT8 *pPCMData, INT32 PCMDataSize)
 	Chip->vol[1][1] = 255;
 
 	for (INT32 i = 0; i < 0x10; i++)  Chip->wreg[i] = 0;
-
-	KDAC_A_make_fncode();
-	
-	double Rate = (double)clock / 128 / nBurnSoundRate;
-	Chip->UpdateStep = (INT32)(Rate * 0x10000);
-	
-	Ptr->gain[BURN_SND_K007232_ROUTE_1] = 1.00;
-	Ptr->gain[BURN_SND_K007232_ROUTE_2] = 1.00;
-	Ptr->output_dir[BURN_SND_K007232_ROUTE_1] = BURN_SND_ROUTE_BOTH;
-	Ptr->output_dir[BURN_SND_K007232_ROUTE_2] = BURN_SND_ROUTE_BOTH;
-	
-	nNumChips = chip;
 }
 
 void K007232SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232SetRoute called without init\n"));
-	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232SetRoute called with invalid chip %x\n"), chip);
+	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K007232SetRoute called with invalid chip %x\n"), chip);
 	if (nIndex < 0 || nIndex > 1) bprintf(PRINT_ERROR, _T("K007232SetRoute called with invalid index %i\n"), nIndex);
 #endif
 
@@ -290,67 +325,63 @@ void K007232SetRoute(INT32 chip, INT32 nIndex, double nVolume, INT32 nRouteDir)
 
 void K007232Exit()
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232Exit called without init\n"));
 #endif
 
-	if (Left) {
-		free(Left);
-		Left = NULL;
-	}	
-
-	if (Right) {
-		free(Right);
-		Right = NULL;
-	}
+	BurnFree(Left);
+	BurnFree(Right);
 	
 	DebugSnd_K007232Initted = 0;
 	nNumChips = 0;
 }
 
-INT32 K007232Scan(INT32 nAction, INT32 *pnMin)
+void K007232Scan(INT32 nAction, INT32 *pnMin)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232Scan called without init\n"));
 #endif
 
-	struct BurnArea ba;
-	char szName[32];
-
-	if ((nAction & ACB_DRIVER_DATA) == 0) {
-		return 1;
-	}
-	
 	if (pnMin != NULL) {
 		*pnMin = 0x029693;
 	}
 
-	sprintf(szName, "K007232 Chip # %d", 0);
-	ba.Data		= &Chip;
-	ba.nLen		= sizeof(struct kdacApcm);
-	ba.nAddress = 0;
-	ba.szName	= szName;
-	BurnAcb(&ba);
+	if ((nAction & ACB_DRIVER_DATA) == 0) {
+		return;
+	}
 
-	return 0;
+	SCAN_VAR(Chips);
 }
 
 void K007232SetVolume(INT32 chip, INT32 channel,INT32 volumeA,INT32 volumeB)
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232SetVolume called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232SetVolume called with invalid chip %x\n"), chip);
 #endif
 
 	Chip = &Chips[chip];
+	if (volumeA)
+		Chip->vol[channel][0] = volumeA;
+	if (volumeB)
+		Chip->vol[channel][1] = volumeB;
+}
 
+void K007232SetVolumeF(INT32 chip, INT32 channel,INT32 volumeA,INT32 volumeB)
+{
+#if defined FBNEO_DEBUG
+	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("K007232SetVolumeF called without init\n"));
+	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("K007232SetVolumeF called with invalid chip %x\n"), chip);
+#endif
+
+	Chip = &Chips[chip];
 	Chip->vol[channel][0] = volumeA;
 	Chip->vol[channel][1] = volumeB;
 }
 
 void k007232_set_bank(INT32 chip, INT32 chABank, INT32 chBBank )
 {
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	if (!DebugSnd_K007232Initted) bprintf(PRINT_ERROR, _T("k007232_set_bank called without init\n"));
 	if (chip >nNumChips) bprintf(PRINT_ERROR, _T("k007232_set_bank called with invalid chip %x\n"), chip);
 #endif

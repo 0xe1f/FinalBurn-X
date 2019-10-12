@@ -248,7 +248,7 @@ STDDIPINFO(theroes)
 static void UpdateIRQStatus()
 {
 	nIRQPending = (nVideoIRQ == 0 || nSoundIRQ == 0 || nUnknownIRQ == 0);
-	SekSetIRQLine(1, nIRQPending ? SEK_IRQSTATUS_ACK : SEK_IRQSTATUS_NONE);
+	SekSetIRQLine(1, nIRQPending ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 UINT8 __fastcall gaiaReadByte(UINT32 sekAddress)
@@ -477,6 +477,8 @@ static INT32 DrvDoReset()
 
 	YMZ280BReset();
 
+	HiscoreReset();
+
 	return 0;
 }
 
@@ -674,7 +676,6 @@ static INT32 LoadRoms()
 	BurnLoadRom(YMZ280BROM + 0x000000, 7, 1);
 	BurnLoadRom(YMZ280BROM + 0x400000, 8, 1);
 	BurnLoadRom(YMZ280BROM + 0x800000, 9, 1);
-
 	return 0;
 }
 
@@ -737,7 +738,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);				// scan 68000 states
 
-		YMZ280BScan();
+		YMZ280BScan(nAction, pnMin);
 
 		SCAN_VAR(nVideoIRQ);
 		SCAN_VAR(nSoundIRQ);
@@ -782,15 +783,15 @@ static INT32 DrvInit()
 	    SekOpen(0);
 
 		// Map 68000 memory:
-		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,					0x100000, 0x10FFFF, SM_RAM);
-		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[0],		0x500000, 0x50FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[1],		0x600000, 0x60FFFF, SM_RAM);
-		SekMapMemory(CaveTileRAM[2],		0x700000, 0x70FFFF, SM_RAM);
+		SekMapMemory(Rom01,					0x000000, 0x0FFFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,					0x100000, 0x10FFFF, MAP_RAM);
+		SekMapMemory(CaveSpriteRAM,			0x400000, 0x40FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[0],		0x500000, 0x50FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[1],		0x600000, 0x60FFFF, MAP_RAM);
+		SekMapMemory(CaveTileRAM[2],		0x700000, 0x70FFFF, MAP_RAM);
 
-		SekMapMemory(CavePalSrc,			0xC00000, 0xC0FFFF, SM_ROM);	// Palette RAM (write goes through handler)
-		SekMapHandler(1,					0xC00000, 0xC0FFFF, SM_WRITE);	//
+		SekMapMemory(CavePalSrc,			0xC00000, 0xC0FFFF, MAP_ROM);	// Palette RAM (write goes through handler)
+		SekMapHandler(1,					0xC00000, 0xC0FFFF, MAP_WRITE);	//
 
 		SekSetReadWordHandler(0, gaiaReadWord);
 		SekSetReadByteHandler(0, gaiaReadByte);
@@ -812,7 +813,7 @@ static INT32 DrvInit()
 	CaveTileInitLayer(1, 0x400000, 8, 0x4000);
 	CaveTileInitLayer(2, 0x400000, 8, 0x4000);
 
-	YMZ280BInit(16000000, &TriggerSoundIRQ);
+	YMZ280BInit(16000000, &TriggerSoundIRQ, 0xC00000);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	YMZ280BSetRoute(BURN_SND_YMZ280B_YMZ280B_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
 
@@ -848,8 +849,8 @@ struct BurnDriver BurnDrvGaia = {
 	"gaia", NULL, NULL, NULL, "1999",
 	"Gaia Crusaders\0", NULL, "Noise Factory", "Cave",
 	L"Gaia Crusaders \u5F81\u6226\u8005\0Gaia Crusaders \u30AC\u30A4\u30A2\u30AF\u30EB\u30BB\u30A4\u30C0\u30FC\u30BA\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_SCRFIGHT, 0,
-	NULL, gaiaRomInfo, gaiaRomName, NULL, NULL, gaiaInputInfo, gaiaDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_SCRFIGHT, 0,
+	NULL, gaiaRomInfo, gaiaRomName, NULL, NULL, NULL, NULL, gaiaInputInfo, gaiaDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 224, 4, 3
 };
@@ -877,8 +878,8 @@ struct BurnDriver BurnDrvTheroes = {
 	"theroes", NULL, NULL, NULL, "2001",
 	"Thunder Heroes\0", NULL, "Primetec Investments", "Cave",
 	L"\u9739\u96F3\u82F1\u96C4 Thunder Heroes\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_CAVE_68K_ONLY, GBF_SCRFIGHT, 0,
-	NULL, theroesRomInfo, theroesRomName, NULL, NULL, gaiaInputInfo, theroesDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_ONLY, GBF_SCRFIGHT, 0,
+	NULL, theroesRomInfo, theroesRomName, NULL, NULL, NULL, NULL, gaiaInputInfo, theroesDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 320, 224, 4, 3
 };

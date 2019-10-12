@@ -1,8 +1,8 @@
 
 // video
 void vdc_reset();
-void vdc_write(int which, UINT8 offset, UINT8 data);
-UINT8 vdc_read(int which, UINT8 offset);
+void vdc_write(INT32 which, UINT8 offset, UINT8 data);
+UINT8 vdc_read(INT32 which, UINT8 offset);
 extern UINT8 *vdc_vidram[2];
 extern UINT16 *vdc_tmp_draw;
 
@@ -13,6 +13,9 @@ void vdc_get_dimensions(INT32 which, INT32 *x, INT32 *y); // get resolution
 
 void sgx_vdc_write(UINT8 offset, UINT8 data);
 UINT8 sgx_vdc_read(UINT8 offset);
+
+void vdc_init();
+void vdc_exit();
 
 
 // priority

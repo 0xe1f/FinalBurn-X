@@ -10,7 +10,7 @@
 static UINT8* pSShot = NULL;
 static UINT8* pConvertedImage = NULL;
 static png_bytep* pSShotImageRows = NULL;
-static FILE* ff;
+static FILE* ff = NULL;
 
 INT32 MakeScreenShot(const char *path)
 {
@@ -49,8 +49,10 @@ INT32 MakeScreenShot(const char *path)
 			pSShotImageRows = NULL;
 		}
 
-		fclose(ff);
-        remove(path);
+		if (ff) {
+			fclose(ff);
+			remove(szSShotName);
+		}
 
 		return SSHOT_LIBPNG_ERROR;
     }
@@ -146,7 +148,6 @@ INT32 MakeScreenShot(const char *path)
     tmTime = localtime(&currentTime);
 	png_convert_from_time_t(&png_time_now, currentTime);
 
-	// construct our filename -> "romname-mm-dd-hms.png"
 	ff = fopen(path, "wb");
 	if (ff == NULL) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -165,7 +166,7 @@ INT32 MakeScreenShot(const char *path)
 #else
 	sprintf(szAuthor, APP_TITLE " v%.20s", szAppBurnVer);
 #endif
-	sprintf(szDescription, "Screenshot of %s", BurnDrvGetTextA(DRV_FULLNAME));
+	sprintf(szDescription, "Screenshot of %s", DecorateGameName(nBurnDrvActive));
 	sprintf(szCopyright, "%s %s", BurnDrvGetTextA(DRV_DATE), BurnDrvGetTextA(DRV_MANUFACTURER));
 #ifdef _UNICODE
 	sprintf(szSoftware, APP_TITLE " v%.20ls using LibPNG " PNG_LIBPNG_VER_STRING, szAppBurnVer);

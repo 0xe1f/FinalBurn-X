@@ -214,7 +214,7 @@ void __fastcall gumbo_write_word(UINT32 address, UINT16 data)
 	{
 		case 0x1b0300:
 		case 0x1c0300:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -233,7 +233,7 @@ UINT16 __fastcall gumbo_read_word(UINT32 address)
 
 		case 0x1b0300:
 		case 0x1c0300:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -345,11 +345,11 @@ static INT32 GumboInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x080000, 0x083fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x1b0000, 0x1b03ff, SM_RAM);
-	SekMapMemory(DrvBgRAM,		0x1e0000^dblpoin, 0x1e0fff^dblpoin, SM_RAM);
-	SekMapMemory(DrvFgRAM,		0x1f0000^dblpoin, 0x1f3fff^dblpoin, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x080000, 0x083fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x1b0000, 0x1b03ff, MAP_RAM);
+	SekMapMemory(DrvBgRAM,		0x1e0000^dblpoin, 0x1e0fff^dblpoin, MAP_RAM);
+	SekMapMemory(DrvFgRAM,		0x1f0000^dblpoin, 0x1f3fff^dblpoin, MAP_RAM);
 	SekSetWriteByteHandler(0,	gumbo_write_byte);
 	SekSetReadByteHandler(0,	gumbo_read_byte);
 	SekSetWriteWordHandler(0,	gumbo_write_word);
@@ -399,11 +399,11 @@ static INT32 MspuzzleInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KRAM,		0x100000, 0x103fff, SM_RAM);
-	SekMapMemory(DrvPalRAM,		0x1a0000, 0x1a03ff, SM_RAM);
-	SekMapMemory(DrvFgRAM,		0x190000, 0x197fff, SM_RAM);
-	SekMapMemory(DrvBgRAM,		0x1c0000, 0x1c1fff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KRAM,		0x100000, 0x103fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,		0x1a0000, 0x1a03ff, MAP_RAM);
+	SekMapMemory(DrvFgRAM,		0x190000, 0x197fff, MAP_RAM);
+	SekMapMemory(DrvBgRAM,		0x1c0000, 0x1c1fff, MAP_RAM);
 	SekSetWriteByteHandler(0,	gumbo_write_byte);
 	SekSetReadByteHandler(0,	gumbo_read_byte);
 	SekSetWriteWordHandler(0,	gumbo_write_word);
@@ -528,7 +528,7 @@ static INT32 DrvFrame()
 
 	SekOpen(0);
 	SekRun(7159090 / 60);
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 	SekClose();
 
 	if (pBurnSoundOut) {
@@ -561,7 +561,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_DRIVER_DATA) {
 		SekScan(nAction);
 
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 	}
 
 	return 0;
@@ -591,7 +591,7 @@ struct BurnDriver BurnDrvGumbo = {
 	"Gumbo\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, gumboRomInfo, gumboRomName, NULL, NULL, GumboInputInfo, GumboDIPInfo,
+	NULL, gumboRomInfo, gumboRomName, NULL, NULL, NULL, NULL, GumboInputInfo, GumboDIPInfo,
 	GumboInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };
@@ -620,7 +620,7 @@ struct BurnDriver BurnDrvMspuzzlg = {
 	"Miss Puzzle (Clone of Gumbo)\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, mspuzzlgRomInfo, mspuzzlgRomName, NULL, NULL, GumboInputInfo, GumboDIPInfo,
+	NULL, mspuzzlgRomInfo, mspuzzlgRomName, NULL, NULL, NULL, NULL, GumboInputInfo, GumboDIPInfo,
 	GumboInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };
@@ -649,7 +649,7 @@ struct BurnDriver BurnDrvMsbingo = {
 	"Miss Bingo\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, msbingoRomInfo, msbingoRomName, NULL, NULL, GumboInputInfo, MsbingoDIPInfo,
+	NULL, msbingoRomInfo, msbingoRomName, NULL, NULL, NULL, NULL, GumboInputInfo, MsbingoDIPInfo,
 	MspuzzleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };
@@ -680,7 +680,7 @@ struct BurnDriver BurnDrvMspuzzle = {
 	"Miss Puzzle\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, mspuzzleRomInfo, mspuzzleRomName, NULL, NULL, GumboInputInfo, MspuzzleDIPInfo,
+	NULL, mspuzzleRomInfo, mspuzzleRomName, NULL, NULL, NULL, NULL, GumboInputInfo, MspuzzleDIPInfo,
 	MspuzzleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 320, 3, 4
 };
@@ -711,7 +711,7 @@ struct BurnDriverD BurnDrvMspuzzlen = {
 	"Miss Puzzle (Nudes)\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, mspuzzlenRomInfo, mspuzzlenRomName, NULL, NULL, GumboInputInfo, MspuzzleDIPInfo,
+	NULL, mspuzzlenRomInfo, mspuzzlenRomName, NULL, NULL, NULL, NULL, GumboInputInfo, MspuzzleDIPInfo,
 	MspuzzleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	224, 320, 3, 4
 };
@@ -740,7 +740,7 @@ struct BurnDriver BurnDrvDblpoint = {
 	"Double Point\0", NULL, "Min Corp.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, dblpointRomInfo, dblpointRomName, NULL, NULL, DblpointInputInfo, DblpointDIPInfo,
+	NULL, dblpointRomInfo, dblpointRomName, NULL, NULL, NULL, NULL, DblpointInputInfo, DblpointDIPInfo,
 	GumboInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };
@@ -769,7 +769,7 @@ struct BurnDriver BurnDrvDblpoind = {
 	"Double Point (Dong Bang Electron, bootleg?)\0", NULL, "Dong Bang Electron", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, dblpoindRomInfo, dblpoindRomName, NULL, NULL, DblpointInputInfo, DblpointDIPInfo,
+	NULL, dblpoindRomInfo, dblpoindRomName, NULL, NULL, NULL, NULL, DblpointInputInfo, DblpointDIPInfo,
 	GumboInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	320, 224, 4, 3
 };

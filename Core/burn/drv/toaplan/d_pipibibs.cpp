@@ -1,5 +1,6 @@
 #include "toaplan.h"
 // Pipi & Bibis / Whoopee!!
+// Based on MAME driver by Quench, Yochizo, David Haywood
 
 #define REFRESHRATE 60
 #define VBLANK_LINES (32)
@@ -79,7 +80,7 @@ static struct BurnDIPInfo PipibibsDIPList[]=
 	{0x13, 0x01, 0xc0, 0x80, "1 Coin  4 Credits"		},
 	{0x13, 0x01, 0xc0, 0xc0, "1 Coin  6 Credits"		},
 
-	{0   , 0xfe, 0   ,    0, "Difficulty"		},
+	{0   , 0xfe, 0   ,    4, "Difficulty"		},
 	{0x14, 0x01, 0x03, 0x03, "Hardest"		},
 	{0x14, 0x01, 0x03, 0x02, "Hard"		},
 	{0x14, 0x01, 0x03, 0x00, "Normal"		},
@@ -97,11 +98,11 @@ static struct BurnDIPInfo PipibibsDIPList[]=
 	{0x14, 0x01, 0x30, 0x00, "3"		},
 	{0x14, 0x01, 0x30, 0x10, "5"		},
 
-	{0   , 0xfe, 0   ,    4, "Invulnerability"		},
+	{0   , 0xfe, 0   ,    2, "Invulnerability"		},
 	{0x14, 0x01, 0x40, 0x00, "Off"		},
 	{0x14, 0x01, 0x40, 0x40, "On"		},
 
-	{0   , 0xfe, 0   ,    2, "Region"		},
+	{0   , 0xfe, 0   ,    8, "Region"		},
 	{0x15, 0x01, 0x07, 0x06, "Europe"		},
 	{0x15, 0x01, 0x07, 0x07, "Europe (Nova Apparate GMBH & Co)"		},
 	{0x15, 0x01, 0x07, 0x04, "USA"		},
@@ -111,7 +112,7 @@ static struct BurnDIPInfo PipibibsDIPList[]=
 	{0x15, 0x01, 0x07, 0x02, "Hong Kong (Honest Trading Co.)"		},
 	{0x15, 0x01, 0x07, 0x03, "Taiwan"		},
 
-	{0   , 0xfe, 0   ,    0, "Nudity"		},
+	{0   , 0xfe, 0   ,    2, "Nudity"		},
 	{0x15, 0x01, 0x08, 0x08, "Low"		},
 	{0x15, 0x01, 0x08, 0x00, "High, but censored"		},
 };
@@ -296,11 +297,11 @@ void __fastcall pipibibs_sound_write(UINT16 address, UINT8 data)
 	switch (address)
 	{
 		case 0xe000:
-			BurnYM3812Write(0, data);
+			BurnYM3812Write(0, 0, data);
 		return;
 
 		case 0xe001:
-			BurnYM3812Write(1, data);
+			BurnYM3812Write(0, 1, data);
 		return;
 	}
 }
@@ -311,7 +312,7 @@ UINT8 __fastcall pipibibs_sound_read(UINT16 address)
 	{
 		case 0xe000:
 		case 0xe001:
-			return BurnYM3812Read(0);
+			return BurnYM3812Read(0, 0);
 	}
 
 	return 0;
@@ -367,15 +368,15 @@ static INT32 DrvInit()
 	{
 		SekInit(0, 0x68000);										// Allocate 68000
 		SekOpen(0);
-		SekMapMemory(Rom01,		0x000000, 0x03FFFF, SM_ROM);	// CPU 0 ROM
-		SekMapMemory(Ram01,		0x080000, 0x082FFF, SM_RAM);
-		SekMapMemory(RamPal,		0x0c0000, 0x0c0FFF, SM_RAM);	// Palette RAM
+		SekMapMemory(Rom01,		0x000000, 0x03FFFF, MAP_ROM);	// CPU 0 ROM
+		SekMapMemory(Ram01,		0x080000, 0x082FFF, MAP_RAM);
+		SekMapMemory(RamPal,		0x0c0000, 0x0c0FFF, MAP_RAM);	// Palette RAM
 		SekSetReadWordHandler(0, 	pipibibsReadWord);
 		SekSetReadByteHandler(0, 	pipibibsReadByte);
 		SekSetWriteWordHandler(0, 	pipibibsWriteWord);
 		SekSetWriteByteHandler(0, 	pipibibsWriteByte);
 
-		SekMapHandler(1,		0x190000, 0x190FFF, SM_RAM);
+		SekMapHandler(1,		0x190000, 0x190FFF, MAP_RAM);
 		SekSetReadByteHandler(1, 	toaplan1ReadByteZ80RAM);
 		SekSetReadWordHandler(1, 	toaplan1ReadWordZ80RAM);
 		SekSetWriteByteHandler(1, 	toaplan1WriteByteZ80RAM);
@@ -395,9 +396,9 @@ static INT32 DrvInit()
 	}
 
 	nToa1Cycles68KSync = 0;
-	BurnYM3812Init(3375000, &toaplan1FMIRQHandler, pipibibsSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(3375000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 3375000, &toaplan1FMIRQHandler, pipibibsSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 3375000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 1.00, BURN_SND_ROUTE_BOTH);
 
 	nSpriteYOffset =  0x0001;
 
@@ -504,7 +505,7 @@ static INT32 DrvFrame()
 			ToaBufferGP9001Sprites();
 
 			bVBlank = true;
-			SekSetIRQLine(4, SEK_IRQSTATUS_AUTO);
+			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 		}
 
 		nCyclesSegment = nNext - SekTotalCycles();
@@ -556,7 +557,7 @@ struct BurnDriver BurnDrvPipibibs = {
 	"Pipi & Bibis / Whoopee!! (Z80 sound cpu, set 1)\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PLATFORM, 0,
-	NULL, pipibibsRomInfo, pipibibsRomName, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
+	NULL, pipibibsRomInfo, pipibibsRomName, NULL, NULL, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };
@@ -582,7 +583,7 @@ struct BurnDriver BurnDrvPipibibsa = {
 	"Pipi & Bibis / Whoopee!! (Z80 sound cpu, set 2)\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PLATFORM, 0,
-	NULL, pipibibsaRomInfo, pipibibsaRomName, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
+	NULL, pipibibsaRomInfo, pipibibsaRomName, NULL, NULL, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };
@@ -610,7 +611,7 @@ struct BurnDriver BurnDrvPipibibsp = {
 	"Pipi & Bibis / Whoopee!! (prototype)\0", NULL, "Toaplan", "Toaplan GP9001 based",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_PROTOTYPE, 2, HARDWARE_TOAPLAN_68K_Zx80, GBF_PLATFORM, 0,
-	NULL, pipibibspRomInfo, pipibibspRomName, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
+	NULL, pipibibspRomInfo, pipibibspRomName, NULL, NULL, NULL, NULL, PipibibsInputInfo, PipibibsDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &ToaRecalcPalette, 0x800,
 	320, 240, 4, 3
 };

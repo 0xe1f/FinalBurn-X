@@ -277,7 +277,7 @@ static void Cps1Layers()
     if (n==0) {
 	  if (nDrawMask & 1)  CpsObjDrawDoX(0,7);
 
-	  if (!Cps1DisableBgHi) {
+	  if (!Cps1DisableBgHi && i+1 < 4) {
 		nBgHi=1;
 		switch (Draw[i+1]) {
 			case 1:
@@ -385,8 +385,7 @@ static void Cps2Layers()
 		nSlice = 0;
 		do {
 			for (INT32 i = 0; i < 4; i++) {
-
-				if (Prio[nSlice][Draw[nSlice][i]] == nCurrPrio) {
+				if ((Draw[nSlice][i] >= 0) && Prio[nSlice][Draw[nSlice][i]] == nCurrPrio) {
 
 					// Render sprites between the previous layer and this one
 					if ((nDrawMask[0] & 1) && (nPrevPrio < nCurrPrio)) {
@@ -491,7 +490,7 @@ static void DoDraw(INT32 Recalc)
 {
 	CtvReady();								// Point to correct tile drawing functions
 
-	if (bCpsUpdatePalEveryFrame) GetPalette(0, 6);
+	if (CpsRecalcPal || bCpsUpdatePalEveryFrame) GetPalette(0, 6);
 	if (Recalc || bCpsUpdatePalEveryFrame) CpsPalUpdate(CpsSavePal);		// recalc whole palette if needed
 	
 	CpsClearScreen();

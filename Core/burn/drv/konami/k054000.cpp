@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:David Haywood
 
 #include "burnint.h"
 
@@ -10,7 +12,9 @@ void K054000Reset()
 
 void K054000Write(INT32 offset, INT32 data)
 {
-	K054000Ram[offset & 0x1f] = data;
+	offset &= 0x1f;
+
+	K054000Ram[offset] = data;
 }
 
 UINT8 K054000Read(INT32 offset)

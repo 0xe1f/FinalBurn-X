@@ -6,6 +6,7 @@ extern UINT8 *deco16_pf_ram[4];
 extern UINT8 *deco16_pf_rowscroll[4];
 
 extern UINT16 deco16_priority;
+extern INT32 deco16_vblank;
 
 void deco16_set_bank_callback(INT32 tmap, INT32 (*callback)(const INT32 bank));
 void deco16_set_color_base(INT32 tmap, INT32 base);
@@ -22,10 +23,15 @@ extern UINT8 *deco16_prio_map;
 void deco16_clear_prio_map();
 void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri);
 void deco16_draw_prio_sprite(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri);
+void deco16_draw_prio_sprite_nitrobal(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri);
+void deco16_draw_prio_sprite_dumb(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri);
 void deco16_draw_alphaprio_sprite(UINT32 *palette, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri, INT32 alpha);
+void deco16_draw_alphaprio_sprite(UINT32 *palette, UINT8 *gfx, INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, INT32 pri, INT32 spri, INT32 alpha, INT32 dumb_mode);
 
 void deco16_set_graphics(UINT8 *gfx0, INT32 len0, UINT8 *gfx1, INT32 len1, UINT8 *gfx2, INT32 len2);
 void deco16_set_graphics(INT32 num, UINT8 *gfx, INT32 len, INT32 size /*tile size*/); // individual bank
+
+void deco16_create_transtable(INT32 select, INT32 trans); // speedup!
 
 void deco16Init(INT32 no_pf34, INT32 split, INT32 full_width);
 void deco16Reset();
@@ -35,6 +41,7 @@ void deco16Scan();
 
 void deco16_pf12_update();
 void deco16_pf34_update();
+void deco16_pf3_update();
 
 #define DECO16_LAYER_OPAQUE		0x010000
 #define DECO16_LAYER_PRIORITY(x)	((x) & 0xff)
@@ -43,8 +50,12 @@ void deco16_pf34_update();
 #define DECO16_LAYER_4BITSPERPIXEL	0x000000 	// just to clarify
 #define DECO16_LAYER_TRANSMASK0		0x000100
 #define DECO16_LAYER_TRANSMASK1		0x000000
+#define DECO16_LAYER_CAPTAVEN		0x400000
 
 void deco16_draw_layer(INT32 tmap, UINT16 *dest, INT32 flags);
+void deco16_draw_layer_by_line(INT32 start, INT32 end, INT32 tmap, UINT16 *dest, INT32 flags);
+
+INT32 deco16_layer_enabled(INT32 tmap);
 
 void deco16_tile_decode(UINT8 *src, UINT8 *dst, INT32 len, INT32 type);
 void deco16_sprite_decode(UINT8 *gfx, INT32 len);
@@ -57,6 +68,14 @@ void deco16_palette_recalculate(UINT32 *palette, UINT8 *pal);
 		return;						\
 	}
 
+#define deco16_write_control_byte(num, addr, a, d)		\
+	if ((addr & 0xfffffff0) == a) {				\
+		if ((addr) & 1)				\
+			deco16_pf_control[num][(addr & 0x0f)/2] = (deco16_pf_control[num][(addr & 0x0f)/2] & 0xff00) | d;	\
+		else														\
+			deco16_pf_control[num][(addr & 0x0f)/2] = (deco16_pf_control[num][(addr & 0x0f)/2] & 0x00ff) | (d << 8);\
+		return;						\
+	}
 
 #define deco16_read_control_word(num, addr, a)			\
 	if ((addr & 0xfffffff0) == a) {				\
@@ -68,7 +87,10 @@ void deco16_palette_recalculate(UINT32 *palette, UINT8 *pal);
 
 // common sound hardware...
 
+extern INT32 deco16_sound_cpuclock;
 extern INT32 deco16_soundlatch;
+extern INT32 deco16_music_tempofix;
+extern INT32 deco16_dragngun_kludge;
 
 void deco16SoundReset();
 void deco16SoundInit(UINT8 *rom, UINT8 *ram, INT32 huc_clock, INT32 ym2203, void (ym2151_port)(UINT32,UINT32), double ym2151vol, INT32 msmclk0, double msmvol0, INT32 msmclk1, double msmvol1);
@@ -86,32 +108,4 @@ void deco56_remap_gfx(UINT8 *rom, INT32 len);
 void deco102_decrypt_cpu(UINT8 *data, UINT8 *ops, INT32 size, INT32 address_xor, INT32 data_select_xor, INT32 opcode_select_xor);
 
 void deco156_decrypt(UINT8 *src, INT32 len);
-
-// protection routines
-
-extern UINT16 *deco16_prot_ram;
-extern UINT16 *deco16_prot_inputs;
-extern UINT16 *deco16_buffer_ram;
-extern INT32 deco16_vblank;
-
-void deco16_66_prot_w(INT32 offset, UINT16 data, INT32 mask); // mutant fighter
-UINT16 deco16_66_prot_r(INT32 offset);
-
-void deco16_60_prot_w(INT32 offset, UINT16 data, INT32 mask); // edward randy
-UINT16 deco16_60_prot_r(INT32 offset);
-
-UINT16 deco16_104_cninja_prot_r(INT32 offset); // caveman ninja
-
-UINT16 deco16_146_funkyjet_prot_r(INT32 offset); // funky jet
-
-void deco16_104_rohga_prot_w(INT32 offset, UINT16 data, INT32 mask); // rohga
-UINT16 deco16_104_rohga_prot_r(INT32 offset);
-
-UINT16 deco16_104_prot_r(INT32 offset);
-
-void deco16_146_nitroball_prot_w(INT32 offset, UINT16 data, INT32 mask);
-UINT16 deco16_146_nitroball_prot_r(INT32 offset);
-
-void deco16_146_fghthist_prot_w(INT32 offset, UINT32 data, UINT32 mem_mask);
-UINT32 deco16_146_fghthist_prot_r(INT32 offset);
 

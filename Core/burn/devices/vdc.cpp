@@ -1,3 +1,5 @@
+// Based on MESS driver by Charles MacDonald
+
 #include "tiles_generic.h"
 #include "h6280_intf.h"
 
@@ -52,6 +54,10 @@ static void vpc_update_prio_map()
 
 void vpc_write(UINT8 offset, UINT8 data)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vpc_write called without init\n"));
+#endif
+
 	switch (offset & 0x07)
 	{
 		case 0x00:	/* Priority register #0 */
@@ -102,6 +108,10 @@ void vpc_write(UINT8 offset, UINT8 data)
 
 UINT8 vpc_read(UINT8 offset)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vpc_read called without init\n"));
+#endif
+
 	switch (offset & 0x07)
 	{
 		case 0x00:  /* Priority register #0 */
@@ -128,6 +138,10 @@ UINT8 vpc_read(UINT8 offset)
 
 void vpc_reset()
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vpc_reset called without init\n"));
+#endif
+
 	memset (vpc_prio, 0, 4);
 	memset (vpc_vdc0_enabled, 0, 4);
 	memset (vpc_vdc1_enabled, 0, 4);
@@ -145,6 +159,10 @@ void vpc_reset()
 
 UINT8 vce_read(UINT8 offset)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vce_read called without init\n"));
+#endif
+
 	switch (offset & 7)
 	{
 		case 0x04:
@@ -161,6 +179,10 @@ UINT8 vce_read(UINT8 offset)
 
 void vce_write(UINT8 offset, UINT8 data)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vce_write called without init\n"));
+#endif
+
 	switch (offset & 7)
 	{
 		case 0x00:
@@ -188,13 +210,17 @@ void vce_write(UINT8 offset, UINT8 data)
 
 void vce_palette_init(UINT32 *Palette)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vce_palette_init called without init\n"));
+#endif
+
 	for (INT32 i = 0; i < 512; i++)
 	{
-		int r = ((i >> 3) & 7) << 5;
-		int g = ((i >> 6) & 7) << 5;
-		int b = ((i >> 0) & 7) << 5;
+		INT32 r = ((i >> 3) & 7) << 5;
+		INT32 g = ((i >> 6) & 7) << 5;
+		INT32 b = ((i >> 0) & 7) << 5;
 
-		int y = ((66 * r + 129 * g +  25 * b + 128) >> 8) +  16;
+		INT32 y = ((66 * r + 129 * g +  25 * b + 128) >> 8) +  16;
 
 		Palette[0x000 + i] = BurnHighCol(r, g, b, 0);
 		Palette[0x200 + i] = BurnHighCol(y, y, y, 0);
@@ -203,6 +229,10 @@ void vce_palette_init(UINT32 *Palette)
 
 void vce_reset()
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vce_reset called without init\n"));
+#endif
+
 	memset (vce_data, 0, 512 * sizeof(UINT16));
 
 	vce_address = 0;
@@ -246,11 +276,11 @@ void vce_reset()
 enum vdc_regs {MAWR = 0, MARR, VxR, reg3, reg4, CR, RCR, BXR, BYR, MWR, HSR, HDR, VPR, VDW, VCR, DCR, SOUR, DESR, LENR, DVSSR };
 
 
-static void conv_obj(int which, int i, int l, int hf, int vf, char *buf)
+static void conv_obj(INT32 which, INT32 i, INT32 l, INT32 hf, INT32 vf, UINT8 *buf)
 {
-	int b0, b1, b2, b3, i0, i1, i2, i3, x;
-	int xi;
-	int tmp;
+	INT32 b0, b1, b2, b3, i0, i1, i2, i3, x;
+	INT32 xi;
+	INT32 tmp;
 
 	l &= 0x0F;
 	if(vf) l = (15 - l);
@@ -277,33 +307,33 @@ static void conv_obj(int which, int i, int l, int hf, int vf, char *buf)
 	}
 }
 
-static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_buffer)
+static void pce_refresh_sprites(INT32 which, INT32 line, UINT8 *drawn, UINT16 *line_buffer)
 {
-	int i;
+	INT32 i;
 	UINT8 sprites_drawn = 0;
 
 	/* Are we in greyscale mode or in color mode? */
-	int color_base = vce_control & 0x80 ? 512 : 0;
+	INT32 color_base = vce_control & 0x80 ? 512 : 0;
 
 	/* count up: Highest priority is Sprite 0 */
 	for(i = 0; i < 64; i++)
 	{
-		static const int cgy_table[] = {16, 32, 64, 64};
+		static const INT32 cgy_table[] = {16, 32, 64, 64};
 
-		int obj_y = (vdc_sprite_ram[which][(i << 2) + 0] & 0x03FF) - 64;
-		int obj_x = (vdc_sprite_ram[which][(i << 2) + 1] & 0x03FF) - 32;
-		int obj_i = (vdc_sprite_ram[which][(i << 2) + 2] & 0x07FE);
-		int obj_a = (vdc_sprite_ram[which][(i << 2) + 3]);
-		int cgx   = (obj_a >> 8) & 1;   /* sprite width */
-		int cgy   = (obj_a >> 12) & 3;  /* sprite height */
-		int hf	= (obj_a >> 11) & 1;  /* horizontal flip */
-		int vf	= (obj_a >> 15) & 1;  /* vertical flip */
-		int palette = (obj_a & 0x000F);
-		int priority = (obj_a >> 7) & 1;
-		int obj_h = cgy_table[cgy];
-		int obj_l = (line - obj_y);
-		int cgypos;
-		char buf[16];
+		INT32 obj_y = (vdc_sprite_ram[which][(i << 2) + 0] & 0x03FF) - 64;
+		INT32 obj_x = (vdc_sprite_ram[which][(i << 2) + 1] & 0x03FF) - 32;
+		INT32 obj_i = (vdc_sprite_ram[which][(i << 2) + 2] & 0x07FE);
+		INT32 obj_a = (vdc_sprite_ram[which][(i << 2) + 3]);
+		INT32 cgx   = (obj_a >> 8) & 1;   /* sprite width */
+		INT32 cgy   = (obj_a >> 12) & 3;  /* sprite height */
+		INT32 hf	= (obj_a >> 11) & 1;  /* horizontal flip */
+		INT32 vf	= (obj_a >> 15) & 1;  /* vertical flip */
+		INT32 palette = (obj_a & 0x000F);
+		INT32 priority = (obj_a >> 7) & 1;
+		INT32 obj_h = cgy_table[cgy];
+		INT32 obj_l = (line - obj_y);
+		INT32 cgypos;
+		UINT8 buf[16];
 
 		if ((obj_y == -64) || (obj_y > line)) continue;
 		if ((obj_x == -32) || (obj_x >= vdc_width[which])) continue;
@@ -332,7 +362,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 				{
 					/* note: flag is set only if irq is taken, Mizubaku Daibouken relies on this behaviour */
 					vdc_status[which] |= 0x02;
-					h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+					h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 				}
 				continue;  /* Should cause an interrupt */
 			}
@@ -342,8 +372,8 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 
 			if(cgx == 0)
 			{
-				int x;
-				int pixel_x = ( ( obj_x * 512 ) / vdc_width[which] );
+				INT32 x;
+				INT32 pixel_x = ( ( obj_x * 512 ) / vdc_width[which] );
 
 				conv_obj(which, obj_i + (cgypos << 2), obj_l, hf, vf, buf);
 
@@ -361,7 +391,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 
 									if ( vdc_width[which] != 512 )
 									{
-										int dp = 1;
+										INT32 dp = 1;
 										while ( pixel_x + dp < ( ( ( obj_x + x + 1 ) * 512 ) / vdc_width[which] ) )
 										{
 											drawn[pixel_x + dp] = i + 2;
@@ -376,7 +406,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 							else if (drawn[pixel_x] == 2)
 							{
 								if(vdc_data[which][0x05] & 0x01)
-									h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+									h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 								vdc_status[which] |= 0x01;
 							}
 						}
@@ -393,8 +423,8 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 			}
 			else
 			{
-				int x;
-				int pixel_x = ( ( obj_x * 512 ) / vdc_width[which] );
+				INT32 x;
+				INT32 pixel_x = ( ( obj_x * 512 ) / vdc_width[which] );
 
 				conv_obj(which, obj_i + (cgypos << 2) + (hf ? 2 : 0), obj_l, hf, vf, buf);
 
@@ -411,7 +441,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 									line_buffer[pixel_x] = color_base + vce_data[0x100 + (palette << 4) + buf[x]];
 									if ( vdc_width[which] != 512 )
 									{
-										int dp = 1;
+										INT32 dp = 1;
 										while ( pixel_x + dp < ( ( ( obj_x + x + 1 ) * 512 ) / vdc_width[which] ) )
 										{
 											drawn[pixel_x + dp] = i + 2;
@@ -426,7 +456,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 							else if ( drawn[pixel_x] == 2 )
 							{
 								if(vdc_data[which][0x05] & 0x01)
-									h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+									h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 								vdc_status[which] |= 0x01;
 							}
 						}
@@ -451,7 +481,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 					{
 						/* note: flag is set only if irq is taken, Mizubaku Daibouken relies on this behaviour */
 						vdc_status[which] |= 0x02;
-						h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+						h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 					}
 				}
 				else
@@ -470,7 +500,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 										line_buffer[pixel_x] = color_base + vce_data[0x100 + (palette << 4) + buf[x]];
 										if ( vdc_width[which] != 512 )
 										{
-											int dp = 1;
+											INT32 dp = 1;
 											while ( pixel_x + dp < ( ( ( obj_x + x + 17 ) * 512 ) / vdc_width[which] ) )
 											{
 												drawn[pixel_x + dp] = i + 2;
@@ -485,7 +515,7 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 								else if ( drawn[pixel_x] == 2 )
 								{
 									if(vdc_data[which][0x05] & 0x01)
-										h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+										h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 									vdc_status[which] |= 0x01;
 								}
 							}
@@ -506,12 +536,12 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 }
 
 
-static void draw_overscan_line(int line)
+static void draw_overscan_line(INT32 line)
 {
-	int i;
+	INT32 i;
 
 	/* Are we in greyscale mode or in color mode? */
-	int color_base = vce_control & 0x80 ? 512 : 0;
+	INT32 color_base = vce_control & 0x80 ? 512 : 0;
 
 	/* our line buffer */
 	UINT16 *line_buffer = vdc_tmp_draw + line * 684; //&vce.bmp->pix16(line);
@@ -520,12 +550,12 @@ static void draw_overscan_line(int line)
 		line_buffer[i] = color_base + vce_data[0x100];
 }
 
-static void draw_sgx_overscan_line(int line)
+static void draw_sgx_overscan_line(INT32 line)
 {
-	int i;
+	INT32 i;
 
 	/* Are we in greyscale mode or in color mode? */
-	int color_base = vce_control & 0x80 ? 512 : 0;
+	INT32 color_base = vce_control & 0x80 ? 512 : 0;
 
 	/* our line buffer */
 	UINT16 *line_buffer = vdc_tmp_draw + line * 684; //&vce.bmp->pix16(line);
@@ -534,7 +564,7 @@ static void draw_sgx_overscan_line(int line)
 		line_buffer[i] = color_base + vce_data[0];
 }
 
-static void draw_black_line(int line)
+static void draw_black_line(INT32 line)
 {
 	UINT16 *line_buffer = vdc_tmp_draw + line * 684; //&vce.bmp->pix16(line);
 
@@ -542,9 +572,9 @@ static void draw_black_line(int line)
 		line_buffer[i] = 0x400; // black
 }
 
-static void vdc_advance_line(int which)
+static void vdc_advance_line(INT32 which)
 {
-	int ret = 0;
+	INT32 ret = 0;
 
 	vdc_curline[which] += 1;
 	vdc_current_segment_line[which] += 1;
@@ -600,7 +630,7 @@ static void vdc_advance_line(int which)
 		/* do VRAM > SATB DMA if the enable bit is set or the DVSSR reg. was written to */
 		if( ( vdc_data[which][DCR] & DCR_DSR ) || vdc_dvssr_write[which] )
 		{
-			int i;
+			INT32 i;
 
 			vdc_dvssr_write[which] = 0;
 
@@ -648,7 +678,7 @@ static void vdc_advance_line(int which)
 		/* do VRAM > SATB DMA if the enable bit is set or the DVSSR reg. was written to */
 		if ( ( vdc_data[which][DCR] & DCR_DSR ) || vdc_dvssr_write[which] )
 		{
-			int i;
+			INT32 i;
 
 			vdc_dvssr_write[which] = 0;
 
@@ -666,40 +696,40 @@ static void vdc_advance_line(int which)
 	}
 
 	if (ret)
-		h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+		h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 }
 
-static void pce_refresh_line(int which, int /*line*/, int external_input, UINT8 *drawn, UINT16 *line_buffer)
+static void pce_refresh_line(INT32 which, INT32 /*line*/, INT32 external_input, UINT8 *drawn, UINT16 *line_buffer)
 {
-	static const int width_table[4] = {5, 6, 7, 7};
+	static const INT32 width_table[4] = {5, 6, 7, 7};
 
-	int scroll_y = ( vdc_yscroll[which] & 0x01FF);
-	int scroll_x = (vdc_data[which][BXR] & 0x03FF);
-	int nt_index;
+	INT32 scroll_y = ( vdc_yscroll[which] & 0x01FF);
+	INT32 scroll_x = (vdc_data[which][BXR] & 0x03FF);
+	INT32 nt_index;
 
 	/* is virtual map 32 or 64 characters tall ? (256 or 512 pixels) */
-	int v_line = (scroll_y) & (vdc_data[which][MWR] & 0x0040 ? 0x1FF : 0x0FF);
+	INT32 v_line = (scroll_y) & (vdc_data[which][MWR] & 0x0040 ? 0x1FF : 0x0FF);
 
 	/* row within character */
-	int v_row = (v_line & 7);
+	INT32 v_row = (v_line & 7);
 
 	/* row of characters in BAT */
-	int nt_row = (v_line >> 3);
+	INT32 nt_row = (v_line >> 3);
 
 	/* virtual X size (# bits to shift) */
-	int v_width =		width_table[(vdc_data[which][MWR] >> 4) & 3];
+	INT32 v_width =		width_table[(vdc_data[which][MWR] >> 4) & 3];
 
 	/* pointer to the name table (Background Attribute Table) in VRAM */
 	UINT8 *bat = &(vdc_vidram[which][nt_row << (v_width+1)]);
 
 	/* Are we in greyscale mode or in color mode? */
-	int color_base = vce_control & 0x80 ? 512 : 0;
+	INT32 color_base = vce_control & 0x80 ? 512 : 0;
 
-	int b0, b1, b2, b3;
-	int i0, i1, i2, i3;
-	int cell_pattern_index;
-	int cell_palette;
-	int x, c, i;
+	INT32 b0, b1, b2, b3;
+	INT32 i0, i1, i2, i3;
+	INT32 cell_pattern_index;
+	INT32 cell_palette;
+	INT32 x, c, i;
 
 	/* character blanking bit */
 	if(!(vdc_data[which][CR] & CR_BB))
@@ -708,8 +738,8 @@ static void pce_refresh_line(int which, int /*line*/, int external_input, UINT8 
 	}
 	else
 	{
-		int	pixel = 0;
-		int phys_x = - ( scroll_x & 0x07 );
+		INT32	pixel = 0;
+		INT32 phys_x = - ( scroll_x & 0x07 );
 
 		for(i=0;i<(vdc_width[which] >> 3) + 1;i++)
 		{
@@ -727,7 +757,7 @@ static void pce_refresh_line(int which, int /*line*/, int external_input, UINT8 
 			/* byte-offset within the VRAM space					 */
 			cell_pattern_index = ( ( ( bat[nt_index + 1] << 8 ) | bat[nt_index] ) & 0x0FFF) << 5;
 
-			int vram_offs = (cell_pattern_index + (v_row << 1)) & 0xffff;
+			INT32 vram_offs = (cell_pattern_index + (v_row << 1)) & 0xffff;
 
 			b0 = vdc_vidram[which][vram_offs + 0x00];
 			b1 = vdc_vidram[which][vram_offs + 0x01];
@@ -771,7 +801,11 @@ static void pce_refresh_line(int which, int /*line*/, int external_input, UINT8 
 
 void pce_interrupt()
 {
-	int which = 0; // only 1 on pce
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("pce_interrupt called without init\n"));
+#endif
+
+	INT32 which = 0; // only 1 on pce
 
 	if (vce_current_bitmap_line >= 14 && vce_current_bitmap_line < 256)
 	{
@@ -805,6 +839,10 @@ void pce_interrupt()
 
 void sgx_interrupt()
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("sgx_interrupt called without init\n"));
+#endif
+
 	if (vce_current_bitmap_line >= 14 && vce_current_bitmap_line < 256)
 	{
 		draw_sgx_overscan_line(vce_current_bitmap_line);
@@ -814,7 +852,7 @@ void sgx_interrupt()
 			UINT8 drawn[2][512];
 			UINT16 *line_buffer;
 			UINT16 temp_buffer[2][512];
-			int i;
+			INT32 i;
 
 			memset( drawn, 0, sizeof(drawn) );
 
@@ -839,7 +877,7 @@ void sgx_interrupt()
 
 			for( i = 0; i < 512; i++ )
 			{
-				int cur_prio = vpc_prio_map[i];
+				INT32 cur_prio = vpc_prio_map[i];
 
 				if ( vpc_vdc0_enabled[cur_prio] )
 				{
@@ -939,15 +977,15 @@ void sgx_interrupt()
 	vdc_advance_line( 1 );
 }
 
-static void vdc_do_dma(int which)
+static void vdc_do_dma(INT32 which)
 {
-	int src = vdc_data[which][0x10];
-	int dst = vdc_data[which][0x11];
-	int len = vdc_data[which][0x12];
+	INT32 src = vdc_data[which][0x10];
+	INT32 dst = vdc_data[which][0x11];
+	INT32 len = vdc_data[which][0x12];
 
-	int did = (vdc_data[which][0x0f] >> 3) & 1;
-	int sid = (vdc_data[which][0x0f] >> 2) & 1;
-	int dvc = (vdc_data[which][0x0f] >> 1) & 1;
+	INT32 did = (vdc_data[which][0x0f] >> 3) & 1;
+	INT32 sid = (vdc_data[which][0x0f] >> 2) & 1;
+	INT32 dvc = (vdc_data[which][0x0f] >> 1) & 1;
 
 	do {
 		UINT8 l, h;
@@ -977,12 +1015,16 @@ static void vdc_do_dma(int which)
 
 	if (dvc)
 	{
-		h6280SetIRQLine(0, H6280_IRQSTATUS_ACK);
+		h6280SetIRQLine(0, CPU_IRQSTATUS_ACK);
 	}
 }
 
-void vdc_write(int which, UINT8 offset, UINT8 data)
+void vdc_write(INT32 which, UINT8 offset, UINT8 data)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_write called without init\n"));
+#endif
+
 	switch (offset & 3)
 	{
 		case 0x00:
@@ -1044,7 +1086,7 @@ void vdc_write(int which, UINT8 offset, UINT8 data)
 
 				case CR:
 				{
-					static const unsigned char inctab[] = {1, 32, 64, 128};
+					static const UINT8 inctab[] = {1, 32, 64, 128};
 					vdc_inc[which] = inctab[(data >> 3) & 3];
 				}
 				break;
@@ -1078,14 +1120,18 @@ void vdc_write(int which, UINT8 offset, UINT8 data)
 	}
 }
 
-UINT8 vdc_read(int which, UINT8 offset)
+UINT8 vdc_read(INT32 which, UINT8 offset)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_read called without init\n"));
+#endif
+
 	switch(offset & 3)
 	{
 		case 0x00: {
 			UINT8 ret = vdc_status[which];
 			vdc_status[which] &= ~0x3f;
-			h6280SetIRQLine(0, H6280_IRQSTATUS_NONE);
+			h6280SetIRQLine(0, CPU_IRQSTATUS_NONE);
 			return ret;
 		}
 
@@ -1106,6 +1152,10 @@ UINT8 vdc_read(int which, UINT8 offset)
 
 void sgx_vdc_write(UINT8 offset, UINT8 data)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("sgx_vdc_write called without init\n"));
+#endif
+
 	if (vpc_vdc_select)
 	{
 		vdc_write( 1, offset, data );
@@ -1118,11 +1168,19 @@ void sgx_vdc_write(UINT8 offset, UINT8 data)
 
 UINT8 sgx_vdc_read(UINT8 offset)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("sgx_vdc_read called without init\n"));
+#endif
+
 	return (vpc_vdc_select) ? vdc_read( 1, offset ) : vdc_read( 0, offset );
 }
 
 void vdc_reset()
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_reset called without init\n"));
+#endif
+
 	memset (vdc_register,			0, 2);
 	memset (vdc_data,			0, 2 * 32 * sizeof(UINT16));
 	memset (vdc_latch,			0, 2);
@@ -1144,51 +1202,57 @@ void vdc_reset()
 	vdc_inc[1] = 1;
 }
 
-void vdc_get_dimensions(int which, INT32 *x, INT32 *y)
+void vdc_get_dimensions(INT32 which, INT32 *x, INT32 *y)
 {
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_get_dimensions called without init\n"));
+#endif
+
 	*x = vdc_width[which] * 2;
 	*y = vdc_height[which];
 }
 
+void vdc_init()
+{
+	DebugDev_VDCInitted = 1;
+}
+
+void vdc_exit()
+{
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_exit called without init\n"));
+#endif
+
+	DebugDev_VDCInitted = 0;
+}
+
 INT32 vdc_scan(INT32 nAction, INT32 *pnMin)
 {
-	struct BurnArea ba;
+#if defined FBNEO_DEBUG
+	if (!DebugDev_VDCInitted) bprintf(PRINT_ERROR, _T("vdc_scan called without init\n"));
+#endif
 
 	if (pnMin) {
 		*pnMin =  0x029702;
 	}
 
 	if (nAction & ACB_DRIVER_DATA) {
-		for (INT32 i = 0; i < 2; i++) {
-			SCAN_VAR(vdc_register[i]);
-			SCAN_VAR(vdc_data[i]);
-			SCAN_VAR(vdc_latch[i]);
-			SCAN_VAR(vdc_yscroll[i]);
-			SCAN_VAR(vdc_width[i]);
-			SCAN_VAR(vdc_height[i]);
-			SCAN_VAR(vdc_inc[i]);
-			SCAN_VAR(vdc_dvssr_write[i]);
-			SCAN_VAR(vdc_status[i]);
-			SCAN_VAR(vdc_sprite_ram[i]);
-			SCAN_VAR(vdc_vblank_triggered[i]);
-			SCAN_VAR(vdc_current_segment[i]);
-			SCAN_VAR(vdc_current_segment_line[i]);
-			SCAN_VAR(vdc_raster_count[i]);
-			SCAN_VAR(vdc_curline[i]);
-			SCAN_VAR(vdc_satb_countdown[i]);
-		}
-
-		ba.Data		= vdc_sprite_ram;
-		ba.nLen		= 2 * 0x100 * sizeof(UINT16);
-		ba.nAddress	= 0;
-		ba.szName	= "VDC Sprite RAM";
-		BurnAcb(&ba);
-
-		ba.Data		= vdc_data;
-		ba.nLen		= 2 * 0x20 * sizeof(UINT16);
-		ba.nAddress	= 0;
-		ba.szName	= "VDC DATA";
-		BurnAcb(&ba);
+		SCAN_VAR(vdc_register);
+		SCAN_VAR(vdc_data);
+		SCAN_VAR(vdc_latch);
+		SCAN_VAR(vdc_yscroll);
+		SCAN_VAR(vdc_width);
+		SCAN_VAR(vdc_height);
+		SCAN_VAR(vdc_inc);
+		SCAN_VAR(vdc_dvssr_write);
+		SCAN_VAR(vdc_status);
+		SCAN_VAR(vdc_sprite_ram);
+		SCAN_VAR(vdc_vblank_triggered);
+		SCAN_VAR(vdc_current_segment);
+		SCAN_VAR(vdc_current_segment_line);
+		SCAN_VAR(vdc_raster_count);
+		SCAN_VAR(vdc_curline);
+		SCAN_VAR(vdc_satb_countdown);
 
 		SCAN_VAR(vce_address);
 		SCAN_VAR(vce_control);
@@ -1199,17 +1263,10 @@ INT32 vdc_scan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(vpc_vdc_select);
 		SCAN_VAR(vpc_priority);
 
-		for (INT32 i = 0; i < 4; i++) {
-			SCAN_VAR(vpc_prio[i]);
-			SCAN_VAR(vpc_vdc0_enabled[i]);
-			SCAN_VAR(vpc_vdc1_enabled[i]);
-		}
-
-		ba.Data		= vpc_prio_map;
-		ba.nLen		= 0x0000200;
-		ba.nAddress	= 0;
-		ba.szName	= "VPC Priority Map";
-		BurnAcb(&ba);
+		SCAN_VAR(vpc_prio);
+		SCAN_VAR(vpc_vdc0_enabled);
+		SCAN_VAR(vpc_vdc1_enabled);
+		SCAN_VAR(vpc_prio_map);
 	}
 
 	return 0;

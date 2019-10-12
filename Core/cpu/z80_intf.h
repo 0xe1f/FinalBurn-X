@@ -12,19 +12,21 @@ void ZetWriteByte(UINT16 address, UINT8 data);
 UINT8 ZetReadByte(UINT16 address);
 void ZetWriteRom(UINT16 address, UINT8 data);
 INT32 ZetInit(INT32 nCount);
+void ZetDaisyInit(INT32 dev0, INT32 dev1);
 void ZetExit();
 void ZetNewFrame();
 void ZetOpen(INT32 nCPU);
 void ZetClose();
 INT32 ZetGetActive();
+void ZetSwapActive(INT32 nCPU);
 
-#define ZET_FETCHOP	4
-#define ZET_FETCHARG	8
-#define ZET_READ	1
-#define ZET_WRITE	2
-#define ZET_FETCH	(ZET_FETCHOP|ZET_FETCHARG)
-#define ZET_ROM		(ZET_READ|ZET_FETCH)
-#define ZET_RAM		(ZET_ROM|ZET_WRITE)
+//#define ZET_FETCHOP	4
+//#define ZET_FETCHARG	8
+//#define ZET_READ	1
+//#define ZET_WRITE	2
+//#define ZET_FETCH	(ZET_FETCHOP|ZET_FETCHARG)
+//#define ZET_ROM		(ZET_READ|ZET_FETCH)
+//#define ZET_RAM		(ZET_ROM|ZET_WRITE)
 
 INT32 ZetUnmapMemory(INT32 nStart,INT32 nEnd,INT32 nFlags);
 void ZetMapMemory(UINT8 *Mem, INT32 nStart, INT32 nEnd, INT32 nFlags);
@@ -34,32 +36,72 @@ INT32 ZetMapArea(INT32 nStart, INT32 nEnd, INT32 nMode, UINT8 *Mem);
 INT32 ZetMapArea(INT32 nStart, INT32 nEnd, INT32 nMode, UINT8 *Mem01, UINT8 *Mem02);
 
 void ZetReset();
-INT32 ZetGetPC(INT32 n);
+void ZetReset(INT32 nCPU);
+UINT32 ZetGetPC(INT32 n);
+INT32 ZetGetPrevPC(INT32 n);
 INT32 ZetBc(INT32 n);
 INT32 ZetDe(INT32 n);
 INT32 ZetHL(INT32 n);
+INT32 ZetI(INT32 n);
+INT32 ZetSP(INT32 n);
 INT32 ZetScan(INT32 nAction);
 INT32 ZetRun(INT32 nCycles);
+INT32 ZetRun(INT32 nCPU, INT32 nCycles);
 void ZetRunEnd();
 void ZetSetIRQLine(const INT32 line, const INT32 status);
+void ZetSetIRQLine(INT32 nCPU, const INT32 line, const INT32 status);
 void ZetSetVector(INT32 vector);
+void ZetSetVector(INT32 nCPU, INT32 vector);
 UINT8 ZetGetVector();
+UINT8 ZetGetVector(INT32 nCPU);
 INT32 ZetNmi();
+INT32 ZetNmi(INT32 nCPU);
 INT32 ZetIdle(INT32 nCycles);
+INT32 ZetIdle(INT32 nCPU, INT32 nCycles);
 INT32 ZetSegmentCycles();
 INT32 ZetTotalCycles();
+INT32 ZetTotalCycles(INT32 nCPU);
+void ZetSetAF(INT32 n, UINT16 value);
+void ZetSetAF2(INT32 n, UINT16 value);
+void ZetSetBC(INT32 n, UINT16 value);
+void ZetSetBC2(INT32 n, UINT16 value);
+void ZetSetDE(INT32 n, UINT16 value);
+void ZetSetDE2(INT32 n, UINT16 value);
 void ZetSetHL(INT32 n, UINT16 value);
-
-#define ZET_IRQSTATUS_NONE 0
-#define ZET_IRQSTATUS_ACK  1
-#define ZET_IRQSTATUS_AUTO 2
-
-#define ZetRaiseIrq(n) ZetSetIRQLine(n, ZET_IRQSTATUS_AUTO)
-#define ZetLowerIrq() ZetSetIRQLine(0, Z80_CLEAR_LINE)
+void ZetSetHL2(INT32 n, UINT16 value);
+void ZetSetI(INT32 n, UINT16 value);
+void ZetSetIFF1(INT32 n, UINT16 value);
+void ZetSetIFF2(INT32 n, UINT16 value);
+void ZetSetIM(INT32 n, UINT16 value);
+void ZetSetIX(INT32 n, UINT16 value);
+void ZetSetIY(INT32 n, UINT16 value);
+void ZetSetPC(INT32 n, UINT16 value);
+void ZetSetR(INT32 n, UINT16 value);
+void ZetSetSP(INT32 n, UINT16 value);
 
 void ZetSetReadHandler(UINT8 (__fastcall *pHandler)(UINT16));
 void ZetSetWriteHandler(void (__fastcall *pHandler)(UINT16, UINT8));
 void ZetSetInHandler(UINT8 (__fastcall *pHandler)(UINT16));
 void ZetSetOutHandler(void (__fastcall *pHandler)(UINT16, UINT8));
+void ZetSetEDFECallback(void (*pCallback)(Z80_Regs*));
 
-void ZetSetBUSREQLine(INT32 nStatus);
+void ZetSetHALT(INT32 nStatus);
+void ZetSetHALT(INT32 nCPU, INT32 nStatus);
+INT32 ZetGetHALT();
+INT32 ZetGetHALT(INT32 nCPU);
+
+#define ZetSetBUSREQLine ZetSetHALT
+
+void ZetSetRESETLine(INT32 nCPU, INT32 nStatus);
+void ZetSetRESETLine(INT32 nStatus);
+INT32 ZetGetRESETLine();
+INT32 ZetGetRESETLine(INT32 nCPU);
+
+void ZetCheatWriteROM(UINT32 a, UINT8 d); // cheat core
+UINT8 ZetCheatRead(UINT32 a);
+
+extern struct cpu_core_config ZetConfig;
+
+// depreciate this and use BurnTimerAttach directly!
+#define BurnTimerAttachZet(clock)	\
+	BurnTimerAttach(&ZetConfig, clock)

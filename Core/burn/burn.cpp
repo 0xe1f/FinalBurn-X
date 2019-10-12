@@ -2,18 +2,17 @@
 
 #include "version.h"
 #include "burnint.h"
+#include "timer.h"
 #include "burn_sound.h"
-#if defined(GEKKO) || defined(_XBOX1)
-#include "driverlist-gx.h"
-#else
 #include "driverlist.h"
-#endif
 
+#ifndef __LIBRETRO__
 // filler function, used if the application is not printing debug messages
 static INT32 __cdecl BurnbprintfFiller(INT32, TCHAR* , ...) { return 0; }
 // pointer to burner printing function
 #ifndef bprintf
 INT32 (__cdecl *bprintf)(INT32 nStatus, TCHAR* szFormat, ...) = BurnbprintfFiller;
+#endif
 #endif
 
 INT32 nBurnVer = BURN_VERSION;		// Version number of the library
@@ -24,12 +23,16 @@ UINT32 nBurnDrvSelect[8] = { ~0U, ~0U, ~0U, ~0U, ~0U, ~0U, ~0U, ~0U }; // Which 
 									
 bool bBurnUseMMX;
 #if defined BUILD_A68K
-bool bBurnUseASMCPUEmulation = true;
-#else
 bool bBurnUseASMCPUEmulation = false;
 #endif
 
-#if defined (FBA_DEBUG)
+// Just so we can start using FBNEO_DEBUG and keep backwards compatablity should whatever is left of FB Alpha rise from it's grave. 
+#if defined (FBNEO_DEBUG) && (!defined FBA_DEBUG)
+#define FBA_DEBUG 1
+#endif
+
+
+#if defined (FBNEO_DEBUG)
  clock_t starttime = 0;
 #endif
 
@@ -38,6 +41,7 @@ UINT32 nCurrentFrame;			// Framecount for emulated game
 UINT32 nFramesEmulated;		// Counters for FPS	display
 UINT32 nFramesRendered;		//
 bool bForce60Hz = false;
+bool bBurnUseBlend = true;
 INT32 nBurnFPS = 6000;
 INT32 nBurnCPUSpeedAdjust = 0x0100;	// CPU speed adjustment (clock * nBurnCPUSpeedAdjust / 0x0100)
 
@@ -192,6 +196,7 @@ extern "C" TCHAR* BurnDrvGetText(UINT32 i)
 
 	if (!(i & DRV_ASCIIONLY)) {
 		switch (i & 0xFF) {
+#ifndef __LIBRETRO__
 			case DRV_FULLNAME:
 				pszStringW = pDriver[nBurnDrvActive]->szFullNameW;
 				
@@ -231,6 +236,7 @@ extern "C" TCHAR* BurnDrvGetText(UINT32 i)
 
 				}
 				break;
+#endif // __LIBRETRO__
 			case DRV_COMMENT:
 				pszStringW = pDriver[nBurnDrvActive]->szCommentW;
 				break;
@@ -471,6 +477,24 @@ extern "C" INT32 BurnDrvGetSampleName(char** pszName, UINT32 i, INT32 nAka)		// 
 	return pDriver[nBurnDrvActive]->GetSampleName(pszName, i, nAka);
 }
 
+extern "C" INT32 BurnDrvGetHDDInfo(struct BurnHDDInfo* pri, UINT32 i)		// Forward to drivers function
+{
+	if (pDriver[nBurnDrvActive]->GetHDDInfo) {
+		return pDriver[nBurnDrvActive]->GetHDDInfo(pri, i);
+	} else {
+		return 0;
+	}
+}
+
+extern "C" INT32 BurnDrvGetHDDName(char** pszName, UINT32 i, INT32 nAka)		// Forward to drivers function
+{
+	if (pDriver[nBurnDrvActive]->GetHDDName) {
+		return pDriver[nBurnDrvActive]->GetHDDName(pszName, i, nAka);
+	} else {
+		return 0;
+	}
+}
+
 // Get the screen size
 extern "C" INT32 BurnDrvGetVisibleSize(INT32* pnWidth, INT32* pnHeight)
 {
@@ -576,7 +600,7 @@ extern "C" INT32 BurnDrvInit()
 		return 1;
 	}
 
-#if defined (FBA_DEBUG)
+#if defined (FBNEO_DEBUG)
 	{
 		TCHAR szText[1024] = _T("");
 		TCHAR* pszPosition = szText;
@@ -590,6 +614,11 @@ extern "C" INT32 BurnDrvInit()
 		// Print the title
 
 		bprintf(PRINT_IMPORTANT, _T("*** Starting emulation of %s - %s.\n"), BurnDrvGetText(DRV_NAME), BurnDrvGetText(DRV_FULLNAME));
+
+#ifdef BUILD_A68K
+		if (bBurnUseASMCPUEmulation)
+			bprintf(PRINT_ERROR, _T("*** WARNING: Assembly MC68000 core is enabled for this session!\n"));
+#endif
 
 		// Then print the alternative titles
 
@@ -616,19 +645,22 @@ extern "C" INT32 BurnDrvInit()
 
 	CheatInit();
 	HiscoreInit();
-	BurnStateInit();	
+	BurnStateInit();
 	BurnInitMemoryManager();
+	BurnRandomInit();
+	BurnSoundDCFilterReset();
 
 	nReturnValue = pDriver[nBurnDrvActive]->Init();	// Forward to drivers function
 
 	nMaxPlayers = pDriver[nBurnDrvActive]->Players;
-	
-#if defined (FBA_DEBUG)
+
+	nCurrentFrame = 0;
+
+#if defined (FBNEO_DEBUG)
 	if (!nReturnValue) {
 		starttime = clock();
 		nFramesEmulated = 0;
 		nFramesRendered = 0;
-		nCurrentFrame = 0;
 	} else {
 		starttime = 0;
 	}
@@ -640,7 +672,7 @@ extern "C" INT32 BurnDrvInit()
 // Exit game emulation
 extern "C" INT32 BurnDrvExit()
 {
-#if defined (FBA_DEBUG)
+#if defined (FBNEO_DEBUG)
 	if (starttime) {
 		clock_t endtime;
 		clock_t nElapsedSecs;
@@ -654,9 +686,9 @@ extern "C" INT32 BurnDrvExit()
 	}
 #endif
 
+	HiscoreExit(); // must come before CheatExit() (uses cheat cpu-registry)
 	CheatExit();
 	CheatSearchExit();
-	HiscoreExit();
 	BurnStateExit();
 	
 	nBurnCPUSpeedAdjust = 0x0100;
@@ -666,7 +698,7 @@ extern "C" INT32 BurnDrvExit()
 	INT32 nRet = pDriver[nBurnDrvActive]->Exit();			// Forward to drivers function
 	
 	BurnExitMemoryManager();
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 	DebugTrackerExit();
 #endif
 
@@ -691,7 +723,7 @@ INT32 BurnDrvCartridgeSetup(BurnCartrigeCommand nCommand)
 
 	BurnExtCartridgeSetupCallback(CART_INIT_END);
 
-#if defined FBA_DEBUG
+#if defined FBNEO_DEBUG
 		bprintf(PRINT_NORMAL, _T("  * Loading"));
 #endif
 
@@ -765,12 +797,14 @@ INT32 BurnUpdateProgress(double fProgress, const TCHAR* pszText, bool bAbs)
 }
 
 // ----------------------------------------------------------------------------
-
+// NOTE: Make sure this is called before any soundcore init!
 INT32 BurnSetRefreshRate(double dFrameRate)
 {
 	if (!bForce60Hz) {
 		nBurnFPS = (INT32)(100.0 * dFrameRate);
 	}
+
+	nBurnSoundLen = (nBurnSoundRate * 100 + (nBurnFPS >> 1)) / nBurnFPS;
 
 	return 0;
 }
@@ -816,109 +850,45 @@ INT32 BurnByteswap(UINT8* pMem, INT32 nLen)
 	return 0;
 }
 
+// useful for expanding 4bpp pixels packed into one byte using little to-no
+// extra memory.
+// use 'swap' to swap whether the high or low nibble goes into byte 0 or 1
+// 'nxor' is useful for inverting the data
+// this is an example of a graphics decode that can be converted to use this
+// function:
+//	INT32 Plane[4] = { STEP4(0,1) }; - 0,1,2,3
+//	INT32 XOffs[8] = { STEP8(0,4) }; - 0,4,8,12,16,20,24,28 (swap is useful for when this is 4,0,12,8...)
+//	INT32 YOffs[8] = { STEP8(0,32) }; - 0, 32, 64, 96, 128, 160, 192, 224
+//
+void BurnNibbleExpand(UINT8 *source, UINT8 *dst, INT32 length, INT32 swap, UINT8 nxor)
+{
+	if (source == NULL) {
+		bprintf (0, _T("BurnNibbleExpand() source passed as NULL!\n"));
+		return;
+	}
+
+	if (length <= 0) {
+		bprintf (0, _T("BurnNibbleExpand() length passed as <= 0 (%d)!\n"), length);
+		return;
+	}
+
+	swap = swap ? 1 : 0;
+	if (dst == NULL) dst = source;
+
+	for (INT32 i = length - 1; i >= 0; i--)
+	{
+		INT32 t = source[i] ^ nxor;
+		dst[(i * 2 + 0) ^ swap] = t >> 4;
+		dst[(i * 2 + 1) ^ swap] = t & 0xf;
+	}
+}
+
 // Application-defined rom loading function:
 INT32 (__cdecl *BurnExtLoadRom)(UINT8 *Dest, INT32 *pnWrote, INT32 i) = NULL;
 
 // Application-defined colour conversion function
 static UINT32 __cdecl BurnHighColFiller(INT32, INT32, INT32, INT32) { return (UINT32)(~0); }
 UINT32 (__cdecl *BurnHighCol) (INT32 r, INT32 g, INT32 b, INT32 i) = BurnHighColFiller;
-
-// ----------------------------------------------------------------------------
-// Colour-depth independant image transfer
-
-UINT16* pTransDraw = NULL;
-
-static INT32 nTransWidth, nTransHeight;
-
-void BurnTransferClear()
-{
-#if defined FBA_DEBUG
-	if (!Debug_BurnTransferInitted) bprintf(PRINT_ERROR, _T("BurnTransferClear called without init\n"));
-#endif
-
-	memset((void*)pTransDraw, 0, nTransWidth * nTransHeight * sizeof(UINT16));
-}
-
-INT32 BurnTransferCopy(UINT32* pPalette)
-{
-#if defined FBA_DEBUG
-	if (!Debug_BurnTransferInitted) bprintf(PRINT_ERROR, _T("BurnTransferCopy called without init\n"));
-#endif
-
-	UINT16* pSrc = pTransDraw;
-	UINT8* pDest = pBurnDraw;
-	
-	pBurnDrvPalette = pPalette;
-
-	switch (nBurnBpp) {
-		case 2: {
-			for (INT32 y = 0; y < nTransHeight; y++, pSrc += nTransWidth, pDest += nBurnPitch) {
-				for (INT32 x = 0; x < nTransWidth; x ++) {
-					((UINT16*)pDest)[x] = pPalette[pSrc[x]];
-				}
-			}
-			break;
-		}
-		case 3: {
-			for (INT32 y = 0; y < nTransHeight; y++, pSrc += nTransWidth, pDest += nBurnPitch) {
-				for (INT32 x = 0; x < nTransWidth; x++) {
-					UINT32 c = pPalette[pSrc[x]];
-					*(pDest + (x * 3) + 0) = c & 0xFF;
-					*(pDest + (x * 3) + 1) = (c >> 8) & 0xFF;
-					*(pDest + (x * 3) + 2) = c >> 16;
-
-				}
-			}
-			break;
-		}
-		case 4: {
-			for (INT32 y = 0; y < nTransHeight; y++, pSrc += nTransWidth, pDest += nBurnPitch) {
-				for (INT32 x = 0; x < nTransWidth; x++) {
-					((UINT32*)pDest)[x] = pPalette[pSrc[x]];
-				}
-			}
-			break;
-		}
-	}
-
-	return 0;
-}
-
-void BurnTransferExit()
-{
-#if defined FBA_DEBUG
-	if (!Debug_BurnTransferInitted) bprintf(PRINT_ERROR, _T("BurnTransferClear called without init\n"));
-#endif
-
-	if (pTransDraw) {
-		free(pTransDraw);
-		pTransDraw = NULL;
-	}
-	
-	Debug_BurnTransferInitted = 0;
-}
-
-INT32 BurnTransferInit()
-{
-	Debug_BurnTransferInitted = 1;
-	
-	if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
-		BurnDrvGetVisibleSize(&nTransHeight, &nTransWidth);
-	} else {
-		BurnDrvGetVisibleSize(&nTransWidth, &nTransHeight);
-	}
-
-	pTransDraw = (UINT16*)malloc(nTransWidth * nTransHeight * sizeof(UINT16));
-	if (pTransDraw == NULL) {
-		return 1;
-	}
-
-	BurnTransferClear();
-
-	return 0;
-}
-
-
 
 // ----------------------------------------------------------------------------
 // Savestate support
@@ -946,6 +916,90 @@ INT32 BurnAreaScan(INT32 nAction, INT32* pnMin)
 }
 
 // ----------------------------------------------------------------------------
+// Get the local time - make tweaks if netgame or input recording/playback
+// tweaks are needed for the game to to remain in-sync! (pgm, neogeo, etc)
+struct MovieExtInfo
+{
+	// date & time
+	UINT32 year, month, day;
+	UINT32 hour, minute, second;
+};
+
+extern struct MovieExtInfo MovieInfo; // from replay.cpp
+
+void BurnGetLocalTime(tm *nTime)
+{
+	if (is_netgame_or_recording()) {
+		if (is_netgame_or_recording() & 2) { // recording/playback
+			nTime->tm_sec = MovieInfo.second;
+			nTime->tm_min = MovieInfo.minute;
+			nTime->tm_hour = MovieInfo.hour;
+			nTime->tm_mday = MovieInfo.day;
+			nTime->tm_mon = MovieInfo.month;
+			nTime->tm_year = MovieInfo.year;
+		} else {
+			nTime->tm_sec = 0; // defaults for netgame
+			nTime->tm_min = 0;
+			nTime->tm_hour = 0;
+			nTime->tm_mday = 1;
+			nTime->tm_wday = 3;
+			nTime->tm_mon = 6 - 1;
+			nTime->tm_year = 2018;
+		}
+	} else {
+		time_t nLocalTime = time(NULL); // query current time from this machine
+		tm* tmLocalTime = localtime(&nLocalTime);
+		memcpy(nTime, tmLocalTime, sizeof(tm));
+	}
+}
+
+
+// ----------------------------------------------------------------------------
+// State-able random generator, based on early BSD LCG rand
+static UINT64 nBurnRandSeed = 0;
+
+UINT16 BurnRandom()
+{
+	nBurnRandSeed = nBurnRandSeed * 1103515245 + 12345;
+
+	return (UINT32)(nBurnRandSeed / 65536) % 0x10000;
+}
+
+void BurnRandomScan(INT32 nAction)
+{
+	if (nAction & ACB_DRIVER_DATA) {
+		SCAN_VAR(nBurnRandSeed);
+	}
+}
+
+void BurnRandomSetSeed(UINT64 nSeed)
+{
+	nBurnRandSeed = nSeed;
+}
+
+void BurnRandomInit()
+{ // for states & input recordings - init before emulation starts
+	if (is_netgame_or_recording()) {
+		BurnRandomSetSeed(0x303808909313ULL);
+	} else {
+		BurnRandomSetSeed(time(NULL));
+	}
+}
+
+// ----------------------------------------------------------------------------
+// Handy FM default callbacks
+
+INT32 BurnSynchroniseStream(INT32 nSoundRate)
+{
+	return (INT64)BurnTimerCPUTotalCycles() * nSoundRate / BurnTimerCPUClockspeed;
+}
+
+double BurnGetTime()
+{
+	return (double)BurnTimerCPUTotalCycles() / BurnTimerCPUClockspeed;
+}
+
+// ----------------------------------------------------------------------------
 // Wrappers for MAME-specific function calls
 
 #include "driver.h"
@@ -953,7 +1007,7 @@ INT32 BurnAreaScan(INT32 nAction, INT32* pnMin)
 // ----------------------------------------------------------------------------
 // Wrapper for MAME logerror calls
 
-#if defined (FBA_DEBUG) && defined (MAME_USE_LOGERROR)
+#if defined (FBNEO_DEBUG) && defined (MAME_USE_LOGERROR)
 void logerror(char* szFormat, ...)
 {
 	static char szLogMessage[1024];
@@ -971,6 +1025,22 @@ void logerror(char* szFormat, ...)
 }
 #endif
 
+#if defined (FBNEO_DEBUG)
+void BurnDump_(char *filename, UINT8 *buffer, INT32 bufsize)
+{
+    FILE *f = fopen(filename, "wb+");
+    fwrite(buffer, 1, bufsize, f);
+    fclose(f);
+}
+
+void BurnDumpLoad_(char *filename, UINT8 *buffer, INT32 bufsize)
+{
+    FILE *f = fopen(filename, "rb+");
+    fread(buffer, 1, bufsize, f);
+    fclose(f);
+}
+#endif
+
 // ----------------------------------------------------------------------------
 // Wrapper for MAME state_save_register_* calls
 
@@ -983,7 +1053,7 @@ static BurnPostloadFunction BurnPostload[8];
 static void BurnStateRegister(const char* module, INT32 instance, const char* name, void* val, UINT32 size)
 {
 	// Allocate new node
-	BurnStateEntry* pNewEntry = (BurnStateEntry*)malloc(sizeof(BurnStateEntry));
+	BurnStateEntry* pNewEntry = (BurnStateEntry*)BurnMalloc(sizeof(BurnStateEntry));
 	if (pNewEntry == NULL) {
 		return;
 	}
@@ -1011,9 +1081,7 @@ void BurnStateExit()
 
 		do {
 			pNextEntry = pCurrentEntry->pNext;
-			if (pCurrentEntry) {
-				free(pCurrentEntry);
-			}
+			BurnFree(pCurrentEntry);
 		} while ((pCurrentEntry = pNextEntry) != 0);
 	}
 

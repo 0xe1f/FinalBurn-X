@@ -1,9 +1,3 @@
-extern INT32 TaitoIC_SupermanCChipInUse;
-extern INT32 TaitoIC_MegabCChipInUse;
-extern INT32 TaitoIC_RainbowCChipInUse;
-extern INT32 TaitoIC_OpwolfCChipInUse;
-extern INT32 TaitoIC_VolfiedCChipInUse;
-
 extern INT32 TaitoIC_PC080SNInUse;
 extern INT32 TaitoIC_PC090OJInUse;
 extern INT32 TaitoIC_TC0100SCNInUse;
@@ -25,60 +19,8 @@ void TaitoICReset();
 void TaitoICExit();
 void TaitoICScan(INT32 nAction);
 
-// C-Chip
-UINT16 SupermanCChipCtrlRead();
-UINT16 SupermanCChipRamRead(UINT32 Offset, UINT8 Input1, UINT8 Input2, UINT8 Input3);
-void SupermanCChipCtrlWrite();
-void SupermanCChipBankWrite(UINT16 Data);
-void SupermanCChipRamWrite(UINT32 Offset, UINT16 Data);
-void SupermanCChipReset();
-void SupermanCChipInit();
-void SupermanCChipExit();
-void SupermanCChipScan(INT32 nAction);
-
-UINT16 MegabCChipRead(UINT32 Offset);
-void MegabCChipWrite(UINT32 Offset, UINT16 Data);
-void MegabCChipReset();
-void MegabCChipInit();
-void MegabCChipExit();
-void MegabCChipScan(INT32 nAction);
-
-void RainbowCChipUpdate(UINT8 Input1, UINT8 Input2, UINT8 Input3, UINT8 Input4);
-UINT16 RainbowCChipCtrlRead();
-UINT16 RainbowCChipRamRead(UINT32 Offset);
-void RainbowCChipCtrlWrite(UINT16);
-void RainbowCChipBankWrite(UINT16 Data);
-void RainbowCChipRamWrite(UINT32 Offset, UINT16 Data);
-void RainbowCChipReset();
-void RainbowCChipInit(INT32 Version);
-void RainbowCChipExit();
-void RainbowCChipScan(INT32 nAction);
-
-void OpwolfCChipUpdate(UINT8 Input1, UINT8 Input2);
-UINT16 OpwolfCChipStatusRead();
-UINT16 OpwolfCChipDataRead(UINT32 Offset);
-void OpwolfCChipStatusWrite();
-void OpwolfCChipBankWrite(UINT16 Data);
-void OpwolfCChipDataWrite(UINT8 *p68kRom, UINT32 Offset, UINT16 Data );
-void OpwolfCChipReset();
-void OpwolfCChipInit(INT32 Region);
-void OpwolfCChipExit();
-void OpwolfCChipScan(INT32 nAction);
-
-void BonzeWriteCChipRam(INT32 offset, INT32 data);
-void BonzeWriteCChipBank(INT32 data);
-UINT16 BonzeReadCChipRam(INT32 offset);
-void BonzeCChipReset();
-void BonzeCChipScan(INT32 nAction);
-
-void VolfiedCChipBankWrite(UINT16 data);
-void VolfiedCChipRamWrite(INT32 offset, UINT8 data);
-UINT8 VolfiedCChipCtrlRead();
-UINT8 VolfiedCChipRamRead(INT32 offset);
-void VolfiedCChipInit();
-void VolfiedCChipReset();
-void VolfiedCChipExit();
-void VolfiedCChipScan(INT32 nAction);
+// Emulated C-Chip
+#include "cchip.h"
 
 // PC080SN
 #define PC080SN_MAX_CHIPS 2
@@ -87,6 +29,8 @@ extern UINT8 *PC080SNRam[PC080SN_MAX_CHIPS];
 
 void PC080SNDrawBgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc, UINT16 *pDest);
 void PC080SNDrawFgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc, UINT16 *pDest);
+void PC080SNDrawBgLayerPrio(INT32 Chip, INT32 Opaque, UINT8 *pSrc, UINT16 *pDest, UINT16 *PriBuf, UINT16 Prio);
+void PC080SNDrawFgLayerPrio(INT32 Chip, INT32 Opaque, UINT8 *pSrc, UINT16 *pDest, UINT16 *PriBuf, UINT16 Prio);
 void PC080SNSetScrollX(INT32 Chip, UINT32 Offset, UINT16 Data);
 void PC080SNSetScrollY(INT32 Chip, UINT32 Offset, UINT16 Data);
 void PC080SNCtrlWrite(INT32 Chip, UINT32 Offset, UINT16 Data);
@@ -96,8 +40,8 @@ void PC080SNInit(INT32 Chip, INT32 nNumTiles, INT32 xOffset, INT32 yOffset, INT3
 void PC080SNSetFgTransparentPen(INT32 Chip, INT32 Pen);
 void PC080SNExit();
 void PC080SNScan(INT32 nAction);
-void TopspeedDrawBgLayer(INT32 Chip, UINT8 *pSrc, UINT16 *pDest, UINT16 *ColourCtrlRam);
-void TopspeedDrawFgLayer(INT32 Chip, UINT8 *pSrc, UINT16 *pDest, UINT16 *ColourCtrlRam);
+void TopspeedDrawBgLayer(INT32 Chip, UINT8 *pSrc, UINT16 *pDest, UINT16 *ColourCtrlRam, UINT16 *PriBuf, UINT16 Prio);
+void TopspeedDrawFgLayer(INT32 Chip, UINT8 *pSrc, UINT16 *pDest, UINT16 *ColourCtrlRam, UINT16 *PriBuf, UINT16 Prio);
 
 // PC090OJ
 extern UINT8 *PC090OJRam;
@@ -123,14 +67,15 @@ extern INT32 TC0100SCNDblWidth[TC0100SCN_MAX_CHIPS];
 
 void TC0100SCNCtrlWordWrite(INT32 Chip, UINT32 Offset, UINT16 Data);
 INT32 TC0100SCNBottomLayer(INT32 Chip);
-void TC0100SCNRenderBgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc);
-void TC0100SCNRenderFgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc);
-void TC0100SCNRenderCharLayer(INT32 Chip);
+void TC0100SCNRenderBgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc, INT32 Priority = 1);
+void TC0100SCNRenderFgLayer(INT32 Chip, INT32 Opaque, UINT8 *pSrc, INT32 Priority = 2);
+void TC0100SCNRenderCharLayer(INT32 Chip, INT32 Priority = 4);
 void TC0100SCNReset();
 void TC0100SCNInit(INT32 Chip, INT32 nNumTiles, INT32 xOffset, INT32 yOffset, INT32 xFlip, UINT8 *PriorityMap);
 void TC0100SCNSetColourDepth(INT32 Chip, INT32 ColourDepth);
 void TC0100SCNSetGfxMask(INT32 Chip, INT32 Mask);
 void TC0100SCNSetGfxBank(INT32 Chip, INT32 Bank);
+void TC0100SCNSetCharLayerGranularity(INT32 nGranularity);
 void TC0100SCNSetClipArea(INT32 Chip, INT32 ClipWidth, INT32 ClipHeight, INT32 ClipStartX);
 void TC0100SCNSetPaletteOffset(INT32 Chip, INT32 PaletteOffset);
 void TC0100SCNExit();
@@ -143,8 +88,13 @@ extern INT32 TC0110PCRTotalColours;
 UINT16 TC0110PCRWordRead(INT32 Chip);
 void TC0110PCRWordWrite(INT32 Chip, INT32 Offset, UINT16 Data);
 void TC0110PCRStep1WordWrite(INT32 Chip, INT32 Offset, UINT16 Data);
+void TC0110PCRStep1WordWriteAJ(INT32 Chip, INT32 Offset, UINT16 Data);
 void TC0110PCRStep1RBSwapWordWrite(INT32 Chip, INT32 Offset, UINT16 Data);
 void TC0110PCRStep14rbgWordWrite(INT32 Chip, INT32 Offset, UINT16 Data);
+void TC0110PCRRecalcPalette(); // this is _not_ generic! (choose one based on game requirements)
+void TC0110PCRRecalcPaletteStep1();
+void TC0110PCRRecalcPaletteStep1RBSwap();
+void TC0110PCRRecalcPaletteStep14rbg();
 void TC0110PCRReset();
 void TC0110PCRInit(INT32 Num, INT32 nNumColours);
 void TC0110PCRExit();
@@ -158,7 +108,7 @@ void TC0140SYTSlavePortWrite(UINT8 Data);
 UINT8 TC0140SYTSlaveCommRead();
 void TC0140SYTSlaveCommWrite(UINT8 Data);
 void TC0140SYTReset();
-void TC0140SYTInit();
+void TC0140SYTInit(INT32 nCpu);
 void TC0140SYTExit();
 void TC0140SYTScan(INT32 nAction);
 
@@ -169,6 +119,7 @@ extern UINT8 *TC0150RODRam;
 void TC0150RODDraw(INT32 yOffs, INT32 pOffs, INT32 Type, INT32 RoadTrans, INT32 LowPriority, INT32 HighPriority);
 void TC0150RODReset();
 void TC0150RODInit(INT32 nRomSize, INT32 xFlip);
+void TC0150RODSetPriMap(UINT8 *PriMap);
 void TC0150RODExit();
 void TC0150RODScan(INT32 nAction);
 
@@ -221,13 +172,14 @@ void TC0220IOCScan(INT32 nAction);
 extern UINT8 *TC0280GRDRam;
 extern INT32 TC0280GRDBaseColour;
 
-void TC0280GRDRenderLayer();
+void TC0280GRDRenderLayer(INT32 Priority);
 void TC0280GRDCtrlWordWrite(UINT32 Offset, UINT16 Data);
 void TC0280GRDReset();
 void TC0280GRDInit(INT32 xOffs, INT32 yOffs, UINT8 *pSrc);
 void TC0430GRWInit(INT32 xOffs, INT32 yOffs, UINT8 *pSrc);
 void TC0280GRDExit();
 void TC0280GRDScan(INT32 nAction);
+void TC0280GRDSetPriMap(UINT8 *PriMap);
 
 #define TC0430GRWRam		TC0280GRDRam
 #define TC0430GRWRenderLayer	TC0280GRDRenderLayer
@@ -235,6 +187,7 @@ void TC0280GRDScan(INT32 nAction);
 #define TC0430GRWReset		TC0280GRDReset
 #define TC0430GRWExit		TC0280GRDExit
 #define TC0430GRWScan		TC0280GRDScan
+#define TC0430GRDSetPriMap  TC0280GRDSetPriMap
 
 // TC0360PRI
 extern UINT8 TC0360PRIRegs[16];
@@ -253,11 +206,13 @@ extern UINT16 TC0480SCPCtrl[0x18];
 
 void TC0480SCPCtrlWordWrite(INT32 Offset, UINT16 Data);
 void TC0480SCPTilemapRender(INT32 Layer, INT32 Opaque, UINT8 *pSrc);
+void TC0480SCPTilemapRenderPrio(INT32 Layer, INT32 Opaque, INT32 Prio, UINT8 *pSrc);
 void TC0480SCPRenderCharLayer();
 void TC0480SCPReset();
 INT32 TC0480SCPGetBgPriority();
+void TC0480SCPSetPriMap(UINT8 *PriMap);
 void TC0480SCPInit(INT32 nNumTiles, INT32 Pixels, INT32 xOffset, INT32 yOffset, INT32 xTextOffset, INT32 yTextOffset, INT32 VisYOffset);
-void TC0480SCPSetColourBase(INT32 Base);
+void TC0480SCPSetColourBase(INT32 Base); // color base must be shifted back 4.  f.ex 0x1000 -> 0x100
 void TC0480SCPExit();
 void TC0480SCPScan(INT32 nAction);
 
@@ -414,6 +369,26 @@ void TC0640FIOScan(INT32 nAction);
 			TC0100SCN_CHECK_CHAR_LAYER_NEED_UPDATE_WORD(0)				\
 		}																\
 		Ram[Offset] = BURN_ENDIAN_SWAP_INT16(d);						\
+		return;															\
+	}
+	
+#define TC0100SCN0LongWrite_Map(start, end)								\
+	if (a >= start && a <= end) {										\
+		UINT16 *Ram = (UINT16*)TC0100SCNRam[0];							\
+		INT32 Offset = (a - start) >> 1;								\
+		if (Ram[Offset] != BURN_ENDIAN_SWAP_INT16(d>>16)) {				\
+			TC0100SCN_CHECK_BG_LAYER_NEED_UPDATE_WORD(0)				\
+			TC0100SCN_CHECK_FG_LAYER_NEED_UPDATE_WORD(0)				\
+			TC0100SCN_CHECK_CHAR_LAYER_NEED_UPDATE_WORD(0)				\
+		}																\
+		Ram[Offset] = BURN_ENDIAN_SWAP_INT16(d>>16);					\
+        Offset |= 0x01;                                                 \
+        if (Ram[Offset] != BURN_ENDIAN_SWAP_INT16((d&0xffff))) {		    \
+			TC0100SCN_CHECK_BG_LAYER_NEED_UPDATE_WORD(0)				\
+			TC0100SCN_CHECK_FG_LAYER_NEED_UPDATE_WORD(0)				\
+			TC0100SCN_CHECK_CHAR_LAYER_NEED_UPDATE_WORD(0)				\
+		}																\
+		Ram[Offset] = BURN_ENDIAN_SWAP_INT16((d&0xffff));				    \
 		return;															\
 	}
 	

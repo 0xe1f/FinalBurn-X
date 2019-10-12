@@ -110,21 +110,21 @@ static struct BurnDIPInfo MagicbubDIPList[]=
 	{0x0e, 0x01, 0x18, 0x08, "Hard"				},
 	{0x0e, 0x01, 0x18, 0x00, "Very Hard"			},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"			},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"			},
 	{0x0e, 0x01, 0x40, 0x40, "Off"				},
 	{0x0e, 0x01, 0x40, 0x00, "On"				},
 
-	{0   , 0xfe, 0   ,    0, "Service Mode"			},
+	{0   , 0xfe, 0   ,    2, "Service Mode"			},
 	{0x0e, 0x01, 0x80, 0x80, "Off"				},
 	{0x0e, 0x01, 0x80, 0x00, "On"				},
 
-	{0   , 0xfe, 0   ,    2, "1P Vs 2P Rounds (Start)"	},
+	{0   , 0xfe, 0   ,    4, "1P Vs 2P Rounds (Start)"	},
 	{0x0f, 0x01, 0x0c, 0x08, "Best of 1"			},
 	{0x0f, 0x01, 0x0c, 0x0c, "Best of 3"			},
 	{0x0f, 0x01, 0x0c, 0x04, "Best of 5"			},
 	{0x0f, 0x01, 0x0c, 0x00, "Best of 7"			},
 
-	{0   , 0xfe, 0   ,    0, "1P Vs 2P Rounds (Join-in)"	},
+	{0   , 0xfe, 0   ,    2, "1P Vs 2P Rounds (Join-in)"	},
 	{0x0f, 0x01, 0x10, 0x00, "Best of 1"			},
 	{0x0f, 0x01, 0x10, 0x10, "Best of 3"			},
 };
@@ -152,7 +152,7 @@ static struct BurnDIPInfo MagicbubaDIPList[]=
 	{0x0e, 0x01, 0x18, 0x08, "Hard"				},
 	{0x0e, 0x01, 0x18, 0x00, "Very Hard"			},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"			},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"			},
 	{0x0e, 0x01, 0x40, 0x40, "Off"				},
 	{0x0e, 0x01, 0x40, 0x00, "On"				},
 
@@ -160,7 +160,7 @@ static struct BurnDIPInfo MagicbubaDIPList[]=
 	{0x0e, 0x01, 0x80, 0x80, "Off"				},
 	{0x0e, 0x01, 0x80, 0x00, "On"				},
 
-	{0   , 0xfe, 0   ,    2, "Nudity"			},
+	{0   , 0xfe, 0   ,    4, "Nudity"			},
 	{0x0f, 0x01, 0x03, 0x03, "Soft only"			},
 	{0x0f, 0x01, 0x03, 0x00, "Hard only"			},
 	{0x0f, 0x01, 0x03, 0x01, "Soft and Hard"		},
@@ -172,7 +172,7 @@ static struct BurnDIPInfo MagicbubaDIPList[]=
 	{0x0f, 0x01, 0x0c, 0x04, "Best of 5"			},
 	{0x0f, 0x01, 0x0c, 0x00, "Best of 7"			},
 
-	{0   , 0xfe, 0   ,    4, "1P Vs 2P Rounds (Join-in)"	},
+	{0   , 0xfe, 0   ,    2, "1P Vs 2P Rounds (Join-in)"	},
 	{0x0f, 0x01, 0x10, 0x00, "Best of 1"			},
 	{0x0f, 0x01, 0x10, 0x10, "Best of 3"			},
 };
@@ -194,7 +194,7 @@ static struct BurnDIPInfo ShockingDIPList[]=
 	{0x0e, 0x01, 0x07, 0x05, "1 Coin  3 Credits"		},
 	{0x0e, 0x01, 0x07, 0x00, "Free Play"			},
 
-	{0   , 0xfe, 0   ,    0, "Difficulty"			},
+	{0   , 0xfe, 0   ,    8, "Difficulty"			},
 	{0x0f, 0x01, 0x07, 0x04, "Easiest"			},
 	{0x0f, 0x01, 0x07, 0x05, "Easier"			},
 	{0x0f, 0x01, 0x07, 0x06, "Easy"				},
@@ -204,13 +204,13 @@ static struct BurnDIPInfo ShockingDIPList[]=
 	{0x0f, 0x01, 0x07, 0x01, "Harder"			},
 	{0x0f, 0x01, 0x07, 0x00, "Hardest"			},
 
-	{0   , 0xfe, 0   ,    0, "Lives"			},
+	{0   , 0xfe, 0   ,    4, "Lives"			},
 	{0x0f, 0x01, 0x30, 0x20, "2"				},
 	{0x0f, 0x01, 0x30, 0x30, "3"				},
 	{0x0f, 0x01, 0x30, 0x10, "4"				},
 	{0x0f, 0x01, 0x30, 0x00, "5"				},
 
-	{0   , 0xfe, 0   ,    0, "Demo Sounds"			},
+	{0   , 0xfe, 0   ,    2, "Demo Sounds"			},
 	{0x0f, 0x01, 0x40, 0x40, "Off"				},
 	{0x0f, 0x01, 0x40, 0x00, "On"				},
 
@@ -356,14 +356,14 @@ void __fastcall magicbub_main_write_byte(UINT32 address, UINT8 data)
 
 		case 0x800188:
 		case 0x800189:
-			if (is_magicbub) {
+			if (is_magicbub==1) {
 				if (data != 0x3a) {
 					*soundlatch = data;
 //					ZetNmi();
 					Z80SetIrqLine(Z80_INPUT_LINE_NMI, 1);
 				}
 			} else {
-				MSM6295Command(0, data);
+				MSM6295Write(0, data);
 			}
 		return;	
 	}
@@ -405,7 +405,7 @@ UINT8 __fastcall magicbub_main_read_byte(UINT32 address)
 
 		case 0x800188:
 		case 0x800189:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -416,15 +416,15 @@ void __fastcall magicbub_sound_out(UINT16 port, UINT8 data)
 	switch (port & 0xff)
 	{
 		case 0x10:
-			BurnYM3812Write(0, data);
+			BurnYM3812Write(0, 0, data);
 		return;
 
 		case 0x11:
-			BurnYM3812Write(1, data);
+			BurnYM3812Write(0, 1, data);
 		return;
 
 		case 0x1c:
-			MSM6295Command(0, data);
+			MSM6295Write(0, data);
 		return;
 	}
 }
@@ -434,17 +434,17 @@ UINT8 __fastcall magicbub_sound_in(UINT16 port)
 	switch (port & 0xff)
 	{
 		case 0x10:
-			return BurnYM3812Read(0);
+			return BurnYM3812Read(0, 0);
 
 		case 0x11:
-			return BurnYM3812Read(1);
+			return BurnYM3812Read(0, 1);
 
 		case 0x18:
 			Z80SetIrqLine(Z80_INPUT_LINE_NMI, 0);
 			return *soundlatch;
 
 		case 0x1c:
-			return MSM6295ReadStatus(0);
+			return MSM6295Read(0);
 	}
 
 	return 0;
@@ -459,9 +459,9 @@ static INT32 DrvSynchroniseStream(INT32 nSoundRate)
 static void DrvYM3812IrqHandler(INT32, INT32 nStatus)
 {
 	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
+		ZetSetIRQLine(0xff, CPU_IRQSTATUS_ACK);
 	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
+		ZetSetIRQLine(0,    CPU_IRQSTATUS_NONE);
 	}
 }
 
@@ -605,7 +605,23 @@ static INT32 DrvInit(INT32 game_select)
 			}
 			break;
 
-			case 2: // paprazzi
+			case 2: // magicbubb
+			{
+				if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x000001,  3, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x000002,  4, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x000003,  5, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x200000,  6, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x200001,  7, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x200002,  8, 4)) return 1;
+				if (BurnLoadRom(DrvGfxROM0 + 0x200003,  9, 4)) return 1;
+				offset = 10;
+
+				is_magicbub = 2; // this set has no z80 like sets below!
+			}
+			break;
+			
+			case 3: // paprazzi
 			{
 				if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 4)) return 1;
 				if (BurnLoadRom(DrvGfxROM0 + 0x000001,  3, 4)) return 1;
@@ -619,7 +635,7 @@ static INT32 DrvInit(INT32 game_select)
 			}
 			break;
 
-			case 3: // shocking, bombkick
+			case 4: // shocking, bombkick
 			{
 				if (BurnLoadRom(DrvGfxROM0 + 0x000000,  2, 4)) return 1;
 				if (BurnLoadRom(DrvGfxROM0 + 0x000001,  3, 4)) return 1;
@@ -642,12 +658,12 @@ static INT32 DrvInit(INT32 game_select)
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(DrvPalRAM,		0x900000, 0x903fff, SM_RAM);
-	SekMapMemory(DrvVidRAM1,	0x908000, 0x90bfff, SM_RAM);
-	SekMapMemory(DrvVidRAM0,	0x90c000, 0x90ffff, SM_RAM);
-	SekMapMemory(DrvSprRAM,		0x910000, 0x910fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,		0xff0000, 0xffffff, SM_RAM);
+	SekMapMemory(Drv68KROM,		0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(DrvPalRAM,		0x900000, 0x903fff, MAP_RAM);
+	SekMapMemory(DrvVidRAM1,	0x908000, 0x90bfff, MAP_RAM);
+	SekMapMemory(DrvVidRAM0,	0x90c000, 0x90ffff, MAP_RAM);
+	SekMapMemory(DrvSprRAM,		0x910000, 0x910fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,		0xff0000, 0xffffff, MAP_RAM);
 	SekSetWriteWordHandler(0,	magicbub_main_write_word);
 	SekSetWriteByteHandler(0,	magicbub_main_write_byte);
 	SekSetReadWordHandler(0,	magicbub_main_read_word);
@@ -665,11 +681,11 @@ static INT32 DrvInit(INT32 game_select)
 	ZetSetInHandler(magicbub_sound_in);
 	ZetClose();
 
-	BurnYM3812Init(4000000, &DrvYM3812IrqHandler, &DrvSynchroniseStream, 0);
-	BurnTimerAttachZetYM3812(3000000);
-	BurnYM3812SetRoute(BURN_SND_YM3812_ROUTE, 0.80, BURN_SND_ROUTE_BOTH);
+	BurnYM3812Init(1, 4000000, &DrvYM3812IrqHandler, &DrvSynchroniseStream, 0);
+	BurnTimerAttachYM3812(&ZetConfig, 3000000);
+	BurnYM3812SetRoute(0, BURN_SND_YM3812_ROUTE, 0.80, BURN_SND_ROUTE_BOTH);
 
-	MSM6295Init(0, (is_magicbub ? 1056000 : 1000000) / 132, is_magicbub);
+	MSM6295Init(0, ((is_magicbub==1) ? 1056000 : 1000000) / 132, (is_magicbub==1)?1:0);
 	MSM6295SetRoute(0, (is_magicbub ? 0.80 : 1.00), BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
@@ -856,15 +872,15 @@ static INT32 DrvFrame()
 	for (INT32 i = 0; i < nInterleave; i++) {
 		INT32 nSegment = nCyclesTotal[0] / nInterleave;
 		nCyclesDone[0] += SekRun(nSegment);
-		if (i == (nInterleave - 1)) SekSetIRQLine(2, SEK_IRQSTATUS_AUTO);
+		if (i == (nInterleave - 1)) SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
 
-		if (is_magicbub == 0) continue;
+		if (is_magicbub != 1) continue;
 
 		nSegment = nCyclesTotal[1] / nInterleave;
 		BurnTimerUpdateYM3812((1 + i) * nSegment);
 	}
 
-	if (is_magicbub) {
+	if (is_magicbub == 1) {
 		BurnTimerEndFrameYM3812(nCyclesTotal[1]);
 	}
 
@@ -905,7 +921,7 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 		ZetScan(nAction);
 
 		BurnYM3812Scan(nAction, pnMin);
-		MSM6295Scan(0, nAction);
+		MSM6295Scan(nAction, pnMin);
 
 		SCAN_VAR(soundbank);
 
@@ -924,19 +940,19 @@ static struct BurnRomInfo magicbubRomDesc[] = {
 	{ "magbuble.u33",	0x40000, 0x18fdd582, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
 	{ "magbuble.u32",	0x40000, 0xf6ea7004, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "magbuble.143",	0x10000, 0x04192753, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "u143.bin",		0x10000, 0x04192753, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "magbuble.u67",	0x80000, 0x6355e57d, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "magbuble.u68",	0x80000, 0x53ae6c2b, 3 | BRF_GRA },           //  4
 	{ "magbuble.u69",	0x80000, 0xb892e64c, 3 | BRF_GRA },           //  5
 	{ "magbuble.u70",	0x80000, 0x37794837, 3 | BRF_GRA },           //  6
 
-	{ "magbuble.u20",	0x20000, 0xf70e3b8c, 4 | BRF_GRA },           //  7 Sprites
-	{ "magbuble.u21",	0x20000, 0xad082cf3, 4 | BRF_GRA },           //  8
-	{ "magbuble.u22",	0x20000, 0x7c68df7a, 4 | BRF_GRA },           //  9
-	{ "magbuble.u23",	0x20000, 0xc7763fc1, 4 | BRF_GRA },           // 10
+	{ "u20.bin",		0x20000, 0xf70e3b8c, 4 | BRF_GRA },           //  7 Sprites
+	{ "u21.bin",		0x20000, 0xad082cf3, 4 | BRF_GRA },           //  8
+	{ "u22.bin",		0x20000, 0x7c68df7a, 4 | BRF_GRA },           //  9
+	{ "u23.bin",		0x20000, 0xc7763fc1, 4 | BRF_GRA },           // 10
 
-	{ "magbuble.131",	0x20000, 0x03e04e89, 5 | BRF_SND },           // 11 Samples
+	{ "u131.bin",		0x20000, 0x03e04e89, 5 | BRF_SND },           // 11 Samples
 };
 
 STD_ROM_PICK(magicbub)
@@ -952,19 +968,19 @@ struct BurnDriver BurnDrvMagicbub = {
 	"Magic Bubble\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, magicbubRomInfo, magicbubRomName, NULL, NULL, MagicbubInputInfo, MagicbubDIPInfo,
+	NULL, magicbubRomInfo, magicbubRomName, NULL, NULL, NULL, NULL, MagicbubInputInfo, MagicbubDIPInfo,
 	MagicbubInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
 
-// Magic Bubble (Adult version)
+// Magic Bubble (Adult version, YS-1302 PCB)
 
 static struct BurnRomInfo magicbubaRomDesc[] = {
 	{ "u33.bin",		0x40000, 0xa8164a02, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
 	{ "u32.bin",		0x40000, 0x58f885ad, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "magbuble.143",	0x10000, 0x04192753, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "u143.bin",		0x10000, 0x04192753, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "u67.bin",		0x80000, 0x89523dcd, 3 | BRF_GRA },           //  3 Background Tiles
 	{ "u68.bin",		0x80000, 0x30e01a70, 3 | BRF_GRA },           //  4
@@ -975,12 +991,12 @@ static struct BurnRomInfo magicbubaRomDesc[] = {
 	{ "u73.bin",		0x80000, 0xcb4f3c3c, 3 | BRF_GRA },           //  9
 	{ "u74.bin",		0x80000, 0x81ff4910, 3 | BRF_GRA },           // 10
 
-	{ "magbuble.u20",	0x20000, 0xf70e3b8c, 4 | BRF_GRA },           // 11 Sprites
-	{ "magbuble.u21",	0x20000, 0xad082cf3, 4 | BRF_GRA },           // 12
-	{ "magbuble.u22",	0x20000, 0x7c68df7a, 4 | BRF_GRA },           // 13
-	{ "magbuble.u23",	0x20000, 0xc7763fc1, 4 | BRF_GRA },           // 14
+	{ "u20.bin",		0x20000, 0xf70e3b8c, 4 | BRF_GRA },           // 11 Sprites
+	{ "u21.bin",		0x20000, 0xad082cf3, 4 | BRF_GRA },           // 12
+	{ "u22.bin",		0x20000, 0x7c68df7a, 4 | BRF_GRA },           // 13
+	{ "u23.bin",		0x20000, 0xc7763fc1, 4 | BRF_GRA },           // 14
 
-	{ "magbuble.131",	0x20000, 0x03e04e89, 5 | BRF_SND },           // 15 Samples
+	{ "u131.bin",		0x20000, 0x03e04e89, 5 | BRF_SND },           // 15 Samples
 };
 
 STD_ROM_PICK(magicbuba)
@@ -993,11 +1009,53 @@ static INT32 MagicbubaInit()
 
 struct BurnDriver BurnDrvMagicbuba = {
 	"magicbuba", "magicbub", NULL, NULL, "199?",
-	"Magic Bubble (Adult version)\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
+	"Magic Bubble (Adult version, YS-1302 PCB)\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
-	NULL, magicbubaRomInfo, magicbubaRomName, NULL, NULL, MagicbubInputInfo, MagicbubaDIPInfo,
+	NULL, magicbubaRomInfo, magicbubaRomName, NULL, NULL, NULL, NULL, MagicbubInputInfo, MagicbubaDIPInfo,
 	MagicbubaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	320, 224, 4, 3
+};
+
+
+// Magic Bubble (Adult version, YS-0211 PCB)
+
+static struct BurnRomInfo magicbubbRomDesc[] = {
+	{ "u33",		0x40000, 0xdb651555, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "u32",		0x40000, 0xc9cb4d88, 1 | BRF_PRG | BRF_ESS }, //  1
+	
+	{ "u67.bin",		0x80000, 0x89523dcd, 2 | BRF_GRA },           //  2 Background Tiles
+	{ "u68.bin",		0x80000, 0x30e01a70, 2 | BRF_GRA },           //  3
+	{ "u69.bin",		0x80000, 0xfe357f52, 2 | BRF_GRA },           //  4
+	{ "u70.bin",		0x80000, 0x1398a473, 2 | BRF_GRA },           //  5
+	{ "u71.bin",		0x80000, 0x0844e017, 2 | BRF_GRA },           //  6
+	{ "u72.bin",		0x80000, 0x591db1cb, 2 | BRF_GRA },           //  7
+	{ "u73.bin",		0x80000, 0xcb4f3c3c, 2 | BRF_GRA },           //  8
+	{ "u74.bin",		0x80000, 0x81ff4910, 2 | BRF_GRA },           //  9
+
+	{ "u20.bin",		0x20000, 0xf70e3b8c, 3 | BRF_GRA },           // 10 Sprites
+	{ "u21.bin",		0x20000, 0xad082cf3, 3 | BRF_GRA },           // 11
+	{ "u22.bin",		0x20000, 0x7c68df7a, 3 | BRF_GRA },           // 12
+	{ "u23.bin",		0x20000, 0xc7763fc1, 3 | BRF_GRA },           // 13
+
+	{ "u131",		0x40000, 0x9bdb08e4, 4 | BRF_SND },           // 14 Samples
+};
+
+STD_ROM_PICK(magicbubb)
+STD_ROM_FN(magicbubb)
+
+static INT32 MagicbubbInit()
+{
+	return DrvInit(2);
+}
+
+struct BurnDriver BurnDrvMagicbubb = {
+	"magicbubb", "magicbub", NULL, NULL, "199?",
+	"Magic Bubble (Adult version, YS-0211 PCB)\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, magicbubbRomInfo, magicbubbRomName, NULL, NULL, NULL, NULL, MagicbubInputInfo, MagicbubaDIPInfo,
+	MagicbubbInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -1030,15 +1088,15 @@ STD_ROM_FN(paprazzi)
 
 static INT32 PaprazziInit()
 {
-	return DrvInit(2);
+	return DrvInit(3);
 }
 
 struct BurnDriver BurnDrvPaprazzi = {
 	"paprazzi", NULL, NULL, NULL, "1996",
 	"Paparazzi\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_POST90S, GBF_MISC, 0,
-	NULL, paprazziRomInfo, paprazziRomName, NULL, NULL, MagicbubInputInfo, PaprazziDIPInfo,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_POST90S, GBF_MAZE, 0,
+	NULL, paprazziRomInfo, paprazziRomName, NULL, NULL, NULL, NULL, MagicbubInputInfo, PaprazziDIPInfo,
 	PaprazziInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	224, 384, 3, 4
 };
@@ -1068,7 +1126,7 @@ STD_ROM_FN(shocking)
 
 static INT32 ShockingInit()
 {
-	return DrvInit(3);
+	return DrvInit(4);
 }
 
 struct BurnDriver BurnDrvShocking = {
@@ -1076,7 +1134,7 @@ struct BurnDriver BurnDrvShocking = {
 	"Shocking\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_MAZE, 0,
-	NULL, shockingRomInfo, shockingRomName, NULL, NULL, MagicbubInputInfo, ShockingDIPInfo,
+	NULL, shockingRomInfo, shockingRomName, NULL, NULL, NULL, NULL, MagicbubInputInfo, ShockingDIPInfo,
 	ShockingInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	384, 224, 4, 3
 };
@@ -1109,7 +1167,7 @@ struct BurnDriver BurnDrvBombkick = {
 	"Bomb Kick (set 1)\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PLATFORM, 0,
-	NULL, bombkickRomInfo, bombkickRomName, NULL, NULL, BombkickInputInfo, BombkickDIPInfo,
+	NULL, bombkickRomInfo, bombkickRomName, NULL, NULL, NULL, NULL, BombkickInputInfo, BombkickDIPInfo,
 	ShockingInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	384, 224, 4, 3
 };
@@ -1142,7 +1200,7 @@ struct BurnDriver BurnDrvBombkicka = {
 	"Bomb Kick (set 2)\0", NULL, "Yun Sung", "Yun Sung 16 Bit",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PLATFORM, 0,
-	NULL, bombkickaRomInfo, bombkickaRomName, NULL, NULL, BombkickInputInfo, BombkickDIPInfo,
+	NULL, bombkickaRomInfo, bombkickaRomName, NULL, NULL, NULL, NULL, BombkickInputInfo, BombkickDIPInfo,
 	ShockingInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	384, 224, 4, 3
 };

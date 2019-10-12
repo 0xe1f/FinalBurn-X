@@ -279,11 +279,7 @@ void __fastcall lkage_main_write(UINT16 address, UINT8 data)
 		case 0xf060:
 			soundlatch = data;
 			if (DrvNmiEnable) {
-				ZetClose();
-				ZetOpen(1);
-				ZetNmi();
-				ZetClose();
-				ZetOpen(0);
+				ZetNmi(1);
 			} else {
 				pending_nmi = 1;
 			}
@@ -454,21 +450,7 @@ void __fastcall lkage_sound_write(UINT16 address, UINT8 data)
 
 inline static void DrvYM2203IRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus & 1) {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-inline static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 6000000;
-}
-
-inline static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 6000000.0;
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 DrvDoReset()
@@ -626,7 +608,7 @@ static INT32 DrvInit()
 
 	m67805_taito_init(DrvMcuROM, DrvMcuRAM, &standard_m68705_interface);
 	
-	BurnYM2203Init(2, 4000000, &DrvYM2203IRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2203Init(2, 4000000, &DrvYM2203IRQHandler, 0);
 	BurnTimerAttachZet(6000000);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_YM2203_ROUTE, 0.40, BURN_SND_ROUTE_BOTH);
 	BurnYM2203SetRoute(0, BURN_SND_YM2203_AY8910_ROUTE_1, 0.15, BURN_SND_ROUTE_BOTH);
@@ -872,7 +854,7 @@ static INT32 DrvFrame()
 		nNext = (i + 1) * nCyclesTotal[nCurrentCPU] / nInterleave;
 		nCyclesSegment = nNext - nCyclesDone[nCurrentCPU];
 		nCyclesDone[nCurrentCPU] += ZetRun(nCyclesSegment);
-		if (i == 99) ZetRaiseIrq(0);
+		if (i == 99) ZetSetIRQLine(0, CPU_IRQSTATUS_AUTO);
 		ZetClose();
 
 		// Run Z80 #2
@@ -891,7 +873,9 @@ static INT32 DrvFrame()
 	
 	ZetOpen(1);
 	BurnTimerEndFrame(nCyclesTotal[1]);
-	BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
+	if (pBurnSoundOut) {
+		BurnYM2203Update(pBurnSoundOut, nBurnSoundLen);
+	}
 	ZetClose();
 
 	if (pBurnDraw) {
@@ -964,7 +948,7 @@ struct BurnDriver BurnDrvLkage = {
 	"The Legend of Kage\0", NULL, "Taito Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkageRomInfo, lkageRomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkageRomInfo, lkageRomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1003,7 +987,7 @@ struct BurnDriver BurnDrvLkageo = {
 	"The Legend of Kage (older)\0", NULL, "Taito Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkageoRomInfo, lkageoRomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkageoRomInfo, lkageoRomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1042,7 +1026,7 @@ struct BurnDriver BurnDrvLkageoo = {
 	"The Legend of Kage (oldest)\0", NULL, "Taito Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkageooRomInfo, lkageooRomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkageooRomInfo, lkageooRomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1081,7 +1065,7 @@ struct BurnDriver BurnDrvLkageb = {
 	"The Legend of Kage (bootleg set 1)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkagebRomInfo, lkagebRomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkagebRomInfo, lkagebRomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	LkagebInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1113,7 +1097,7 @@ struct BurnDriver BurnDrvLkageb2 = {
 	"The Legend of Kage (bootleg set 2)\0", NULL, "bootleg", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkageb2RomInfo, lkageb2RomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkageb2RomInfo, lkageb2RomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1145,7 +1129,7 @@ struct BurnDriver BurnDrvLkageb3 = {
 	"The Legend of Kage (bootleg set 3)\0", NULL, "bootleg", "hardware",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, lkageb3RomInfo, lkageb3RomName, NULL, NULL, LkageInputInfo, LkageDIPInfo,
+	NULL, lkageb3RomInfo, lkageb3RomName, NULL, NULL, NULL, NULL, LkageInputInfo, LkageDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };
@@ -1178,8 +1162,8 @@ struct BurnDriver BurnDrvBygone = {
 	"bygone", NULL, NULL, NULL, "1985",
 	"Bygone\0", "Imperfect sound", "Taito Corporation", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
-	NULL, bygoneRomInfo, bygoneRomName, NULL, NULL, LkageInputInfo, BygoneDIPInfo,
+	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
+	NULL, bygoneRomInfo, bygoneRomName, NULL, NULL, NULL, NULL, LkageInputInfo, BygoneDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	240, 224, 4, 3
 };

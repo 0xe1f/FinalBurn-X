@@ -351,21 +351,7 @@ UINT8 __fastcall crshrace_sound_in(UINT16 port)
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (nStatus) {
-		ZetSetIRQLine(0xff, ZET_IRQSTATUS_ACK);
-	} else {
-		ZetSetIRQLine(0,    ZET_IRQSTATUS_NONE);
-	}
-}
-
-static INT32 DrvSynchroniseStream(INT32 nSoundRate)
-{
-	return (INT64)ZetTotalCycles() * nSoundRate / 4000000;
-}
-
-static double DrvGetTime()
-{
-	return (double)ZetTotalCycles() / 4000000.0;
+	ZetSetIRQLine(0, (nStatus) ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
 static INT32 MemIndex()
@@ -498,16 +484,16 @@ static INT32 DrvInit()
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, SM_ROM);
-	SekMapMemory(Drv68KROM + 0x100000,	0x300000, 0x3fffff, SM_ROM);
-	SekMapMemory(Drv68KROM + 0x200000,	0x400000, 0x4fffff, SM_ROM);
-	SekMapMemory(Drv68KROM + 0x200000,	0x500000, 0x5fffff, SM_ROM);
-	SekMapMemory(DrvSprRAM2,		0xa00000, 0xa0ffff, SM_RAM);
-	SekMapMemory(DrvVidRAM1,		0xd00000, 0xd01fff, SM_ROM);
-	SekMapMemory(DrvSprRAM1,		0xe00000, 0xe01fff, SM_RAM);
-	SekMapMemory(Drv68KRAM,			0xfe0000, 0xfeffff, SM_RAM);
-	SekMapMemory(DrvVidRAM2,		0xffd000, 0xffdfff, SM_RAM);
-	SekMapMemory(DrvPalRAM,			0xffe000, 0xffefff, SM_RAM);
+	SekMapMemory(Drv68KROM,			0x000000, 0x07ffff, MAP_ROM);
+	SekMapMemory(Drv68KROM + 0x100000,	0x300000, 0x3fffff, MAP_ROM);
+	SekMapMemory(Drv68KROM + 0x200000,	0x400000, 0x4fffff, MAP_ROM);
+	SekMapMemory(Drv68KROM + 0x200000,	0x500000, 0x5fffff, MAP_ROM);
+	SekMapMemory(DrvSprRAM2,		0xa00000, 0xa0ffff, MAP_RAM);
+	SekMapMemory(DrvVidRAM1,		0xd00000, 0xd01fff, MAP_ROM);
+	SekMapMemory(DrvSprRAM1,		0xe00000, 0xe01fff, MAP_RAM);
+	SekMapMemory(Drv68KRAM,			0xfe0000, 0xfeffff, MAP_RAM);
+	SekMapMemory(DrvVidRAM2,		0xffd000, 0xffdfff, MAP_RAM);
+	SekMapMemory(DrvPalRAM,			0xffe000, 0xffefff, MAP_RAM);
 	SekSetWriteWordHandler(0,		crshrace_write_word);
 	SekSetWriteByteHandler(0,		crshrace_write_byte);
 	SekSetReadWordHandler(0,		crshrace_read_word);
@@ -529,7 +515,7 @@ static INT32 DrvInit()
 	ZetClose();
 
 	INT32 DrvSndROMLen = 0x100000;
-	BurnYM2610Init(8000000, DrvSndROM + 0x100000, &DrvSndROMLen, DrvSndROM, &DrvSndROMLen, &DrvFMIRQHandler, DrvSynchroniseStream, DrvGetTime, 0);
+	BurnYM2610Init(8000000, DrvSndROM + 0x100000, &DrvSndROMLen, DrvSndROM, &DrvSndROMLen, &DrvFMIRQHandler, 0);
 	BurnTimerAttachZet(4000000);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_1, 1.00, BURN_SND_ROUTE_LEFT);
 	BurnYM2610SetRoute(BURN_SND_YM2610_YM2610_ROUTE_2, 1.00, BURN_SND_ROUTE_RIGHT);
@@ -757,7 +743,7 @@ static INT32 DrvFrame()
 	ZetOpen(0);
 
 	SekRun(nCyclesTotal[0]);
-	SekSetIRQLine(1, SEK_IRQSTATUS_AUTO);
+	SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 
 	BurnTimerEndFrame(nCyclesTotal[1]);
 
@@ -848,7 +834,7 @@ struct BurnDriver BurnDrvCrshrace = {
 	"Lethal Crash Race (set 1)\0", NULL, "Video System Co.", "Miscellaneous",
 	L"Lethal Crash Race\0\u7206\u70C8 \u30AF\u30E9\u30C3\u30B7\u30E5 \u30EC\u30FC\u30B9 (set 1)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_POST90S, GBF_RACING, 0,
-	NULL, crshraceRomInfo, crshraceRomName, NULL, NULL, CrshraceInputInfo, CrshraceDIPInfo,
+	NULL, crshraceRomInfo, crshraceRomName, NULL, NULL, NULL, NULL, CrshraceInputInfo, CrshraceDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x401,
 	224, 320, 3, 4
 };
@@ -884,7 +870,7 @@ struct BurnDriver BurnDrvCrshrace2 = {
 	"Lethal Crash Race (set 2)\0", NULL, "Video System Co.", "Miscellaneous",
 	L"Lethal Crash Race\0\u7206\u70C8 \u30AF\u30E9\u30C3\u30B7\u30E5 \u30EC\u30FC\u30B9 (set 2)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_MISC_POST90S, GBF_RACING, 0,
-	NULL, crshrace2RomInfo, crshrace2RomName, NULL, NULL,  CrshraceInputInfo,  CrshraceDIPInfo,
+	NULL, crshrace2RomInfo, crshrace2RomName, NULL, NULL, NULL, NULL,  CrshraceInputInfo,  CrshraceDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x401,
 	224, 320, 3, 4
 };
