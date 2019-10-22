@@ -78,8 +78,8 @@
     
     nVidImageWidth = gameWidth;
     nVidImageHeight = gameHeight;
-    nVidImageDepth = 24;
-	nVidImageBPP = 3;
+    nVidImageDepth = 16;
+	nVidImageBPP = nVidImageDepth / 8;
 	if (!rotationMode) {
         nVidImagePitch = nVidImageWidth * nVidImageBPP;
 	} else {

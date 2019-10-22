@@ -50,6 +50,7 @@
 	NSPoint _lastCursorPosition;
 	NSTrackingArea *_trackingArea;
     NSRect viewBounds; // Access from non-UI thread
+    GLint textureFormat;
 }
 
 #pragma mark - Initialize, Dealloc
@@ -171,6 +172,7 @@
     self->textureHeight = [FXScreenView powerOfTwoClosestTo:self->imageHeight];
     self->textureBytesPerPixel = bytesPerPixel;
     self->screenSize = NSMakeSize((CGFloat)width, (CGFloat)height);
+    textureFormat = GL_UNSIGNED_SHORT_5_6_5;
     
     int texSize = self->textureWidth * self->textureHeight * bytesPerPixel;
     self->texture = (unsigned char *)malloc(texSize);
@@ -184,9 +186,9 @@
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     
-    glTexImage2D(GL_TEXTURE_2D, 0, bytesPerPixel,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                  self->textureWidth, self->textureHeight,
-                 0, GL_BGR, GL_UNSIGNED_BYTE, self->texture);
+                 0, GL_RGB, textureFormat, self->texture);
     
     glDisable(GL_TEXTURE_2D);
     
@@ -221,12 +223,20 @@
     glBindTexture(GL_TEXTURE_2D, screenTextureId);
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     
-    for (int y = 0; y < self->imageHeight; y += 1) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, self->imageWidth, 1,
-                        GL_BGR, GL_UNSIGNED_BYTE,
-                        bitmap + y * self->imageWidth * self->textureBytesPerPixel);
+    unsigned char *ps = (unsigned char *) bitmap;
+    unsigned char *pd = (unsigned char *) texture;
+
+    int bitmapPitch = imageWidth * textureBytesPerPixel;
+    int texturePitch = textureWidth * textureBytesPerPixel;
+    for (int y = imageHeight; y--; ) {
+        memcpy(pd, ps, bitmapPitch);
+        pd += texturePitch;
+        ps += bitmapPitch;
     }
     
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0,
+             GL_RGB, textureFormat, texture);
+
     NSSize size = viewBounds.size;
     CGFloat offset = 0;
     
